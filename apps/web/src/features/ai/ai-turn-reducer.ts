@@ -45,7 +45,7 @@ export type AiTurnAction =
   | { type: "event"; event: AiPublicStreamEvent }
   | { type: "cancel" }
   | { type: "network" }
-  | { type: "transportFailure"; code: string }
+  | { type: "transportFailure"; code: string; message?: string }
   | { type: "reset" }
   | { type: "hydrate"; conversationId: string };
 
@@ -129,7 +129,7 @@ export function aiTurnReducer(
         durationMs: elapsed(state),
         tools: freezeRunningTools(state.tools),
         errorCode: action.code,
-        errorMessage: userErrorMessage(action.code),
+        errorMessage: userErrorMessage(action.code, action.message),
         draft: state.draft || state.pendingUserContent || "",
       };
     case "event":
@@ -207,7 +207,7 @@ function applyEvent(
         tools: freezeRunningTools(state.tools),
         draft: state.draft || state.pendingUserContent || "",
         errorCode: event.data.code,
-        errorMessage: userErrorMessage(event.data.code),
+        errorMessage: userErrorMessage(event.data.code, event.data.message),
       };
     case "turn.cancelled":
       return {
@@ -233,8 +233,15 @@ function upsertTool(
   return next;
 }
 
-export function userErrorMessage(code?: string | null): string {
+export function userErrorMessage(code?: string | null, detail?: string): string {
   switch (code) {
+    case "AI_PLATFORM_DISABLED": return detail || "AI 功能暂不可用";
+    case "AI_FEATURE_NOT_INCLUDED": return detail || "当前套餐不包含此功能";
+    case "AI_TENANT_QUOTA_EXHAUSTED": return detail || "公司本月 AI 额度已用完";
+    case "AI_MEMBER_QUOTA_EXHAUSTED": return detail || "你本月的 AI 份额已用完";
+    case "AI_REQUEST_BUDGET_INSUFFICIENT": return detail || "剩余额度不足以完成这次请求";
+    case "AI_BUDGET_RESERVED": return detail || "当前请求正在占用额度，请稍后再试";
+    case "RATE_LIMITED": return detail || "请求太频繁，请稍后再试";
     case "AI_PROVIDER_TIMEOUT":
       return "AI 暂时没有响应，请重试";
     case "AI_PROVIDER_UNAVAILABLE":

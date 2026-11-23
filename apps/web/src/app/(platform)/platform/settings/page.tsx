@@ -1,3 +1,4 @@
+import { PlatformAiSettings } from "@/features/platform/ai-governance/settings";
 import { PlatformSettingsView } from "@/features/platform/platform-operations";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
@@ -12,6 +13,7 @@ export default async function PlatformSettingsPage() {
   return (
     <PlatformSettingsView
       status={result.data}
+      governance={<PlatformAiSettings />}
       checkedAt={new Date().toISOString()}
     />
   );

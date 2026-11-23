@@ -1,3 +1,5 @@
+import type { AiLedgerService } from './governance/ai-ledger.service';
+import { ApiException } from '../../common/errors/api.exception';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -23,6 +25,19 @@ import { wrapAiReadTool, type AiToolCallbacks } from './ai-tool-wrapper';
 import type { AiProposalService } from './ai-proposal.service';
 import type { AiProposalView } from './ai-operation.types';
 import type { AssistantQuestionsService } from './assistant-questions.service';
+
+const ledger = {
+  assertFeature: jest.fn().mockResolvedValue(undefined),
+  features: jest
+    .fn()
+    .mockResolvedValue([
+      'assistant',
+      'write_proposal',
+      'communication',
+      'filter',
+      'table_builder',
+    ]),
+} as unknown as jest.Mocked<AiLedgerService>;
 
 const context: TenantContext = {
   tenantId: '0198ad18-a74d-7b69-b81a-49a74f9a3e0d',
@@ -189,6 +204,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     });
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -226,6 +242,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     });
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -260,6 +277,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     try {
       const events = await collect(
         await new AiOrchestrator(
+          ledger,
           conversations,
           provider,
           registryWith([]),
@@ -298,6 +316,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     });
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -338,6 +357,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     });
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -376,6 +396,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
       });
       const events = await collect(
         await new AiOrchestrator(
+          ledger,
           conversations,
           provider,
           registryWith([query]),
@@ -458,6 +479,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
       });
       const events = await collect(
         await new AiOrchestrator(
+          ledger,
           conversations,
           provider,
           registryWith([query]),
@@ -492,6 +514,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
       yield { type: 'COMPLETED' };
     });
     const stream = await new AiOrchestrator(
+      ledger,
       conversationMock(),
       provider,
       registryWith([]),
@@ -518,6 +541,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
       total: 1,
     }));
     const stream = await new AiOrchestrator(
+      ledger,
       conversationMock(),
       provider,
       registryWith([query]),
@@ -552,6 +576,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     });
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -575,6 +600,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     });
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -596,6 +622,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     });
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -620,6 +647,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     });
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -658,6 +686,7 @@ describe('AiOrchestrator.streamTurn', () => {
     ]);
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -705,6 +734,7 @@ describe('AiOrchestrator.streamTurn', () => {
     ]);
     const events = await collect(
       await new AiOrchestrator(
+        ledger,
         conversations,
         provider,
         registryWith([]),
@@ -751,6 +781,7 @@ describe('AiOrchestrator.streamTurn', () => {
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([]),
@@ -830,6 +861,7 @@ describe('AiOrchestrator.streamTurn', () => {
       },
     };
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([]),
@@ -864,6 +896,7 @@ describe('AiOrchestrator.streamTurn', () => {
       },
     };
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([]),
@@ -900,6 +933,7 @@ describe('AiOrchestrator.streamTurn', () => {
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([]),
@@ -929,6 +963,7 @@ describe('AiOrchestrator.streamTurn', () => {
       { type: 'FAILED', code: 'AI_PROVIDER_TIMEOUT' },
     ]);
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([]),
@@ -978,6 +1013,7 @@ describe('AiOrchestrator.streamTurn', () => {
       };
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([]),
@@ -1023,6 +1059,7 @@ describe('AiOrchestrator.streamTurn', () => {
     );
     const provider = providerWith([{ type: 'COMPLETED' }]);
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([]),
@@ -1068,6 +1105,7 @@ describe('AiOrchestrator.streamTurn', () => {
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([
@@ -1155,6 +1193,7 @@ describe('AiOrchestrator.streamTurn', () => {
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([
@@ -1198,6 +1237,7 @@ describe('AiOrchestrator.streamTurn', () => {
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([
@@ -1242,6 +1282,7 @@ describe('AiOrchestrator.streamTurn', () => {
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([
@@ -1286,6 +1327,7 @@ describe('AiOrchestrator.streamTurn', () => {
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([searchTool(() => domain)]),
@@ -1330,6 +1372,7 @@ describe('AiOrchestrator.streamTurn', () => {
       void hanging;
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([searchTool(execute)]),
@@ -1386,6 +1429,7 @@ describe('AiOrchestrator.streamTurn', () => {
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([searchTool(execute)]),
@@ -1423,7 +1467,7 @@ describe('AiOrchestrator.streamTurn', () => {
       });
       void pending;
     });
-    const orchestrator = new AiOrchestrator(conversations, provider, {
+    const orchestrator = new AiOrchestrator(ledger, conversations, provider, {
       forActor(_context: TenantContext, callbacks: AiToolCallbacks) {
         const delayed: AiToolCallbacks = {
           ...callbacks,
@@ -1507,7 +1551,7 @@ describe('AiOrchestrator.streamTurn', () => {
       });
       void pending;
     });
-    const orchestrator = new AiOrchestrator(conversations, provider, {
+    const orchestrator = new AiOrchestrator(ledger, conversations, provider, {
       forActor(_context: TenantContext, callbacks: AiToolCallbacks) {
         const delayed: AiToolCallbacks = {
           ...callbacks,
@@ -1573,6 +1617,7 @@ describe('AiOrchestrator.streamTurn', () => {
       void pending;
     });
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([searchTool(() => hanging)]),
@@ -1660,6 +1705,7 @@ describe('AiOrchestrator company time context', () => {
       },
     };
     const orchestrator = new AiOrchestrator(
+      ledger,
       conversations,
       provider,
       registryWith([]),
@@ -1785,4 +1831,97 @@ describe('AiOrchestrator company time context', () => {
       );
     },
   );
+});
+
+describe('assistant package changes', () => {
+  it('offers only entitled tools and returns an admitted step rejection in the SSE stream', async () => {
+    const conversation = conversationMock();
+    const seen: string[] = [];
+    const provider = providerWith(async function* (_signal, tools) {
+      seen.push(...tools.map((tool) => tool.name));
+      yield {
+        type: 'FAILED',
+        code: 'AI_REQUEST_BUDGET_INSUFFICIENT',
+        message: '预计需要约 8000 token',
+      };
+    });
+    const actions = {
+      forPage: () => [searchTool(jest.fn(), 'preview_filter')],
+    };
+    ledger.features.mockResolvedValueOnce(['assistant']);
+    const orchestrator = new AiOrchestrator(
+      ledger,
+      conversation,
+      provider,
+      registryWith([]),
+      {} as AiProposalService,
+      undefined,
+      actions as never,
+    );
+    const events = await collect(
+      await orchestrator.streamTurn(
+        context,
+        { content: '筛选' },
+        new AbortController().signal,
+      ),
+    );
+    expect(seen).not.toContain('propose_change');
+    expect(seen).not.toContain('preview_filter');
+    expect(events.at(-1)).toMatchObject({
+      event: 'turn.failed',
+      data: {
+        code: 'AI_REQUEST_BUDGET_INSUFFICIENT',
+        message: '预计需要约 8000 token',
+      },
+    });
+  });
+
+  it('stops on a nested governance denial even when the SDK swallows the tool exception', async () => {
+    const generate = jest
+      .fn()
+      .mockRejectedValue(
+        new ApiException('AI_MEMBER_QUOTA_EXHAUSTED', 429, {
+          message: '个人额度将在下月恢复',
+        }),
+      );
+    const actions = {
+      forPage: () => [
+        { ...searchTool(generate, 'preview_filter'), execute: generate },
+      ],
+    };
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((tool) => tool.name === 'preview_filter')!
+        .execute({}, 'nested')
+        .catch(() => undefined);
+      yield { type: 'COMPLETED' };
+    });
+    const conversation = conversationMock();
+    const orchestrator = new AiOrchestrator(
+      ledger,
+      conversation,
+      provider,
+      registryWith([]),
+      undefined,
+      undefined,
+      actions as never,
+    );
+    const events = await collect(
+      await orchestrator.streamTurn(
+        context,
+        { content: '筛选' },
+        new AbortController().signal,
+      ),
+    );
+    expect(events.at(-1)).toMatchObject({
+      event: 'turn.failed',
+      data: {
+        code: 'AI_MEMBER_QUOTA_EXHAUSTED',
+        message: '个人额度将在下月恢复',
+      },
+    });
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ event: 'action.ready' }),
+    );
+  });
 });

@@ -17,6 +17,7 @@ export interface ApiErrorBody {
   fieldErrors: FieldErrors;
   requestId: string;
   status: number;
+  retryAfterSeconds?: number;
 }
 
 interface RequestWithId extends Request {
@@ -48,6 +49,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
         fieldErrors: exception.fieldErrors,
         requestId,
         status: exception.getStatus(),
+        ...(exception.retryAfterSeconds
+          ? { retryAfterSeconds: exception.retryAfterSeconds }
+          : {}),
       };
     }
 
@@ -84,6 +88,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const response = http.getResponse<Response>();
     const body = this.toBody(exception, request.requestId ?? 'req_unknown');
 
+    if (body.retryAfterSeconds)
+      response.setHeader('Retry-After', body.retryAfterSeconds);
     response.status(body.status).json(body);
   }
 }

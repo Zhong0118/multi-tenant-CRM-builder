@@ -410,6 +410,9 @@
           "requestId": {
             "type": "string"
           },
+          "retryAfterSeconds": {
+            "type": "number"
+          },
           "status": {
             "type": "number"
           }
@@ -4619,7 +4622,9 @@
               "TASK_OVERDUE",
               "POOL_RECLAIMED",
               "PROTECTION_REVIEW",
-              "WORK_GOAL_BEHIND"
+              "WORK_GOAL_BEHIND",
+              "AI_QUOTA_80",
+              "AI_QUOTA_100"
             ],
             "type": "string"
           },
@@ -5519,6 +5524,14 @@
           "activeAdminCount": {
             "minimum": 0,
             "type": "number"
+          },
+          "aiPercent": {
+            "nullable": true,
+            "type": "number"
+          },
+          "aiPlanName": {
+            "nullable": true,
+            "type": "string"
           },
           "code": {
             "type": "string"
@@ -10620,6 +10633,1067 @@
         "tags": ["memberships"]
       }
     },
+    "/api/v1/platform/ai-companies": {
+      "get": {
+        "operationId": "PlatformAiAdminController_companies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 1000000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "enum": ["asc", "desc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": ["DRAFT", "ACTIVE", "SUSPENDED", "CLOSED"],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "allocation": {
+                            "enum": ["shared", "equal"],
+                            "type": "string"
+                          },
+                          "baseTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "extraTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "features": {
+                            "items": {
+                              "enum": [
+                                "assistant",
+                                "write_proposal",
+                                "communication",
+                                "filter",
+                                "table_builder"
+                              ],
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "month": {
+                            "allOf": [
+                              {
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                                "type": "string"
+                              },
+                              {
+                                "pattern": "^\\d{4}-\\d\\d-01$",
+                                "type": "string"
+                              }
+                            ],
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "percent": {
+                            "nullable": true,
+                            "type": "number"
+                          },
+                          "planId": {
+                            "format": "uuid",
+                            "nullable": true,
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "planName": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "planVersion": {
+                            "exclusiveMinimum": true,
+                            "maximum": 9007199254740991,
+                            "minimum": 0,
+                            "nullable": true,
+                            "type": "integer"
+                          },
+                          "remainingTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "reservedTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "restoresAt": {
+                            "type": "string"
+                          },
+                          "startedAt": {
+                            "type": "string"
+                          },
+                          "tenantId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "totalTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "usedTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "version": {
+                            "exclusiveMinimum": true,
+                            "maximum": 9007199254740991,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "tenantId",
+                          "name",
+                          "code",
+                          "month",
+                          "restoresAt",
+                          "startedAt",
+                          "planId",
+                          "planName",
+                          "planVersion",
+                          "features",
+                          "allocation",
+                          "version",
+                          "baseTokens",
+                          "extraTokens",
+                          "totalTokens",
+                          "usedTokens",
+                          "reservedTokens",
+                          "remainingTokens",
+                          "percent"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["items", "page", "limit", "total"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      }
+    },
+    "/api/v1/platform/ai-plans": {
+      "get": {
+        "operationId": "PlatformAiAdminController_plans",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "assignable": {
+                        "type": "boolean"
+                      },
+                      "companies": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      "description": {
+                        "maxLength": 1000,
+                        "type": "string"
+                      },
+                      "features": {
+                        "items": {
+                          "enum": [
+                            "assistant",
+                            "write_proposal",
+                            "communication",
+                            "filter",
+                            "table_builder"
+                          ],
+                          "type": "string"
+                        },
+                        "maxItems": 5,
+                        "type": "array"
+                      },
+                      "id": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      },
+                      "monthlyTokens": {
+                        "description": "Exact token count in decimal notation",
+                        "pattern": "^\\d+$",
+                        "type": "string"
+                      },
+                      "name": {
+                        "maxLength": 120,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "version": {
+                        "exclusiveMinimum": true,
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "description",
+                      "features",
+                      "monthlyTokens",
+                      "assignable",
+                      "version",
+                      "companies"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      },
+      "post": {
+        "operationId": "PlatformAiAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "assignable": {
+                    "type": "boolean"
+                  },
+                  "description": {
+                    "maxLength": 1000,
+                    "type": "string"
+                  },
+                  "features": {
+                    "items": {
+                      "enum": [
+                        "assistant",
+                        "write_proposal",
+                        "communication",
+                        "filter",
+                        "table_builder"
+                      ],
+                      "type": "string"
+                    },
+                    "maxItems": 5,
+                    "type": "array"
+                  },
+                  "monthlyTokens": {
+                    "description": "Exact token count in decimal notation",
+                    "pattern": "^\\d+$",
+                    "type": "string"
+                  },
+                  "name": {
+                    "maxLength": 120,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "description",
+                  "features",
+                  "monthlyTokens",
+                  "assignable"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "assignable": {
+                      "type": "boolean"
+                    },
+                    "companies": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "description": {
+                      "maxLength": 1000,
+                      "type": "string"
+                    },
+                    "features": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "monthlyTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "name": {
+                      "maxLength": 120,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "features",
+                    "monthlyTokens",
+                    "assignable",
+                    "version",
+                    "companies"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      }
+    },
+    "/api/v1/platform/ai-plans/{id}": {
+      "delete": {
+        "operationId": "PlatformAiAdminController_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": ["version"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "deleted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["deleted"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      },
+      "get": {
+        "operationId": "PlatformAiAdminController_plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "assignable": {
+                      "type": "boolean"
+                    },
+                    "companies": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "description": {
+                      "maxLength": 1000,
+                      "type": "string"
+                    },
+                    "features": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "monthlyTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "name": {
+                      "maxLength": 120,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "features",
+                    "monthlyTokens",
+                    "assignable",
+                    "version",
+                    "companies"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      },
+      "patch": {
+        "operationId": "PlatformAiAdminController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "assignable": {
+                    "type": "boolean"
+                  },
+                  "confirmation": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "description": {
+                    "maxLength": 1000,
+                    "type": "string"
+                  },
+                  "features": {
+                    "items": {
+                      "enum": [
+                        "assistant",
+                        "write_proposal",
+                        "communication",
+                        "filter",
+                        "table_builder"
+                      ],
+                      "type": "string"
+                    },
+                    "maxItems": 5,
+                    "type": "array"
+                  },
+                  "monthlyTokens": {
+                    "description": "Exact token count in decimal notation",
+                    "pattern": "^\\d+$",
+                    "type": "string"
+                  },
+                  "name": {
+                    "maxLength": 120,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "replacementDefaultPlanId": {
+                    "format": "uuid",
+                    "nullable": true,
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "description",
+                  "features",
+                  "monthlyTokens",
+                  "assignable",
+                  "confirmation"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "assignable": {
+                      "type": "boolean"
+                    },
+                    "companies": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "description": {
+                      "maxLength": 1000,
+                      "type": "string"
+                    },
+                    "features": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "maxItems": 5,
+                      "type": "array"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "monthlyTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "name": {
+                      "maxLength": 120,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "features",
+                    "monthlyTokens",
+                    "assignable",
+                    "version",
+                    "companies"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      }
+    },
+    "/api/v1/platform/ai-plans/{id}/preview": {
+      "post": {
+        "operationId": "PlatformAiAdminController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "assignable": {
+                    "type": "boolean"
+                  },
+                  "description": {
+                    "maxLength": 1000,
+                    "type": "string"
+                  },
+                  "features": {
+                    "items": {
+                      "enum": [
+                        "assistant",
+                        "write_proposal",
+                        "communication",
+                        "filter",
+                        "table_builder"
+                      ],
+                      "type": "string"
+                    },
+                    "maxItems": 5,
+                    "type": "array"
+                  },
+                  "monthlyTokens": {
+                    "description": "Exact token count in decimal notation",
+                    "pattern": "^\\d+$",
+                    "type": "string"
+                  },
+                  "name": {
+                    "maxLength": 120,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "replacementDefaultPlanId": {
+                    "format": "uuid",
+                    "nullable": true,
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "description",
+                  "features",
+                  "monthlyTokens",
+                  "assignable"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "companies": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "confirmation": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "removedFeatures": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "companies",
+                    "removedFeatures",
+                    "confirmation"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      }
+    },
+    "/api/v1/platform/ai-settings": {
+      "get": {
+        "operationId": "PlatformAiAdminController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "affectedCompanies": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "anomalies": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "calls": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "excessTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "model": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["model", "calls", "excessTokens"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "configured": {
+                      "type": "boolean"
+                    },
+                    "defaultPlanId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "disabled": {
+                      "type": "boolean"
+                    },
+                    "model": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "provider": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "reason": {
+                      "maxLength": 500,
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "defaultPlanId",
+                    "disabled",
+                    "reason",
+                    "version",
+                    "affectedCompanies",
+                    "provider",
+                    "model",
+                    "configured",
+                    "anomalies"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      },
+      "patch": {
+        "operationId": "PlatformAiAdminController_saveSettings",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "defaultPlanId": {
+                    "format": "uuid",
+                    "nullable": true,
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "maxLength": 500,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": ["defaultPlanId", "disabled", "reason", "version"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "defaultPlanId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "disabled": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "maxLength": 500,
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "defaultPlanId",
+                    "disabled",
+                    "reason",
+                    "version"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      }
+    },
     "/api/v1/platform/audit": {
       "get": {
         "operationId": "PlatformOperationsController_audit",
@@ -11207,6 +12281,15 @@
         "parameters": [
           {
             "in": "query",
+            "name": "aiOrder",
+            "required": false,
+            "schema": {
+              "enum": ["asc", "desc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "status",
             "required": false,
             "schema": {
@@ -11354,6 +12437,636 @@
           }
         ],
         "tags": ["platform-tenants"]
+      }
+    },
+    "/api/v1/platform/tenants/{id}/ai": {
+      "get": {
+        "operationId": "PlatformAiAdminController_company",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "allocation": {
+                      "enum": ["shared", "equal"],
+                      "type": "string"
+                    },
+                    "baseTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "extraTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "features": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "month": {
+                      "allOf": [
+                        {
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                          "type": "string"
+                        },
+                        {
+                          "pattern": "^\\d{4}-\\d\\d-01$",
+                          "type": "string"
+                        }
+                      ],
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "percent": {
+                      "nullable": true,
+                      "type": "number"
+                    },
+                    "planId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "planName": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "planVersion": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "nullable": true,
+                      "type": "integer"
+                    },
+                    "remainingTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "reservedTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "restoresAt": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "tenantId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "totalTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "trend": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "month": {
+                            "allOf": [
+                              {
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                                "type": "string"
+                              },
+                              {
+                                "pattern": "^\\d{4}-\\d\\d-01$",
+                                "type": "string"
+                              }
+                            ],
+                            "type": "string"
+                          },
+                          "usedTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": ["month", "usedTokens"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "usage": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "calls": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "confirmations": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "date": {
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                            "type": "string"
+                          },
+                          "feature": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder"
+                            ],
+                            "type": "string"
+                          },
+                          "inputTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "outputTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "proposals": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "date",
+                          "feature",
+                          "calls",
+                          "inputTokens",
+                          "outputTokens",
+                          "proposals",
+                          "confirmations"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "usedTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "tenantId",
+                    "name",
+                    "code",
+                    "month",
+                    "restoresAt",
+                    "startedAt",
+                    "planId",
+                    "planName",
+                    "planVersion",
+                    "features",
+                    "allocation",
+                    "version",
+                    "baseTokens",
+                    "extraTokens",
+                    "totalTokens",
+                    "usedTokens",
+                    "reservedTokens",
+                    "remainingTokens",
+                    "percent",
+                    "trend",
+                    "usage"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      },
+      "patch": {
+        "operationId": "PlatformAiAdminController_assign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "confirmation": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "planId": {
+                    "format": "uuid",
+                    "nullable": true,
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  }
+                },
+                "required": ["planId", "confirmation"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "allocation": {
+                      "enum": ["shared", "equal"],
+                      "type": "string"
+                    },
+                    "baseTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "extraTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "features": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "month": {
+                      "allOf": [
+                        {
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                          "type": "string"
+                        },
+                        {
+                          "pattern": "^\\d{4}-\\d\\d-01$",
+                          "type": "string"
+                        }
+                      ],
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "percent": {
+                      "nullable": true,
+                      "type": "number"
+                    },
+                    "planId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "planName": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "planVersion": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "nullable": true,
+                      "type": "integer"
+                    },
+                    "remainingTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "reservedTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "restoresAt": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "tenantId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "totalTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "usedTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "tenantId",
+                    "name",
+                    "code",
+                    "month",
+                    "restoresAt",
+                    "startedAt",
+                    "planId",
+                    "planName",
+                    "planVersion",
+                    "features",
+                    "allocation",
+                    "version",
+                    "baseTokens",
+                    "extraTokens",
+                    "totalTokens",
+                    "usedTokens",
+                    "reservedTokens",
+                    "remainingTokens",
+                    "percent"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      }
+    },
+    "/api/v1/platform/tenants/{id}/ai/preview": {
+      "post": {
+        "operationId": "PlatformAiAdminController_previewAssignment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "planId": {
+                    "format": "uuid",
+                    "nullable": true,
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  }
+                },
+                "required": ["planId"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "addedFeatures": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "confirmation": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "planId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "removedFeatures": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "totalTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "planId",
+                    "addedFeatures",
+                    "removedFeatures",
+                    "totalTokens",
+                    "confirmation"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
+      }
+    },
+    "/api/v1/platform/tenants/{id}/ai/quota": {
+      "post": {
+        "operationId": "PlatformAiAdminController_topUp",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "amount": {
+                    "description": "Exact token count in decimal notation",
+                    "pattern": "^\\d+$",
+                    "type": "string"
+                  },
+                  "idempotencyKey": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "month": {
+                    "allOf": [
+                      {
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                        "type": "string"
+                      },
+                      {
+                        "pattern": "^\\d{4}-\\d\\d-01$",
+                        "type": "string"
+                      }
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": ["month", "amount", "idempotencyKey"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "applied": {
+                      "type": "boolean"
+                    },
+                    "month": {
+                      "allOf": [
+                        {
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                          "type": "string"
+                        },
+                        {
+                          "pattern": "^\\d{4}-\\d\\d-01$",
+                          "type": "string"
+                        }
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["applied", "month"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-governance"]
       }
     },
     "/api/v1/platform/tenants/{tenantId}": {
@@ -11577,6 +13290,93 @@
           }
         ],
         "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/capabilities": {
+      "get": {
+        "operationId": "WorkspaceAiAdminController_capabilities",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "allocation": {
+                      "enum": ["shared", "equal"],
+                      "type": "string"
+                    },
+                    "disabled": {
+                      "type": "boolean"
+                    },
+                    "features": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "notice": {
+                      "enum": [
+                        "company_warning",
+                        "company_exhausted",
+                        "personal"
+                      ],
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "percent": {
+                      "nullable": true,
+                      "type": "number"
+                    },
+                    "remainingTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "nullable": true,
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "restoresAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "features",
+                    "disabled",
+                    "allocation",
+                    "restoresAt",
+                    "notice",
+                    "percent",
+                    "remainingTokens"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workspace-ai-governance"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/ai/conversations": {
@@ -11818,6 +13618,364 @@
         "tags": ["ai"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/ai/operations": {
+      "get": {
+        "operationId": "WorkspaceAiAdminController_operations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "memberId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "operationType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "UPDATE_RECORD",
+                "CREATE_FOLLOW_UP",
+                "ADD_ACTIVITY_NOTE"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "enum": ["proposal", "draft", "blueprint", "denial", "provider"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "feature",
+            "required": false,
+            "schema": {
+              "enum": [
+                "assistant",
+                "write_proposal",
+                "communication",
+                "filter",
+                "table_builder"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "confirmedByMemberId": {
+                            "format": "uuid",
+                            "nullable": true,
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "feature": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder"
+                            ],
+                            "type": "string"
+                          },
+                          "id": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "memberId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "memberId",
+                          "feature",
+                          "source",
+                          "status",
+                          "confirmedByMemberId",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "nextCursor": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": ["items", "nextCursor"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workspace-ai-governance"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/operations/{id}": {
+      "get": {
+        "operationId": "WorkspaceAiAdminController_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "auditId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "confirmedByMemberId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "feature": {
+                      "enum": [
+                        "assistant",
+                        "write_proposal",
+                        "communication",
+                        "filter",
+                        "table_builder"
+                      ],
+                      "type": "string"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "changes": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "after": {
+                                  "type": "string"
+                                },
+                                "before": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["label"],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "operationType": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["operationType", "status", "changes"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "memberId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "objectCode": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "objectId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "recordId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "requestText": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "memberId",
+                    "feature",
+                    "source",
+                    "status",
+                    "confirmedByMemberId",
+                    "createdAt",
+                    "updatedAt",
+                    "objectId",
+                    "objectCode",
+                    "recordId",
+                    "requestText",
+                    "items",
+                    "auditId",
+                    "requestId"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workspace-ai-governance"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}": {
       "get": {
         "operationId": "AiController_getProposal",
@@ -11952,6 +14110,422 @@
           }
         ],
         "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/settings": {
+      "get": {
+        "operationId": "WorkspaceAiAdminController_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "allocation": {
+                      "enum": ["shared", "equal"],
+                      "type": "string"
+                    },
+                    "baseTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "disabled": {
+                      "type": "boolean"
+                    },
+                    "extraTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "features": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "month": {
+                      "allOf": [
+                        {
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                          "type": "string"
+                        },
+                        {
+                          "pattern": "^\\d{4}-\\d\\d-01$",
+                          "type": "string"
+                        }
+                      ],
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "percent": {
+                      "nullable": true,
+                      "type": "number"
+                    },
+                    "planId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "planName": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "planVersion": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "nullable": true,
+                      "type": "integer"
+                    },
+                    "preview": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "confirmation": {
+                          "pattern": "^[a-f0-9]{64}$",
+                          "type": "string"
+                        },
+                        "members": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        "overShare": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        "shareTokens": {
+                          "description": "Exact token count in decimal notation",
+                          "nullable": true,
+                          "pattern": "^\\d+$",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "members",
+                        "shareTokens",
+                        "overShare",
+                        "confirmation"
+                      ],
+                      "type": "object"
+                    },
+                    "remainingTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "reservedTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "restoresAt": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "tenantId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "totalTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "usedTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "tenantId",
+                    "name",
+                    "code",
+                    "month",
+                    "restoresAt",
+                    "startedAt",
+                    "planId",
+                    "planName",
+                    "planVersion",
+                    "features",
+                    "allocation",
+                    "version",
+                    "baseTokens",
+                    "extraTokens",
+                    "totalTokens",
+                    "usedTokens",
+                    "reservedTokens",
+                    "remainingTokens",
+                    "percent",
+                    "disabled",
+                    "preview"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workspace-ai-governance"]
+      },
+      "patch": {
+        "operationId": "WorkspaceAiAdminController_allocation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "allocation": {
+                    "enum": ["shared", "equal"],
+                    "type": "string"
+                  },
+                  "confirmation": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  }
+                },
+                "required": ["allocation", "confirmation"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "allocation": {
+                      "enum": ["shared", "equal"],
+                      "type": "string"
+                    },
+                    "baseTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "disabled": {
+                      "type": "boolean"
+                    },
+                    "extraTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "features": {
+                      "items": {
+                        "enum": [
+                          "assistant",
+                          "write_proposal",
+                          "communication",
+                          "filter",
+                          "table_builder"
+                        ],
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "month": {
+                      "allOf": [
+                        {
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                          "type": "string"
+                        },
+                        {
+                          "pattern": "^\\d{4}-\\d\\d-01$",
+                          "type": "string"
+                        }
+                      ],
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "percent": {
+                      "nullable": true,
+                      "type": "number"
+                    },
+                    "planId": {
+                      "format": "uuid",
+                      "nullable": true,
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "planName": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "planVersion": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "nullable": true,
+                      "type": "integer"
+                    },
+                    "preview": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "confirmation": {
+                          "pattern": "^[a-f0-9]{64}$",
+                          "type": "string"
+                        },
+                        "members": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        "overShare": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        "shareTokens": {
+                          "description": "Exact token count in decimal notation",
+                          "nullable": true,
+                          "pattern": "^\\d+$",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "members",
+                        "shareTokens",
+                        "overShare",
+                        "confirmation"
+                      ],
+                      "type": "object"
+                    },
+                    "remainingTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "reservedTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "restoresAt": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "tenantId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "totalTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "usedTokens": {
+                      "description": "Exact token count in decimal notation",
+                      "pattern": "^\\d+$",
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "tenantId",
+                    "name",
+                    "code",
+                    "month",
+                    "restoresAt",
+                    "startedAt",
+                    "planId",
+                    "planName",
+                    "planVersion",
+                    "features",
+                    "allocation",
+                    "version",
+                    "baseTokens",
+                    "extraTokens",
+                    "totalTokens",
+                    "usedTokens",
+                    "reservedTokens",
+                    "remainingTokens",
+                    "percent",
+                    "disabled",
+                    "preview"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workspace-ai-governance"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/ai/table-builder/confirm": {
@@ -12814,6 +15388,151 @@
           }
         ],
         "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/usage": {
+      "get": {
+        "operationId": "WorkspaceAiAdminController_usage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "daily": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "calls": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "confirmations": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "date": {
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                            "type": "string"
+                          },
+                          "feature": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder"
+                            ],
+                            "type": "string"
+                          },
+                          "inputTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "outputTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "proposals": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "date",
+                          "feature",
+                          "calls",
+                          "inputTokens",
+                          "outputTokens",
+                          "proposals",
+                          "confirmations"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "members": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "memberId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "reservedTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "usedTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "memberId",
+                          "name",
+                          "active",
+                          "usedTokens",
+                          "reservedTokens"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "month": {
+                      "allOf": [
+                        {
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                          "type": "string"
+                        },
+                        {
+                          "pattern": "^\\d{4}-\\d\\d-01$",
+                          "type": "string"
+                        }
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["month", "daily", "members"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workspace-ai-governance"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/audit": {

@@ -1,3 +1,5 @@
+import { AiLedgerService } from './governance/ai-ledger.service';
+import { isAiGovernanceError } from './ai-governance-error';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@crm/database';
 import { randomUUID } from 'node:crypto';
@@ -90,6 +92,7 @@ export class CommunicationDraftsService {
     private readonly generator: CommunicationDraftGenerator,
     private readonly proposals: AiProposalService,
     private readonly audit: AuditService,
+    private readonly ledger: AiLedgerService,
   ) {}
 
   async create(
@@ -99,6 +102,7 @@ export class CommunicationDraftsService {
     input: CreateCommunicationDraftDto,
   ) {
     const current = await this.generator.context(actor, code, recordId);
+    await this.ledger.assertFeature(actor, 'communication');
     const now = new Date();
     const key = {
       tenantId: actor.tenantId,
@@ -168,6 +172,21 @@ export class CommunicationDraftsService {
           ),
         };
       } catch (error) {
+        if (isAiGovernanceError(error)) {
+          // Keep the original text and let the same request reclaim immediately.
+          await this.db.withTenant(actor, (tx) =>
+            tx.aiRecordDraft.updateMany({
+              where: {
+                ...key,
+                id,
+                updatedAt: lease,
+                output: { equals: Prisma.DbNull },
+              },
+              data: { updatedAt: new Date(+lease - generationLeaseMs - 1) },
+            }),
+          );
+          throw error;
+        }
         output = {
           visibleFieldKeys: [],
           content: { note: input.text, fieldChanges: [] },
@@ -354,6 +373,7 @@ export class CommunicationDraftsService {
     meta: Meta,
   ) {
     const draft = await this.get(actor, code, recordId, id);
+    await this.ledger.assertFeature(actor, 'communication');
     if (draft.status === 'PENDING')
       throw new ApiException('AI_MEMBER_TURN_IN_PROGRESS', 409);
     for (const itemKey of itemKeys) {
@@ -390,7 +410,8 @@ export class CommunicationDraftsService {
           meta,
         );
       } catch (error) {
-        if (!(error instanceof ApiException)) throw error;
+        if (!(error instanceof ApiException) || isAiGovernanceError(error))
+          throw error;
         await this.recordFailure(actor, id, itemKey, error.code, meta);
       }
     }

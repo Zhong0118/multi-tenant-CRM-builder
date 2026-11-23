@@ -506,7 +506,9 @@ interface SelectOption {
   status: 'ACTIVE' | 'INACTIVE';
 }
 
-export function selectOptions(field: RecordValueField): SelectOption[] {
+export function selectOptions(
+  field: Pick<PublishedField, 'config'>,
+): SelectOption[] {
   const rawOptions = field.config.options;
   if (!Array.isArray(rawOptions)) return [];
   return rawOptions.flatMap((option) => {

@@ -16,6 +16,7 @@ import { createServerApiClient } from "@/lib/api/server-client";
 export interface TenantsPageProps {
   searchParams: Promise<{
     page?: string | string[];
+    aiOrder?: string | string[];
     status?: string | string[];
     search?: string | string[];
   }>;
@@ -31,7 +32,12 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
     ? (requestedStatus as "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED")
     : undefined;
   const search = single(params.search)?.trim().slice(0, 200) || undefined;
-  const filters = { status, search };
+  const aiOrder = single(params.aiOrder);
+  const filters = {
+    status,
+    search,
+    ...(aiOrder === "asc" || aiOrder === "desc" ? { aiOrder } : {}),
+  } as { status?: typeof status; search?: string; aiOrder?: "asc" | "desc" };
   const client = await createServerApiClient();
   const [result, summaryResult] = await Promise.all([
     client.GET("/api/v1/platform/tenants", {

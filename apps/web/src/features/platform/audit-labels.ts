@@ -1,4 +1,11 @@
 const actionLabels: Record<string, string> = {
+  "ai.plan_created": "新建 AI 套餐",
+  "ai.plan_updated": "编辑 AI 套餐",
+  "ai.plan_deleted": "删除 AI 套餐",
+  "ai.settings_changed": "调整平台 AI 设置",
+  "ai.plan_assigned": "更换公司 AI 套餐",
+  "ai.quota_added": "增加本月 AI 额度",
+  "ai.allocation_changed": "调整 AI 额度分配方式",
   "platform.tenant.created": "创建公司",
   "platform.tenant.status_changed": "公司状态变更",
   "platform.tenant.admin_invitation_renewed": "重新邀请首位管理员",
@@ -97,6 +104,10 @@ const actionLabels: Record<string, string> = {
 };
 
 const resourceLabels: Record<string, string> = {
+  ai_plan: "AI 套餐",
+  ai_settings: "平台 AI 设置",
+  tenant_ai_config: "公司 AI 配置",
+  tenant_ai_month: "公司 AI 月度额度",
   ai_record_draft: "沟通草稿",
   tenant: "公司",
   tenant_invitation: "成员邀请",

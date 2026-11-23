@@ -1,3 +1,9 @@
+import { isAiGovernanceError } from './ai-governance-error';
+import type {
+  AiFeature,
+  AiLedgerService,
+} from './governance/ai-ledger.service';
+import type { ApiException } from '../../common/errors/api.exception';
 import type {
   AssistantQuestion,
   AssistantAction,
@@ -27,6 +33,8 @@ export async function createAssistantTurnTools(
     questions?: AssistantQuestionsService;
     actions?: AssistantActionsService;
     canPropose: boolean;
+    ledger: AiLedgerService;
+    features: AiFeature[];
     page?: ResolvedAssistantPage;
     filterDraft?: FilterRule;
     userText: string;
@@ -50,6 +58,7 @@ export async function createAssistantTurnTools(
   const card: {
     question?: AssistantQuestion | null;
     action?: AssistantAction;
+    denial?: ApiException;
   } = {};
   let cardRequested = false;
   async function present(create: () => Promise<void>) {
@@ -135,7 +144,7 @@ export async function createAssistantTurnTools(
   const collector = new ProposalCollector();
   const tools = registry.forActor(context, readCallbacks);
   let historicalTargets: Promise<Set<string>> | undefined;
-  if (canPropose)
+  if (canPropose && options.features.includes('write_proposal'))
     tools.push({
       ...collector.tool,
       execute: async (raw, callId) => {
@@ -189,6 +198,12 @@ export async function createAssistantTurnTools(
     filterDraft,
     options.filterChoice,
   ) ?? []) {
+    if (
+      !options.features.includes(
+        tool.name === 'draft_communication' ? 'communication' : 'filter',
+      )
+    )
+      continue;
     tools.push({
       ...tool,
       execute: (input, id) =>
@@ -205,5 +220,24 @@ export async function createAssistantTurnTools(
           await brief.tool.execute(input, id);
         }),
     });
-  return { tools, collector, search, card, brief };
+  const guardedTools = tools.map((tool) => ({
+    ...tool,
+    async execute(input: unknown, id: string) {
+      try {
+        await options.ledger.assertFeature(context, 'assistant');
+        if (tool.name === 'propose_change')
+          await options.ledger.assertFeature(context, 'write_proposal');
+        // The specialist services check their own feature after resource authorization.
+        return await tool.execute(input, id);
+      } catch (error) {
+        if (isAiGovernanceError(error)) {
+          // SDKs may turn a thrown tool error into a normal result and request another step.
+          card.denial = error;
+          stop.abort();
+        }
+        throw error;
+      }
+    },
+  }));
+  return { tools: guardedTools, collector, search, card, brief };
 }

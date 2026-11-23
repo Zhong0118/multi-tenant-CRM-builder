@@ -8,6 +8,14 @@ import {
 } from "./ai-turn-reducer";
 
 describe("aiTurnReducer", () => {
+  it("preserves the pasted text and the server quota message on denial", () => {
+    const start = aiTurnReducer(initialAiTurnState,{type:"beginNewTurn",content:"整理会议记录"});
+    const message = "剩余额度不足以完成这次请求，预计需要 9000 token";
+    const denied=aiTurnReducer(start,{type:"transportFailure",code:"AI_REQUEST_BUDGET_INSUFFICIENT",message});
+    expect(denied.draft).toBe("整理会议记录");
+    expect(denied.errorMessage).toBe(message);
+  });
+
   it("retains pasted questions beyond 2000 characters", () => {
     const value = "比较小学英语与 G4。".repeat(250);
     expect(

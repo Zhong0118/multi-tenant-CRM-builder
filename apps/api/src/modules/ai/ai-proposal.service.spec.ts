@@ -1,3 +1,4 @@
+import type { AiLedgerService } from './governance/ai-ledger.service';
 import {
   applyProposalEdits,
   validateProposalCandidate,
@@ -244,12 +245,17 @@ function setup() {
     .mocked(publication.resolvePublishedObjectInTransaction)
     .mockResolvedValue(resolved as never);
   const audit = { appendReturningId: jest.fn().mockResolvedValue(id) };
+  const ledger = {
+    assertFeature: jest.fn().mockResolvedValue(undefined),
+    recordDenial: jest.fn().mockResolvedValue(undefined),
+  };
   const service = new AiProposalService(
     records as unknown as RecordsRepository,
     operations as unknown as AiOperationRepository,
     audit as unknown as AuditService,
+    ledger as unknown as AiLedgerService,
   );
-  return { service, tx, store, records, operations, audit };
+  return { service, tx, store, records, operations, audit, ledger };
 }
 
 describe('atomic proposal and assistant completion', () => {
@@ -345,10 +351,7 @@ describe('safe preview at the transaction seam', () => {
         changes: [{ label: '姓名', before, after }],
         validationWarnings: [],
       };
-      const persist =
-        method === 'preview'
-          ? operations.createValidated
-          : operations.createValidatedInTransaction;
+      const persist = operations.createValidatedInTransaction;
       persist.mockImplementation(async (...args: unknown[]) => ({
         ...publicDisplay(args[args.length - 1] as AiProposalDisplay),
         proposalId: id,
@@ -380,8 +383,8 @@ describe('safe preview at the transaction seam', () => {
   it('exposes the complete validated NOTE content up to 4000 characters', async () => {
     const { service, operations, store } = setup();
     const content = 'n'.repeat(3990) + 'NOTE TAIL!';
-    operations.createValidated.mockImplementation(
-      async (_context, _turnId, _input, display) => ({
+    operations.createValidatedInTransaction.mockImplementation(
+      async (_tx, _context, _turnId, _input, display) => ({
         ...publicDisplay(display),
         proposalId: id,
         status: 'PROPOSED',
@@ -435,8 +438,8 @@ describe('safe preview at the transaction seam', () => {
       ...record,
       values: { ...record.values, tags: selected },
     });
-    operations.createValidated.mockImplementation(
-      async (_context, _turnId, _input, display) => ({
+    operations.createValidatedInTransaction.mockImplementation(
+      async (_tx, _context, _turnId, _input, display) => ({
         ...publicDisplay(display),
         proposalId: id,
         status: 'PROPOSED',
@@ -470,7 +473,7 @@ describe('safe preview at the transaction seam', () => {
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     expect(store.applyRecordPatch).not.toHaveBeenCalled();
     expect(store.createActivity).not.toHaveBeenCalled();
-    expect(operations.createValidated).not.toHaveBeenCalled();
+    expect(operations.createValidatedInTransaction).not.toHaveBeenCalled();
   });
   it('refuses a record outside OWN read scope even if update scope is ALL', async () => {
     const { service, store, operations } = setup();
@@ -484,7 +487,7 @@ describe('safe preview at the transaction seam', () => {
     await expect(
       service.preview(context, id, followUp, 'follow up'),
     ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
-    expect(operations.createValidated).not.toHaveBeenCalled();
+    expect(operations.createValidatedInTransaction).not.toHaveBeenCalled();
   });
   it('reports unexpected normalization dependency failures safely as INTERNAL_ERROR', async () => {
     const { service, store, operations } = setup();
@@ -517,7 +520,7 @@ describe('safe preview at the transaction seam', () => {
         'update',
       ),
     ).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
-    expect(operations.createValidated).not.toHaveBeenCalled();
+    expect(operations.createValidatedInTransaction).not.toHaveBeenCalled();
   });
   it('reports only a currently visible field validation error without echoing a hidden key', async () => {
     const { service, operations } = setup();
@@ -538,7 +541,7 @@ describe('safe preview at the transaction seam', () => {
         'secret',
       );
     }
-    expect(operations.createValidated).not.toHaveBeenCalled();
+    expect(operations.createValidatedInTransaction).not.toHaveBeenCalled();
   });
   it('refuses READ_ONLY fields without persisting a candidate', async () => {
     const { service, operations } = setup();
@@ -554,7 +557,7 @@ describe('safe preview at the transaction seam', () => {
     await expect(
       service.preview(context, id, update, 'update'),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
-    expect(operations.createValidated).not.toHaveBeenCalled();
+    expect(operations.createValidatedInTransaction).not.toHaveBeenCalled();
   });
   it('previews normalized EMAIL and MONEY values rather than raw input', async () => {
     const { service, operations, store } = setup();
@@ -595,7 +598,8 @@ describe('safe preview at the transaction seam', () => {
       { ...update, values: { email: 'USER@EXAMPLE.COM', budget: '001.2' } },
       'update',
     );
-    expect(operations.createValidated).toHaveBeenCalledWith(
+    expect(operations.createValidatedInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
       context,
       id,
       expect.anything(),
@@ -615,7 +619,8 @@ describe('safe preview at the transaction seam', () => {
   it('stores a bounded sanitized preview with fixed 15-minute lifetime and no business writes', async () => {
     const { service, store, operations } = setup();
     await service.preview(context, id, update, 'update');
-    expect(operations.createValidated).toHaveBeenCalledWith(
+    expect(operations.createValidatedInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
       context,
       id,
       expect.objectContaining({
@@ -697,6 +702,33 @@ describe('single target atomic confirmation', () => {
         id,
         expect.anything(),
       );
+    },
+  );
+  it.each([
+    { draftId: null, feature: 'write_proposal', code: 'AI_PLATFORM_DISABLED' },
+    { draftId: id, feature: 'communication', code: 'AI_FEATURE_NOT_INCLUDED' },
+  ] as const)(
+    'rechecks persisted source $feature, keeping a denied proposal pending',
+    async ({ draftId, feature, code }) => {
+      const { service, operations, ledger, tx } = setup();
+      operations.lockOwned.mockResolvedValue({
+        kind: 'PROPOSED',
+        operation: {
+          ...proposed,
+          draftId,
+          expiresAt: new Date(Date.now() + 60000),
+        },
+      });
+      ledger.assertFeature.mockRejectedValueOnce(
+        new ApiException(code, code === 'AI_PLATFORM_DISABLED' ? 503 : 403),
+      );
+      await expect(
+        service.confirm(context, id, id, meta),
+      ).rejects.toMatchObject({ code });
+      expect(ledger.assertFeature).toHaveBeenCalledWith(context, feature, tx);
+      expect(ledger.recordDenial).toHaveBeenCalledWith(context, feature, code);
+      expect(recordCommands.updateRecordCommand).not.toHaveBeenCalled();
+      expect(operations.markFailureIfProposed).not.toHaveBeenCalled();
     },
   );
   it('projects an owned proposal through current read access, not raw stored display', async () => {

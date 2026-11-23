@@ -122,6 +122,10 @@ export class TenantNameConflictResponseDto {
 }
 
 export class PlatformTenantPageQueryDto {
+  @ApiPropertyOptional({ enum: ['asc', 'desc'] })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  aiOrder?: 'asc' | 'desc';
   @ApiPropertyOptional({ enum: ['DRAFT', 'ACTIVE', 'SUSPENDED', 'CLOSED'] })
   @IsOptional()
   @IsIn(['DRAFT', 'ACTIVE', 'SUSPENDED', 'CLOSED'])
@@ -161,6 +165,10 @@ export class FirstAdminInvitationResponseDto {
 }
 
 export class PlatformTenantResponseDto {
+  @ApiPropertyOptional({ type: String, nullable: true }) aiPlanName?:
+    string | null;
+  @ApiPropertyOptional({ type: Number, nullable: true }) aiPercent?:
+    number | null;
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() name!: string;
   @ApiProperty() code!: string;

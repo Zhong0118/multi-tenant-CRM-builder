@@ -1,5 +1,6 @@
 "use client";
 
+import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import Link from "next/link";
 import { Button, Tag } from "antd";
 import { useEffect, useState } from "react";
@@ -105,6 +106,7 @@ export function AiProposalCard({
     return () => window.clearTimeout(timer);
   }, [expiresAt, expired]);
 
+  const canWrite = useAiFeature("write_proposal");
   const actionable = proposal.status === "PROPOSED" && !expired;
   const result = resultLink(tenantCode ?? "", proposal);
   const failure = failureMessage(proposal);
@@ -129,6 +131,7 @@ export function AiProposalCard({
       {proposal.operation === "UPDATE_RECORD" ? (
         <p className={styles.proposalTarget}>{proposal.targetSummary}</p>
       ) : null}
+      {actionable && !canWrite && <AccessReason />}
       <ProposalReviewCard
         items={[
           {
@@ -169,7 +172,7 @@ export function AiProposalCard({
         itemResults={{}}
         busy={busy}
         confirmLabel="确认执行"
-        onConfirm={actionable ? () => void onConfirm?.() : undefined}
+        onConfirm={actionable && canWrite ? () => void onConfirm?.() : undefined}
         extraActions={
           actionable ? (
             <Button disabled={busy} onClick={() => void onReject?.()}>

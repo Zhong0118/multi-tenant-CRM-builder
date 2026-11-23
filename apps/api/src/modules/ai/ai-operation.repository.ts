@@ -585,7 +585,7 @@ export class AiOperationRepository {
         AND c.deleted_at IS NULL
         AND m.user_id = ${context.userId}::uuid
         AND m.status = 'ACTIVE'
-      FOR UPDATE OF o, c, m
+      FOR UPDATE OF o, c FOR NO KEY UPDATE OF m
     `;
     if (locked.length !== 1) return { kind: 'NOT_FOUND' };
     const row = await tx.aiOperation.findFirst({

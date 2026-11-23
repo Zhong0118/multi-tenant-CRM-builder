@@ -206,6 +206,7 @@ model User {
 }
 
 model Tenant {
+  aiConfig TenantAiConfig?
   memberGroups MemberGroup[]
   workGoalRules WorkGoalRule[]
   recordDrafts AiRecordDraft[]
@@ -303,6 +304,9 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  aiUsageMonths AiMemberMonth[]
+  aiOperationRecords AiOperationRecord[] @relation("AiRecordActor")
+  confirmedAiOperationRecords AiOperationRecord[] @relation("AiRecordConfirmer")
   groupId String? @map("group_id") @db.Uuid
   group MemberGroup? @relation("GroupMembers", fields: [tenantId, groupId], references: [tenantId, id], onDelete: Restrict)
   ledGroups MemberGroup[] @relation("GroupLeader")
@@ -1178,4 +1182,158 @@ model AiRecordEvidence {
   @@unique([messageId, objectCode, recordId, source])
   @@index([conversationId, objectCode, recordId])
   @@map("ai_record_evidence")
+}
+
+model AiPlan {
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  name String @unique
+  description String @default("")
+  features String[]
+  monthlyTokens BigInt @map("monthly_tokens")
+  assignable Boolean @default(true)
+  version Int @default(1)
+  settings AiPlatformSettings[]
+  configs TenantAiConfig[]
+  @@map("ai_plans")
+}
+
+model AiPlatformSettings {
+  id Boolean @id @default(true)
+  defaultPlanId String? @map("default_plan_id") @db.Uuid
+  disabled Boolean @default(false)
+  reason String @default("")
+  version Int @default(1)
+  createdAt DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  plan AiPlan? @relation(fields: [defaultPlanId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@map("ai_platform_settings")
+}
+
+model TenantAiConfig {
+  tenantId String @map("tenant_id") @id @db.Uuid
+  planId String? @map("plan_id") @db.Uuid
+  allocation String @default("shared")
+  version Int @default(1)
+  dailyUsage AiDailyUsage[]
+  operations AiOperationRecord[]
+  privateAuditRequests AiPrivateAuditRequest[]
+  quotaAdditions AiQuotaAddition[]
+  tenantMonths AiTenantMonth[]
+  plan AiPlan? @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@index([planId, tenantId], map: "tenant_ai_configs_plan")
+  @@map("tenant_ai_configs")
+}
+
+model AiTenantMonth {
+  tenantId String @map("tenant_id") @db.Uuid
+  month DateTime @db.Date
+  extraTokens BigInt @map("extra_tokens") @default(0)
+  inputTokens BigInt @map("input_tokens") @default(0)
+  outputTokens BigInt @map("output_tokens") @default(0)
+  reservedTokens BigInt @map("reserved_tokens") @default(0)
+  notified80 Boolean @map("notified_80") @default(false)
+  notified100 Boolean @map("notified_100") @default(false)
+  memberMonths AiMemberMonth[]
+  config TenantAiConfig @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  @@id([tenantId, month])
+  @@map("ai_tenant_months")
+}
+
+model AiMemberMonth {
+  tenantId String @map("tenant_id") @db.Uuid
+  month DateTime @db.Date
+  memberId String @map("member_id") @db.Uuid
+  inputTokens BigInt @map("input_tokens") @default(0)
+  outputTokens BigInt @map("output_tokens") @default(0)
+  reservedTokens BigInt @map("reserved_tokens") @default(0)
+  member TenantMember @relation(fields: [tenantId, memberId], references: [tenantId, id], onDelete: Cascade, onUpdate: NoAction)
+  tenantMonth AiTenantMonth @relation(fields: [tenantId, month], references: [tenantId, month], onDelete: Cascade, onUpdate: NoAction)
+  modelCalls AiModelCall[]
+  @@id([tenantId, month, memberId])
+  @@map("ai_member_months")
+}
+
+model AiDailyUsage {
+  tenantId String @map("tenant_id") @db.Uuid
+  localDate DateTime @map("local_date") @db.Date
+  feature String
+  calls BigInt @default(0)
+  inputTokens BigInt @map("input_tokens") @default(0)
+  outputTokens BigInt @map("output_tokens") @default(0)
+  proposals BigInt @default(0)
+  confirmations BigInt @default(0)
+  config TenantAiConfig @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  @@id([tenantId, localDate, feature])
+  @@map("ai_daily_usage")
+}
+
+model AiModelCall {
+  id String @id @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  memberId String @map("member_id") @db.Uuid
+  month DateTime @db.Date
+  localDate DateTime @map("local_date") @db.Date
+  feature String
+  provider String
+  model String
+  requestId String @map("request_id")
+  startedAt DateTime @map("started_at") @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  endedAt DateTime? @map("ended_at") @db.Timestamptz(6)
+  status String @default("pending")
+  reservedInput BigInt @map("reserved_input")
+  reservedOutput BigInt @map("reserved_output")
+  inputTokens BigInt @map("input_tokens") @default(0)
+  outputTokens BigInt @map("output_tokens") @default(0)
+  inputEstimated Boolean @map("input_estimated") @default(false)
+  outputEstimated Boolean @map("output_estimated") @default(false)
+  recovered Boolean @default(false)
+  excessTokens BigInt? @map("excess_tokens") @default(dbgenerated("GREATEST((0)::bigint, (((input_tokens + output_tokens) - reserved_input) - reserved_output))"))
+  memberMonth AiMemberMonth @relation(fields: [tenantId, month, memberId], references: [tenantId, month, memberId], onDelete: Cascade, onUpdate: NoAction)
+  @@index([tenantId, requestId], map: "ai_model_calls_request")
+  @@map("ai_model_calls")
+}
+
+model AiQuotaAddition {
+  tenantId String @map("tenant_id") @db.Uuid
+  month DateTime @db.Date
+  amount BigInt
+  key String
+  config TenantAiConfig @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  @@id([tenantId, key])
+  @@map("ai_quota_additions")
+}
+
+model AiOperationRecord {
+  id String @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  memberId String @map("member_id") @db.Uuid
+  feature String
+  source String
+  status String
+  requestId String? @map("request_id")
+  requestText String? @map("request_text")
+  changes Json @default("{}")
+  objectId String? @map("object_id") @db.Uuid
+  recordId String? @map("record_id") @db.Uuid
+  confirmedByMemberId String? @map("confirmed_by_member_id") @db.Uuid
+  auditId String? @map("audit_id") @db.Uuid
+  createdAt DateTime @map("created_at") @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  updatedAt DateTime @map("updated_at") @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  firstConfirmedAt DateTime? @map("first_confirmed_at") @db.Timestamptz(6)
+  confirmer TenantMember? @relation("AiRecordConfirmer", fields: [tenantId, confirmedByMemberId], references: [tenantId, id], onDelete: Cascade, onUpdate: NoAction)
+  config TenantAiConfig @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  member TenantMember @relation("AiRecordActor", fields: [tenantId, memberId], references: [tenantId, id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([tenantId, id])
+  @@index([tenantId, memberId, createdAt(sort: Desc), id(sort: Desc)], map: "ai_operation_records_member_time")
+  @@index([tenantId, createdAt(sort: Desc), id(sort: Desc)], map: "ai_operation_records_time")
+  @@map("ai_operation_records")
+}
+
+model AiPrivateAuditRequest {
+  tenantId String @map("tenant_id") @db.Uuid
+  requestId String @map("request_id")
+  config TenantAiConfig @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  @@id([tenantId, requestId])
+  @@map("ai_private_audit_requests")
 }

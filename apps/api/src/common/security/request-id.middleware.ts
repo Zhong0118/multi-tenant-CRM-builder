@@ -1,7 +1,13 @@
 import { Injectable, type NestMiddleware } from '@nestjs/common';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 
+export const requestExecution = new AsyncLocalStorage<{
+  requestId: string;
+  // This server-created map lives for one HTTP request, even when a client reuses its ID.
+  aiRatePermits: Map<string, Promise<void>>;
+}>();
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/;
 
 export interface RequestWithId extends Request {
@@ -19,6 +25,6 @@ export class RequestIdMiddleware implements NestMiddleware {
 
     (request as RequestWithId).requestId = requestId;
     response.setHeader('X-Request-Id', requestId);
-    next();
+    requestExecution.run({ requestId, aiRatePermits: new Map() }, next);
   }
 }

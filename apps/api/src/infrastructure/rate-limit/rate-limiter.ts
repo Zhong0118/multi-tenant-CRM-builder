@@ -4,6 +4,10 @@ import { ApiException } from '../../common/errors/api.exception';
 
 export const RATE_LIMITER = Symbol('RATE_LIMITER');
 
+export interface CallRateLimiter extends RateLimiter {
+  acquire(key: string, owner: string, ttlSeconds: number): Promise<boolean>;
+  release(key: string, owner: string): Promise<void>;
+}
 export interface RateLimiter {
   consume(input: {
     key: string;
@@ -13,11 +17,27 @@ export interface RateLimiter {
 }
 
 @Injectable()
-export class InMemoryRateLimiter implements RateLimiter {
+export class InMemoryRateLimiter implements CallRateLimiter {
   private readonly windows = new Map<
     string,
     { count: number; resetAt: number }
   >();
+
+  private readonly leases = new Map<
+    string,
+    { owner: string; expires: number }
+  >();
+  acquire(key: string, owner: string, ttlSeconds: number) {
+    const previous = this.leases.get(key);
+    if (previous && previous.expires > Date.now())
+      return Promise.resolve(false);
+    this.leases.set(key, { owner, expires: Date.now() + ttlSeconds * 1000 });
+    return Promise.resolve(true);
+  }
+  release(key: string, owner: string) {
+    if (this.leases.get(key)?.owner === owner) this.leases.delete(key);
+    return Promise.resolve();
+  }
 
   consume(input: {
     key: string;

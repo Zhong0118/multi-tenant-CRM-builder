@@ -1,5 +1,6 @@
 "use client";
 
+import { useAiFeature } from "@/features/ai-governance/access";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Input, Modal } from "antd";
 import { usePathname, useRouter } from "next/navigation";
@@ -66,6 +67,8 @@ export function CommunicationDraftAction({
   buttonType?: "default" | "primary";
 }) {
   const [open, setOpen] = useState(false);
+  const allowed = useAiFeature("communication");
+  if (!allowed) return null;
   return (
     <>
       <Button

@@ -158,16 +158,19 @@ function parsePublicEvent(
           ...optionalDuration(data),
         },
       };
-    case "turn.failed":
+    case "turn.failed": {
+      const message = optionalString(data, "message");
       return {
         event,
         data: {
           turnId: requiredString(data, "turnId"),
           code: requiredString(data, "code"),
+          ...(message && { message }),
           messageId: requiredString(data, "messageId"),
           ...optionalDuration(data),
         },
       };
+    }
   }
 }
 

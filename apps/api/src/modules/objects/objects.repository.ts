@@ -78,6 +78,7 @@ interface SaveOptions {
 }
 
 export interface ObjectsStore {
+  readonly transaction?: PrismaTypes.TransactionClient;
   listObjectStructures(): Promise<ObjectStructure[]>;
   assertActiveAdmin(): Promise<void>;
   listTemplateInitializationCandidates?(): Promise<
@@ -178,7 +179,7 @@ export class PrismaObjectsRepository implements ObjectsRepository {
 
 class PrismaObjectsStore implements ObjectsStore {
   constructor(
-    private readonly transaction: PrismaTypes.TransactionClient,
+    readonly transaction: PrismaTypes.TransactionClient,
     private readonly audit: AuditService,
     private readonly context: TenantContext,
   ) {}

@@ -1,3 +1,6 @@
+import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { ModelMeterFactory } from './governance/model-meter';
+import { MeteredFakeProvider } from './providers/metered-fake.provider';
 import { createRequire } from 'node:module';
 
 import type { CommunicationProviderInput } from './communication-output';
@@ -37,24 +40,28 @@ export type AiProviderEvent =
       outputTokens?: number;
     }
   | { type: 'COMPLETED' }
-  | { type: 'FAILED'; code: string };
+  | { type: 'FAILED'; code: string; message?: string };
 
 export interface AiProvider {
   generateTableBlueprint?(
     input: import('./table-model').TableProviderInput,
     signal: AbortSignal,
+    actor?: TenantContext,
   ): Promise<unknown>;
   generateFilter?(
     input: import('./filter-generation').FilterProviderInput,
     signal: AbortSignal,
+    actor?: TenantContext,
   ): Promise<unknown>;
   readonly providerKey: string;
   readonly modelKey: string | null;
   generateCommunication?(
     input: CommunicationProviderInput,
     abortSignal: AbortSignal,
+    actor?: TenantContext,
   ): Promise<unknown>;
   streamTurn(input: {
+    actor?: TenantContext;
     messages: AiProviderMessage[];
     system: string;
     tools: AiProviderTool[];
@@ -82,7 +89,10 @@ export interface AiProviderEnv {
   baseURL?: string;
 }
 
-export function createAiProvider(env: AiProviderEnv = {}): AiProvider {
+export function createAiProvider(
+  env: AiProviderEnv = {},
+  meter?: ModelMeterFactory,
+): AiProvider {
   const nodeEnv = env.nodeEnv ?? process.env.NODE_ENV ?? 'development';
   const provider = env.provider ?? process.env.AI_PROVIDER;
   const model = env.model ?? process.env.AI_MODEL;
@@ -90,13 +100,13 @@ export function createAiProvider(env: AiProviderEnv = {}): AiProvider {
   const baseURL = (env.baseURL ?? process.env.AI_BASE_URL)?.trim() || undefined;
 
   if (nodeEnv === 'test' && provider === 'fake') {
-    return new FakeAiProvider();
+    return meter ? new MeteredFakeProvider(meter) : new FakeAiProvider();
   }
   if (nodeEnv === 'test') {
     return new UnavailableAiProvider();
   }
   if (provider === 'openai' && model && apiKey) {
-    return loadVercelOpenAiProvider(apiKey, model, baseURL);
+    return loadVercelOpenAiProvider(apiKey, model, baseURL, meter);
   }
   return new UnavailableAiProvider();
 }
@@ -105,10 +115,12 @@ function loadVercelOpenAiProvider(
   apiKey: string,
   modelKey: string,
   baseURL?: string,
+  meter?: ModelMeterFactory,
 ): AiProvider {
   const requireFromModule = createRequire(__filename);
   const loaded = requireFromModule('./providers/vercel-openai.provider') as {
     VercelOpenAiProvider: new (input: {
+      meter?: ModelMeterFactory;
       apiKey: string;
       modelKey: string;
       baseURL?: string;
@@ -117,6 +129,7 @@ function loadVercelOpenAiProvider(
   return new loaded.VercelOpenAiProvider({
     apiKey,
     modelKey,
+    meter,
     ...(baseURL ? { baseURL } : {}),
   });
 }

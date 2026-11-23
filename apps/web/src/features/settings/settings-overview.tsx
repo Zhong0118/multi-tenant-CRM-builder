@@ -12,6 +12,10 @@ const PAGES: Record<
   string,
   { description: string; effect?: "immediate" | "publish" }
 > = {
+  ai: {
+    description: "查看公司 AI 套餐与用量，分配成员额度并查阅操作记录。",
+    effect: "immediate",
+  },
   members: {
     description: "邀请成员，调整角色，为员工设置访问权限例外，办理离职交接。",
     effect: "immediate",

@@ -1,3 +1,4 @@
+import { FeatureGate, AccessReason } from "@/features/ai-governance/access";
 import { notFound } from "next/navigation";
 import { TableBuilder } from "@/features/table-builder/table-builder";
 import { requireWorkspace } from "@/lib/auth/require-workspace";
@@ -16,7 +17,7 @@ export default async function BuilderPage({ params, searchParams }: Props) {
   const { objectId } = await searchParams;
   const scopedKey = [tenantCode, workspace.memberId, objectId].join("/");
   if (objectId === undefined)
-    return <TableBuilder key={scopedKey} tenantCode={tenantCode} />;
+    return <FeatureGate feature="table_builder" fallback={<AccessReason />}><TableBuilder key={scopedKey} tenantCode={tenantCode} /></FeatureGate>;
   if (typeof objectId !== "string" || !objectId) notFound();
   const client = await createServerApiClient();
   const res = await client.GET(
@@ -32,6 +33,6 @@ export default async function BuilderPage({ params, searchParams }: Props) {
   }
   if (res.data.object.status === "ARCHIVED") notFound();
   return (
-    <TableBuilder key={scopedKey} tenantCode={tenantCode} draft={res.data} />
+    <FeatureGate feature="table_builder" fallback={<AccessReason />}><TableBuilder key={scopedKey} tenantCode={tenantCode} draft={res.data} /></FeatureGate>
   );
 }

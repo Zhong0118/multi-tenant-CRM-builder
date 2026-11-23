@@ -1845,6 +1845,7 @@ describe('blueprint draft confirmation', () => {
       plan,
       undefined,
       meta,
+      () => Promise.resolve(),
     );
     expect(repository.transactions).toBe(1);
     const fields = plan.tables[0].fields.map((f) => f.fieldKey);
@@ -1882,9 +1883,16 @@ describe('blueprint draft confirmation', () => {
   it('applies the explicitly selected preset across every field in the same transaction as creation', async () => {
     const { batch, store, repository } = fixture();
     const plan = example();
-    await batch.confirmTableBlueprint(admin, plan, undefined, meta, {
-      [tableId]: 'READ_ALL_UPDATE_OWN',
-    });
+    await batch.confirmTableBlueprint(
+      admin,
+      plan,
+      undefined,
+      meta,
+      () => Promise.resolve(),
+      {
+        [tableId]: 'READ_ALL_UPDATE_OWN',
+      },
+    );
     expect(repository.transactions).toBe(1);
     expect(store.objects[0].employeeAccess).toEqual({
       canCreate: false,
@@ -1903,7 +1911,9 @@ describe('blueprint draft confirmation', () => {
     const plan = example();
     plan.tables[0].fields[0].fieldKey = 'invalid-key';
     await expect(
-      batch.confirmTableBlueprint(admin, plan, undefined, meta),
+      batch.confirmTableBlueprint(admin, plan, undefined, meta, () =>
+        Promise.resolve(),
+      ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     expect(store.audits).toEqual([]);
   });
@@ -1925,6 +1935,7 @@ describe('blueprint draft confirmation', () => {
       plan,
       { objectId: tableId, expectedVersion: 1 },
       meta,
+      () => Promise.resolve(),
     );
     const detail = toObjectDraftResponse(store.objects[0]);
     expect(detail.employeeAccess).toBeNull();

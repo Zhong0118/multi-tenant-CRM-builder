@@ -1,5 +1,6 @@
 "use client";
 
+import { useAiFeature } from "@/features/ai-governance/access";
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -197,8 +198,9 @@ export function ObjectList({
     );
   }
 
+  const canBuild = useAiFeature("table_builder");
   const builderHref = `/workspace/${tenantCode}/settings/objects/ai-builder`;
-  const newButton = rows.length > 0 ? (
+  const newButton = canBuild && rows.length > 0 ? (
     <Dropdown trigger={["click"]} menu={{ items: [
       { key: "manual", label: <Link href={`/workspace/${tenantCode}/settings/objects/new`}>手动创建业务表</Link> },
       { key: "ai", label: <Link href={builderHref}>用 AI 描述生成</Link> },
@@ -252,7 +254,7 @@ export function ObjectList({
           <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
             <Button type="primary">创建第一张业务表</Button>
           </Link>{" "}
-          <Button href={builderHref}>用 AI 描述生成</Button>
+          {canBuild && <Button href={builderHref}>用 AI 描述生成</Button>}
         </Empty>
       ) : (
         <>

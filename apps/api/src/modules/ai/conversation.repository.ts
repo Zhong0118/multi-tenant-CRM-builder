@@ -204,7 +204,7 @@ export async function lockActiveMember(
       AND role = ${context.role}::"MemberRole"
       AND EXISTS (SELECT 1 FROM users WHERE users.id = tenant_members.user_id AND users.status = 'ACTIVE')
       AND EXISTS (SELECT 1 FROM tenants WHERE tenants.id = tenant_members.tenant_id AND tenants.status = 'ACTIVE')
-    FOR UPDATE
+    FOR NO KEY UPDATE
   `;
   if (locked.length !== 1) {
     throw new ApiException('WORKSPACE_FORBIDDEN', 403);

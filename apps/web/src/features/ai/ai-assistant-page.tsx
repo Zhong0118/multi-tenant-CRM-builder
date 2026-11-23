@@ -1,5 +1,6 @@
 "use client";
 
+import { useAiFeature, useQuotaExhausted } from "@/features/ai-governance/access";
 import {
   CloseOutlined,
   ExpandOutlined,
@@ -62,6 +63,9 @@ export function AiAssistantPage({
   };
 }) {
   const router = useRouter();
+  const assistantAllowed = useAiFeature("assistant");
+  const quotaExhausted = useQuotaExhausted();
+  const canSend = assistantAllowed && !quotaExhausted;
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const conversationId = panel
@@ -318,9 +322,12 @@ export function AiAssistantPage({
             ? "问题已变化，请核对当前会话"
             : "暂时无法提交回答，填写内容已保留",
         );
-      } else dispatch({ type: "transportFailure", code });
+      } else dispatch({ type: "transportFailure", code, message: apiError.message });
     } finally {
-      if (stillCurrent()) abortRef.current = null;
+      if (stillCurrent()) {
+        abortRef.current = null;
+        void client.invalidateQueries({queryKey:["ai-capabilities",tenantCode]});
+      }
     }
   }
 
@@ -342,7 +349,7 @@ export function AiAssistantPage({
 
   function send(content = state.draft) {
     const text = content.trim();
-    if (!text || requestBusy()) return;
+    if (!canSend || !text || requestBusy()) return;
     setRetriedRow(null);
     dispatch({ type: "beginNewTurn", content: text });
     startTurn((signal) =>
@@ -753,7 +760,7 @@ export function AiAssistantPage({
           <div className={styles.canvas} data-testid="ai-conversation-canvas">
             {shown.length === 0 &&
             state.phase === "IDLE" &&
-            !conversationId &&
+            !conversationId && canSend &&
             !messages.isError ? (
               <AiEmptyState
                 objects={businessObjects}
@@ -820,6 +827,7 @@ export function AiAssistantPage({
             ) : null}
             {cardError && <p role="alert">{cardError}</p>}
             <AiComposer
+              disabled={quotaExhausted}
               value={state.draft}
               phase={state.phase}
               inputRef={composerRef}

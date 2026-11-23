@@ -88,17 +88,13 @@ export function PlatformOperationsView({ data }: { data: OperationPage }) {
   );
 }
 
-/**
- * Nothing on this page can be changed here: services are configured on the
- * server and account policies ship with the release. The page says so once,
- * then shows what is running (checked when the page opened) apart from the
- * policies in force.
- */
 export function PlatformSettingsView({
   status,
   checkedAt,
+  governance,
 }: {
   status: RuntimeStatus;
+  governance?: React.ReactNode;
   /** When the server read the status, so server and browser render the same time. */
   checkedAt: string;
 }) {
@@ -107,8 +103,12 @@ export function PlatformSettingsView({
     <div className={styles.page}>
       <PageHeader
         title="系统设置"
-        status={<StatusTag>只读</StatusTag>}
-        description="这里没有可在页面上修改的配置：服务由服务器环境配置，账号策略随系统版本发布。"
+        status={governance ? undefined : <StatusTag>只读</StatusTag>}
+        description={
+          governance
+            ? "查看运行状态，管理新公司的 AI 默认套餐与平台 AI 服务"
+            : "服务由服务器环境配置，账号策略随系统版本发布。"
+        }
       />
 
       <PageSection
@@ -148,6 +148,7 @@ export function PlatformSettingsView({
           ))}
         </ul>
       </PageSection>
+      {governance}
 
       <PageSection
         title="账号与数据保留"

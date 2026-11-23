@@ -57,6 +57,7 @@ describe("workspaceNavigation", () => {
       // Administration is one 设置 entry whose pages the settings sidebar lists.
       "/workspace/northwind/settings",
       "/workspace/northwind/members",
+      "/workspace/northwind/settings/ai",
       "/workspace/northwind/settings/objects",
       "/workspace/northwind/settings/relationships",
       "/workspace/northwind/settings/dashboards/home",

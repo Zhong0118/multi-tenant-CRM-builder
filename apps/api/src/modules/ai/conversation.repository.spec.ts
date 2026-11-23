@@ -648,12 +648,12 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       ),
     ).not.toContain('stale-value');
   });
-  it('locks the active tenant member with FOR UPDATE inside one tenant transaction', async () => {
+  it('locks the active tenant member with FOR NO KEY UPDATE inside one tenant transaction', async () => {
     const fixture = harness();
     await fixture.repository.beginTurn(context, { content: '你好' });
     expect(fixture.withTenant).toHaveBeenCalledTimes(1);
     expect(fixture.sqlCalls[0]).toContain('FROM tenant_members');
-    expect(fixture.sqlCalls[0]).toContain('FOR UPDATE');
+    expect(fixture.sqlCalls[0]).toContain('FOR NO KEY UPDATE');
     expect(fixture.sqlCalls[0]).toContain("status = 'ACTIVE'");
   });
 
@@ -1312,7 +1312,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       status: 409,
     });
     expect(fixture.sqlCalls[0]).toContain('FROM tenant_members');
-    expect(fixture.sqlCalls[0]).toContain('FOR UPDATE');
+    expect(fixture.sqlCalls[0]).toContain('FOR NO KEY UPDATE');
     expect(
       fixture.conversations.find((row) => row.id === begun.conversationId)
         ?.deletedAt,

@@ -211,4 +211,11 @@ test("record drafts bind one member, object, publication and item, protecting su
   }
   await own(tx => tx.aiOperation.update({ where: { id: first.id }, data: { status: "EXECUTED", auditId: randomUUID() } }));
   await assert.rejects(() => own(tx => tx.aiOperation.update({ where: { id: first.id }, data: { status: "PROPOSED" } })));
+  const projected = await admin.$queryRaw`SELECT id, request_text, changes FROM ai_operation_records WHERE tenant_id=${tenantA.id}::uuid AND source='draft'`;
+  assert.equal(projected.length, 1);
+  assert.equal(projected[0].id, draft.id);
+  assert.equal(projected[0].request_text, approved.text);
+  assert.equal(projected[0].changes.items.note.operationId, first.id);
+  assert.equal(projected[0].changes.items.note.status, "EXECUTED");
+
 });

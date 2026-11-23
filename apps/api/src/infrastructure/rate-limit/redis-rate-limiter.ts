@@ -2,7 +2,7 @@ import { Injectable, type OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 
 import { ApiException } from '../../common/errors/api.exception';
-import type { RateLimiter } from './rate-limiter';
+import type { CallRateLimiter } from './rate-limiter';
 
 interface RedisClient {
   status: string;
@@ -25,7 +25,7 @@ return count
 `;
 
 @Injectable()
-export class RedisRateLimiter implements RateLimiter, OnModuleDestroy {
+export class RedisRateLimiter implements CallRateLimiter, OnModuleDestroy {
   private readonly redis: RedisClient;
   private connectionPromise?: Promise<void>;
 
@@ -52,6 +52,28 @@ export class RedisRateLimiter implements RateLimiter, OnModuleDestroy {
     if (count > input.limit) {
       throw new ApiException('RATE_LIMITED', 429);
     }
+  }
+
+  async acquire(key: string, owner: string, ttlSeconds: number) {
+    await this.ensureConnected();
+    return (
+      (await this.redis.eval(
+        "return redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2], 'NX')",
+        1,
+        `crm:lease:${key}`,
+        owner,
+        ttlSeconds,
+      )) === 'OK'
+    );
+  }
+  async release(key: string, owner: string) {
+    await this.ensureConnected();
+    await this.redis.eval(
+      "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0",
+      1,
+      `crm:lease:${key}`,
+      owner,
+    );
   }
 
   private async ensureConnected(): Promise<void> {

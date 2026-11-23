@@ -1,0 +1,47 @@
+.page,
+.panel {
+  display: grid;
+  gap: var(--space-4, 16px);
+  min-width: 0;
+}
+.panel {
+  padding: clamp(14px, 2vw, 24px);
+}
+.lead,
+.ledger,
+.line,
+.meter {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lead h3,
+.meter strong {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.meter strong {
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+}
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 24px;
+}
+.charts section {
+  min-width: 0;
+}
+.line {
+  justify-content: space-between;
+  padding-block: 5px;
+}
+.detail {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+.wide {
+  width: 100%;
+}

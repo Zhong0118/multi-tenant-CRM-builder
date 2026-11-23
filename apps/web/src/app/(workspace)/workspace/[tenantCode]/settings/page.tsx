@@ -23,8 +23,11 @@ export default async function WorkspaceSettingsPage({
   if (workspace.role !== "TENANT_ADMIN") notFound();
 
   const client = await createServerApiClient();
-  const [objects, members, invitations] = await Promise.all([
+  const [objects, ai, members, invitations] = await Promise.all([
     client.GET("/api/v1/workspaces/{tenantCode}/object-definitions", {
+      params: { path: { tenantCode } },
+    }),
+    client.GET("/api/v1/workspaces/{tenantCode}/ai/settings", {
       params: { path: { tenantCode } },
     }),
     client.GET("/api/v1/workspaces/{tenantCode}/members", {
@@ -71,6 +74,11 @@ export default async function WorkspaceSettingsPage({
         status={{
           pendingTables: pending,
           values: {
+            ai: ai?.data
+              ? (ai.data.planName ?? "未开通") +
+                " · " +
+                (ai.data.allocation === "equal" ? "按人均分" : "全员共用")
+              : null,
             members: memberValue,
             object: objects.data
               ? `${active} 张使用中${pending ? ` · ${pending} 张待发布` : ""}`

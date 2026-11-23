@@ -106,6 +106,149 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     );
   }
 
+  it('enforces independent entitlements on direct, retried, single and batch requests', async () => {
+    const db = harness.adminDatabase;
+    const base = '/api/v1/workspaces/' + fixture.tenantA.code;
+    const post = (
+      path: string,
+      body: object,
+      cookie = fixture.employee.cookie,
+    ) =>
+      request(harness.app.getHttpServer())
+        .post(base + path)
+        .set('Cookie', cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send(body);
+    const pending = await proposal();
+    const { turnId } = await db.aiOperation.findUniqueOrThrow({
+      where: { id: pending.proposalId },
+      select: { turnId: true },
+    });
+    const drafts =
+      '/objects/leads/records/' +
+      fixture.ownedRecord.id +
+      '/communication-drafts';
+    const generated = await post(drafts, {
+      requestId: randomUUID(),
+      text: '客户说下周联系',
+    }).expect(201);
+    const { id: draftId, note } = generated.body as {
+      id: string;
+      note: string;
+    };
+    const plan = randomUUID();
+    await db.$executeRaw`INSERT INTO ai_plans (id, name, features, monthly_tokens)
+      VALUES (${plan}::uuid, ${'gate-' + plan}, ARRAY['communication'], 0)`;
+    try {
+      await db.$executeRaw`UPDATE tenant_ai_configs SET plan_id=${plan}::uuid WHERE tenant_id=${context.tenantId}::uuid`;
+      const opPath = '/ai/proposals/' + pending.proposalId;
+      const retryDraft = {
+        requestId: randomUUID(),
+        text: '保留这次沟通的原文',
+      };
+      const noBudget = await post(drafts, retryDraft).expect(429);
+      expect(noBudget.body).toMatchObject({
+        code: 'AI_TENANT_QUOTA_EXHAUSTED',
+      });
+      const pendingDraft = await db.aiRecordDraft.findFirstOrThrow({
+        where: { tenantId: context.tenantId, requestId: retryDraft.requestId },
+      });
+      expect(pendingDraft.output).toBeNull();
+
+      for (const [path, body] of [
+        [opPath + '/confirm', { idempotencyKey: randomUUID() }],
+        [
+          '/ai/turns/' + turnId + '/proposals/confirm',
+          {
+            items: [
+              { proposalId: pending.proposalId, idempotencyKey: randomUUID() },
+            ],
+          },
+        ],
+        [
+          '/objects/leads/filter-preview',
+          {
+            text: '我负责的',
+            currentRule: { version: 1, match: 'all', conditions: [] },
+          },
+        ],
+      ] as const) {
+        const denied = await post(path, body).expect(403);
+        expect(denied.body).toMatchObject({ code: 'AI_FEATURE_NOT_INCLUDED' });
+      }
+      const adminDenied = await post(
+        '/ai/table-builder/preview',
+        { description: '客户信息' },
+        fixture.admin.cookie,
+      ).expect(403);
+      expect(adminDenied.body).toMatchObject({
+        code: 'AI_FEATURE_NOT_INCLUDED',
+      });
+      const employeeDenied = await post('/ai/table-builder/preview', {
+        description: '客户信息',
+      }).expect(403);
+      expect(employeeDenied.body).toMatchObject({
+        code: 'OBJECT_ACTION_FORBIDDEN',
+      });
+      const initial = await post('/ai/turns', { content: '回答我' }).expect(
+        200,
+      );
+      expect(initial.text).toContain('AI_FEATURE_NOT_INCLUDED');
+      const frame = initial.text
+        .split('\n\n')
+        .find((block) => block.startsWith('event: turn.failed'))!;
+      const failed = JSON.parse(frame.split('data: ')[1]) as { turnId: string };
+      const retry = await post(
+        '/ai/turns/' + failed.turnId + '/retry',
+        {},
+      ).expect(200);
+      expect(retry.text).toContain('AI_FEATURE_NOT_INCLUDED');
+      expect(
+        await db.aiOperation.findUniqueOrThrow({
+          where: { id: pending.proposalId },
+        }),
+      ).toMatchObject({ status: 'PROPOSED' });
+      await post(opPath + '/reject', {}).expect(200);
+      const confirmed = await post(drafts + '/' + draftId + '/confirm', {
+        items: [{ itemKey: 'note', editedValue: note }],
+      }).expect(200);
+      expect(confirmed.body).toMatchObject({
+        results: [
+          expect.objectContaining({ itemKey: 'note', status: 'EXECUTED' }),
+        ],
+      });
+      await db.$executeRaw`UPDATE ai_plans SET monthly_tokens=1000000 WHERE id=${plan}::uuid`;
+      const regenerated = await post(drafts, retryDraft).expect(201);
+      expect(regenerated.body).toMatchObject({
+        id: pendingDraft.id,
+        status: 'READY',
+        text: retryDraft.text,
+      });
+      await db.$executeRaw`UPDATE tenant_ai_configs SET plan_id=NULL WHERE tenant_id=${context.tenantId}::uuid`;
+      const denied = await post(drafts + '/' + draftId + '/confirm', {
+        items: [{ itemKey: 'note', editedValue: note }],
+      }).expect(403);
+      expect(denied.body).toMatchObject({ code: 'AI_FEATURE_NOT_INCLUDED' });
+      const records = await db.$queryRaw<
+        { feature: string }[]
+      >`SELECT feature FROM ai_operation_records
+        WHERE tenant_id=${context.tenantId}::uuid AND source='denial'`;
+      expect(new Set(records.map((row) => row.feature))).toEqual(
+        new Set([
+          'write_proposal',
+          'assistant',
+          'communication',
+          'filter',
+          'table_builder',
+        ]),
+      );
+    } finally {
+      await db.$executeRaw`UPDATE tenant_ai_configs SET plan_id=(SELECT default_plan_id FROM ai_platform_settings)
+        WHERE tenant_id=${context.tenantId}::uuid`;
+      await db.$executeRaw`DELETE FROM ai_plans WHERE id=${plan}::uuid`;
+    }
+  });
+
   it.each(['UPDATE_RECORD', 'CREATE_FOLLOW_UP', 'ADD_ACTIVITY_NOTE'] as const)(
     'creates %s through an HTTP turn and restores its safe proposal before confirmation',
     async (type) => {

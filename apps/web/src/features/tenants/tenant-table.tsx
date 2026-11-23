@@ -1,11 +1,13 @@
 "use client";
 
+import { formatPercent } from "@/features/ai-governance/format";
 import type { components } from "@crm/contracts";
 import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { StatusTag } from "@/components/workbench/status-tag";
 import { DataPanel } from "@/components/workbench/surface";
 
 import { maskPhone } from "./mask-phone";
@@ -97,14 +99,59 @@ export function TenantTable({
 }: {
   data: PlatformTenantPage;
   navigate?: (path: string) => void;
-  filters?: { status?: string; search?: string };
+  filters?: { status?: string; search?: string; aiOrder?: "asc" | "desc" };
 }) {
   const router = useRouter();
   return (
     <DataPanel ariaLabel="公司列表" className={styles.tenantTable}>
       <Table
         rowKey="id"
-        columns={columns}
+        columns={[
+          columns[0],
+          {
+            title: "AI 套餐 · 本月用量",
+            key: "ai",
+            sorter: true,
+            sortOrder:
+              filters.aiOrder === "asc"
+                ? "ascend"
+                : filters.aiOrder === "desc"
+                  ? "descend"
+                  : null,
+            render: (_, tenant) => (
+              <span className={styles.configuration}>
+                <span>{tenant.aiPlanName ?? "未开通"}</span>
+                {tenant.aiPercent != null && (
+                  <small>
+                    <StatusTag
+                      tone={
+                        tenant.aiPercent >= 100
+                          ? "danger"
+                          : tenant.aiPercent >= 80
+                            ? "warning"
+                            : "neutral"
+                      }
+                    >
+                      {formatPercent(tenant.aiPercent)}
+                    </StatusTag>
+                  </small>
+                )}
+              </span>
+            ),
+          },
+          ...columns.slice(1),
+        ]}
+        onChange={(_pagination, _filters, sorter, extra) => {
+          if (extra.action !== "sort" || Array.isArray(sorter)) return;
+          const q = new URLSearchParams();
+          if (filters.status) q.set("status", filters.status);
+          if (filters.search) q.set("search", filters.search);
+          if (sorter.order)
+            q.set("aiOrder", sorter.order === "ascend" ? "asc" : "desc");
+          (navigate ?? router.push)(
+            "/platform/tenants" + (q.size ? "?" + q : ""),
+          );
+        }}
         dataSource={data.items}
         scroll={{ x: 920 }}
         pagination={{

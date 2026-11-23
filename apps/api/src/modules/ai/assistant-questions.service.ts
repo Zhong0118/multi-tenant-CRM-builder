@@ -1,3 +1,5 @@
+import { AiLedgerService } from './governance/ai-ledger.service';
+import { recordRolledBackDenial } from './ai-governance-error';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { Inject, Injectable } from '@nestjs/common';
@@ -132,6 +134,7 @@ async function generating(tx: Tx, actor: TenantContext, turn: BeginTurnResult) {
 export class AssistantQuestionsService {
   constructor(
     @Inject(RECORDS_REPOSITORY) private readonly records: RecordsRepository,
+    private readonly ledger: AiLedgerService,
   ) {}
   async resolvePage(actor: TenantContext, hint?: AssistantPageHint) {
     if (!hint) return undefined;
@@ -230,52 +233,65 @@ export class AssistantQuestionsService {
     const parsed = questionInput.safeParse(raw);
     if (!parsed.success) return invalid();
     const input = parsed.data;
-    return this.records.withTenantTransaction(actor, async (db) => {
-      const { tx } = db;
-      await lockConversation(tx, actor, turn.conversationId);
-      const assistant = await generating(tx, actor, turn);
-      if (
-        (await tx.aiQuestion.count({ where: { messageId: assistant.id } })) >= 3
-      )
-        return null;
-      const def = await this.definition(db, actor, turn.conversationId, input);
-      if (page) {
-        def.anchor = {
-          objectCode: page.objectCode,
-          ...(page.recordId ? { recordId: page.recordId } : {}),
-          ...(page.viewId ? { viewId: page.viewId } : {}),
-        };
-        await readPage(db, actor, def.anchor);
-        if (!page.recordId && filterDraft) def.filterDraft = filterDraft;
-      }
-      def.revision = (await currentAuthorizationState(tx, actor, true))
-        ?.revision;
-      const now = new Date();
-      const row = await tx.aiQuestion.create({
-        data: {
-          ...scope(actor, turn.conversationId),
-          turnId: turn.turnId,
-          messageId: assistant.id,
-          kind: input.kind,
-          prompt:
-            (input.kind === 'choose_option' ? input.prompt : undefined) ??
-            defaultPrompts[input.kind],
-          definition: json(def),
-          expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-        },
-      });
-      // Finalization and question publication compete for this exact generation.
-      const paused = await tx.aiMessage.updateMany({
-        where: {
-          id: assistant.id,
-          status: 'GENERATING',
-          providerUsage: { equals: json(assistant.providerUsage) },
-        },
-        data: { status: 'COMPLETED', completedAt: now, content: '' },
-      });
-      if (paused.count !== 1) return conflict();
-      return (await projectQuestion(db, actor, row, def.revision)) ?? invalid();
-    });
+    return this.records
+      .withTenantTransaction(actor, async (db) => {
+        const { tx } = db;
+        await lockConversation(tx, actor, turn.conversationId);
+        const assistant = await generating(tx, actor, turn);
+        if (
+          (await tx.aiQuestion.count({ where: { messageId: assistant.id } })) >=
+          3
+        )
+          return null;
+        const def = await this.definition(
+          db,
+          actor,
+          turn.conversationId,
+          input,
+        );
+        if (page) {
+          def.anchor = {
+            objectCode: page.objectCode,
+            ...(page.recordId ? { recordId: page.recordId } : {}),
+            ...(page.viewId ? { viewId: page.viewId } : {}),
+          };
+          await readPage(db, actor, def.anchor);
+          if (!page.recordId && filterDraft) def.filterDraft = filterDraft;
+        }
+        def.revision = (await currentAuthorizationState(tx, actor, true))
+          ?.revision;
+        const now = new Date();
+        await this.ledger.assertFeature(actor, 'assistant', tx);
+        const row = await tx.aiQuestion.create({
+          data: {
+            ...scope(actor, turn.conversationId),
+            turnId: turn.turnId,
+            messageId: assistant.id,
+            kind: input.kind,
+            prompt:
+              (input.kind === 'choose_option' ? input.prompt : undefined) ??
+              defaultPrompts[input.kind],
+            definition: json(def),
+            expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+          },
+        });
+        // Finalization and question publication compete for this exact generation.
+        const paused = await tx.aiMessage.updateMany({
+          where: {
+            id: assistant.id,
+            status: 'GENERATING',
+            providerUsage: { equals: json(assistant.providerUsage) },
+          },
+          data: { status: 'COMPLETED', completedAt: now, content: '' },
+        });
+        if (paused.count !== 1) return conflict();
+        return (
+          (await projectQuestion(db, actor, row, def.revision)) ?? invalid()
+        );
+      })
+      .catch((error: unknown) =>
+        recordRolledBackDenial(this.ledger, actor, 'assistant', error),
+      );
   }
   async resume(
     actor: TenantContext,
@@ -286,9 +302,8 @@ export class AssistantQuestionsService {
     const parsed = answerSchema.safeParse(raw);
     if (!parsed.success) return invalid();
     const value = parsed.data;
-    const result = await this.records.withTenantTransaction(
-      actor,
-      async (db) => {
+    const result = await this.records
+      .withTenantTransaction(actor, async (db) => {
         const { tx } = db;
         const conversation = await lockConversation(tx, actor, conversationId);
         const row = await lockQuestion(tx, actor, conversationId, id);
@@ -400,6 +415,7 @@ export class AssistantQuestionsService {
             answer.kind === 'choose_record' ? 'tool' : 'page',
           );
         }
+        await this.ledger.assertFeature(actor, 'assistant', tx);
         if (row.state === 'OPEN')
           await tx.aiQuestion.update({
             where: { id },
@@ -427,8 +443,10 @@ export class AssistantQuestionsService {
           ...(def.filterDraft ? { filterDraft: def.filterDraft } : {}),
           replay: false,
         };
-      },
-    );
+      })
+      .catch((error: unknown) =>
+        recordRolledBackDenial(this.ledger, actor, 'assistant', error),
+      );
     return result ?? conflict();
   }
   async retryAnswer(

@@ -41,6 +41,20 @@ describe("platform companies server page", () => {
     fireEvent.click(screen.getByRole("button", { name: "重新加载统计" }));
     expect(refresh).toHaveBeenCalledOnce();
   });
+  it("sorts usage on the server across pages", async () => {
+    await TenantsPage({
+      searchParams: Promise.resolve({
+        aiOrder: "desc",
+        page: "2",
+        search: "租赁",
+      }),
+    });
+    expect(get).toHaveBeenCalledWith("/api/v1/platform/tenants", {
+      params: {
+        query: { page: 2, limit: 20, search: "租赁", aiOrder: "desc" },
+      },
+    });
+  });
   it("ignores repeated query parameters instead of throwing before fetching", async () => {
     await TenantsPage({
       searchParams: Promise.resolve({

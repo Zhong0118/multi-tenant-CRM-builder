@@ -1,5 +1,6 @@
 "use client";
 
+import { useAiFeature } from "@/features/ai-governance/access";
 import { DueLabel } from "@/components/workbench/due-label";
 import { useNow } from "@/lib/format/use-now";
 import {
@@ -443,8 +444,9 @@ export function RecordList({
       ? `搜索${searchFieldLabels.join("、")}`
       : `搜索${schema.object.name}标题`;
 
+  const communication = useAiFeature("communication");
   const canCommunicate = (row: RecordSummary) =>
-    canEditRecord(schema, row, currentMemberId, canFilterByOwner);
+    communication && canEditRecord(schema, row, currentMemberId, canFilterByOwner);
 
   const filtered = Boolean(
     query.filterRule?.conditions.length ||

@@ -1,5 +1,6 @@
 "use client";
 
+import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useTenantTimezone } from "@/features/follow-ups/use-tenant-timezone";
 import { savedFollowUpLabel } from "@/features/records/draft-follow-up-date";
@@ -122,6 +123,7 @@ export function AssistantBatchCard({
     );
     return () => window.clearTimeout(timer);
   }, [batch.items, now]);
+  const canWrite = useAiFeature("write_proposal");
   const blocked = busy || !!commands?.busy;
   return (
     <section className={styles.card} aria-label="待核对的修改">
@@ -130,6 +132,7 @@ export function AssistantBatchCard({
           ? `共 ${batch.coverage.total} 条，本次提议 ${batch.coverage.targets} 条`
           : `核对 ${batch.items.length} 项建议`}
       </h3>
+      {!canWrite && batch.items.some(item=>item.status==="PROPOSED") && <AccessReason />}
       <ProposalReviewCard
         selectedKeys={selected}
         itemResults={{}}
@@ -273,7 +276,7 @@ export function AssistantBatchCard({
             checked ? [...old, id] : old.filter((key) => key !== id),
           )
         }
-        onConfirm={(ids) => void confirm(ids)}
+        onConfirm={canWrite ? (ids) => void confirm(ids) : undefined}
         confirmLabel={batch.items.length === 1 ? "确认执行" : "确认所选项"}
       />
       {error && <p role="alert">{error}</p>}

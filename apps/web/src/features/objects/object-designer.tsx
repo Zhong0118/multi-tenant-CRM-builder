@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/features/ai-governance/access";
 import {
   canTransfer,
   transferKeys,
@@ -775,9 +776,9 @@ export function ObjectDesigner({
                       中单独设置。
                     </p>
                     {!archived && (
-                      <Button href={`/workspace/${tenantCode}/settings/objects/ai-builder?objectId=${objectId}`}>
+                      <FeatureGate feature="table_builder"><Button href={`/workspace/${tenantCode}/settings/objects/ai-builder?objectId=${objectId}`}>
                         用 AI 补充字段
-                      </Button>
+                      </Button></FeatureGate>
                     )}
                     <Button
                       icon={<PlusOutlined aria-hidden />}

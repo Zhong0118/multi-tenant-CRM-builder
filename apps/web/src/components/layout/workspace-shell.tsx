@@ -1,5 +1,6 @@
 "use client";
 
+import { useAiFeature } from "@/features/ai-governance/access";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -41,7 +42,8 @@ export function WorkspaceShell({
   const pathname = usePathname() ?? "";
   const root = `/workspace/${tenantCode}`;
   const navigation = workspaceNavigationGroups(tenantCode, role);
-  const systemItems = (items: typeof navigation.work) => items.map((item) => ({
+  const assistant = useAiFeature("assistant");
+  const systemItems = (items: typeof navigation.work) => items.filter(item => assistant || item.href !== root + "/ai").map((item) => ({
     href: item.href,
     label: item.label,
     icon: <NavIcon name={item.icon} />,

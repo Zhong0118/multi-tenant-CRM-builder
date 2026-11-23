@@ -1,3 +1,4 @@
+import type { AiLedgerService } from './governance/ai-ledger.service';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { ObjectDraftBatchService } from '../objects/object-draft-batch.service';
 import { FakeAiProvider } from './providers/fake-ai.provider';
@@ -44,6 +45,7 @@ it('asks for a smaller batch when generated options would exceed the envelope fo
       blueprintMetadata: () => Promise.resolve([]),
     } as unknown as ObjectDraftBatchService,
     provider,
+    { assertFeature: jest.fn() } as unknown as AiLedgerService,
   );
   await expect(
     service.preview({ role: 'TENANT_ADMIN' } as TenantContext, {
@@ -73,6 +75,7 @@ it('passes a disconnected preview request through to the running model', async (
   const service = new TableBuilderService(
     { blueprintMetadata: metadata } as unknown as ObjectDraftBatchService,
     provider,
+    { assertFeature: jest.fn() } as unknown as AiLedgerService,
   );
   const controller = new AbortController();
   const result = service.preview(

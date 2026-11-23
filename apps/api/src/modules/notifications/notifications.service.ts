@@ -38,8 +38,10 @@ type NotificationRow = {
   } | null;
 };
 const READABLE = `(n.object_id=ANY($3::uuid[]) OR (EXISTS (SELECT 1 FROM jsonb_each($4::jsonb) scope WHERE scope.key=n.object_id::text AND (scope.value ? n.record_owner_member_id::text OR EXISTS (SELECT 1 FROM records pr JOIN object_definitions po ON po.id=pr.object_id AND po.tenant_id=pr.tenant_id WHERE pr.tenant_id=n.tenant_id AND pr.id=n.record_id AND pr.in_public_pool AND po.pool_enabled)))))`;
-const VISIBLE = `n.tenant_id=$1::uuid AND n.recipient_member_id=$2::uuid AND (n.kind IN ('POOL_RECLAIMED','WORK_GOAL_BEHIND') OR ${READABLE})`;
-const CAN_OPEN = `(n.kind='WORK_GOAL_BEHIND' OR (${READABLE} AND EXISTS (SELECT 1 FROM records r WHERE r.tenant_id=n.tenant_id AND r.id=n.record_id AND r.deleted_at IS NULL)))`;
+const QUOTA =
+  "(n.kind IN ('AI_QUOTA_80','AI_QUOTA_100') AND EXISTS (SELECT 1 FROM tenant_members admin WHERE admin.tenant_id=n.tenant_id AND admin.id=n.recipient_member_id AND admin.role='TENANT_ADMIN'))";
+const VISIBLE = `n.tenant_id=$1::uuid AND n.recipient_member_id=$2::uuid AND (n.kind IN ('POOL_RECLAIMED','WORK_GOAL_BEHIND') OR ${QUOTA} OR ${READABLE})`;
+const CAN_OPEN = `(n.kind='WORK_GOAL_BEHIND' OR ${QUOTA} OR (${READABLE} AND EXISTS (SELECT 1 FROM records r WHERE r.tenant_id=n.tenant_id AND r.id=n.record_id AND r.deleted_at IS NULL)))`;
 const GOAL_NAMES: Record<string, string> = {
   calls: '电话次数',
   connectedCalls: '接通次数',
@@ -49,6 +51,8 @@ const GOAL_NAMES: Record<string, string> = {
   tasksDone: '完成任务',
 };
 const COPY: Record<NotificationKind, [string, string]> = {
+  AI_QUOTA_80: ['本月 AI 额度已用到 80%', '可在公司 AI 设置查看用量及分配方式'],
+  AI_QUOTA_100: ['本月 AI 额度已用完', '如需本月加量，请联系平台管理员'],
   WORK_GOAL_BEHIND: ['每日目标尚未完成', '请查看今日工作进度'],
   CONTACT_DUE: [
     '联系期限即将到期',
@@ -175,6 +179,10 @@ export class NotificationsService {
       return rows[0];
     });
     if (!row?.can_open) return { href: null };
+    if (row.kind === 'AI_QUOTA_80' || row.kind === 'AI_QUOTA_100')
+      return {
+        href: `/workspace/${encodeURIComponent(context.tenantCode)}/settings/ai`,
+      };
     if (row.kind === 'WORK_GOAL_BEHIND')
       return {
         href: `/workspace/${encodeURIComponent(context.tenantCode)}/work`,
@@ -249,7 +257,7 @@ function toItem(row: NotificationRow): NotificationItemDto {
   const message =
     row.kind === 'WORK_GOAL_BEHIND' && row.details
       ? `${row.details.date} · ${GOAL_NAMES[row.details.metric] ?? row.details.metric}：截至提醒时已完成 ${row.details.actual}，每日目标 ${row.details.target}`
-      : row.can_open && row.kind !== 'POOL_RECLAIMED'
+      : row.can_open && row.record_id && row.kind !== 'POOL_RECLAIMED'
         ? `${row.object_name} · 记录 #${row.record_no}：${copy}`
         : copy;
   return {

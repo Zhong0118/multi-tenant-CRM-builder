@@ -95,6 +95,6 @@ import {
       },
     },
   ],
-  exports: [AuthService, SessionService, SessionAuthGuard],
+  exports: [AuthService, SessionService, SessionAuthGuard, RATE_LIMITER],
 })
 export class AuthModule {}
