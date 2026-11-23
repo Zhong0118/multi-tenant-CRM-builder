@@ -1,5 +1,6 @@
 "use client";
 
+import {useAiFeature} from "@/features/ai-governance/access";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import styles from "./ai-assistant.module.css";
@@ -15,12 +16,14 @@ export function AiEmptyState({
   pageKind?: "record" | "list";
   onPrompt: (text: string) => void;
 }) {
+  const communication = useAiFeature("communication");
+  const filter = useAiFeature("filter");
   const named = objects.slice(0, 2);
   const prompts =
     pageKind === "record"
-      ? [`查看${objectName || "当前记录"}概况`, "记录本次沟通"]
+      ? [`查看${objectName || "当前记录"}概况`, ...(communication ? ["记录本次沟通"] : [])]
       : pageKind === "list"
-        ? ["帮我筛选", "这张表有哪些可用字段"]
+        ? [...(filter ? ["帮我筛选"] : []), "这张表有哪些可用字段"]
         : [
             named[0] ? `总结我负责的${named[0].name}` : "总结我负责的记录",
             "最近有哪些需要跟进？",

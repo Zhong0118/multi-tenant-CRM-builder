@@ -1,5 +1,6 @@
 "use client";
 
+import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import { useContext, useState } from "react";
 import { Button } from "antd";
 import { useQuery } from "@tanstack/react-query";
@@ -85,6 +86,8 @@ export function AssistantActionCard({
   const commands = useContext(AssistantCommandContext);
   const [selected, setSelected] = useState<string>();
   const [feedback, setFeedback] = useState("");
+  const allowed = useAiFeature(action.kind === "communication" ? "communication" : "filter");
+  if (!allowed) return <AccessReason />;
   if (action.kind === "communication")
     return <CommunicationCard tenantCode={tenantCode} action={action} />;
   const preview = action.preview;

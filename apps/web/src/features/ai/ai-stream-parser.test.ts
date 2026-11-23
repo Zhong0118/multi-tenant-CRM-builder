@@ -8,6 +8,13 @@ function feed(chunks: string[]) {
 }
 
 describe("AiStreamParser", () => {
+  it("keeps the quota recovery message from the service", () => {
+    const message = "公司本月额度已用完，12月1日恢复";
+    const data = { code:"AI_TENANT_QUOTA_EXHAUSTED", message, turnId:"t", messageId:"m" };
+    const parser = new AiStreamParser();
+    expect(parser.push(`event: turn.failed\ndata: ${JSON.stringify(data)}\n\n`)).toEqual([{event:"turn.failed",data}]);
+  });
+
   it("parses events split across arbitrary TCP chunks", () => {
     const events = feed([
       "event: assistant.de",

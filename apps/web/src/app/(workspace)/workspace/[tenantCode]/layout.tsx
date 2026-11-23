@@ -1,3 +1,4 @@
+import { WorkspaceAiAccess } from "@/features/ai-governance/access";
 import type { ReactNode } from "react";
 
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
@@ -22,6 +23,7 @@ export default async function WorkspaceLayout({
   const businessObjects = await requireRuntimeObjects(workspace.tenantCode);
 
   return (
+    <WorkspaceAiAccess tenantCode={tenantCode} memberId={workspace.memberId}>
     <WorkspaceShell
       tenantCode={workspace.tenantCode}
       tenantName={workspace.tenantName}
@@ -35,5 +37,6 @@ export default async function WorkspaceLayout({
     >
       {children}
     </WorkspaceShell>
+    </WorkspaceAiAccess>
   );
 }

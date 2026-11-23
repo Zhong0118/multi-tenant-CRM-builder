@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/features/ai-governance/access";
 import { RobotOutlined } from "@ant-design/icons";
 import { Button, Drawer } from "antd";
 import { useEffect, useRef, useState } from "react";
@@ -32,6 +33,10 @@ interface PanelProps {
 }
 
 export function AssistantPanelButton(props: PanelProps) {
+  return <FeatureGate feature="assistant"><AvailableAssistantPanel {...props} /></FeatureGate>;
+}
+
+function AvailableAssistantPanel(props: PanelProps) {
   const {
     tenantCode,
     memberId,

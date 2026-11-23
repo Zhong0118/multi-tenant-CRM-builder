@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate, CurrentQuotaNotice, AccessReason } from "@/features/ai-governance/access";
 import { Button, Input } from "antd";
 import type { TextAreaRef } from "antd/es/input/TextArea";
 import type { RefObject } from "react";
@@ -25,7 +26,8 @@ export function AiComposer({
   const generating = phase === "SENDING" || phase === "STREAMING";
   return (
     <div className={styles.composerDock}>
-      <div className={styles.composer} aria-busy={generating}>
+      <CurrentQuotaNotice />
+      <FeatureGate feature="assistant" fallback={<AccessReason />}><div className={styles.composer} aria-busy={generating}>
         {generating ? <span className={styles.composerStatus}>正在生成回答…</span> : null}
         <Input.TextArea
           ref={inputRef}
@@ -69,7 +71,7 @@ export function AiComposer({
             )}
           </div>
         </div>
-      </div>
+      </div></FeatureGate>
     </div>
   );
 }

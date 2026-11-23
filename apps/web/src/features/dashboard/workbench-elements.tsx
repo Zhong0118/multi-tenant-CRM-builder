@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/features/ai-governance/access";
 import Link from "next/link";
 
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
@@ -28,9 +29,9 @@ export function BusinessObjectBar({
             创建第一张业务表
             <span aria-hidden>→</span>
           </Link>
-          <Link href={`/workspace/${tenantCode}/settings/objects/ai-builder`}>
+          <FeatureGate feature="table_builder"><Link href={`/workspace/${tenantCode}/settings/objects/ai-builder`}>
             用 AI 描述生成
-          </Link>
+          </Link></FeatureGate>
         </nav>
       </section>
     );

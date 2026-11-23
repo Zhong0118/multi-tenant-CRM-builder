@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/features/ai-governance/access";
 import {
   CloseOutlined,
   FilterOutlined,
@@ -371,7 +372,7 @@ function FilterEditor(props: RecordFilterPanelProps) {
         onEditIndex(null);
       }}
     >
-      <div className={styles.prompt}>
+      <FeatureGate feature="filter"><div className={styles.prompt}>
         <label htmlFor="filter-preview-text">用一句话描述条件</label>
         <div className={styles.promptLine}>
           <input
@@ -420,6 +421,7 @@ function FilterEditor(props: RecordFilterPanelProps) {
           />
         )}
       </div>
+      </FeatureGate>
       <div className={styles.header}>
         <strong>筛选条件</strong>
         <select
