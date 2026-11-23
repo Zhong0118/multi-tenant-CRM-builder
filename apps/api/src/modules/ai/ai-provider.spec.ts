@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { communicationWireSchema } from './communication-output';
 import {
   FakeAiProvider,
   CRITICAL_SEARCH_OBJECT_CODE,
@@ -588,4 +590,15 @@ describe('sseFrame', () => {
       sseFrame({ event: 'assistant.delta', data: { text: '测试回答' } }),
     ).toBe('event: assistant.delta\ndata: {"text":"测试回答"}\n\n');
   });
+});
+
+it('keeps each communication schema union alternative typed for the Responses API', () => {
+  const check = (node: unknown) => {
+    if (!node || typeof node !== 'object') return;
+    if ('anyOf' in node && Array.isArray(node.anyOf))
+      for (const alternative of node.anyOf)
+        expect(alternative).toHaveProperty('type');
+    Object.values(node).forEach(check);
+  };
+  check(z.toJSONSchema(communicationWireSchema));
 });
