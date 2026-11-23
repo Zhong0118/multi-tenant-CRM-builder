@@ -1,6 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -36,6 +42,21 @@ function templateDetail() {
 }
 
 describe("CreateTemplateForm", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(async () => {
+    cleanup();
+    try {
+      // AntD Form.Item schedules error and warning updates beyond unmount.
+      await act(() => vi.runAllTimersAsync());
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("creates a template and navigates to its editor", async () => {
     const api = templateApi({
       create: vi.fn().mockResolvedValue(templateDetail()),
@@ -54,9 +75,8 @@ describe("CreateTemplateForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "创建模板" }));
 
-    await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith("/platform/templates/template-1"),
-    );
+    await act(() => vi.runAllTimersAsync());
+    expect(navigate).toHaveBeenCalledWith("/platform/templates/template-1");
   });
 
   it("rejects a template code longer than 64 characters before calling the API", async () => {
@@ -73,8 +93,9 @@ describe("CreateTemplateForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "创建模板" }));
 
+    await act(() => vi.runAllTimersAsync());
     expect(
-      await screen.findByText("模板代码不能超过 64 个字符。"),
+      screen.getByText("模板代码不能超过 64 个字符。"),
     ).toBeInTheDocument();
     expect(api.create).not.toHaveBeenCalled();
   });
