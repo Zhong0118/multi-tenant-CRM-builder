@@ -1,3 +1,5 @@
+import { TableBuilderController } from './table-builder.controller';
+import { TableBuilderService } from './table-builder.service';
 import { AssistantQuestionsService } from './assistant-questions.service';
 import { AssistantActionsService } from './assistant-actions';
 import { AiBatchController } from './ai-batch.controller';
@@ -36,12 +38,14 @@ import { AiToolRegistry } from './tool-registry';
     FollowUpsModule,
   ],
   controllers: [
+    TableBuilderController,
     FilterPreviewController,
     AiController,
     AiBatchController,
     CommunicationDraftsController,
   ],
   providers: [
+    TableBuilderService,
     FilterPreviewService,
     CommunicationDraftsService,
     CommunicationDraftGenerator,

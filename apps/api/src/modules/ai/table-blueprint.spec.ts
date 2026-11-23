@@ -51,3 +51,30 @@ it('rejects injected access configuration on a submitted blueprint', () => {
   Object.assign(plan.tables[0], { employeeAccess: { canDelete: true } });
   expect(() => validateBlueprint(plan, [])).toThrow();
 });
+it('projects select choices into the manual select configuration without extra keys', () => {
+  const plan = sample();
+  Object.assign(plan.tables[0].fields[0], {
+    type: 'SINGLE_SELECT',
+    options: [
+      {
+        id: 'edaa1009-3974-41e0-b63b-08a04b74203a',
+        key: '',
+        label: '待审',
+        reason: '状态',
+      },
+    ],
+  });
+  expect(validateBlueprint(plan, []).issues.filter((i) => i.blocking)).toEqual(
+    [],
+  );
+});
+it('flags an invalid employee field draft according to the manual DTO', () => {
+  const plan = sample();
+  const f = plan.tables[0].fields[0];
+  Object.assign(f, { label: ' '.repeat(4) });
+  expect(validateBlueprint(plan, []).issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ code: 'MANUAL_DTO_INVALID', fieldId: f.id }),
+    ]),
+  );
+});

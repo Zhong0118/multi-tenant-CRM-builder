@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import {
+  CreateObjectDefinitionDto,
+  CreateFieldDefinitionDto,
+} from '../objects/dto/object.dto';
 import type {
   FieldPlan,
   TableBlueprint,
@@ -18,6 +24,8 @@ export interface BlueprintMetadata {
   code: string;
   name: string;
   version?: number;
+  publishedName?: string | null;
+  status?: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   fields: { fieldKey: string; label: string; type: string }[];
 }
 const label = z.string().trim().max(100);
@@ -181,11 +189,10 @@ export function blueprintFieldConfig(
 ): Record<string, JsonValue> {
   return field.options
     ? {
-        options: field.options.map((o, index) => ({
+        options: field.options.map((o) => ({
           key: o.key,
           label: o.label,
           status: 'ACTIVE',
-          sortOrder: (index + 1) * 10,
         })),
       }
     : {};
@@ -236,7 +243,14 @@ export function validateBlueprint(
           .join('、'),
       'tables',
     );
-  const names = new Set(existing.map((o) => canonicalName(o.name)));
+  if (dest?.status === 'ARCHIVED')
+    throw new ApiException('OBJECT_LIFECYCLE_CONFLICT', 409);
+  const names = new Set(
+    existing.flatMap((o) => [
+      canonicalName(o.name),
+      ...(o.publishedName ? [canonicalName(o.publishedName)] : []),
+    ]),
+  );
   const ids = new Set<string>();
   for (const t of blueprint.tables) {
     const fail = (
@@ -258,7 +272,13 @@ export function validateBlueprint(
         existing.some((o) => o.code === t.code))
     )
       fail('NAME_IN_USE', '业务表名称或编码已占用。', 'name');
-    if (dest && t.name !== dest.name)
+    if (
+      dest &&
+      (t.name !== dest.name ||
+        t.description !== undefined ||
+        t.icon !== undefined ||
+        t.employeeIntent.length)
+    )
       fail('TARGET_CHANGED', '补字段不能修改原表名称。', 'name');
     if (!t.name || (!dest && builtInReason(t.name)))
       fail(
@@ -326,6 +346,51 @@ export function validateBlueprint(
       isSystem: false,
       status: 'ACTIVE' as const,
     }));
+    const titleKey =
+      t.fields.find((f) => f.id === t.titleFieldId)?.fieldKey ?? '';
+    const dtoFields = fields.map(
+      ({ fieldKey, label, type, required, validation, config }) => ({
+        fieldKey,
+        label,
+        type,
+        required,
+        validation,
+        config,
+        defaultValue: null,
+      }),
+    );
+    const options = { whitelist: true, forbidNonWhitelisted: true };
+    if (
+      !dest &&
+      validateSync(
+        plainToInstance(CreateObjectDefinitionDto, {
+          name: t.name,
+          code: t.code,
+          icon: t.icon,
+          titleFieldKey: titleKey,
+          initialFields: dtoFields.filter((f) => f.type !== 'MEMBER'),
+        }),
+        options,
+      ).length
+    )
+      fail('MANUAL_DTO_INVALID', '初始业务表配置未通过手动建表校验。', 'table');
+    for (const [i, f] of dtoFields.entries()) {
+      const errors = validateSync(
+        plainToInstance(CreateFieldDefinitionDto, {
+          ...f,
+          expectedVersion: 1,
+          isSystem: false,
+        }),
+        options,
+      );
+      for (const error of errors)
+        fail(
+          'MANUAL_DTO_INVALID',
+          '字段配置未通过手动字段校验。',
+          error.property,
+          t.fields[i].id,
+        );
+    }
     const analysis = analyzeObjectConfiguration({
       object: {
         id: t.id,

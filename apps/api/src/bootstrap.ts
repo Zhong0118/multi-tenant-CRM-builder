@@ -10,6 +10,7 @@ import cookieParser from 'cookie-parser';
 import type { Express, NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 
+import { tableBlueprintDefinition } from './modules/ai/table-builder.controller';
 import { AppModule } from './app.module';
 import { ApiException } from './common/errors/api.exception';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
@@ -73,7 +74,9 @@ export function createOpenApiDocument(app: INestApplication): OpenAPIObject {
     .setVersion('1.0')
     .addCookieAuth('crm_session', { type: 'apiKey' }, 'crm_session')
     .build();
-  return SwaggerModule.createDocument(app, config, {
+  const document = SwaggerModule.createDocument(app, config, {
     extraModels: [ApiErrorResponseDto],
   });
+  document.components!.schemas!.TableBlueprint = tableBlueprintDefinition;
+  return document;
 }
