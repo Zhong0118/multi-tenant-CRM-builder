@@ -42,7 +42,13 @@ export function estimateRequestInput(body: string) {
 
 export function failureStatus(signal: AbortSignal): Result {
   if (!signal.aborted) return 'failed';
-  return signal.reason?.name === 'TimeoutError' ? 'timeout' : 'cancelled';
+  const reason: unknown = signal.reason;
+  return typeof reason === 'object' &&
+    reason !== null &&
+    'name' in reason &&
+    reason.name === 'TimeoutError'
+    ? 'timeout'
+    : 'cancelled';
 }
 
 // A generation may contain several sequential provider requests (tool steps).

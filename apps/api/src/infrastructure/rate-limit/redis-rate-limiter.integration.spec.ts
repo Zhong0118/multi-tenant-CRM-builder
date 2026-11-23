@@ -44,6 +44,18 @@ const redisUrl = process.env.TEST_REDIS_URL;
     expect(await redis.ttl(`crm:rate-limit:${request.key}`)).toBeGreaterThan(0);
   });
 
+  it('holds one long-call lease and a stale owner cannot release its replacement', async () => {
+    const key = 'ai-integration:' + randomUUID();
+    keys.push('crm:lease:' + key);
+    expect(await limiter.acquire(key, 'first', 60)).toBe(true);
+    expect(await limiter.acquire(key, 'second', 60)).toBe(false);
+    await limiter.release(key, 'first');
+    expect(await limiter.acquire(key, 'second', 60)).toBe(true);
+    await limiter.release(key, 'first');
+    expect(await redis.get('crm:lease:' + key)).toBe('second');
+    expect(await redis.ttl('crm:lease:' + key)).toBeGreaterThan(0);
+  });
+
   it('repairs an existing counter without an expiry even when the request is limited', async () => {
     const request = input(5, 1);
     const key = `crm:rate-limit:${request.key}`;

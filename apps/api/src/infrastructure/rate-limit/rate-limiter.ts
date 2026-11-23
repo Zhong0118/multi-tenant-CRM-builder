@@ -27,14 +27,16 @@ export class InMemoryRateLimiter implements CallRateLimiter {
     string,
     { owner: string; expires: number }
   >();
-  async acquire(key: string, owner: string, ttlSeconds: number) {
+  acquire(key: string, owner: string, ttlSeconds: number) {
     const previous = this.leases.get(key);
-    if (previous && previous.expires > Date.now()) return false;
+    if (previous && previous.expires > Date.now())
+      return Promise.resolve(false);
     this.leases.set(key, { owner, expires: Date.now() + ttlSeconds * 1000 });
-    return true;
+    return Promise.resolve(true);
   }
-  async release(key: string, owner: string) {
+  release(key: string, owner: string) {
     if (this.leases.get(key)?.owner === owner) this.leases.delete(key);
+    return Promise.resolve();
   }
 
   consume(input: {
