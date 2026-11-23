@@ -14,6 +14,7 @@ import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { browserApiClient as api } from "@/lib/api/browser-client";
+import { calendarDate } from "@/lib/format/due";
 import { PageSection } from "@/components/layout/page";
 import { ReadingPanel } from "@/components/workbench/surface";
 import {
@@ -31,7 +32,13 @@ const UsageCharts = dynamic(
   () => import("./usage-charts").then((m) => m.UsageCharts),
   { ssr: false },
 );
-export function CompanyAi({ tenantId }: { tenantId: string }) {
+export function CompanyAi({
+  tenantId,
+  timeZone = "Asia/Shanghai",
+}: {
+  tenantId: string;
+  timeZone?: string;
+}) {
   const q = useQuery({
       queryKey: ["platform-ai", "company", tenantId],
       queryFn: () =>
@@ -70,9 +77,8 @@ export function CompanyAi({ tenantId }: { tenantId: string }) {
     );
   const params = { path: { id: tenantId } },
     pct = c.percent ?? 0;
-  const restore = new Date(c.month);
-  restore.setUTCMonth(restore.getUTCMonth() + 1);
-  const restoreDay = restore.toISOString().slice(0, 10);
+  const startDay = calendarDate(c.startedAt, timeZone);
+  const restoreDay = calendarDate(c.restoresAt, timeZone);
   function begin(m: "quota" | "assign") {
     action.clear();
     setImpact(null);
@@ -182,7 +188,12 @@ export function CompanyAi({ tenantId }: { tenantId: string }) {
             </div>
           </>
         )}
-        <small className={styles.detail}>{restoreDay} 恢复套餐额度</small>
+        <small className={styles.detail}>
+          {startDay.slice(0, 7) === c.month.slice(0, 7)
+            ? startDay + " 起计量 · "
+            : ""}
+          {restoreDay} 恢复套餐额度
+        </small>
         {(c.trend.some((r) => r.usedTokens !== "0") || c.usage.length > 0) && (
           <UsageCharts summary={c} />
         )}

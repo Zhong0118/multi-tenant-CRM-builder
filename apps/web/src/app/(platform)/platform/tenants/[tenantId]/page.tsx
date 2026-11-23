@@ -147,7 +147,7 @@ export default async function TenantDetailPage({
           <TenantStatusActions tenant={tenant} />
         </aside>
       </div>
-      <CompanyAi tenantId={tenant.id} />
+      <CompanyAi tenantId={tenant.id} timeZone={tenant.timezone} />
       <TenantBusinessConfiguration
         tenant={tenant}
         initialSummary={configurationResult.data}

@@ -31,6 +31,7 @@ const company = {
   tenantId: "t",
   name: "示例公司",
   month: "2026-11-01",
+  startedAt: "2026-11-23T17:12:00Z",
   restoresAt: "2026-12-01T00:00:00Z",
   planId: "p",
   planName: "试用版",
@@ -102,6 +103,7 @@ describe("平台 AI 治理", () => {
     api.POST.mockResolvedValue({ data: { applied: true } });
     show(<CompanyAi tenantId="t" />);
     await screen.findByText("本月还没有使用 AI");
+    expect(screen.getByText(/2026-11-24 起计量/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "本月加量" }));
     fireEvent.change(
       screen.getByRole("textbox", { name: "增加额度（万 token）" }),
