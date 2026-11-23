@@ -276,6 +276,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/ai-companies": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformAiAdminController_companies"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-plans": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformAiAdminController_plans"];
+    put?: never;
+    post: operations["PlatformAiAdminController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-plans/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformAiAdminController_plan"];
+    put?: never;
+    post?: never;
+    delete: operations["PlatformAiAdminController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["PlatformAiAdminController_update"];
+    trace?: never;
+  };
+  "/api/v1/platform/ai-plans/{id}/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PlatformAiAdminController_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformAiAdminController_settings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["PlatformAiAdminController_saveSettings"];
+    trace?: never;
+  };
   "/api/v1/platform/audit": {
     parameters: {
       query?: never;
@@ -468,6 +548,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/tenants/{id}/ai": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformAiAdminController_company"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["PlatformAiAdminController_assign"];
+    trace?: never;
+  };
+  "/api/v1/platform/tenants/{id}/ai/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PlatformAiAdminController_previewAssignment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/tenants/{id}/ai/quota": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PlatformAiAdminController_topUp"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/tenants/{tenantId}": {
     parameters: {
       query?: never;
@@ -596,6 +724,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/ai/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkspaceAiAdminController_capabilities"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/ai/conversations": {
     parameters: {
       query?: never;
@@ -660,6 +804,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/ai/operations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkspaceAiAdminController_operations"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/operations/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkspaceAiAdminController_detail"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}": {
     parameters: {
       query?: never;
@@ -706,6 +882,22 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkspaceAiAdminController_settings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["WorkspaceAiAdminController_allocation"];
     trace?: never;
   };
   "/api/v1/workspaces/{tenantCode}/ai/table-builder/confirm": {
@@ -814,6 +1006,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["AiController_retryTurn"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/usage": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkspaceAiAdminController_usage"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -2402,6 +2610,7 @@ export interface components {
       };
       message: string;
       requestId: string;
+      retryAfterSeconds?: number;
       status: number;
     };
     ApplyBusinessTemplateDto: {
@@ -5975,6 +6184,407 @@ export interface operations {
       };
     };
   };
+  PlatformAiAdminController_companies: {
+    parameters: {
+      query?: {
+        limit?: number;
+        order?: "asc" | "desc";
+        page?: number;
+        search?: string;
+        status?: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            items: {
+              /** @enum {string} */
+              allocation: "shared" | "equal";
+              /** @description Exact token count in decimal notation */
+              baseTokens: string;
+              code: string;
+              /** @description Exact token count in decimal notation */
+              extraTokens: string;
+              features: (
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder"
+              )[];
+              month: string & string;
+              name: string;
+              percent: number | null;
+              /** Format: uuid */
+              planId: string | null;
+              planName: string | null;
+              planVersion: number | null;
+              /** @description Exact token count in decimal notation */
+              remainingTokens: string;
+              /** @description Exact token count in decimal notation */
+              reservedTokens: string;
+              restoresAt: string;
+              startedAt: string;
+              /** Format: uuid */
+              tenantId: string;
+              /** @description Exact token count in decimal notation */
+              totalTokens: string;
+              /** @description Exact token count in decimal notation */
+              usedTokens: string;
+              version: number;
+            }[];
+            limit: number;
+            page: number;
+            total: number;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_plans: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            assignable: boolean;
+            companies: number;
+            description: string;
+            features: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            /** Format: uuid */
+            id: string;
+            /** @description Exact token count in decimal notation */
+            monthlyTokens: string;
+            name: string;
+            version: number;
+          }[];
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          assignable: boolean;
+          description: string;
+          features: (
+            | "assistant"
+            | "write_proposal"
+            | "communication"
+            | "filter"
+            | "table_builder"
+          )[];
+          /** @description Exact token count in decimal notation */
+          monthlyTokens: string;
+          name: string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            assignable: boolean;
+            companies: number;
+            description: string;
+            features: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            /** Format: uuid */
+            id: string;
+            /** @description Exact token count in decimal notation */
+            monthlyTokens: string;
+            name: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_plan: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            assignable: boolean;
+            companies: number;
+            description: string;
+            features: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            /** Format: uuid */
+            id: string;
+            /** @description Exact token count in decimal notation */
+            monthlyTokens: string;
+            name: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            deleted: boolean;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          assignable: boolean;
+          confirmation: string;
+          description: string;
+          features: (
+            | "assistant"
+            | "write_proposal"
+            | "communication"
+            | "filter"
+            | "table_builder"
+          )[];
+          /** @description Exact token count in decimal notation */
+          monthlyTokens: string;
+          name: string;
+          /** Format: uuid */
+          replacementDefaultPlanId?: string | null;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            assignable: boolean;
+            companies: number;
+            description: string;
+            features: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            /** Format: uuid */
+            id: string;
+            /** @description Exact token count in decimal notation */
+            monthlyTokens: string;
+            name: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          assignable: boolean;
+          description: string;
+          features: (
+            | "assistant"
+            | "write_proposal"
+            | "communication"
+            | "filter"
+            | "table_builder"
+          )[];
+          /** @description Exact token count in decimal notation */
+          monthlyTokens: string;
+          name: string;
+          /** Format: uuid */
+          replacementDefaultPlanId?: string | null;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            companies: number;
+            confirmation: string;
+            removedFeatures: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_settings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            affectedCompanies: number;
+            anomalies: {
+              /** @description Exact token count in decimal notation */
+              calls: string;
+              /** @description Exact token count in decimal notation */
+              excessTokens: string;
+              model: string;
+            }[];
+            configured: boolean;
+            /** Format: uuid */
+            defaultPlanId: string | null;
+            disabled: boolean;
+            model: string | null;
+            provider: string | null;
+            reason: string | null;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_saveSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          defaultPlanId: string | null;
+          disabled: boolean;
+          reason: string | null;
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** Format: uuid */
+            defaultPlanId: string | null;
+            disabled: boolean;
+            reason: string | null;
+            version: number;
+          };
+        };
+      };
+    };
+  };
   PlatformOperationsController_audit: {
     parameters: {
       query?: {
@@ -6327,6 +6937,234 @@ export interface operations {
       };
     };
   };
+  PlatformAiAdminController_company: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {string} */
+            allocation: "shared" | "equal";
+            /** @description Exact token count in decimal notation */
+            baseTokens: string;
+            code: string;
+            /** @description Exact token count in decimal notation */
+            extraTokens: string;
+            features: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            month: string & string;
+            name: string;
+            percent: number | null;
+            /** Format: uuid */
+            planId: string | null;
+            planName: string | null;
+            planVersion: number | null;
+            /** @description Exact token count in decimal notation */
+            remainingTokens: string;
+            /** @description Exact token count in decimal notation */
+            reservedTokens: string;
+            restoresAt: string;
+            startedAt: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** @description Exact token count in decimal notation */
+            totalTokens: string;
+            trend: {
+              month: string & string;
+              /** @description Exact token count in decimal notation */
+              usedTokens: string;
+            }[];
+            usage: {
+              /** @description Exact token count in decimal notation */
+              calls: string;
+              /** @description Exact token count in decimal notation */
+              confirmations: string;
+              /** Format: date */
+              date: string;
+              /** @enum {string} */
+              feature:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder";
+              /** @description Exact token count in decimal notation */
+              inputTokens: string;
+              /** @description Exact token count in decimal notation */
+              outputTokens: string;
+              /** @description Exact token count in decimal notation */
+              proposals: string;
+            }[];
+            /** @description Exact token count in decimal notation */
+            usedTokens: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_assign: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          confirmation: string;
+          /** Format: uuid */
+          planId: string | null;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {string} */
+            allocation: "shared" | "equal";
+            /** @description Exact token count in decimal notation */
+            baseTokens: string;
+            code: string;
+            /** @description Exact token count in decimal notation */
+            extraTokens: string;
+            features: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            month: string & string;
+            name: string;
+            percent: number | null;
+            /** Format: uuid */
+            planId: string | null;
+            planName: string | null;
+            planVersion: number | null;
+            /** @description Exact token count in decimal notation */
+            remainingTokens: string;
+            /** @description Exact token count in decimal notation */
+            reservedTokens: string;
+            restoresAt: string;
+            startedAt: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** @description Exact token count in decimal notation */
+            totalTokens: string;
+            /** @description Exact token count in decimal notation */
+            usedTokens: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_previewAssignment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          planId: string | null;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            addedFeatures: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            confirmation: string;
+            name: string;
+            /** Format: uuid */
+            planId: string | null;
+            removedFeatures: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            /** @description Exact token count in decimal notation */
+            totalTokens: string;
+          };
+        };
+      };
+    };
+  };
+  PlatformAiAdminController_topUp: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @description Exact token count in decimal notation */
+          amount: string;
+          idempotencyKey: string;
+          month: string & string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            applied: boolean;
+            month: string & string;
+          };
+        };
+      };
+    };
+  };
   TenantsController_detail: {
     parameters: {
       query?: never;
@@ -6501,6 +7339,44 @@ export interface operations {
       };
     };
   };
+  WorkspaceAiAdminController_capabilities: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {string} */
+            allocation: "shared" | "equal";
+            disabled: boolean;
+            features: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            /** @enum {string|null} */
+            notice: "company_warning" | "company_exhausted" | "personal" | null;
+            percent: number | null;
+            /** @description Exact token count in decimal notation */
+            remainingTokens: string | null;
+            restoresAt: string;
+          };
+        };
+      };
+    };
+  };
   AiController_listConversations: {
     parameters: {
       query?: {
@@ -6617,6 +7493,120 @@ export interface operations {
       };
     };
   };
+  WorkspaceAiAdminController_operations: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        feature?:
+          | "assistant"
+          | "write_proposal"
+          | "communication"
+          | "filter"
+          | "table_builder";
+        from?: string;
+        limit?: number;
+        memberId?: string;
+        source?: "proposal" | "draft" | "blueprint" | "denial" | "provider";
+        status?: string;
+        to?: string;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            items: {
+              /** Format: uuid */
+              confirmedByMemberId: string | null;
+              createdAt: string;
+              /** @enum {string} */
+              feature:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder";
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              memberId: string;
+              source: string;
+              status: string;
+              updatedAt: string;
+            }[];
+            nextCursor: string | null;
+          };
+        };
+      };
+    };
+  };
+  WorkspaceAiAdminController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** Format: uuid */
+            auditId: string | null;
+            /** Format: uuid */
+            confirmedByMemberId: string | null;
+            createdAt: string;
+            /** @enum {string} */
+            feature:
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder";
+            /** Format: uuid */
+            id: string;
+            items: {
+              changes: {
+                after?: string;
+                before?: string;
+                label: string;
+              }[];
+              operationType: string;
+              status: string;
+            }[];
+            /** Format: uuid */
+            memberId: string;
+            objectCode: string | null;
+            /** Format: uuid */
+            objectId: string | null;
+            /** Format: uuid */
+            recordId: string | null;
+            requestId: string | null;
+            requestText: string | null;
+            source: string;
+            status: string;
+            updatedAt: string;
+          };
+        };
+      };
+    };
+  };
   AiController_getProposal: {
     parameters: {
       query?: never;
@@ -6683,6 +7673,142 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AiProposalResponseDto"];
+        };
+      };
+    };
+  };
+  WorkspaceAiAdminController_settings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {string} */
+            allocation: "shared" | "equal";
+            /** @description Exact token count in decimal notation */
+            baseTokens: string;
+            code: string;
+            disabled: boolean;
+            /** @description Exact token count in decimal notation */
+            extraTokens: string;
+            features: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            month: string & string;
+            name: string;
+            percent: number | null;
+            /** Format: uuid */
+            planId: string | null;
+            planName: string | null;
+            planVersion: number | null;
+            preview: {
+              confirmation: string;
+              members: number;
+              overShare: number;
+              /** @description Exact token count in decimal notation */
+              shareTokens: string | null;
+            };
+            /** @description Exact token count in decimal notation */
+            remainingTokens: string;
+            /** @description Exact token count in decimal notation */
+            reservedTokens: string;
+            restoresAt: string;
+            startedAt: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** @description Exact token count in decimal notation */
+            totalTokens: string;
+            /** @description Exact token count in decimal notation */
+            usedTokens: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  WorkspaceAiAdminController_allocation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          allocation: "shared" | "equal";
+          confirmation: string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @enum {string} */
+            allocation: "shared" | "equal";
+            /** @description Exact token count in decimal notation */
+            baseTokens: string;
+            code: string;
+            disabled: boolean;
+            /** @description Exact token count in decimal notation */
+            extraTokens: string;
+            features: (
+              | "assistant"
+              | "write_proposal"
+              | "communication"
+              | "filter"
+              | "table_builder"
+            )[];
+            month: string & string;
+            name: string;
+            percent: number | null;
+            /** Format: uuid */
+            planId: string | null;
+            planName: string | null;
+            planVersion: number | null;
+            preview: {
+              confirmation: string;
+              members: number;
+              overShare: number;
+              /** @description Exact token count in decimal notation */
+              shareTokens: string | null;
+            };
+            /** @description Exact token count in decimal notation */
+            remainingTokens: string;
+            /** @description Exact token count in decimal notation */
+            reservedTokens: string;
+            restoresAt: string;
+            startedAt: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** @description Exact token count in decimal notation */
+            totalTokens: string;
+            /** @description Exact token count in decimal notation */
+            usedTokens: string;
+            version: number;
+          };
         };
       };
     };
@@ -7031,6 +8157,60 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  WorkspaceAiAdminController_usage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            daily: {
+              /** @description Exact token count in decimal notation */
+              calls: string;
+              /** @description Exact token count in decimal notation */
+              confirmations: string;
+              /** Format: date */
+              date: string;
+              /** @enum {string} */
+              feature:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder";
+              /** @description Exact token count in decimal notation */
+              inputTokens: string;
+              /** @description Exact token count in decimal notation */
+              outputTokens: string;
+              /** @description Exact token count in decimal notation */
+              proposals: string;
+            }[];
+            members: {
+              active: boolean;
+              /** Format: uuid */
+              memberId: string;
+              name: string;
+              /** @description Exact token count in decimal notation */
+              reservedTokens: string;
+              /** @description Exact token count in decimal notation */
+              usedTokens: string;
+            }[];
+            month: string & string;
+          };
+        };
       };
     };
   };

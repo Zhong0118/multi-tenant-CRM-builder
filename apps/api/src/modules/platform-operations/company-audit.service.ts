@@ -66,11 +66,32 @@ export class CompanyAuditService {
         }),
         tx.auditLog.count({ where }),
       ]);
+      // The dedicated AI detail endpoint checks today's record and field access.
+      // Do not replay its input through a generic audit row sharing the request.
+      const correlated = rows.length
+        ? await tx.$queryRaw<{ requestId: string }[]>`
+            SELECT DISTINCT request_id AS "requestId" FROM audit_logs
+            WHERE tenant_id=${context.tenantId}::uuid AND request_id=ANY(${[...new Set(rows.map((row) => row.requestId))]}::text[])
+              AND (resource_type IN ('ai_operation','ai_record_draft')
+                OR action='ai.table_blueprint_confirmed' OR after ? 'aiOperationId')`
+        : [];
+      const privateRequests = new Set(correlated.map((row) => row.requestId));
+      const safeRows = rows.map((row) =>
+        privateRequests.has(row.requestId)
+          ? {
+              ...row,
+              resourceId: null,
+              before: null,
+              after: null,
+              reason: null,
+            }
+          : row,
+      );
       return {
         items: await presentCompanyAudit(
           tx,
           { id: context.tenantId, name: clock?.name ?? context.tenantCode },
-          rows,
+          safeRows,
         ),
         page: query.page,
         limit: query.limit,
