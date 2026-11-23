@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { MembershipsModule } from '../memberships/memberships.module';
+import { ObjectDraftBatchService } from './object-draft-batch.service';
 import { ObjectsController } from './objects.controller';
 import { PrismaObjectsRepository } from './objects.repository';
 import {
@@ -26,6 +27,7 @@ import {
   controllers: [ObjectsController],
   providers: [
     ObjectsService,
+    ObjectDraftBatchService,
     PublishedObjectService,
     PrismaObjectsRepository,
     PrismaPublishedObjectRepository,
@@ -40,6 +42,11 @@ import {
       useExisting: new (...args: never[]) => PublishedObjectRepository;
     },
   ],
-  exports: [ObjectsService, PublishedObjectService, OBJECTS_REPOSITORY],
+  exports: [
+    ObjectDraftBatchService,
+    ObjectsService,
+    PublishedObjectService,
+    OBJECTS_REPOSITORY,
+  ],
 })
 export class ObjectsModule {}

@@ -1,22 +1,6 @@
-import type {
-  TableBlueprint,
-  TableBuilderTarget,
-  FieldPlan,
-  TablePlan,
-} from '@crm/contracts';
-import {
-  canonicalName,
-  blueprintFieldConfig,
-  validateBlueprint,
-} from '../ai/table-blueprint';
+import { FIELD_KEY_PATTERN, NEW_OBJECT_CODE_PATTERN } from './object-code';
+import { canonicalName } from '../ai/table-blueprint';
 import { transferSettings } from './effective-access';
-import { analyzePoolProtectionSources } from '../records/record-pool-config';
-import type { ActionPublicationTarget } from '../actions/action-publication.policy';
-import type {
-  AnalyzeDraftGroupDto,
-  PublishDraftGroupDto,
-  PublishTemplateInitializationDto,
-} from './dto/template-initialization.dto';
 import { analyzeAutomationDependencies } from '../automations/automation-publication';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -41,7 +25,6 @@ import {
   isSearchableFieldType,
   isSortableFieldType,
   isSystemRecordSortField,
-  isPublishedFieldType,
   type JsonValue,
   type PublishedDataScope,
   type PublishedFieldAccess,
@@ -58,7 +41,7 @@ export const OBJECTS_REPOSITORY = Symbol('OBJECTS_REPOSITORY');
 export const OBJECTS_CLOCK = Symbol('OBJECTS_CLOCK');
 export const OBJECTS_ID_GENERATOR = Symbol('OBJECTS_ID_GENERATOR');
 
-interface RequestMeta {
+export interface RequestMeta {
   requestId: string;
   ip?: string;
 }
@@ -80,7 +63,7 @@ interface ObjectMutationInput {
   titleFieldKey?: string;
 }
 
-interface FieldCreateInput {
+export interface FieldCreateInput {
   expectedVersion: number;
   fieldKey: string;
   label: string;
@@ -147,396 +130,6 @@ export class ObjectsService {
     @Inject(OBJECTS_ID_GENERATOR) private readonly idGenerator: () => string,
   ) {}
 
-  templateInitialization(context: TenantContext) {
-    assertTenantAdmin(context);
-    return this.repository.withTenant(context, async (store) => {
-      const groups = new Map<
-        string,
-        Array<{
-          id: string;
-          name: string;
-          code: string;
-          version: number;
-          poolConfigVersion: number;
-        }>
-      >();
-      for (const {
-        templateVersionId,
-        ...object
-      } of await store.listTemplateInitializationCandidates!()) {
-        const objects = groups.get(templateVersionId) ?? [];
-        objects.push(object);
-        groups.set(templateVersionId, objects);
-      }
-      return {
-        groups: [...groups].map(([templateVersionId, objects]) => ({
-          templateVersionId,
-          objects,
-        })),
-      };
-    });
-  }
-
-  publishTemplateInitialization(
-    context: TenantContext,
-    input: PublishTemplateInitializationDto,
-    meta: RequestMeta,
-  ) {
-    return this.publishGroup(context, input, meta, input.templateVersionId);
-  }
-
-  analyzeDraftGroup(context: TenantContext, input: AnalyzeDraftGroupDto) {
-    assertTenantAdmin(context);
-    return this.repository.withTenant(context, async (store) => {
-      const drafts = await this.loadGroup(store, input.objectIds);
-      const { analyses, blocking } = await this.analyzeGroup(store, drafts);
-      return {
-        objects: await Promise.all(
-          drafts.map(async ({ object, pool }, index) => ({
-            nextPublicationNumber: await store.nextPublicationNumber(object.id),
-            id: object.id,
-            name: object.name,
-            code: object.code,
-            version: object.version,
-            poolConfigVersion: pool?.version ?? 1,
-            analysis: analyses[index],
-          })),
-        ),
-        blocking,
-      };
-    });
-  }
-
-  publishDraftGroup(
-    context: TenantContext,
-    input: PublishDraftGroupDto,
-    meta: RequestMeta,
-  ) {
-    return this.publishGroup(context, input, meta);
-  }
-
-  private publishGroup(
-    context: TenantContext,
-    input: PublishDraftGroupDto,
-    meta: RequestMeta,
-    templateVersionId?: string,
-  ) {
-    assertTenantAdmin(context);
-    return this.repository.withTenant(context, async (store) => {
-      const drafts = await this.loadGroup(
-        store,
-        input.objects.map((o) => o.id),
-        templateVersionId,
-      );
-      for (const [index, draft] of drafts.entries()) {
-        const expected = input.objects[index];
-        assertVersion(draft, expected.expectedVersion);
-        if ((draft.pool?.version ?? 1) !== expected.expectedPoolConfigVersion)
-          throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-      }
-      const { analyses, blocking } = await this.analyzeGroup(store, drafts);
-      if (blocking.length)
-        throw new ApiException('PUBLICATION_BLOCKED', 422, {
-          message: blocking.map((issue) => issue.message).join('；'),
-          fieldErrors: Object.fromEntries(
-            blocking.map((issue) => [
-              `objects.${issue.objectId}${issue.fieldKey ? '.fields.' + issue.fieldKey : issue.transitionKey ? '.transitions.' + issue.transitionKey : ''}`,
-              [issue.message],
-            ]),
-          ),
-        });
-      for (const [index, draft] of drafts.entries())
-        await this.commitPublication(
-          store,
-          context,
-          draft,
-          analyses[index],
-          meta,
-        );
-      return {
-        published: drafts.map((draft) => ({
-          id: draft.object.id,
-          code: draft.object.code,
-          name: draft.object.name,
-        })),
-      };
-    });
-  }
-
-  private async loadGroup(
-    store: ObjectsStore,
-    ids: string[],
-    templateVersionId?: string,
-  ) {
-    if (!ids.length || new Set(ids).size !== ids.length)
-      throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-    await store.lockLifecycleConfiguration();
-    await store.assertActiveAdmin();
-    for (const id of [...ids].sort()) await store.lockObject(id);
-    const templates = await store.listTemplateInitializationCandidates!();
-    const selected = new Set(ids);
-    if (templateVersionId !== undefined) {
-      const group = templates.filter(
-        (o) => o.templateVersionId === templateVersionId,
-      );
-      if (group.length !== ids.length || group.some((o) => !selected.has(o.id)))
-        throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-    } else if (templates.some((o) => selected.has(o.id))) {
-      throw validationError('objectIds', '请从模板初始化页面发布完整模板。');
-    }
-    const drafts: ObjectDraft[] = [];
-    for (const id of ids) {
-      const draft = await requireDraft(store, id);
-      assertNotArchived(draft);
-      if (!toObjectDraftResponse(draft).object.hasUnpublishedChanges)
-        throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-      drafts.push(draft);
-    }
-    return drafts;
-  }
-
-  private async analyzeGroup(store: ObjectsStore, drafts: ObjectDraft[]) {
-    const targets = new Map<string, ActionPublicationTarget>();
-    const existing = await store.listPublishedPoolConfigurations!();
-    for (const object of existing)
-      targets.set(object.code, {
-        code: object.code,
-        status: 'ACTIVE',
-        schema: object.schema,
-      });
-    for (const draft of drafts) {
-      draft.workflow = await store.findWorkflowDraft(draft.object.id);
-      draft.workflowStateRecordCounts = await store.countRecordsByWorkflowState(
-        draft.object.id,
-      );
-      targets.set(draft.object.code, {
-        code: draft.object.code,
-        status: 'ACTIVE',
-        schema: {
-          fields: draft.fields.flatMap((f) =>
-            f.status === 'ACTIVE' && isPublishedFieldType(f.type)
-              ? [{ ...f, type: f.type }]
-              : [],
-          ),
-          employeeAccess: draft.employeeAccess,
-        },
-      });
-    }
-    const states = new Map(
-      existing.map((o) => [
-        o.code,
-        o.schema.workflow?.states.map((s) => s.key) ?? [],
-      ]),
-    );
-    for (const draft of drafts)
-      states.set(
-        draft.object.code,
-        draft.workflow?.isEnabled
-          ? draft.workflow.states.map((s) => s.key)
-          : [],
-      );
-    const objects = await store.listObjects();
-    const analyses = drafts.map((draft) => {
-      draft.actionTargets = targets;
-      const analysis = analyzePublication(draft);
-      analysis.blocking.push(...analyzeAutomationDependencies(draft, objects));
-      if (draft.pool)
-        analysis.blocking.push(
-          ...analyzePoolProtectionSources(draft.pool, states),
-        );
-      return analysis;
-    });
-    const blocking = analyses.flatMap((analysis, index) =>
-      analysis.blocking.map((issue) => ({
-        ...issue,
-        objectId: drafts[index].object.id,
-      })),
-    );
-    for (const object of existing)
-      blocking.push(
-        ...analyzePoolProtectionSources(object.pool, states).map((issue) => ({
-          ...issue,
-          objectId: object.schema.object.id,
-        })),
-      );
-    return { analyses, blocking };
-  }
-
-  blueprintMetadata(context: TenantContext) {
-    assertTenantAdmin(context);
-    return this.repository.withTenant(context, async (store) => {
-      await store.assertActiveAdmin();
-      return store.listObjectStructures();
-    });
-  }
-
-  async confirmTableBlueprint(
-    context: TenantContext,
-    submitted: TableBlueprint,
-    target: TableBuilderTarget | undefined,
-    meta: RequestMeta,
-  ) {
-    assertTenantAdmin(context);
-    return this.repository.withTenant(
-      context,
-      async (store) => {
-        await store.lockLifecycleConfiguration();
-        await store.assertActiveAdmin();
-        if (target) await store.lockObject(target.objectId);
-        const structures = await store.listObjectStructures();
-        const { blueprint, issues } = validateBlueprint(
-          submitted,
-          structures,
-          target,
-        );
-        const blocking = issues.filter((i) => i.blocking);
-        if (blocking.length) {
-          const conflict = blocking.some((i) => i.code === 'NAME_IN_USE');
-          throw new ApiException(
-            conflict ? 'CONFIG_VERSION_CONFLICT' : 'VALIDATION_FAILED',
-            conflict ? 409 : 400,
-            {
-              fieldErrors: Object.fromEntries(
-                blocking.map((i) => [
-                  [i.tableId, i.fieldId, i.path].filter(Boolean).join('.'),
-                  [i.message],
-                ]),
-              ),
-            },
-          );
-        }
-        const objects: { id: string; code: string; version: number }[] = [];
-        for (const [index, table] of blueprint.tables.entries()) {
-          const keys = executionKeys(submitted.tables[index]);
-          const canonical = executionKeys(table);
-          if (
-            keys.length !== canonical.length ||
-            keys.some((k, i) => k !== canonical[i])
-          )
-            throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-          const draft = target
-            ? await requireDraft(store, target.objectId)
-            : await this.createInStore(
-                store,
-                context,
-                {
-                  name: table.name,
-                  code: table.code,
-                  icon: table.icon,
-                  titleFieldKey: table.fields.find(
-                    (f) => f.id === table.titleFieldId,
-                  )!.fieldKey,
-                  initialFields: table.fields
-                    .filter((f) => f.type !== 'MEMBER')
-                    .map(projectField),
-                },
-                meta,
-                structures,
-              );
-          assertNotArchived(draft);
-          const updated = await this.applyTablePlan(
-            store,
-            context,
-            draft,
-            table,
-            !!target,
-            meta,
-          );
-          const { id, code, version } = updated.object;
-          objects.push({ id, code, version });
-          if (!target)
-            structures.push({ ...updated.object, fields: updated.fields });
-        }
-        return { objects };
-      },
-      { timeout: 30_000 },
-    );
-  }
-
-  private async applyTablePlan(
-    store: ObjectsStore,
-    context: TenantContext,
-    draft: ObjectDraft,
-    table: TablePlan,
-    appendOnly: boolean,
-    meta: RequestMeta,
-  ) {
-    const preexisting = new Set(
-      appendOnly
-        ? draftConfigurationBlockers(draft).map((i) => JSON.stringify(i))
-        : [],
-    );
-    const additions = appendOnly
-      ? table.fields
-      : table.fields.filter((f) => f.type === 'MEMBER');
-    if (additions.length) {
-      const previousCount = draft.fields.length;
-      for (const field of additions)
-        appendField(draft, projectField(field), this.idGenerator());
-      const added = draft.fields.slice(previousCount);
-      const updated = await store.appendHiddenFields(
-        draft.object.id,
-        draft.object.version,
-        added,
-      );
-      if (!updated) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-      draft = updated;
-      for (const field of added)
-        await store.appendAudit(
-          auditEvent(context, meta, 'object.field_created', draft.object.id, {
-            fieldKey: field.fieldKey,
-            version: draft.object.version,
-          }),
-        );
-    }
-    if (!appendOnly) {
-      let previous = structuredClone(draft);
-      const save = async (action: string) => {
-        draft = await this.saveChange(
-          store,
-          context,
-          draft,
-          action,
-          meta,
-          previous,
-        );
-        previous = structuredClone(draft);
-      };
-
-      if (table.description !== undefined) {
-        updateObject(draft, { description: table.description });
-        await save('object.updated');
-      }
-      if (additions.length) {
-        orderFields(draft, {
-          fieldIds: table.fields.map(
-            (f) => draft.fields.find((d) => d.fieldKey === f.fieldKey)!.id,
-          ),
-        });
-        await save('object.field_order_updated');
-      }
-      setDefaultView(draft, {
-        name: '全部记录',
-        columnFieldKeys: table.view.columnIds.map(
-          (id) => table.fields.find((f) => f.id === id)!.fieldKey,
-        ),
-        sort: { field: 'updatedAt', direction: 'desc' },
-      });
-      await save('object.default_view_updated');
-      setEmployeeAccess(draft, draft.employeeAccess!);
-      await save('object.permissions_updated');
-    }
-    const blocking = draftConfigurationBlockers(draft).filter(
-      (i) => !preexisting.has(JSON.stringify(i)),
-    );
-    if (blocking.length)
-      throw validationError(
-        'fields',
-        blocking.map((i) => i.message).join('；'),
-      );
-    return draft;
-  }
-
   list(context: TenantContext): Promise<ObjectDraft[]> {
     assertTenantAdmin(context);
     return this.repository.withTenant(context, (store) => store.listObjects());
@@ -569,7 +162,7 @@ export class ObjectsService {
     });
   }
 
-  private async createInStore(
+  async createInStore(
     store: ObjectsStore,
     context: TenantContext,
     input: ObjectCreateInput,
@@ -1102,7 +695,7 @@ export class ObjectsService {
     });
   }
 
-  private async commitPublication(
+  async commitPublication(
     store: ObjectsStore,
     context: TenantContext,
     draft: ObjectDraft,
@@ -1160,7 +753,7 @@ export class ObjectsService {
       return this.saveChange(store, context, draft, action, meta);
     });
   }
-  private async saveChange(
+  async saveChange(
     store: ObjectsStore,
     context: TenantContext,
     draft: ObjectDraft,
@@ -1181,7 +774,7 @@ export class ObjectsService {
   }
 }
 
-function assertTenantAdmin(context: TenantContext): void {
+export function assertTenantAdmin(context: TenantContext): void {
   if (context.role !== 'TENANT_ADMIN') {
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   }
@@ -1208,7 +801,7 @@ async function loadActionTargets(
   draft.actionTargets = await store.findActionTargetObjects(codes);
 }
 
-async function requireDraft(
+export async function requireDraft(
   store: ObjectsStore,
   objectId: string,
 ): Promise<ObjectDraft> {
@@ -1217,7 +810,10 @@ async function requireDraft(
   return structuredClone(draft);
 }
 
-function assertVersion(draft: ObjectDraft, expectedVersion: number): void {
+export function assertVersion(
+  draft: ObjectDraft,
+  expectedVersion: number,
+): void {
   if (draft.object.version !== expectedVersion) {
     throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
   }
@@ -1225,7 +821,7 @@ function assertVersion(draft: ObjectDraft, expectedVersion: number): void {
 
 function normalizeObjectCode(value: string): string {
   const code = value.trim().toLowerCase();
-  if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code)) {
+  if (!NEW_OBJECT_CODE_PATTERN.test(code)) {
     throw validationError('code', '仅支持小写字母、数字和单个连字符。');
   }
   return code;
@@ -1233,7 +829,7 @@ function normalizeObjectCode(value: string): string {
 
 function normalizeFieldKey(value: string): string {
   const fieldKey = value.trim().toLowerCase();
-  if (!/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(fieldKey)) {
+  if (!FIELD_KEY_PATTERN.test(fieldKey)) {
     throw validationError('fieldKey', '仅支持小写字母、数字和下划线。');
   }
   return fieldKey;
@@ -1264,13 +860,13 @@ function normalizeSearchFieldKeys(
   return requested;
 }
 
-function validationError(field: string, message: string): ApiException {
+export function validationError(field: string, message: string): ApiException {
   return new ApiException('VALIDATION_FAILED', 400, {
     fieldErrors: { [field]: [message] },
   });
 }
 
-function toJsonRecord(value: object): Record<string, JsonValue> {
+export function toJsonRecord(value: object): Record<string, JsonValue> {
   // DTO class instances contain omitted properties with undefined values.
   // Match the JSON shape validated and stored by the existing field endpoints.
   return JSON.parse(JSON.stringify(value)) as Record<string, JsonValue>;
@@ -1292,7 +888,7 @@ function assignFieldMutation(
   if (field.type !== previousType) dropIncompatibleSettings(field);
 }
 
-function auditEvent(
+export function auditEvent(
   context: TenantContext,
   meta: RequestMeta,
   action: string,
@@ -1320,7 +916,7 @@ function hasErrorCode(error: unknown, code: string): boolean {
   );
 }
 
-function assertNotArchived(draft: ObjectDraft): void {
+export function assertNotArchived(draft: ObjectDraft): void {
   if (draft.object.status === 'ARCHIVED')
     throw new ApiException('OBJECT_ARCHIVED', 409);
 }
@@ -1333,7 +929,7 @@ function assertNoLifecycleBlockers(blockers: LifecycleBlocker[]): void {
     });
 }
 
-function updateObject(
+export function updateObject(
   draft: ObjectDraft,
   input: Omit<ObjectMutationInput, 'expectedVersion'>,
 ) {
@@ -1352,7 +948,7 @@ function updateObject(
     draft.object.titleFieldKey = input.titleFieldKey;
 }
 
-function appendField(
+export function appendField(
   draft: ObjectDraft,
   input: Omit<FieldCreateInput, 'expectedVersion'>,
   id: string,
@@ -1380,7 +976,7 @@ function appendField(
   });
 }
 
-function orderFields(draft: ObjectDraft, input: { fieldIds: string[] }) {
+export function orderFields(draft: ObjectDraft, input: { fieldIds: string[] }) {
   const currentIds = draft.fields.map((field) => field.id);
   if (
     new Set(input.fieldIds).size !== currentIds.length ||
@@ -1399,7 +995,7 @@ function orderFields(draft: ObjectDraft, input: { fieldIds: string[] }) {
   );
 }
 
-function setDefaultView(
+export function setDefaultView(
   draft: ObjectDraft,
   input: Omit<DefaultViewInput, 'expectedVersion'>,
 ) {
@@ -1435,7 +1031,7 @@ function setDefaultView(
   };
 }
 
-function setEmployeeAccess(
+export function setEmployeeAccess(
   draft: ObjectDraft,
   input: Omit<EmployeePermissionInput, 'expectedVersion'>,
 ) {
@@ -1482,35 +1078,4 @@ function assertObjectNameAvailable(
     )
   )
     throw validationError('name', '业务表名称已被使用。');
-}
-
-function projectField(f: FieldPlan): Omit<FieldCreateInput, 'expectedVersion'> {
-  return {
-    fieldKey: f.fieldKey,
-    label: f.label,
-    type: f.type,
-    required: f.required,
-    defaultValue: null,
-    isSystem: false,
-    validation: toJsonRecord(f.validation ?? {}),
-    config: toJsonRecord(blueprintFieldConfig(f)),
-  };
-}
-
-function executionKeys(table: TablePlan) {
-  return [
-    table.code,
-    ...table.fields.flatMap((f) => [
-      f.fieldKey,
-      ...(f.options ?? []).map((o) => o.key),
-    ]),
-  ];
-}
-
-function draftConfigurationBlockers(draft: ObjectDraft) {
-  return analyzeObjectConfiguration({
-    ...draft,
-    previousFields: draft.activeSchema?.fields,
-    historicalFields: draft.previousPublishedFields,
-  }).blocking.filter((i) => i.code !== 'REQUIRED_FIELD_HIDDEN');
 }

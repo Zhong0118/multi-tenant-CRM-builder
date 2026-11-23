@@ -7385,12 +7385,128 @@
                   "maxLength": 1000,
                   "type": "string"
                 },
+                "manualField": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "fieldKey": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "label": {
+                      "maxLength": 100,
+                      "type": "string"
+                    },
+                    "options": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "key": {
+                            "maxLength": 64,
+                            "type": "string"
+                          },
+                          "label": {
+                            "maxLength": 100,
+                            "type": "string"
+                          },
+                          "reason": {
+                            "maxLength": 1000,
+                            "type": "string"
+                          }
+                        },
+                        "required": ["id", "key", "label", "reason"],
+                        "type": "object"
+                      },
+                      "maxItems": 100,
+                      "type": "array"
+                    },
+                    "reason": {
+                      "maxLength": 1000,
+                      "type": "string"
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "enum": [
+                        "TEXT",
+                        "TEXTAREA",
+                        "PHONE",
+                        "EMAIL",
+                        "NUMBER",
+                        "MONEY",
+                        "DATE",
+                        "DATETIME",
+                        "SINGLE_SELECT",
+                        "MULTI_SELECT",
+                        "MEMBER",
+                        "BOOLEAN"
+                      ],
+                      "type": "string"
+                    },
+                    "validation": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "country": {
+                          "maxLength": 16,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "max": {
+                          "type": "number"
+                        },
+                        "maxLength": {
+                          "maximum": 10000,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "min": {
+                          "type": "number"
+                        },
+                        "minLength": {
+                          "maximum": 10000,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "scale": {
+                          "maximum": 12,
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "fieldKey",
+                    "label",
+                    "type",
+                    "required",
+                    "reason"
+                  ],
+                  "type": "object"
+                },
                 "reason": {
                   "maxLength": 1000,
                   "type": "string"
                 },
                 "request": {
                   "maxLength": 1000,
+                  "type": "string"
+                },
+                "tableId": {
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
                   "type": "string"
                 }
               },
@@ -7418,6 +7534,11 @@
                     "properties": {
                       "reason": {
                         "maxLength": 1000,
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "enum": ["CLOSED", "CREATE_OWN", "READ_ALL_UPDATE_OWN"],
+                        "nullable": true,
                         "type": "string"
                       },
                       "request": {
@@ -7609,7 +7730,6 @@
               ],
               "type": "object"
             },
-            "maxItems": 12,
             "type": "array"
           },
           "version": {
@@ -11855,6 +11975,13 @@
                 "properties": {
                   "blueprint": {
                     "$ref": "#/components/schemas/TableBlueprint"
+                  },
+                  "employeePresets": {
+                    "additionalProperties": {
+                      "enum": ["CLOSED", "CREATE_OWN", "READ_ALL_UPDATE_OWN"],
+                      "type": "string"
+                    },
+                    "type": "object"
                   },
                   "target": {
                     "additionalProperties": false,

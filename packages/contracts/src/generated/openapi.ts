@@ -4713,14 +4713,56 @@ export interface components {
       assumptions: string[];
       omitted: {
         alternative?: string;
+        manualField?: {
+          fieldKey: string;
+          /** Format: uuid */
+          id: string;
+          label: string;
+          options?: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            label: string;
+            reason: string;
+          }[];
+          reason: string;
+          required: boolean;
+          /** @enum {string} */
+          type:
+            | "TEXT"
+            | "TEXTAREA"
+            | "PHONE"
+            | "EMAIL"
+            | "NUMBER"
+            | "MONEY"
+            | "DATE"
+            | "DATETIME"
+            | "SINGLE_SELECT"
+            | "MULTI_SELECT"
+            | "MEMBER"
+            | "BOOLEAN";
+          validation?: {
+            country?: string;
+            max?: number;
+            maxLength?: number;
+            min?: number;
+            minLength?: number;
+            scale?: number;
+          };
+        };
         reason: string;
         request: string;
+        /** Format: uuid */
+        tableId?: string;
       }[];
       tables: {
         code: string;
         description?: string;
         employeeIntent: {
           reason: string;
+          /** @enum {string|null} */
+          recommendation?:
+            "CLOSED" | "CREATE_OWN" | "READ_ALL_UPDATE_OWN" | null;
           request: string;
         }[];
         fields: {
@@ -6658,6 +6700,9 @@ export interface operations {
       content: {
         "application/json": {
           blueprint: components["schemas"]["TableBlueprint"];
+          employeePresets?: {
+            [key: string]: "CLOSED" | "CREATE_OWN" | "READ_ALL_UPDATE_OWN";
+          };
           target?: {
             expectedVersion: number;
             /** Format: uuid */

@@ -36,6 +36,13 @@ function schema(value: z.ZodType): ApiSchema {
     };
   return definition as ApiSchema;
 }
+function onDisconnect(req: Request) {
+  const controller = new AbortController();
+  const res = req.res;
+  if (!res || res.destroyed) controller.abort();
+  else res.once('close', () => controller.abort());
+  return controller.signal;
+}
 export const tableBlueprintDefinition = schema(blueprintSchema);
 const issue = z.strictObject({
   tableId: z.string().optional(),
@@ -75,8 +82,12 @@ export class TableBuilderController {
   @HttpCode(200)
   @ApiBody({ schema: schema(builderBodies.preview) })
   @ApiOkResponse({ schema: resultSchema })
-  preview(@CurrentTenant() c: TenantContext, @Body() body: unknown) {
-    return this.builder.preview(c, body);
+  preview(
+    @CurrentTenant() c: TenantContext,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.builder.preview(c, body, onDisconnect(req));
   }
   @Post('validate')
   @HttpCode(200)
@@ -89,8 +100,12 @@ export class TableBuilderController {
   @HttpCode(200)
   @ApiBody({ schema: schema(builderBodies.refine) })
   @ApiOkResponse({ schema: resultSchema })
-  refine(@CurrentTenant() c: TenantContext, @Body() body: unknown) {
-    return this.builder.refine(c, body);
+  refine(
+    @CurrentTenant() c: TenantContext,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.builder.refine(c, body, onDisconnect(req));
   }
   @Post('confirm')
   @HttpCode(200)

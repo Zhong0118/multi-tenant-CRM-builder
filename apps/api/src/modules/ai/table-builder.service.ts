@@ -1,9 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { TableBuilderResult, TableBuilderTarget } from '@crm/contracts';
+import { TABLE_EMPLOYEE_PRESETS } from '@crm/contracts';
 import { z } from 'zod';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import { ObjectsService } from '../objects/objects.service';
+import { ObjectDraftBatchService } from '../objects/object-draft-batch.service';
 import { AI_PROVIDER, type AiProvider } from './ai-provider';
 import {
   blueprintSchema,
@@ -42,7 +43,13 @@ export const builderBodies = {
     tableId: z.uuid(),
     description,
   }),
-  confirm: z.strictObject({ blueprint: blueprintSchema, target }),
+  confirm: z.strictObject({
+    blueprint: blueprintSchema,
+    target,
+    employeePresets: z
+      .record(z.uuid(), z.enum(TABLE_EMPLOYEE_PRESETS))
+      .optional(),
+  }),
 };
 function parse<S extends z.ZodType>(schema: S, raw: unknown): z.output<S> {
   const r = schema.safeParse(raw);
@@ -71,22 +78,29 @@ function checkTarget(data: BlueprintMetadata[], target?: TableBuilderTarget) {
 @Injectable()
 export class TableBuilderService {
   constructor(
-    private readonly objects: ObjectsService,
+    private readonly objects: ObjectDraftBatchService,
     @Inject(AI_PROVIDER) private readonly provider: AiProvider,
   ) {}
-  async preview(c: TenantContext, raw: unknown): Promise<TableBuilderResult> {
+  async preview(
+    c: TenantContext,
+    raw: unknown,
+    clientSignal?: AbortSignal,
+  ): Promise<TableBuilderResult> {
     admin(c);
     const dto = parse(builderBodies.preview, raw);
     const answers = validateAnswers(dto.answers);
     const existing = await this.objects.blueprintMetadata(c);
     checkTarget(existing, dto.target);
-    const result = await this.generate({
-      description: dto.description,
-      existing,
-      target: dto.target,
-      mode: dto.target ? 'append' : 'create',
-      answers,
-    });
+    const result = await this.generate(
+      {
+        description: dto.description,
+        existing,
+        target: dto.target,
+        mode: dto.target ? 'append' : 'create',
+        answers,
+      },
+      clientSignal,
+    );
     if (result.kind === 'question') return result;
     const checked = validateEditableBlueprint(
       result.blueprint,
@@ -111,7 +125,11 @@ export class TableBuilderService {
       ),
     };
   }
-  async refine(c: TenantContext, raw: unknown): Promise<TableBuilderResult> {
+  async refine(
+    c: TenantContext,
+    raw: unknown,
+    clientSignal?: AbortSignal,
+  ): Promise<TableBuilderResult> {
     admin(c);
     const dto = parse(builderBodies.refine, raw);
     const existing = await this.objects.blueprintMetadata(c);
@@ -125,13 +143,19 @@ export class TableBuilderService {
       throw new ApiException('VALIDATION_FAILED', 400, {
         message: '请选择当前方案中的业务表。',
       });
-    const result = await this.generate({
-      mode: 'refine',
-      description: dto.description,
-      existing,
-      target: dto.target,
-      table,
-    });
+    const result = await this.generate(
+      {
+        mode: 'refine',
+        description: dto.description,
+        existing,
+        target: dto.target,
+        table,
+        omitted: blueprint.omitted.filter(
+          (o) => !o.tableId || o.tableId === table.id,
+        ),
+      },
+      clientSignal,
+    );
     if (
       result.kind !== 'blueprint' ||
       result.blueprint.tables.length !== 1 ||
@@ -146,7 +170,10 @@ export class TableBuilderService {
     blueprint.assumptions = [
       ...new Set([...blueprint.assumptions, ...result.blueprint.assumptions]),
     ];
-    blueprint.omitted.push(...result.blueprint.omitted);
+    blueprint.omitted = [
+      ...blueprint.omitted.filter((o) => o.tableId && o.tableId !== table.id),
+      ...result.blueprint.omitted,
+    ];
     const checked = validateEditableBlueprint(
       blueprint,
       await this.objects.blueprintMetadata(c),
@@ -165,16 +192,35 @@ export class TableBuilderService {
   ) {
     admin(c);
     const dto = parse(builderBodies.confirm, raw);
+    if (
+      dto.employeePresets &&
+      (dto.target ||
+        Object.keys(dto.employeePresets).some(
+          (id) => !dto.blueprint.tables.some((table) => table.id === id),
+        ))
+    )
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        fieldErrors: {
+          employeePresets: ['只能为本次新建的业务表选择员工权限。'],
+        },
+      });
     assertBlueprintFitsRequest(dto.blueprint);
     return this.objects.confirmTableBlueprint(
       c,
       dto.blueprint,
       dto.target,
       meta,
+      dto.employeePresets,
     );
   }
-  private async generate(input: Parameters<typeof generateTablePlan>[1]) {
-    const signal = AbortSignal.timeout(60_000);
+  private async generate(
+    input: Parameters<typeof generateTablePlan>[1],
+    clientSignal?: AbortSignal,
+  ) {
+    const timeout = AbortSignal.timeout(60_000);
+    const signal = clientSignal
+      ? AbortSignal.any([clientSignal, timeout])
+      : timeout;
     try {
       const result = await generateTablePlan(this.provider, input, signal);
       if (result.kind === 'blueprint')

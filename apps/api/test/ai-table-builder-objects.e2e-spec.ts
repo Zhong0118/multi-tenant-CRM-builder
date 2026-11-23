@@ -28,18 +28,18 @@ function blueprint(names: string[]): TableBlueprint {
       version: 1,
       assumptions: [],
       omitted: [],
-      tables: names.map((name) => {
+      tables: names.map((name, i) => {
         const title = randomUUID();
         return {
           id: randomUUID(),
-          code: '',
+          code: 'batch-table-' + (i + 1),
           name,
           reason: '业务实体',
           titleFieldId: title,
           fields: [
             {
               id: title,
-              fieldKey: '',
+              fieldKey: 'business_name',
               label: '业务名称',
               type: 'TEXT',
               required: true,
@@ -47,7 +47,7 @@ function blueprint(names: string[]): TableBlueprint {
             },
             {
               id: randomUUID(),
-              fieldKey: '',
+              fieldKey: 'advisor',
               label: '技术顾问',
               type: 'MEMBER',
               required: false,
@@ -55,7 +55,13 @@ function blueprint(names: string[]): TableBlueprint {
             },
           ],
           view: { columnIds: [title], reason: '识别记录' },
-          employeeIntent: [{ request: '销售看自己', reason: '手动配置' }],
+          employeeIntent: [
+            {
+              request: '销售看自己',
+              reason: '手动配置',
+              recommendation: 'CREATE_OWN',
+            },
+          ],
         };
       }),
     },
@@ -139,6 +145,22 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
     await api('post', group + '/analysis', f.tenantBAdmin, f.tenantB)
       .send({ objectIds: [f.object.id] })
       .expect(404);
+    for (const employeePresets of [
+      { [plan.tables[0].id]: 'ADMIN' },
+      { [plan.tables[0].id]: { canRead: true } },
+      { [randomUUID()]: 'CREATE_OWN' },
+    ]) {
+      await api('post', builder + '/confirm')
+        .send({ blueprint: plan, employeePresets })
+        .expect(400);
+    }
+    await api('post', builder + '/confirm')
+      .send({
+        blueprint: plan,
+        target: { objectId: f.object.id, expectedVersion: 1 },
+        employeePresets: { [plan.tables[0].id]: 'CREATE_OWN' },
+      })
+      .expect(400);
     Object.assign(plan.tables[0], {
       employeeAccess: { canRead: true, readScope: 'ALL' },
     });
@@ -148,6 +170,36 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
         where: { tenantId: f.tenantA.id, name: '租赁合同' },
       }),
     ).toBe(0);
+  });
+
+  it('revalidates edited codes and stores the same keys used by the title and list', async () => {
+    const plan = blueprint(['设备维护']);
+    const t = plan.tables[0];
+    t.code = 'equipment-maintenance';
+    t.fields[0].fieldKey = 'service_name';
+    const preview = await api('post', builder + '/validate')
+      .send({ blueprint: plan })
+      .expect(200);
+    expect(
+      (preview.body as { issues: { blocking: boolean }[] }).issues.some(
+        (i) => i.blocking,
+      ),
+    ).toBe(false);
+    const [obj] = (
+      (await confirm(plan).expect(200)).body as { objects: Summary[] }
+    ).objects;
+    expect(obj.code).toBe(t.code);
+    const draft = (await api('get', defs + '/' + obj.id).expect(200))
+      .body as Draft & {
+      object: { titleFieldKey: string };
+      defaultView: { columnFieldKeys: string[] };
+    };
+    expect(draft.fields.map((field) => field.fieldKey)).toEqual([
+      'service_name',
+      'advisor',
+    ]);
+    expect(draft.object.titleFieldKey).toBe('service_name');
+    expect(draft.defaultView.columnFieldKeys).toEqual(['service_name']);
   });
 
   it('serializes simultaneous confirmations and rejects archived names and reserved execution codes', async () => {
@@ -170,7 +222,9 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
     const renamed = structuredClone(plan);
     renamed.tables[0].name = '另一份租约';
     await confirm(renamed).expect(409);
-    await confirm(blueprint(['租赁合同'])).expect(409);
+    const sameName = blueprint(['租赁合同']);
+    sameName.tables[0].code = 'archived-name';
+    await confirm(sameName).expect(409);
   });
 
   it('rolls back three creations, their dependent rows and the entire audit trail on a third-table write failure', async () => {
@@ -208,12 +262,64 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
         return next(tx, event);
       });
     try {
-      await confirm(plan).expect(500);
+      await api('post', builder + '/confirm')
+        .send({
+          blueprint: plan,
+          employeePresets: Object.fromEntries(
+            plan.tables.map((t) => [t.id, 'CREATE_OWN']),
+          ),
+        })
+        .expect(500);
     } finally {
       fail.mockRestore();
     }
     expect(created).toBe(3);
     expect(await counts()).toEqual(before);
+  });
+
+  it('saves selected presets by table in the draft and publishes the selected access to employees', async () => {
+    const plan = blueprint(['维修工单', '设备登记']);
+    const result = await api('post', builder + '/confirm')
+      .send({
+        blueprint: plan,
+        employeePresets: {
+          [plan.tables[0].id]: 'CREATE_OWN',
+          [plan.tables[1].id]: 'READ_ALL_UPDATE_OWN',
+        },
+      })
+      .expect(200);
+    const { objects } = result.body as { objects: Summary[] };
+    for (const [i, object] of objects.entries()) {
+      const detail = (await api('get', defs + '/' + object.id).expect(200))
+        .body as Draft & {
+        employeeAccess: object;
+      };
+      expect(detail.employeeAccess).toMatchObject({
+        canCreate: i === 0,
+        canRead: true,
+        canUpdate: true,
+        canDelete: false,
+        canImport: false,
+        canExport: false,
+        updateScope: 'OWN',
+        readScope: i === 0 ? 'OWN' : 'ALL',
+      });
+      expect(detail.fields.map((field) => field.employeeAccess)).toEqual([
+        'EDIT',
+        'EDIT',
+      ]);
+    }
+    const ready = await analyze(objects.map((o) => o.id));
+    expect(ready.blocking).toEqual([]);
+    await api('post', group + '/publications')
+      .send(expected(ready))
+      .expect(200);
+    await api('post', '/objects/' + objects[0].code + '/records', f.employee)
+      .send({ values: { [plan.tables[0].fields[0].fieldKey]: '设备维修' } })
+      .expect(201);
+    await api('post', '/objects/' + objects[1].code + '/records', f.employee)
+      .send({ values: { [plan.tables[1].fields[0].fieldKey]: '设备登记' } })
+      .expect(403);
   });
 
   it('publishes only after manual grants and group checks, then appends hidden fields without changing the active schema', async () => {
@@ -311,6 +417,7 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
       {
         ...newPlan.tables[0].fields[0],
         label: '合同到期日',
+        fieldKey: 'end_date',
         required: false,
         type: 'DATE',
       },
@@ -350,7 +457,9 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
       .set('Origin', 'http://localhost:3000')
       .send({ expectedVersion: draft.object.version, name: '新合同台账' })
       .expect(200);
-    await confirm(blueprint([obj.name])).expect(409);
+    const previousName = blueprint([obj.name]);
+    previousName.tables[0].code = 'new-lease';
+    await confirm(previousName).expect(409);
   });
   it('confirms six forty-field tables within one transaction, including MEMBER additions', async () => {
     const plan = blueprint(Array.from({ length: 6 }, (_, i) => '租赁区域' + i));
@@ -361,7 +470,7 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
         ...Array.from({ length: 39 }, (_, i) => ({
           ...member,
           id: randomUUID(),
-          fieldKey: '',
+          fieldKey: 'advisor_' + i,
           label: '顾问岗位' + i,
           reason: '管理员需要在列表中查看这项信息。'.repeat(7),
         })),
