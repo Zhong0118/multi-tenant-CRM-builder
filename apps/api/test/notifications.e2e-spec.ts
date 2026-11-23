@@ -133,6 +133,22 @@ describe('in-app notifications HTTP with real PostgreSQL and crm_app RLS', () =>
     await cleanNotifications();
     f = await helpers.provisionCriticalFixture(h);
   });
+  it('shows quota alerts to their admin recipient and opens AI settings', async () => {
+    await h.adminDatabase.$executeRaw`
+      INSERT INTO member_notifications(tenant_id,recipient_member_id,kind,event_key)
+      VALUES (${f.tenantA.id}::uuid,${f.admin.memberId}::uuid,'AI_QUOTA_80','2026-11'),
+             (${f.tenantA.id}::uuid,${f.admin.memberId}::uuid,'AI_QUOTA_100','2026-11')`;
+    const alerts = json<Inbox>(await get('', f.admin).expect(200)).items;
+    expect(alerts.map(item => item.kind).sort()).toEqual(['AI_QUOTA_100','AI_QUOTA_80']);
+    for (const item of alerts) {
+      expect(item.message).not.toContain('null');
+      expect(item.canOpen).toBe(true);
+      expect((await get('/'+item.id+'/target',f.admin).expect(200)).body.href)
+        .toBe('/workspace/'+f.tenantA.code+'/settings/ai');
+      await get('/'+item.id+'/target',f.employee).expect(404);
+    }
+    expect((await inbox()).items).toHaveLength(0);
+  });
   afterAll(async () => {
     if (h) {
       await cleanNotifications();

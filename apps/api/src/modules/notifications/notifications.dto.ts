@@ -20,6 +20,8 @@ export const NOTIFICATION_KINDS = [
   'POOL_RECLAIMED',
   'PROTECTION_REVIEW',
   'WORK_GOAL_BEHIND',
+  'AI_QUOTA_80',
+  'AI_QUOTA_100',
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 

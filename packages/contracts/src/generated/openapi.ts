@@ -4004,7 +4004,9 @@ export interface components {
         | "TASK_OVERDUE"
         | "POOL_RECLAIMED"
         | "PROTECTION_REVIEW"
-        | "WORK_GOAL_BEHIND";
+        | "WORK_GOAL_BEHIND"
+        | "AI_QUOTA_80"
+        | "AI_QUOTA_100";
       message: string;
       /** Format: date-time */
       readAt: string | null;
@@ -4295,6 +4297,8 @@ export interface components {
       /** Format: date-time */
       activatedAt?: string;
       activeAdminCount: number;
+      aiPercent?: number | null;
+      aiPlanName?: string | null;
       code: string;
       configuration?: components["schemas"]["TenantConfigurationSummaryDto"];
       /** Format: date-time */
@@ -6893,6 +6897,7 @@ export interface operations {
   TenantsController_list: {
     parameters: {
       query?: {
+        aiOrder?: "asc" | "desc";
         limit?: number;
         page?: number;
         search?: string;
@@ -7506,6 +7511,8 @@ export interface operations {
         from?: string;
         limit?: number;
         memberId?: string;
+        operationType?:
+          "UPDATE_RECORD" | "CREATE_FOLLOW_UP" | "ADD_ACTIVITY_NOTE";
         source?: "proposal" | "draft" | "blueprint" | "denial" | "provider";
         status?: string;
         to?: string;

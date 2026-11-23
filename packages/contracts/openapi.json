@@ -4622,7 +4622,9 @@
               "TASK_OVERDUE",
               "POOL_RECLAIMED",
               "PROTECTION_REVIEW",
-              "WORK_GOAL_BEHIND"
+              "WORK_GOAL_BEHIND",
+              "AI_QUOTA_80",
+              "AI_QUOTA_100"
             ],
             "type": "string"
           },
@@ -5522,6 +5524,14 @@
           "activeAdminCount": {
             "minimum": 0,
             "type": "number"
+          },
+          "aiPercent": {
+            "nullable": true,
+            "type": "number"
+          },
+          "aiPlanName": {
+            "nullable": true,
+            "type": "string"
           },
           "code": {
             "type": "string"
@@ -12271,6 +12281,15 @@
         "parameters": [
           {
             "in": "query",
+            "name": "aiOrder",
+            "required": false,
+            "schema": {
+              "enum": ["asc", "desc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "status",
             "required": false,
             "schema": {
@@ -13630,6 +13649,19 @@
             "schema": {
               "format": "date",
               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "operationType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "UPDATE_RECORD",
+                "CREATE_FOLLOW_UP",
+                "ADD_ACTIVITY_NOTE"
+              ],
               "type": "string"
             }
           },
