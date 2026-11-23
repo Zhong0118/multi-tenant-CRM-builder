@@ -413,6 +413,9 @@ describe("WorkspaceHomeView", () => {
     expect(
       screen.getAllByRole("link", { name: "创建第一张业务表" })[0],
     ).toHaveAttribute("href", "/workspace/northwind/settings/objects/new");
+    expect(screen.getByRole("link", { name: "用 AI 描述生成" })).toHaveAttribute(
+      "href", "/workspace/northwind/settings/objects/ai-builder",
+    );
     expect(
       screen.queryByRole("link", { name: "配置工作台" }),
     ).not.toBeInTheDocument();

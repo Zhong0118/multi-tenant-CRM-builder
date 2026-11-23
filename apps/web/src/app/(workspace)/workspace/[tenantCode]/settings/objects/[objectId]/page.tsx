@@ -40,7 +40,7 @@ export default async function ObjectDesignerPage({
       <ObjectDesigner
         tenantCode={tenantCode}
         initialDraft={result.data as ObjectDraft}
-        initialSection={section === "automations" ? "automations" : undefined}
+        initialSection={section === "automations" || section === "permissions" ? section : undefined}
       />
     </Page>
   );

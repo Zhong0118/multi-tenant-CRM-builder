@@ -147,7 +147,7 @@ const SECTION_GROUPS = [...new Set(SECTIONS.map((item) => item.group))];
 export interface ObjectDesignerProps {
   tenantCode: string;
   initialDraft: ObjectDraft;
-  initialSection?: "automations";
+  initialSection?: "automations" | "permissions";
   api?: ObjectApi;
 }
 
@@ -774,6 +774,11 @@ export function ObjectDesigner({
                       </Button>
                       中单独设置。
                     </p>
+                    {!archived && (
+                      <Button href={`/workspace/${tenantCode}/settings/objects/ai-builder?objectId=${objectId}`}>
+                        用 AI 补充字段
+                      </Button>
+                    )}
                     <Button
                       icon={<PlusOutlined aria-hidden />}
                       disabled={archived}

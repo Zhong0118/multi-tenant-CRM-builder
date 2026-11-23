@@ -197,7 +197,15 @@ export function ObjectList({
     );
   }
 
-  const newButton = (
+  const builderHref = `/workspace/${tenantCode}/settings/objects/ai-builder`;
+  const newButton = rows.length > 0 ? (
+    <Dropdown trigger={["click"]} menu={{ items: [
+      { key: "manual", label: <Link href={`/workspace/${tenantCode}/settings/objects/new`}>手动创建业务表</Link> },
+      { key: "ai", label: <Link href={builderHref}>用 AI 描述生成</Link> },
+    ] }}>
+      <Button type="primary" icon={<PlusOutlined aria-hidden />}>新建业务表</Button>
+    </Dropdown>
+  ) : (
     <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
       <Button type="primary" icon={<PlusOutlined aria-hidden />}>
         新建业务表
@@ -243,7 +251,8 @@ export function ObjectList({
         >
           <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
             <Button type="primary">创建第一张业务表</Button>
-          </Link>
+          </Link>{" "}
+          <Button href={builderHref}>用 AI 描述生成</Button>
         </Empty>
       ) : (
         <>
