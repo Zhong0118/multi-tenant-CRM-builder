@@ -94,4 +94,9 @@ AI_GOVERNANCE_LIVE=1 node -r ts-node/register/transpile-only test/evals/governan
 - 平台 AI 套餐：[1440](plans-1440.png)、[1280](plans-1280.png)。公司详情 AI 分区：[1440](company-1440.png)、[1280](company-1280.png)。
 - 公司 AI 设置：[1440](workspace-1440.png)、[390](workspace-390.png)。边界状态：[零用量公司](empty-usage.png)、[员工额度耗尽](employee-quota-exhausted.png)。
 
-操作详情当前可以显示单选选项的内部值，例如 proposal → negotiation。可后续取字段定义显示中文标签。
+## 第三轮页面复测
+
+- 在非空的[平台公司详情](company-1440.png)读取 21.7 万 token。六个月图的纵轴使用 5.0 万、10.0 万等带 token 单位的刻度，功能分布里的小数额显示为 20 token、40 token。在[公司设置](workspace-1440.png)，每日趋势只有一天数据，显示 21.7 万 token，成员用量的百分比保留一位小数。
+- 刘洋打开赵晨的已确认记录，看到「商机阶段 方案报价 → 商务谈判」。截图保留原话、确认人及对应记录入口。[操作详情](operation-select-label.png)
+- 将隔离演示公司的额度调低后，赵晨的[助手](employee-quota-exhausted.png)显示「本月 AI 额度已用完，12月1日恢复。如需增加，请联系管理员」。输入框和发送按钮已禁用，快捷问题隐藏。验收后恢复了默认套餐并删除本次创建的临时测试套餐。
+- 1440 宽的公司设置页中，「套餐包含的功能」与「额度分配」两个标题实测顶边相同，字号均为 15px。额度说明和在职人数为 13px。390 宽的排列见[手机截图](workspace-390.png)。
