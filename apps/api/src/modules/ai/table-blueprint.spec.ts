@@ -78,7 +78,12 @@ it('flags an invalid employee field draft according to the manual DTO', () => {
     ]),
   );
 });
-it('compares normalized table names using Unicode case folding',()=>{
- const plan=sample();plan.tables[0].name='ＳＴＲＡＳＳＥ';
- expect(validateBlueprint(plan,[{id:'old',code:'road',name:'Straße',fields:[]}]).issues.some(i=>i.code==='NAME_IN_USE')).toBe(true);
+it('compares normalized table names using Unicode case folding', () => {
+  const plan = sample();
+  plan.tables[0].name = 'ＳＴＲＡＳＳＥ';
+  expect(
+    validateBlueprint(plan, [
+      { id: 'old', code: 'road', name: 'Straße', fields: [] },
+    ]).issues.some((i) => i.code === 'NAME_IN_USE'),
+  ).toBe(true);
 });

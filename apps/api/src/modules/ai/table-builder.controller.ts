@@ -26,9 +26,10 @@ type ApiSchema = NonNullable<
   NonNullable<OpenAPIObject['components']>['schemas']
 >[string];
 function schema(value: z.ZodType): ApiSchema {
-  const { $schema: _version, ...definition } = z.toJSONSchema(value, {
+  const definition = z.toJSONSchema(value, {
     target: 'openapi-3.0',
   });
+  delete definition.$schema;
   if (definition.properties?.blueprint)
     definition.properties.blueprint = {
       $ref: '#/components/schemas/TableBlueprint',

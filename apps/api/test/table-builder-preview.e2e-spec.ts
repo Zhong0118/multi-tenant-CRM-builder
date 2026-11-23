@@ -1,4 +1,5 @@
 import request from 'supertest';
+import type { TableBuilderResult } from '@crm/contracts';
 import {
   createCriticalHarness,
   provisionCriticalFixture,
@@ -38,13 +39,15 @@ describe('table builder HTTP boundary', () => {
       description:
         '我们做工程设备租赁，要管客户、租赁合同、设备台账和回款，销售只能看自己的客户。',
     }).expect(200);
-    expect(preview.body.kind).toBe('blueprint');
-    expect(preview.body.blueprint.tables).toHaveLength(4);
-    expect(
-      preview.body.issues.filter((i: { blocking: boolean }) => i.blocking),
-    ).toEqual([]);
-    const plan = preview.body.blueprint;
-    plan.tables[0].employeeAccess = { canCreate: true, readScope: 'OWN' };
+    const body = preview.body as TableBuilderResult;
+    expect(body.kind).toBe('blueprint');
+    if (body.kind !== 'blueprint') throw Error('Expected preview');
+    expect(body.blueprint.tables).toHaveLength(4);
+    expect(body.issues.filter((i) => i.blocking)).toEqual([]);
+    const plan = body.blueprint;
+    Object.assign(plan.tables[0], {
+      employeeAccess: { canCreate: true, readScope: 'OWN' },
+    });
     await post('confirm', { blueprint: plan }).expect(400);
     expect(
       await h.adminDatabase.objectDefinition.count({
