@@ -15,7 +15,7 @@ import {
 } from '../../../src/modules/ai/table-builder.service';
 import { validateBlueprint } from '../../../src/modules/ai/table-blueprint';
 import { tableModelSchema } from '../../../src/modules/ai/table-model';
-import type { ObjectsService } from '../../../src/modules/objects/objects.service';
+import type { ObjectDraftBatchService } from '../../../src/modules/objects/object-draft-batch.service';
 import { runDataset } from '../run-dataset';
 import {
   measure,
@@ -37,6 +37,7 @@ const admin: TenantContext = {
 function newTrace() {
   return {
     called: false,
+    generationMs: 0,
     providerFault: false,
     raw: null as unknown,
     rejection: null as null | {
@@ -63,6 +64,7 @@ export async function evaluate(generate: Generate, samples: Sample[]) {
   let trace = newTrace();
   const captured = adapter(async (input, signal) => {
     trace.called = true;
+    const started = performance.now();
     try {
       const raw = await generate(input, signal);
       const checked = tableModelSchema.safeParse(raw);
@@ -76,6 +78,8 @@ export async function evaluate(generate: Generate, samples: Sample[]) {
     } catch (error) {
       trace.providerFault = true;
       throw error;
+    } finally {
+      trace.generationMs += Math.round(performance.now() - started);
     }
   });
   const rows = await runDataset(
@@ -160,7 +164,7 @@ export async function forgedProbes() {
         writes++;
         return Promise.resolve({ objects: [] });
       },
-    } as unknown as ObjectsService,
+    } as unknown as ObjectDraftBatchService,
     adapter(() => Promise.reject(new Error('Unexpected provider call'))),
   );
   const id = '00000000-0000-4000-8000-000000000001',
@@ -340,6 +344,33 @@ function section(dataset: Dataset, rows: Row[]) {
         ' |',
     );
   }
+  lines.push(
+    '',
+    '模型调用耗时按实际返回的表数分组。0 表表示追问或空方案，未取得输出的请求单列。分位数使用最近秩。',
+    '',
+    '| 返回表数 | 样本数 | p50（秒） | p95（秒） |',
+    '| --- | ---: | ---: | ---: |',
+  );
+  const groups = new Map<string, number[]>();
+  for (const row of rows) {
+    const raw = row.audit.raw as { tables?: unknown[] } | null;
+    const key = Array.isArray(raw?.tables)
+      ? String(raw.tables.length)
+      : '无有效输出';
+    const times = groups.get(key) ?? [];
+    times.push(row.audit.generationMs);
+    groups.set(key, times);
+  }
+  for (const [key, times] of [...groups].sort(([a], [b]) =>
+    a.localeCompare(b, 'en', { numeric: true }),
+  )) {
+    times.sort((a, b) => a - b);
+    const seconds = (q: number) =>
+      (times[Math.ceil(times.length * q) - 1] / 1000).toFixed(1);
+    lines.push(
+      `| ${key} | ${times.length} | ${seconds(0.5)} | ${seconds(0.95)} |`,
+    );
+  }
   return lines.join('\n');
 }
 async function main() {
@@ -391,6 +422,7 @@ async function main() {
       traces.push({
         dataset: name,
         sampleId: row.sample.id,
+        generationMs: row.audit.generationMs,
         raw: row.audit.raw,
         rejection: row.audit.rejection,
         preview: row.draft,

@@ -333,7 +333,12 @@
       "排班"
     ],
     "answers": [],
-    "mustCover": [],
+    "mustCover": [
+      {
+        "entity": "排班",
+        "fields": []
+      }
+    ],
     "mustOmit": [],
     "permissionCeiling": "manual-default",
     "expectConflict": true
@@ -375,7 +380,36 @@
     "description": "设备租赁系统单独建表：客户、设备、租赁合同、回款、仓库、运输、报损。七个实体都请交代。",
     "existingObjects": [],
     "answers": [],
-    "mustCover": [],
+    "mustCover": [
+      {
+        "entity": "客户",
+        "fields": []
+      },
+      {
+        "entity": "设备",
+        "fields": []
+      },
+      {
+        "entity": "租赁合同",
+        "fields": []
+      },
+      {
+        "entity": "回款",
+        "fields": []
+      },
+      {
+        "entity": "仓库",
+        "fields": []
+      },
+      {
+        "entity": "运输",
+        "fields": []
+      },
+      {
+        "entity": "报损",
+        "fields": []
+      }
+    ],
     "mustOmit": [],
     "permissionCeiling": "manual-default",
     "overLimit": true
