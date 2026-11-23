@@ -708,6 +708,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/ai/table-builder/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["TableBuilderController_confirm"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/table-builder/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["TableBuilderController_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/table-builder/refine": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["TableBuilderController_refine"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/table-builder/validate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["TableBuilderController_validate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/ai/turns": {
     parameters: {
       query?: never;
@@ -1572,6 +1636,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/draft-group/analysis": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_analyzeDraftGroup"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/draft-group/publications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_publishDraftGroup"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/object-definitions/order": {
     parameters: {
       query?: never;
@@ -2285,6 +2381,19 @@ export interface components {
       targetSummary: string;
       title: string;
       validationWarnings: string[];
+    };
+    AnalyzedDraftObjectDto: {
+      analysis: components["schemas"]["PublicationAnalysisResponseDto"];
+      code: string;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      nextPublicationNumber: number;
+      poolConfigVersion: number;
+      version: number;
+    };
+    AnalyzeDraftGroupDto: {
+      objectIds: string[];
     };
     ApiErrorResponseDto: {
       code: string;
@@ -3303,6 +3412,19 @@ export interface components {
       /** @enum {boolean} */
       accepted: true;
     };
+    DraftGroupAnalysisDto: {
+      blocking: components["schemas"]["DraftGroupBlockingIssueDto"][];
+      objects: components["schemas"]["AnalyzedDraftObjectDto"][];
+    };
+    DraftGroupBlockingIssueDto: {
+      actionKey?: string;
+      code: string;
+      fieldKey?: string;
+      message: string;
+      /** Format: uuid */
+      objectId: string;
+      transitionKey?: string;
+    };
     DraftSelectionDto: {
       editedValue:
         | string
@@ -4057,6 +4179,9 @@ export interface components {
     PublishDashboardDto: {
       expectedVersion: number;
     };
+    PublishDraftGroupDto: {
+      objects: components["schemas"]["TemplateInitializationExpectedObjectDto"][];
+    };
     PublishedEmployeeAccessResponseDto: {
       canCreate: boolean;
       /** @enum {boolean} */
@@ -4583,6 +4708,113 @@ export interface components {
       lastUsedAt?: string;
       /** Format: date-time */
       revokedAt?: string;
+    };
+    TableBlueprint: {
+      assumptions: string[];
+      omitted: {
+        alternative?: string;
+        manualField?: {
+          fieldKey: string;
+          /** Format: uuid */
+          id: string;
+          label: string;
+          options?: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            label: string;
+            reason: string;
+          }[];
+          reason: string;
+          required: boolean;
+          /** @enum {string} */
+          type:
+            | "TEXT"
+            | "TEXTAREA"
+            | "PHONE"
+            | "EMAIL"
+            | "NUMBER"
+            | "MONEY"
+            | "DATE"
+            | "DATETIME"
+            | "SINGLE_SELECT"
+            | "MULTI_SELECT"
+            | "MEMBER"
+            | "BOOLEAN";
+          validation?: {
+            country?: string;
+            max?: number;
+            maxLength?: number;
+            min?: number;
+            minLength?: number;
+            scale?: number;
+          };
+        };
+        reason: string;
+        request: string;
+        /** Format: uuid */
+        tableId?: string;
+      }[];
+      tables: {
+        code: string;
+        description?: string;
+        employeeIntent: {
+          reason: string;
+          /** @enum {string|null} */
+          recommendation?:
+            "CLOSED" | "CREATE_OWN" | "READ_ALL_UPDATE_OWN" | null;
+          request: string;
+        }[];
+        fields: {
+          fieldKey: string;
+          /** Format: uuid */
+          id: string;
+          label: string;
+          options?: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            label: string;
+            reason: string;
+          }[];
+          reason: string;
+          required: boolean;
+          /** @enum {string} */
+          type:
+            | "TEXT"
+            | "TEXTAREA"
+            | "PHONE"
+            | "EMAIL"
+            | "NUMBER"
+            | "MONEY"
+            | "DATE"
+            | "DATETIME"
+            | "SINGLE_SELECT"
+            | "MULTI_SELECT"
+            | "MEMBER"
+            | "BOOLEAN";
+          validation?: {
+            country?: string;
+            max?: number;
+            maxLength?: number;
+            min?: number;
+            minLength?: number;
+            scale?: number;
+          };
+        }[];
+        icon?: string;
+        /** Format: uuid */
+        id: string;
+        name: string;
+        reason: string;
+        titleFieldId: string | "";
+        view: {
+          columnIds: string[];
+          reason: string;
+        };
+      }[];
+      /** @enum {number} */
+      version: 1;
     };
     TeamActivityCountsDto: {
       /** @description Calls logged (电话 activities). */
@@ -6455,6 +6687,225 @@ export interface operations {
       };
     };
   };
+  TableBuilderController_confirm: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          blueprint: components["schemas"]["TableBlueprint"];
+          employeePresets?: {
+            [key: string]: "CLOSED" | "CREATE_OWN" | "READ_ALL_UPDATE_OWN";
+          };
+          target?: {
+            expectedVersion: number;
+            /** Format: uuid */
+            objectId: string;
+          };
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            objects: {
+              code: string;
+              /** Format: uuid */
+              id: string;
+              version: number;
+            }[];
+          };
+        };
+      };
+    };
+  };
+  TableBuilderController_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          answers?: {
+            choiceId: string;
+            /** @enum {string} */
+            key: "industry" | "entities";
+            otherText?: string;
+          }[];
+          description: string;
+          target?: {
+            expectedVersion: number;
+            /** Format: uuid */
+            objectId: string;
+          };
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json":
+            | {
+                blueprint: components["schemas"]["TableBlueprint"];
+                issues: {
+                  blocking: boolean;
+                  code: string;
+                  fieldId?: string;
+                  message: string;
+                  path: string;
+                  tableId?: string;
+                }[];
+                /** @enum {string} */
+                kind: "blueprint";
+              }
+            | {
+                /** @enum {string} */
+                key: "industry" | "entities";
+                /** @enum {string} */
+                kind: "question";
+                options: {
+                  id: string;
+                  label: string;
+                }[];
+                prompt: string;
+              };
+        };
+      };
+    };
+  };
+  TableBuilderController_refine: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          blueprint: components["schemas"]["TableBlueprint"];
+          description: string;
+          /** Format: uuid */
+          tableId: string;
+          target?: {
+            expectedVersion: number;
+            /** Format: uuid */
+            objectId: string;
+          };
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json":
+            | {
+                blueprint: components["schemas"]["TableBlueprint"];
+                issues: {
+                  blocking: boolean;
+                  code: string;
+                  fieldId?: string;
+                  message: string;
+                  path: string;
+                  tableId?: string;
+                }[];
+                /** @enum {string} */
+                kind: "blueprint";
+              }
+            | {
+                /** @enum {string} */
+                key: "industry" | "entities";
+                /** @enum {string} */
+                kind: "question";
+                options: {
+                  id: string;
+                  label: string;
+                }[];
+                prompt: string;
+              };
+        };
+      };
+    };
+  };
+  TableBuilderController_validate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          blueprint: components["schemas"]["TableBlueprint"];
+          target?: {
+            expectedVersion: number;
+            /** Format: uuid */
+            objectId: string;
+          };
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json":
+            | {
+                blueprint: components["schemas"]["TableBlueprint"];
+                issues: {
+                  blocking: boolean;
+                  code: string;
+                  fieldId?: string;
+                  message: string;
+                  path: string;
+                  tableId?: string;
+                }[];
+                /** @enum {string} */
+                kind: "blueprint";
+              }
+            | {
+                /** @enum {string} */
+                key: "industry" | "entities";
+                /** @enum {string} */
+                kind: "question";
+                options: {
+                  id: string;
+                  label: string;
+                }[];
+                prompt: string;
+              };
+        };
+      };
+    };
+  };
   AiController_startTurn: {
     parameters: {
       query?: never;
@@ -8196,6 +8647,56 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["WorkflowDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_analyzeDraftGroup: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AnalyzeDraftGroupDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DraftGroupAnalysisDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_publishDraftGroup: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PublishDraftGroupDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TemplateInitializationPublishedResponseDto"];
         };
       };
     };

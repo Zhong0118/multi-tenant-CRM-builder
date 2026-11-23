@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { transferSettings } from './effective-access';
 import { configOf } from '../records/record-pool-config';
 import type { PoolConfig } from '../records/record-ownership';
@@ -14,7 +15,10 @@ import type {
   PublicationAnalysis,
   PublicationDraft,
 } from './object-publication.policy';
-import type { PublishedObjectSchema } from './object-schema';
+import type {
+  PublishedFieldAccess,
+  PublishedObjectSchema,
+} from './object-schema';
 import { RECORD_TITLE_MAX_LENGTH } from '../records/record-value-engine';
 import { lockObjectConfiguration } from './object-configuration-lock';
 import {
@@ -28,6 +32,11 @@ import {
 } from '../workflows/workflow.types';
 
 export interface ObjectDraft extends PublicationDraft {
+  fields: Array<
+    PublicationDraft['fields'][number] & {
+      storedEmployeeAccess?: PublishedFieldAccess;
+    }
+  >;
   pool?: PoolConfig;
   object: PublicationDraft['object'] & {
     status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
@@ -52,7 +61,25 @@ export interface TemplateInitializationCandidate {
   templateVersionId: string;
 }
 
+export interface ObjectStructure {
+  publishedName?: string | null;
+  id: string;
+  code: string;
+  name: string;
+  version: number;
+  sortOrder: number;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  fields: { fieldKey: string; label: string; type: string }[];
+}
+
+interface SaveOptions {
+  bumpVersion?: boolean;
+  previous?: ObjectDraft;
+}
+
 export interface ObjectsStore {
+  listObjectStructures(): Promise<ObjectStructure[]>;
+  assertActiveAdmin(): Promise<void>;
   listTemplateInitializationCandidates?(): Promise<
     TemplateInitializationCandidate[]
   >;
@@ -74,6 +101,11 @@ export interface ObjectsStore {
   listObjects(): Promise<ObjectDraft[]>;
   findObject(objectId: string): Promise<ObjectDraft | null>;
   createObject(draft: ObjectDraft): Promise<ObjectDraft>;
+  appendHiddenFields(
+    objectId: string,
+    expectedVersion: number,
+    fields: ObjectDraft['fields'],
+  ): Promise<ObjectDraft | null>;
   /**
    * `bumpVersion: false` records publication bookkeeping without consuming the
    * draft's optimistic lock: publishing does not change the configuration, and
@@ -83,7 +115,7 @@ export interface ObjectsStore {
   saveObject(
     draft: ObjectDraft,
     expectedVersion: number,
-    options?: { bumpVersion?: boolean },
+    options?: SaveOptions,
   ): Promise<ObjectDraft | null>;
   /**
    * Hard delete for a draft that was never published. Returns false when the
@@ -119,6 +151,7 @@ export interface ObjectsRepository {
   withTenant<T>(
     context: TenantContext,
     work: (store: ObjectsStore) => Promise<T>,
+    transactionOptions?: { timeout: number },
   ): Promise<T>;
 }
 
@@ -132,9 +165,13 @@ export class PrismaObjectsRepository implements ObjectsRepository {
   withTenant<T>(
     context: TenantContext,
     work: (store: ObjectsStore) => Promise<T>,
+    transactionOptions?: { timeout: number },
   ): Promise<T> {
-    return this.runner.withTenant(context, (transaction) =>
-      work(new PrismaObjectsStore(transaction, this.audit, context)),
+    return this.runner.withTenant(
+      context,
+      (transaction) =>
+        work(new PrismaObjectsStore(transaction, this.audit, context)),
+      transactionOptions,
     );
   }
 }
@@ -145,6 +182,33 @@ class PrismaObjectsStore implements ObjectsStore {
     private readonly audit: AuditService,
     private readonly context: TenantContext,
   ) {}
+
+  listObjectStructures(): Promise<ObjectStructure[]> {
+    return this.transaction.$queryRaw<ObjectStructure[]>`
+      SELECT o.id, o.code, o.name, o.version, o.sort_order AS "sortOrder", o.status::text,
+             p.configuration #>> '{object,name}' AS "publishedName",
+             COALESCE((
+               SELECT jsonb_agg(jsonb_build_object(
+                 'fieldKey', f.field_key, 'label', f.label, 'type', f.type
+               ) ORDER BY f.sort_order, f.field_key)
+               FROM field_definitions f WHERE f.tenant_id = o.tenant_id AND f.object_id = o.id
+             ), '[]'::jsonb) AS fields
+      FROM object_definitions o
+      LEFT JOIN object_publications p ON p.tenant_id = o.tenant_id AND p.id = o.active_publication_id
+      WHERE o.tenant_id = ${this.context.tenantId}::uuid AND o.deleted_at IS NULL
+      ORDER BY o.sort_order, o.code`;
+  }
+
+  async assertActiveAdmin(): Promise<void> {
+    const { memberId, tenantId, userId } = this.context;
+    const rows = await this.transaction.$queryRaw<{ id: string }[]>`
+      SELECT m.id FROM tenant_members m JOIN tenants t ON t.id = m.tenant_id
+      WHERE m.id = ${memberId}::uuid AND m.tenant_id = ${tenantId}::uuid
+        AND m.user_id = ${userId}::uuid AND m.status = 'ACTIVE'
+        AND m.role = 'TENANT_ADMIN' AND t.status = 'ACTIVE'
+      FOR SHARE OF m, t`;
+    if (!rows.length) throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  }
 
   async listTemplateInitializationCandidates(): Promise<
     TemplateInitializationCandidate[]
@@ -407,6 +471,7 @@ class PrismaObjectsStore implements ObjectsStore {
       fields: object.fields.map((field) => ({
         id: field.id,
         fieldKey: field.fieldKey,
+        storedEmployeeAccess: fieldAccess.get(field.id),
         label: field.label,
         type: field.type,
         required: field.required,
@@ -479,10 +544,42 @@ class PrismaObjectsStore implements ObjectsStore {
     return (await this.findObject(draft.object.id))!;
   }
 
+  async appendHiddenFields(
+    objectId: string,
+    expectedVersion: number,
+    fields: ObjectDraft['fields'],
+  ) {
+    const tenantId = this.context.tenantId;
+    const changed = await this.transaction.objectDefinition.updateMany({
+      where: { tenantId, id: objectId, version: expectedVersion },
+      data: { version: { increment: 1 } },
+    });
+    if (!changed.count) return null;
+    const databaseNull = await loadDatabaseNull();
+    await this.transaction.fieldDefinition.createMany({
+      data: fields.map((field) => ({
+        id: field.id,
+        objectId,
+        tenantId,
+        ...fieldStorageData(field, databaseNull),
+      })),
+    });
+    await this.transaction.fieldPermission.createMany({
+      data: fields.map((field) => ({
+        fieldId: field.id,
+        objectId,
+        tenantId,
+        subjectRole: 'EMPLOYEE' as const,
+        access: 'HIDDEN' as const,
+      })),
+    });
+    return this.findObject(objectId);
+  }
+
   async saveObject(
     draft: ObjectDraft,
     expectedVersion: number,
-    options: { bumpVersion?: boolean } = {},
+    options: SaveOptions = {},
   ): Promise<ObjectDraft | null> {
     const locked = await this.transaction.$queryRaw<Array<{ version: number }>>`
       SELECT version
@@ -517,26 +614,17 @@ class PrismaObjectsStore implements ObjectsStore {
       },
     });
 
-    for (const field of draft.fields) {
+    const fieldsToSave =
+      options.previous &&
+      isDeepStrictEqual(options.previous.fields, draft.fields)
+        ? []
+        : draft.fields;
+    for (const field of fieldsToSave) {
       const existing = await this.transaction.fieldDefinition.findUnique({
         where: { id: field.id },
         select: { id: true },
       });
-      const data = {
-        fieldKey: field.fieldKey,
-        label: field.label,
-        type: field.type,
-        required: field.required,
-        isSystem: field.isSystem,
-        defaultValue:
-          field.defaultValue === null
-            ? databaseNull
-            : toPrismaJson(field.defaultValue),
-        validation: toPrismaJson(field.validation),
-        config: toPrismaJson(field.config),
-        sortOrder: field.sortOrder,
-        status: field.status,
-      };
+      const data = fieldStorageData(field, databaseNull);
       if (existing) {
         await this.transaction.fieldDefinition.update({
           where: { id: field.id },
@@ -554,7 +642,10 @@ class PrismaObjectsStore implements ObjectsStore {
       }
     }
 
-    if (draft.defaultView) {
+    if (
+      draft.defaultView &&
+      !isDeepStrictEqual(options.previous?.defaultView, draft.defaultView)
+    ) {
       await this.transaction.viewDefinition.upsert({
         where: {
           tenantId_objectId_code: {
@@ -582,7 +673,10 @@ class PrismaObjectsStore implements ObjectsStore {
       });
     }
 
-    if (draft.employeeAccess) {
+    if (
+      draft.employeeAccess &&
+      !isDeepStrictEqual(options.previous?.employeeAccess, draft.employeeAccess)
+    ) {
       const permission = await this.transaction.objectPermission.findFirst({
         where: {
           tenantId: this.context.tenantId,
@@ -956,5 +1050,26 @@ function viewSort(
   return {
     field: typeof field === 'string' && field.length > 0 ? field : 'updatedAt',
     direction: direction === 'asc' ? 'asc' : 'desc',
+  };
+}
+
+function fieldStorageData(
+  field: ObjectDraft['fields'][number],
+  databaseNull: Awaited<ReturnType<typeof loadDatabaseNull>>,
+) {
+  return {
+    fieldKey: field.fieldKey,
+    label: field.label,
+    type: field.type,
+    required: field.required,
+    isSystem: field.isSystem,
+    defaultValue:
+      field.defaultValue === null
+        ? databaseNull
+        : toPrismaJson(field.defaultValue),
+    validation: toPrismaJson(field.validation),
+    config: toPrismaJson(field.config),
+    sortOrder: field.sortOrder,
+    status: field.status,
   };
 }

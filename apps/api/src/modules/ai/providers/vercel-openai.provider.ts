@@ -1,4 +1,9 @@
 import {
+  tableModelSchema,
+  tableSystemPrompt,
+  type TableProviderInput,
+} from '../table-model';
+import {
   editableFilterRules,
   filterModelSchema,
   type FilterProviderInput,
@@ -34,6 +39,27 @@ export class VercelOpenAiProvider implements AiProvider {
     this.modelKey = input.modelKey;
     this.baseURL = input.baseURL?.trim() || undefined;
     this.providerKey = this.baseURL ? 'openai-compatible' : 'openai';
+  }
+
+  async generateTableBlueprint(
+    input: TableProviderInput,
+    abortSignal: AbortSignal,
+  ) {
+    const openai = createOpenAI({ apiKey: this.apiKey, baseURL: this.baseURL });
+    const result = await generateText({
+      model: openai(this.modelKey),
+      system: tableSystemPrompt,
+      prompt: JSON.stringify(input),
+      output: Output.object({
+        name: 'table_blueprint',
+        schema: tableModelSchema,
+      }),
+      maxRetries: 0,
+      maxOutputTokens: 16000,
+      abortSignal,
+      providerOptions: { openai: { store: false } },
+    });
+    return result.output;
   }
 
   async generateFilter(input: FilterProviderInput, abortSignal: AbortSignal) {

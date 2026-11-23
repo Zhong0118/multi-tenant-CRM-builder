@@ -1,4 +1,7 @@
 import {
+  AnalyzeDraftGroupDto,
+  DraftGroupAnalysisDto,
+  PublishDraftGroupDto,
   TemplateInitializationResponseDto,
   PublishTemplateInitializationDto,
   TemplateInitializationPublishedResponseDto,
@@ -53,6 +56,7 @@ import {
   toObjectPublicationResponse,
 } from './object-draft.presenter';
 import type { JsonValue } from './object-schema';
+import { ObjectDraftBatchService } from './object-draft-batch.service';
 import { ObjectsService } from './objects.service';
 import { PublishedObjectService } from './published-object.service';
 
@@ -68,6 +72,7 @@ interface RequestWithId extends Request {
 export class ObjectsController {
   constructor(
     private readonly objects: ObjectsService,
+    private readonly batch: ObjectDraftBatchService,
     private readonly publishedObjects: PublishedObjectService,
   ) {}
 
@@ -128,7 +133,7 @@ export class ObjectsController {
   @Get('object-definitions/template-initialization')
   @ApiOkResponse({ type: TemplateInitializationResponseDto })
   templateInitialization(@CurrentTenant() context: TenantContext) {
-    return this.objects.templateInitialization(context);
+    return this.batch.templateInitialization(context);
   }
 
   @Post('object-definitions/template-initialization')
@@ -139,11 +144,32 @@ export class ObjectsController {
     @Body() dto: PublishTemplateInitializationDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.publishTemplateInitialization(
+    return this.batch.publishTemplateInitialization(
       context,
       dto,
       requestMeta(request),
     );
+  }
+
+  @Post('object-definitions/draft-group/analysis')
+  @HttpCode(200)
+  @ApiOkResponse({ type: DraftGroupAnalysisDto })
+  analyzeDraftGroup(
+    @CurrentTenant() context: TenantContext,
+    @Body() dto: AnalyzeDraftGroupDto,
+  ) {
+    return this.batch.analyzeDraftGroup(context, dto);
+  }
+
+  @Post('object-definitions/draft-group/publications')
+  @HttpCode(200)
+  @ApiOkResponse({ type: TemplateInitializationPublishedResponseDto })
+  publishDraftGroup(
+    @CurrentTenant() context: TenantContext,
+    @Body() dto: PublishDraftGroupDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.batch.publishDraftGroup(context, dto, requestMeta(request));
   }
 
   @Get('object-definitions/:objectId')

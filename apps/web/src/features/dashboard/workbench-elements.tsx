@@ -28,6 +28,9 @@ export function BusinessObjectBar({
             创建第一张业务表
             <span aria-hidden>→</span>
           </Link>
+          <Link href={`/workspace/${tenantCode}/settings/objects/ai-builder`}>
+            用 AI 描述生成
+          </Link>
         </nav>
       </section>
     );

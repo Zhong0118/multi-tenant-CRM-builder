@@ -1,6 +1,8 @@
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import { TABLE_BUILDER_REQUEST_LIMIT } from './modules/ai/table-builder-payload';
 import {
   DocumentBuilder,
   type OpenAPIObject,
@@ -10,6 +12,7 @@ import cookieParser from 'cookie-parser';
 import type { Express, NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 
+import { tableBlueprintDefinition } from './modules/ai/table-builder.controller';
 import { AppModule } from './app.module';
 import { ApiException } from './common/errors/api.exception';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
@@ -42,6 +45,14 @@ export async function createApp(): Promise<INestApplication> {
   app.use(helmet());
   app.use(createHttpLogger());
   app.use(cookieParser());
+  const tableBuilderParser = new ExpressAdapter();
+  tableBuilderParser.useBodyParser('json', false, {
+    limit: TABLE_BUILDER_REQUEST_LIMIT,
+  });
+  app.use(
+    '/api/v1/workspaces/:tenantCode/ai/table-builder',
+    tableBuilderParser.getInstance(),
+  );
   app.useGlobalPipes(
     new ValidationPipe({
       forbidNonWhitelisted: true,
@@ -73,7 +84,9 @@ export function createOpenApiDocument(app: INestApplication): OpenAPIObject {
     .setVersion('1.0')
     .addCookieAuth('crm_session', { type: 'apiKey' }, 'crm_session')
     .build();
-  return SwaggerModule.createDocument(app, config, {
+  const document = SwaggerModule.createDocument(app, config, {
     extraModels: [ApiErrorResponseDto],
   });
+  document.components!.schemas!.TableBlueprint = tableBlueprintDefinition;
+  return document;
 }

@@ -1,3 +1,4 @@
+import { validateBlueprint } from '../ai/table-blueprint';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
@@ -12,6 +13,7 @@ import type {
   ObjectsRepository,
   ObjectsStore,
 } from './objects.repository';
+import { ObjectDraftBatchService } from './object-draft-batch.service';
 import { ObjectsService } from './objects.service';
 import type { LifecycleBlocker } from './object-lifecycle.policy';
 import { toObjectDraftResponse } from './object-draft.presenter';
@@ -37,6 +39,22 @@ class MemoryObjectsStore implements ObjectsStore {
   objects: ObjectDraft[] = [];
   publications = new Map<string, ObjectPublicationSummary[]>();
   audits: Array<{ action: string; after?: Record<string, unknown> }> = [];
+  listObjectStructures() {
+    return Promise.resolve(
+      this.objects.map((draft) => ({
+        ...draft.object,
+        publishedName: draft.activeSchema?.object.name,
+        fields: draft.fields,
+      })),
+    );
+  }
+  async assertActiveAdmin() {}
+  listTemplateInitializationCandidates() {
+    return Promise.resolve([]);
+  }
+  listPublishedPoolConfigurations() {
+    return Promise.resolve([]);
+  }
   onLock?: (objectId: string) => void;
   lifecycleBlockers: LifecycleBlocker[] = [];
   expiredCount = 0;
@@ -99,6 +117,25 @@ class MemoryObjectsStore implements ObjectsStore {
           historical.find((item) => item.id === field.id)?.type ?? null,
       })),
     });
+  }
+
+  async appendHiddenFields(
+    objectId: string,
+    version: number,
+    fields: ObjectDraft['fields'],
+  ) {
+    const draft = await this.findObject(objectId);
+    if (!draft) return null;
+    draft.fields.push(
+      ...fields.map((field) => ({
+        ...field,
+        storedEmployeeAccess: 'HIDDEN' as const,
+      })),
+    );
+    if (draft.employeeAccess)
+      for (const f of fields)
+        draft.employeeAccess.fields[f.fieldKey] = 'HIDDEN';
+    return this.saveObject(draft, version);
   }
 
   createObject(draft: ObjectDraft): Promise<ObjectDraft> {
@@ -234,12 +271,10 @@ function fixture() {
   const repository = new MemoryObjectsRepository(store);
   let id = 0;
   const clock = jest.fn(() => new Date('2026-08-21T10:00:00.000Z'));
-  const service = new ObjectsService(
-    repository,
-    clock,
-    () => `generated-${++id}`,
-  );
-  return { service, store, repository, clock };
+  const nextId = () => `generated-${++id}`;
+  const service = new ObjectsService(repository, clock, nextId);
+  const batch = new ObjectDraftBatchService(repository, nextId, service);
+  return { service, batch, store, repository, clock };
 }
 
 async function createObject(service: ObjectsService) {
@@ -1688,5 +1723,212 @@ describe('whole table lifecycle', () => {
     expect(toObjectDraftResponse(restored).object.hasUnpublishedChanges).toBe(
       true,
     );
+  });
+});
+
+describe('explicit draft group', () => {
+  it('analyzes blocked drafts and rejects duplicate selections without publishing', async () => {
+    const { service, batch, store } = fixture();
+    const first = await createObject(service);
+    const id = first.object.id;
+    const result = await batch.analyzeDraftGroup(admin, { objectIds: [id] });
+    expect(result.objects[0]).toMatchObject({ id, version: 1 });
+    expect(result.blocking.length).toBeGreaterThan(0);
+    expect(store.publications.size).toBe(0);
+    await expect(
+      batch.analyzeDraftGroup(admin, { objectIds: [id, id] }),
+    ).rejects.toThrow();
+  });
+});
+describe('object name reservations', () => {
+  it('reserves the published name until a renamed draft has been published', async () => {
+    const { service } = fixture();
+    const draft = await createPublishableDraft(service);
+    await service.publish(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    await service.update(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version, name: '新线索' },
+      meta,
+    );
+    await expect(
+      service.create(
+        admin,
+        { name: draft.object.name, code: 'another-object' },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+  it('serializes manual creates and rejects normalized duplicate names during create and rename', async () => {
+    const { service, store } = fixture();
+    const lock = jest.spyOn(store, 'lockLifecycleConfiguration');
+    await service.create(
+      admin,
+      { name: 'ＡＢＣ  Services', code: 'abc' },
+      meta,
+    );
+    expect(lock).toHaveBeenCalledTimes(1);
+    await expect(
+      service.create(admin, { name: 'abc services', code: 'xyz' }, meta),
+    ).rejects.toThrow();
+    const other = await createObject(service);
+    await expect(
+      service.update(
+        admin,
+        other.object.id,
+        { name: 'ABC Services', expectedVersion: 1 },
+        meta,
+      ),
+    ).rejects.toThrow();
+  });
+});
+
+describe('blueprint draft confirmation', () => {
+  const tableId = '7ed118c7-3755-495f-9fe6-07ac1196fb2c';
+  const titleId = '7ca8fb37-e34b-44d9-83a2-fa03b12f3b2a';
+  const memberId = '8f7f4708-a39f-426e-b66d-c234efea1836';
+  function example() {
+    return validateBlueprint(
+      {
+        version: 1,
+        tables: [
+          {
+            id: tableId,
+            name: '租赁合同',
+            code: 'rental-contracts',
+            description: '租赁业务协议',
+            reason: '管理合同',
+            fields: [
+              {
+                id: memberId,
+                label: '技术顾问',
+                type: 'MEMBER',
+                required: false,
+                reason: '顾问',
+                fieldKey: 'advisor',
+              },
+              {
+                id: titleId,
+                label: '合同名称',
+                type: 'TEXT',
+                required: true,
+                reason: '标题',
+                fieldKey: 'contract_name',
+              },
+            ],
+            titleFieldId: titleId,
+            view: { columnIds: [titleId, memberId], reason: '明细' },
+            employeeIntent: [],
+          },
+        ],
+        assumptions: [],
+        omitted: [],
+      },
+      [],
+    ).blueprint;
+  }
+  it('creates ordered fields including members, requested view and manual access in one tenant transaction', async () => {
+    const { batch, store, repository } = fixture();
+    const plan = example();
+    plan.tables[0].employeeIntent.push({
+      request: '销售只看自己的记录',
+      reason: '意图供管理员参考',
+      recommendation: 'CREATE_OWN',
+    });
+    const { objects } = await batch.confirmTableBlueprint(
+      admin,
+      plan,
+      undefined,
+      meta,
+    );
+    expect(repository.transactions).toBe(1);
+    const fields = plan.tables[0].fields.map((f) => f.fieldKey);
+    const draft = store.objects[0];
+    expect(objects).toEqual([
+      {
+        id: draft.object.id,
+        code: plan.tables[0].code,
+        version: draft.object.version,
+      },
+    ]);
+    expect(draft.fields.map((f) => f.fieldKey)).toEqual(fields);
+    expect(draft.object).toMatchObject({
+      description: '租赁业务协议',
+      titleFieldKey: fields[1],
+      status: 'DRAFT',
+      activePublicationId: null,
+    });
+    expect(draft.defaultView?.columnFieldKeys).toEqual([...fields].reverse());
+    expect(draft.employeeAccess).toMatchObject({
+      canCreate: false,
+      readScope: 'NONE',
+      fields: { [fields[0]]: 'HIDDEN', [fields[1]]: 'HIDDEN' },
+    });
+    expect(store.audits.map((a) => a.action)).toEqual(
+      expect.arrayContaining([
+        'object.created',
+        'object.field_created',
+        'object.updated',
+        'object.default_view_updated',
+        'object.permissions_updated',
+      ]),
+    );
+  });
+  it('applies the explicitly selected preset across every field in the same transaction as creation', async () => {
+    const { batch, store, repository } = fixture();
+    const plan = example();
+    await batch.confirmTableBlueprint(admin, plan, undefined, meta, {
+      [tableId]: 'READ_ALL_UPDATE_OWN',
+    });
+    expect(repository.transactions).toBe(1);
+    expect(store.objects[0].employeeAccess).toEqual({
+      canCreate: false,
+      canRead: true,
+      canUpdate: true,
+      canDelete: false,
+      canImport: false,
+      canExport: false,
+      readScope: 'ALL',
+      updateScope: 'OWN',
+      fields: { advisor: 'EDIT', contract_name: 'EDIT' },
+    });
+  });
+  it('rejects an invalid edited key with no writes', async () => {
+    const { batch, store } = fixture();
+    const plan = example();
+    plan.tables[0].fields[0].fieldKey = 'invalid-key';
+    await expect(
+      batch.confirmTableBlueprint(admin, plan, undefined, meta),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(store.audits).toEqual([]);
+  });
+  it('allows additive changes when unrelated configuration issues predate the change', async () => {
+    const { service, batch, store } = fixture();
+    await service.create(admin, { name: '租赁合同', code: 'unfinished' }, meta);
+    store.objects[0].object.id = tableId;
+    const plan = example();
+    const t = plan.tables[0];
+    Object.assign(t, {
+      code: 'unfinished',
+      titleFieldId: '',
+      view: { columnIds: [], reason: '保持原值' },
+    });
+    delete t.description;
+    t.fields = [t.fields[0]];
+    await batch.confirmTableBlueprint(
+      admin,
+      plan,
+      { objectId: tableId, expectedVersion: 1 },
+      meta,
+    );
+    const detail = toObjectDraftResponse(store.objects[0]);
+    expect(detail.employeeAccess).toBeNull();
+    expect(detail.defaultView).toBeNull();
+    expect(detail.fields[0].employeeAccess).toBe('HIDDEN');
   });
 });

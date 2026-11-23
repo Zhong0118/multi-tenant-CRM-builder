@@ -1,3 +1,4 @@
+import { FIELD_KEY_PATTERN } from '../object-code';
 import { Type } from 'class-transformer';
 import {
   ApiProperty,
@@ -129,7 +130,7 @@ export class CreateObjectDefinitionDto {
     (object: CreateObjectDefinitionDto) =>
       object.initialFields !== undefined || object.titleFieldKey !== undefined,
   )
-  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/)
+  @Matches(FIELD_KEY_PATTERN)
   @MaxLength(64)
   titleFieldKey?: string;
 }
@@ -162,7 +163,7 @@ export class UpdateObjectDefinitionDto extends ExpectedVersionDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/)
+  @Matches(FIELD_KEY_PATTERN)
   titleFieldKey?: string;
 }
 
@@ -301,7 +302,7 @@ export class FieldValidationDto {
 
 export class CreateFieldDefinitionDto extends ExpectedVersionDto {
   @ApiProperty({ example: 'customer_name' })
-  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/)
+  @Matches(FIELD_KEY_PATTERN)
   @MaxLength(64)
   fieldKey!: string;
 
@@ -354,7 +355,7 @@ export class InitialFieldDefinitionDto extends OmitType(
 export class UpdateFieldDefinitionDto extends ExpectedVersionDto {
   @ApiPropertyOptional()
   @IsOptional()
-  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/)
+  @Matches(FIELD_KEY_PATTERN)
   fieldKey?: string;
 
   @ApiPropertyOptional()
@@ -444,7 +445,7 @@ export class DefaultViewDto extends ExpectedVersionDto {
   @ApiProperty({ type: String, isArray: true })
   @IsArray()
   @ArrayUnique()
-  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/, { each: true })
+  @Matches(FIELD_KEY_PATTERN, { each: true })
   columnFieldKeys!: string[];
 
   @ApiPropertyOptional({
@@ -456,7 +457,7 @@ export class DefaultViewDto extends ExpectedVersionDto {
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/, { each: true })
+  @Matches(FIELD_KEY_PATTERN, { each: true })
   searchFieldKeys?: string[];
 
   @ApiProperty()

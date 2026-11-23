@@ -40,6 +40,10 @@ export type AiProviderEvent =
   | { type: 'FAILED'; code: string };
 
 export interface AiProvider {
+  generateTableBlueprint?(
+    input: import('./table-model').TableProviderInput,
+    signal: AbortSignal,
+  ): Promise<unknown>;
   generateFilter?(
     input: import('./filter-generation').FilterProviderInput,
     signal: AbortSignal,

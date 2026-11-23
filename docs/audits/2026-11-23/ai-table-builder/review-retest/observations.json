@@ -1,0 +1,581 @@
+{
+  "development": [
+    {
+      "id": "dev-01",
+      "timeMs": 35997,
+      "returnedTables": [
+        "客户",
+        "租赁合同",
+        "设备台账",
+        "回款记录"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-02",
+      "timeMs": 9746,
+      "returnedTables": [
+        "课程"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-03",
+      "timeMs": 17852,
+      "returnedTables": [
+        "验收单"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-04",
+      "timeMs": 11721,
+      "returnedTables": [
+        "询盘"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-05",
+      "timeMs": 14073,
+      "returnedTables": [
+        "订阅"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-06",
+      "timeMs": 10730,
+      "returnedTables": [
+        "预约"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-07",
+      "timeMs": 18689,
+      "returnedTables": [
+        "巡检"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-08",
+      "timeMs": 9111,
+      "returnedTables": [
+        "职位"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-09",
+      "timeMs": 4703,
+      "returnedTables": [
+        "材料"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-10",
+      "timeMs": 10450,
+      "returnedTables": [
+        "维修"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-11",
+      "timeMs": 6831,
+      "returnedTables": [
+        "报价"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-12",
+      "timeMs": 5259,
+      "returnedTables": [
+        "教室"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-13",
+      "timeMs": 12576,
+      "returnedTables": [
+        "订单"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-14",
+      "timeMs": 24139,
+      "returnedTables": [
+        "客户"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-15",
+      "timeMs": 9946,
+      "returnedTables": [
+        "排班"
+      ],
+      "admitted": false,
+      "blocking": [
+        {
+          "code": "NAME_IN_USE",
+          "message": "业务表名称已占用。"
+        }
+      ],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-16",
+      "timeMs": 25193,
+      "returnedTables": [
+        "候选人"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-17",
+      "timeMs": 2553,
+      "returnedTables": [],
+      "admitted": false,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-18",
+      "timeMs": 60292,
+      "returnedTables": [],
+      "admitted": false,
+      "blocking": [],
+      "rejection": {
+        "code": "AI_PROVIDER_UNAVAILABLE",
+        "paths": [],
+        "reason": "AI 服务暂时不可用，请稍后重试。"
+      },
+      "failures": [
+        "AI_PROVIDER_UNAVAILABLE"
+      ],
+      "violations": []
+    },
+    {
+      "id": "dev-19",
+      "timeMs": 7571,
+      "returnedTables": [
+        "Shipments"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "dev-20",
+      "timeMs": 6070,
+      "returnedTables": [],
+      "admitted": false,
+      "blocking": [],
+      "rejection": {
+        "code": "AI_PROVIDER_UNAVAILABLE",
+        "paths": [],
+        "reason": "AI 服务暂时不可用，请稍后重试。"
+      },
+      "failures": [
+        "AI_PROVIDER_UNAVAILABLE"
+      ],
+      "violations": []
+    }
+  ],
+  "holdout": [
+    {
+      "id": "holdout-01",
+      "timeMs": 23621,
+      "returnedTables": [
+        "灯具交接单",
+        "维修工单"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-02",
+      "timeMs": 7820,
+      "returnedTables": [
+        "试听预约"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-03",
+      "timeMs": 27780,
+      "returnedTables": [
+        "隐蔽工程验收"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-04",
+      "timeMs": 12331,
+      "returnedTables": [
+        "Sample Dispatch"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-05",
+      "timeMs": 24547,
+      "returnedTables": [
+        "上线排期"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-06",
+      "timeMs": 27130,
+      "returnedTables": [
+        "到店咨询",
+        "体验券"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-07",
+      "timeMs": 26949,
+      "returnedTables": [
+        "Visitor Pass"
+      ],
+      "admitted": false,
+      "blocking": [
+        {
+          "code": "NAME_IN_USE",
+          "message": "业务表名称已占用。"
+        }
+      ],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-08",
+      "timeMs": 27180,
+      "returnedTables": [
+        "职位",
+        "候选人",
+        "推荐单",
+        "面试",
+        "录用通知",
+        "到岗登记",
+        "保用期回访"
+      ],
+      "admitted": false,
+      "blocking": [
+        {
+          "code": "TABLE_COUNT",
+          "message": "一次最多创建 6 张，请移除 1 张"
+        }
+      ],
+      "rejection": null,
+      "failures": [
+        "未正确说明或移除 保用期回访",
+        "无可确认方案"
+      ],
+      "violations": []
+    },
+    {
+      "id": "holdout-09",
+      "timeMs": 2012,
+      "returnedTables": [],
+      "admitted": false,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-10",
+      "timeMs": 16727,
+      "returnedTables": [
+        "摊位报价"
+      ],
+      "admitted": true,
+      "blocking": [],
+      "rejection": null,
+      "failures": [],
+      "violations": []
+    }
+  ],
+  "six": [
+    {
+      "id": "six-0",
+      "input": "我们做农机维修，为以下六种资料各建一张表：送修单、维修点、检测单、工时单、备件、领料单。每张表只要一个必填的名称字段和一个可选的说明字段。",
+      "ms": 32066,
+      "returned": [
+        "送修单",
+        "维修点",
+        "检测单",
+        "工时单",
+        "备件",
+        "领料单"
+      ],
+      "rejection": null,
+      "admitted": true
+    },
+    {
+      "id": "six-1",
+      "input": "我们做剧团排练，为以下六种资料各建一张表：剧目、演职人员、场馆、场次、服装、道具。每张表只要一个必填的名称字段和一个可选的说明字段。",
+      "ms": 23494,
+      "returned": [
+        "剧目",
+        "演职人员",
+        "场馆",
+        "场次",
+        "服装",
+        "道具"
+      ],
+      "rejection": null,
+      "admitted": true
+    },
+    {
+      "id": "six-2",
+      "input": "我们做图书发行，为以下六种资料各建一张表：书目、印厂、经销商、订货单、发货单、退货单。每张表只要一个必填的名称字段和一个可选的说明字段。",
+      "ms": 30181,
+      "returned": [
+        "书目",
+        "印厂",
+        "经销商",
+        "订货单",
+        "发货单",
+        "退货单"
+      ],
+      "rejection": null,
+      "admitted": true
+    }
+  ],
+  "recommendation": {
+    "input": "独立乐团只需要一张排练场次表，用场次名称作标题，再加排练日期和联系电话。员工只能新建、查看和修改自己负责的场次。",
+    "ms": 18880,
+    "admitted": true,
+    "rejection": null,
+    "violations": [],
+    "tables": [
+      {
+        "name": "排练场次",
+        "code": "rehearsal-sessions",
+        "fields": [
+          [
+            "场次名称",
+            "session_name",
+            "TEXT"
+          ],
+          [
+            "排练日期",
+            "rehearsal_date",
+            "DATE"
+          ],
+          [
+            "联系电话",
+            "contact_phone",
+            "PHONE"
+          ]
+        ],
+        "employeeIntent": [
+          {
+            "request": "员工只能新建、查看和修改自己负责的场次",
+            "reason": "符合仅创建并管理本人记录的建议模式，员工不应查看或修改他人负责的场次；仅作为权限建议，需管理员应用。",
+            "recommendation": "CREATE_OWN"
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "id": "dev-18",
+      "ms": 60419,
+      "failures": [],
+      "issues": [
+        {
+          "code": "TABLE_COUNT",
+          "message": "一次最多创建 6 张，请移除 1 张",
+          "path": "tables",
+          "blocking": true
+        }
+      ],
+      "tables": [
+        "客户",
+        "设备",
+        "租赁合同",
+        "回款",
+        "仓库",
+        "运输",
+        "报损"
+      ]
+    },
+    {
+      "id": "dev-20",
+      "ms": 14284,
+      "failures": [],
+      "issues": [],
+      "tables": [
+        "面试"
+      ]
+    }
+  ],
+  "offlineReplay": [
+    {
+      "id": "holdout-01",
+      "pass": true,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-02",
+      "pass": true,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-03",
+      "pass": true,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-04",
+      "pass": true,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-05",
+      "pass": true,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-06",
+      "pass": true,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-07",
+      "pass": true,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-08",
+      "pass": false,
+      "failures": [
+        "未正确说明或移除 保用期回访",
+        "无可确认方案"
+      ],
+      "violations": []
+    },
+    {
+      "id": "holdout-09",
+      "pass": true,
+      "failures": [],
+      "violations": []
+    },
+    {
+      "id": "holdout-10",
+      "pass": true,
+      "failures": [],
+      "violations": []
+    }
+  ]
+}

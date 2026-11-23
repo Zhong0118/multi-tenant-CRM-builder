@@ -144,6 +144,13 @@ const editor = (label: string) => screen.getByRole("region", { name: `配置字�
 const nameInput = () => screen.getByRole("textbox", { name: "字段名称" });
 
 describe("field list and editor", () => {
+  it("links the current editable draft to AI field suggestions", () => {
+    renderDesigner(draft(), objectApi());
+    expect(screen.getByRole("link", { name: "用 AI 补充字段" })).toHaveAttribute(
+      "href", "/workspace/northwind/settings/objects/ai-builder?objectId=object-1",
+    );
+  });
+
   it("keeps the enabled date setting when saving another field property", async () => {
     const initial = draft();
     initial.fields[0].config = {

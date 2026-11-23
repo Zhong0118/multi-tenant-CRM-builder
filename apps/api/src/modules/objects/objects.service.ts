@@ -1,7 +1,6 @@
+import { FIELD_KEY_PATTERN, NEW_OBJECT_CODE_PATTERN } from './object-code';
+import { canonicalName } from '../ai/table-blueprint';
 import { transferSettings } from './effective-access';
-import { analyzePoolProtectionSources } from '../records/record-pool-config';
-import type { ActionPublicationTarget } from '../actions/action-publication.policy';
-import type { PublishTemplateInitializationDto } from './dto/template-initialization.dto';
 import { analyzeAutomationDependencies } from '../automations/automation-publication';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -26,13 +25,13 @@ import {
   isSearchableFieldType,
   isSortableFieldType,
   isSystemRecordSortField,
-  isPublishedFieldType,
   type JsonValue,
   type PublishedDataScope,
   type PublishedFieldAccess,
 } from './object-schema';
 import type {
   ObjectDraft,
+  ObjectStructure,
   ObjectPublicationSummary,
   ObjectsRepository,
   ObjectsStore,
@@ -42,9 +41,17 @@ export const OBJECTS_REPOSITORY = Symbol('OBJECTS_REPOSITORY');
 export const OBJECTS_CLOCK = Symbol('OBJECTS_CLOCK');
 export const OBJECTS_ID_GENERATOR = Symbol('OBJECTS_ID_GENERATOR');
 
-interface RequestMeta {
+export interface RequestMeta {
   requestId: string;
   ip?: string;
+}
+
+interface ObjectCreateInput {
+  name: string;
+  code: string;
+  icon?: string | null;
+  initialFields?: InitialFieldInput[];
+  titleFieldKey?: string;
 }
 
 interface ObjectMutationInput {
@@ -56,7 +63,7 @@ interface ObjectMutationInput {
   titleFieldKey?: string;
 }
 
-interface FieldCreateInput {
+export interface FieldCreateInput {
   expectedVersion: number;
   fieldKey: string;
   label: string;
@@ -123,160 +130,6 @@ export class ObjectsService {
     @Inject(OBJECTS_ID_GENERATOR) private readonly idGenerator: () => string,
   ) {}
 
-  templateInitialization(context: TenantContext) {
-    assertTenantAdmin(context);
-    return this.repository.withTenant(context, async (store) => {
-      const groups = new Map<
-        string,
-        Array<{
-          id: string;
-          name: string;
-          code: string;
-          version: number;
-          poolConfigVersion: number;
-        }>
-      >();
-      for (const {
-        templateVersionId,
-        ...object
-      } of await store.listTemplateInitializationCandidates!()) {
-        const objects = groups.get(templateVersionId) ?? [];
-        objects.push(object);
-        groups.set(templateVersionId, objects);
-      }
-      return {
-        groups: [...groups].map(([templateVersionId, objects]) => ({
-          templateVersionId,
-          objects,
-        })),
-      };
-    });
-  }
-
-  publishTemplateInitialization(
-    context: TenantContext,
-    input: PublishTemplateInitializationDto,
-    meta: RequestMeta,
-  ) {
-    assertTenantAdmin(context);
-    return this.repository.withTenant(context, async (store) => {
-      await store.lockLifecycleConfiguration();
-      const initial = (
-        await store.listTemplateInitializationCandidates!()
-      ).filter((o) => o.templateVersionId === input.templateVersionId);
-      for (const object of [...initial].sort((a, b) =>
-        a.id.localeCompare(b.id),
-      ))
-        await store.lockObject(object.id);
-      const candidates = (
-        await store.listTemplateInitializationCandidates!()
-      ).filter((o) => o.templateVersionId === input.templateVersionId);
-      const expected = new Map(input.objects.map((o) => [o.id, o]));
-      if (
-        !candidates.length ||
-        expected.size !== input.objects.length ||
-        expected.size !== candidates.length ||
-        candidates.some(
-          (o) =>
-            expected.get(o.id)?.expectedVersion !== o.version ||
-            expected.get(o.id)?.expectedPoolConfigVersion !==
-              o.poolConfigVersion,
-        )
-      )
-        throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-      const drafts: ObjectDraft[] = [];
-      const targets = new Map<string, ActionPublicationTarget>();
-      const existing = await store.listPublishedPoolConfigurations!();
-      for (const object of existing)
-        targets.set(object.code, {
-          code: object.code,
-          status: 'ACTIVE',
-          schema: object.schema,
-        });
-      for (const object of candidates) {
-        const draft = await requireDraft(store, object.id);
-        draft.workflow = await store.findWorkflowDraft(object.id);
-        drafts.push(draft);
-        targets.set(draft.object.code, {
-          code: draft.object.code,
-          status: 'ACTIVE',
-          schema: {
-            fields: draft.fields.flatMap((f) =>
-              f.status === 'ACTIVE' && isPublishedFieldType(f.type)
-                ? [{ ...f, type: f.type }]
-                : [],
-            ),
-            employeeAccess: draft.employeeAccess,
-          },
-        });
-      }
-      const states = new Map(
-        existing.map((o) => [
-          o.code,
-          o.schema.workflow?.states.map((s) => s.key) ?? [],
-        ]),
-      );
-      for (const draft of drafts)
-        states.set(
-          draft.object.code,
-          draft.workflow?.isEnabled
-            ? draft.workflow.states.map((s) => s.key)
-            : [],
-        );
-      const objects = await store.listObjects();
-      const analyses = drafts.map((draft) => {
-        draft.actionTargets = targets;
-        const analysis = analyzePublication(draft);
-        analysis.blocking.push(
-          ...analyzeAutomationDependencies(draft, objects),
-        );
-        if (draft.pool)
-          analysis.blocking.push(
-            ...analyzePoolProtectionSources(draft.pool, states),
-          );
-        return analysis;
-      });
-      const blocking = analyses.flatMap((analysis, index) =>
-        analysis.blocking.map((issue) => ({
-          ...issue,
-          objectId: drafts[index].object.id,
-        })),
-      );
-      for (const object of existing)
-        blocking.push(
-          ...analyzePoolProtectionSources(object.pool, states).map((issue) => ({
-            ...issue,
-            objectId: object.schema.object.id,
-          })),
-        );
-      if (blocking.length)
-        throw new ApiException('PUBLICATION_BLOCKED', 422, {
-          message: blocking.map((issue) => issue.message).join('；'),
-          fieldErrors: Object.fromEntries(
-            blocking.map((issue) => [
-              `objects.${issue.objectId}${issue.fieldKey ? '.fields.' + issue.fieldKey : issue.transitionKey ? '.transitions.' + issue.transitionKey : ''}`,
-              [issue.message],
-            ]),
-          ),
-        });
-      for (const [index, draft] of drafts.entries())
-        await this.commitPublication(
-          store,
-          context,
-          draft,
-          analyses[index],
-          meta,
-        );
-      return {
-        published: drafts.map((draft) => ({
-          id: draft.object.id,
-          code: draft.object.code,
-          name: draft.object.name,
-        })),
-      };
-    });
-  }
-
   list(context: TenantContext): Promise<ObjectDraft[]> {
     assertTenantAdmin(context);
     return this.repository.withTenant(context, (store) => store.listObjects());
@@ -293,150 +146,158 @@ export class ObjectsService {
 
   async create(
     context: TenantContext,
-    input: {
-      name: string;
-      code: string;
-      icon?: string | null;
-      initialFields?: InitialFieldInput[];
-      titleFieldKey?: string;
-    },
+    input: ObjectCreateInput,
     meta: RequestMeta,
   ): Promise<ObjectDraft> {
     assertTenantAdmin(context);
-    const code = normalizeObjectCode(input.code);
-    return await this.repository.withTenant(context, async (store) => {
-      const objects = await store.listObjects();
-      const draft: ObjectDraft = {
-        object: {
-          id: this.idGenerator(),
-          code,
-          name: input.name.trim(),
-          description: null,
-          titleFieldKey: 'name',
-          icon: input.icon ?? null,
-          sortOrder:
-            objects.reduce(
-              (maximum, item) => Math.max(maximum, item.object.sortOrder),
-              0,
-            ) + 10,
-          version: 1,
-          status: 'DRAFT',
-          activePublicationId: null,
-          publishedAt: null,
-        },
-        fields: [],
-        defaultView: null,
-        employeeAccess: null,
-        activeSchema: null,
-        activeRecordCount: 0,
-      };
-
-      if (input.initialFields !== undefined) {
-        if (
-          !Array.isArray(input.initialFields) ||
-          input.initialFields.length < 1 ||
-          input.initialFields.length > 40
-        ) {
-          throw validationError(
-            'initialFields',
-            '初始字段数量必须为 1–40 个。',
-          );
-        }
-        if (!input.titleFieldKey) {
-          throw validationError('titleFieldKey', '请选择标题字段。');
-        }
-        draft.object.titleFieldKey = normalizeFieldKey(input.titleFieldKey);
-        const fieldKeys = new Set<string>();
-        draft.fields = input.initialFields.map((field, index) => {
-          const fieldKey = normalizeFieldKey(field.fieldKey);
-          if (fieldKeys.has(fieldKey)) {
-            throw validationError('initialFields', '字段键必须保持唯一。');
-          }
-          fieldKeys.add(fieldKey);
-          if (!field.label.trim()) {
-            throw validationError('initialFields', '字段名称不能为空。');
-          }
-          if (field.type === 'MEMBER' || field.type === 'ATTACHMENT') {
-            throw validationError(
-              'initialFields',
-              '初始字段不支持成员或附件类型。',
-            );
-          }
-          const config = toJsonRecord(field.config ?? {});
-          if (Array.isArray(config.options) && config.options.length > 100) {
-            throw validationError(
-              'initialFields',
-              '每个字段最多支持 100 个选项。',
-            );
-          }
-          return {
-            id: this.idGenerator(),
-            fieldKey,
-            label: field.label.trim(),
-            type: field.type,
-            required: field.required,
-            defaultValue: field.defaultValue ?? null,
-            validation: toJsonRecord(field.validation ?? {}),
-            config,
-            sortOrder: (index + 1) * 10,
-            isSystem: false,
-            status: 'ACTIVE',
-          };
-        });
-        draft.defaultView = {
-          code: 'default',
-          name: '全部记录',
-          columnFieldKeys: draft.fields.map((field) => field.fieldKey),
-          sort: { field: 'updatedAt', direction: 'desc' },
-        };
-        draft.employeeAccess = {
-          canCreate: false,
-          canRead: false,
-          canUpdate: false,
-          canDelete: false,
-          readScope: 'NONE',
-          updateScope: 'NONE',
-          fields: Object.fromEntries(
-            draft.fields.map((field) => [field.fieldKey, 'HIDDEN']),
-          ),
-        };
-        // A new draft intentionally keeps employees out. Its required hidden
-        // fields are reviewed when configuring permissions before publication.
-        const blocking = analyzeObjectConfiguration(draft).blocking.filter(
-          (issue) => issue.code !== 'REQUIRED_FIELD_HIDDEN',
-        );
-        if (blocking.length > 0) {
-          throw validationError(
-            'initialFields',
-            blocking.map((issue) => issue.message).join('；'),
-          );
-        }
-      }
-
-      try {
-        let created = await store.createObject(draft);
-        if (input.initialFields !== undefined) {
-          const saved = await store.saveObject(draft, draft.object.version, {
-            bumpVersion: false,
-          });
-          if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-          created = saved;
-        }
-        await store.appendAudit(
-          auditEvent(context, meta, 'object.created', created.object.id, {
-            name: created.object.name,
-            code: created.object.code,
-            status: created.object.status,
-          }),
-        );
-        return created;
-      } catch (error) {
-        if (hasErrorCode(error, 'P2002')) {
-          throw validationError('code', '对象代码已被使用。');
-        }
-        throw error;
-      }
+    return this.repository.withTenant(context, async (store) => {
+      await store.lockLifecycleConfiguration();
+      return this.createInStore(
+        store,
+        context,
+        input,
+        meta,
+        await store.listObjectStructures(),
+      );
     });
+  }
+
+  async createInStore(
+    store: ObjectsStore,
+    context: TenantContext,
+    input: ObjectCreateInput,
+    meta: RequestMeta,
+    objects: ObjectStructure[],
+  ): Promise<ObjectDraft> {
+    const code = normalizeObjectCode(input.code);
+    assertObjectNameAvailable(input.name, objects);
+    const draft: ObjectDraft = {
+      object: {
+        id: this.idGenerator(),
+        code,
+        name: input.name.trim(),
+        description: null,
+        titleFieldKey: 'name',
+        icon: input.icon ?? null,
+        sortOrder:
+          objects.reduce(
+            (maximum, item) => Math.max(maximum, item.sortOrder),
+            0,
+          ) + 10,
+        version: 1,
+        status: 'DRAFT',
+        activePublicationId: null,
+        publishedAt: null,
+      },
+      fields: [],
+      defaultView: null,
+      employeeAccess: null,
+      activeSchema: null,
+      activeRecordCount: 0,
+    };
+
+    if (input.initialFields !== undefined) {
+      if (
+        !Array.isArray(input.initialFields) ||
+        input.initialFields.length < 1 ||
+        input.initialFields.length > 40
+      ) {
+        throw validationError('initialFields', '初始字段数量必须为 1–40 个。');
+      }
+      if (!input.titleFieldKey) {
+        throw validationError('titleFieldKey', '请选择标题字段。');
+      }
+      draft.object.titleFieldKey = normalizeFieldKey(input.titleFieldKey);
+      const fieldKeys = new Set<string>();
+      draft.fields = input.initialFields.map((field, index) => {
+        const fieldKey = normalizeFieldKey(field.fieldKey);
+        if (fieldKeys.has(fieldKey)) {
+          throw validationError('initialFields', '字段键必须保持唯一。');
+        }
+        fieldKeys.add(fieldKey);
+        if (!field.label.trim()) {
+          throw validationError('initialFields', '字段名称不能为空。');
+        }
+        if (field.type === 'MEMBER' || field.type === 'ATTACHMENT') {
+          throw validationError(
+            'initialFields',
+            '初始字段不支持成员或附件类型。',
+          );
+        }
+        const config = toJsonRecord(field.config ?? {});
+        if (Array.isArray(config.options) && config.options.length > 100) {
+          throw validationError(
+            'initialFields',
+            '每个字段最多支持 100 个选项。',
+          );
+        }
+        return {
+          id: this.idGenerator(),
+          fieldKey,
+          label: field.label.trim(),
+          type: field.type,
+          required: field.required,
+          defaultValue: field.defaultValue ?? null,
+          validation: toJsonRecord(field.validation ?? {}),
+          config,
+          sortOrder: (index + 1) * 10,
+          isSystem: false,
+          status: 'ACTIVE',
+        };
+      });
+      draft.defaultView = {
+        code: 'default',
+        name: '全部记录',
+        columnFieldKeys: draft.fields.map((field) => field.fieldKey),
+        sort: { field: 'updatedAt', direction: 'desc' },
+      };
+      draft.employeeAccess = {
+        canCreate: false,
+        canRead: false,
+        canUpdate: false,
+        canDelete: false,
+        readScope: 'NONE',
+        updateScope: 'NONE',
+        fields: Object.fromEntries(
+          draft.fields.map((field) => [field.fieldKey, 'HIDDEN']),
+        ),
+      };
+      // A new draft intentionally keeps employees out. Its required hidden
+      // fields are reviewed when configuring permissions before publication.
+      const blocking = analyzeObjectConfiguration(draft).blocking.filter(
+        (issue) => issue.code !== 'REQUIRED_FIELD_HIDDEN',
+      );
+      if (blocking.length > 0) {
+        throw validationError(
+          'initialFields',
+          blocking.map((issue) => issue.message).join('；'),
+        );
+      }
+    }
+
+    try {
+      let created = await store.createObject(draft);
+      if (input.initialFields !== undefined) {
+        const saved = await store.saveObject(draft, draft.object.version, {
+          bumpVersion: false,
+        });
+        if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+        created = saved;
+      }
+      await store.appendAudit(
+        auditEvent(context, meta, 'object.created', created.object.id, {
+          name: created.object.name,
+          code: created.object.code,
+          status: created.object.status,
+        }),
+      );
+      return created;
+    } catch (error) {
+      if (hasErrorCode(error, 'P2002')) {
+        throw validationError('code', '对象代码已被使用。');
+      }
+      throw error;
+    }
   }
 
   update(
@@ -451,20 +312,17 @@ export class ObjectsService {
       input.expectedVersion,
       meta,
       'object.updated',
-      (draft) => {
-        if (input.code !== undefined) {
-          const code = normalizeObjectCode(input.code);
-          if (draft.activeSchema && code !== draft.object.code) {
-            throw validationError('code', '对象发布后不能修改代码。');
-          }
-          draft.object.code = code;
-        }
-        if (input.name !== undefined) draft.object.name = input.name.trim();
-        if (input.description !== undefined)
-          draft.object.description = input.description;
-        if (input.icon !== undefined) draft.object.icon = input.icon;
-        if (input.titleFieldKey !== undefined)
-          draft.object.titleFieldKey = input.titleFieldKey;
+      async (draft, store) => {
+        if (
+          input.name !== undefined &&
+          canonicalName(input.name) !== canonicalName(draft.object.name)
+        )
+          assertObjectNameAvailable(
+            input.name,
+            await store.listObjectStructures(),
+            objectId,
+          );
+        updateObject(draft, input);
       },
     );
   }
@@ -475,35 +333,13 @@ export class ObjectsService {
     input: FieldCreateInput,
     meta: RequestMeta,
   ): Promise<ObjectDraft> {
-    const fieldKey = normalizeFieldKey(input.fieldKey);
     return this.mutateDraft(
       context,
       objectId,
       input.expectedVersion,
       meta,
       'object.field_created',
-      (draft) => {
-        if (draft.fields.some((field) => field.fieldKey === fieldKey)) {
-          throw validationError('fieldKey', '字段键已被使用。');
-        }
-        draft.fields.push({
-          id: this.idGenerator(),
-          fieldKey,
-          label: input.label.trim(),
-          type: input.type,
-          required: input.required,
-          defaultValue: input.defaultValue,
-          validation: { ...input.validation },
-          config: { ...input.config },
-          sortOrder:
-            draft.fields.reduce(
-              (maximum, field) => Math.max(maximum, field.sortOrder),
-              0,
-            ) + 10,
-          isSystem: input.isSystem,
-          status: 'ACTIVE',
-        });
-      },
+      (draft) => appendField(draft, input, this.idGenerator()),
     );
   }
 
@@ -626,28 +462,7 @@ export class ObjectsService {
       input.expectedVersion,
       meta,
       'object.field_order_updated',
-      (draft) => {
-        const currentIds = draft.fields.map((field) => field.id);
-        if (
-          new Set(input.fieldIds).size !== currentIds.length ||
-          input.fieldIds.some((fieldId) => !currentIds.includes(fieldId))
-        ) {
-          throw validationError(
-            'fieldIds',
-            '字段排序必须包含全部且不重复的字段。',
-          );
-        }
-        const order = new Map(
-          input.fieldIds.map((fieldId, index) => [fieldId, (index + 1) * 10]),
-        );
-        for (const field of draft.fields)
-          field.sortOrder = order.get(field.id)!;
-        draft.fields.sort(
-          (left, right) =>
-            left.sortOrder - right.sortOrder ||
-            left.fieldKey.localeCompare(right.fieldKey),
-        );
-      },
+      (draft) => orderFields(draft, input),
     );
   }
 
@@ -663,38 +478,7 @@ export class ObjectsService {
       input.expectedVersion,
       meta,
       'object.default_view_updated',
-      (draft) => {
-        if (
-          !isSystemRecordSortField(input.sort.field) &&
-          !draft.fields.some(
-            (field) =>
-              field.fieldKey === input.sort.field &&
-              field.status === 'ACTIVE' &&
-              isSortableFieldType(field.type),
-          )
-        ) {
-          throw validationError(
-            'sort.field',
-            '默认排序必须使用系统字段或已启用的可排序业务字段。',
-          );
-        }
-        draft.defaultView = {
-          code: 'default',
-          name: input.name.trim(),
-          columnFieldKeys: [...input.columnFieldKeys],
-          ...(input.searchFieldKeys === undefined
-            ? draft.defaultView?.searchFieldKeys === undefined
-              ? {}
-              : { searchFieldKeys: draft.defaultView.searchFieldKeys }
-            : {
-                searchFieldKeys: normalizeSearchFieldKeys(
-                  input.searchFieldKeys,
-                  draft.fields,
-                ),
-              }),
-          sort: { ...input.sort },
-        };
-      },
+      (draft) => setDefaultView(draft, input),
     );
   }
 
@@ -710,34 +494,7 @@ export class ObjectsService {
       input.expectedVersion,
       meta,
       'object.permissions_updated',
-      (draft) => {
-        // A granted action with "no access" as its scope is contradictory: the
-        // designer showed the switch as on while every record read was denied,
-        // and the publication analysis let that reach employees. Rejecting it
-        // here keeps one clear meaning per permission.
-        if (input.canRead && input.readScope === 'NONE')
-          throw new ApiException('VALIDATION_FAILED', 400, {
-            fieldErrors: {
-              readScope: ['勾选“可以查看记录”后，查看范围不能是“无权访问”。'],
-            },
-          });
-        if (input.canUpdate && input.updateScope === 'NONE')
-          throw new ApiException('VALIDATION_FAILED', 400, {
-            fieldErrors: {
-              updateScope: ['勾选“可以修改记录”后，修改范围不能是“无权访问”。'],
-            },
-          });
-        draft.employeeAccess = {
-          ...transferSettings(input, draft.employeeAccess),
-          canCreate: input.canCreate,
-          canRead: input.canRead,
-          canUpdate: input.canUpdate,
-          canDelete: false,
-          readScope: input.readScope,
-          updateScope: input.updateScope,
-          fields: { ...input.fields },
-        };
-      },
+      (draft) => setEmployeeAccess(draft, input),
     );
   }
 
@@ -938,7 +695,7 @@ export class ObjectsService {
     });
   }
 
-  private async commitPublication(
+  async commitPublication(
     store: ObjectsStore,
     context: TenantContext,
     draft: ObjectDraft,
@@ -983,7 +740,7 @@ export class ObjectsService {
     expectedVersion: number,
     meta: RequestMeta,
     action: string,
-    mutate: (draft: ObjectDraft) => void,
+    mutate: (draft: ObjectDraft, store: ObjectsStore) => void | Promise<void>,
   ): Promise<ObjectDraft> {
     assertTenantAdmin(context);
     return this.repository.withTenant(context, async (store) => {
@@ -992,20 +749,32 @@ export class ObjectsService {
       const draft = await requireDraft(store, objectId);
       assertVersion(draft, expectedVersion);
       assertNotArchived(draft);
-      mutate(draft);
-      const saved = await store.saveObject(draft, expectedVersion);
-      if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-      await store.appendAudit(
-        auditEvent(context, meta, action, objectId, {
-          version: saved.object.version,
-        }),
-      );
-      return saved;
+      await mutate(draft, store);
+      return this.saveChange(store, context, draft, action, meta);
     });
+  }
+  async saveChange(
+    store: ObjectsStore,
+    context: TenantContext,
+    draft: ObjectDraft,
+    action: string,
+    meta: RequestMeta,
+    previous?: ObjectDraft,
+  ) {
+    const saved = await store.saveObject(draft, draft.object.version, {
+      previous,
+    });
+    if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+    await store.appendAudit(
+      auditEvent(context, meta, action, draft.object.id, {
+        version: saved.object.version,
+      }),
+    );
+    return saved;
   }
 }
 
-function assertTenantAdmin(context: TenantContext): void {
+export function assertTenantAdmin(context: TenantContext): void {
   if (context.role !== 'TENANT_ADMIN') {
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   }
@@ -1032,7 +801,7 @@ async function loadActionTargets(
   draft.actionTargets = await store.findActionTargetObjects(codes);
 }
 
-async function requireDraft(
+export async function requireDraft(
   store: ObjectsStore,
   objectId: string,
 ): Promise<ObjectDraft> {
@@ -1041,7 +810,10 @@ async function requireDraft(
   return structuredClone(draft);
 }
 
-function assertVersion(draft: ObjectDraft, expectedVersion: number): void {
+export function assertVersion(
+  draft: ObjectDraft,
+  expectedVersion: number,
+): void {
   if (draft.object.version !== expectedVersion) {
     throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
   }
@@ -1049,7 +821,7 @@ function assertVersion(draft: ObjectDraft, expectedVersion: number): void {
 
 function normalizeObjectCode(value: string): string {
   const code = value.trim().toLowerCase();
-  if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code)) {
+  if (!NEW_OBJECT_CODE_PATTERN.test(code)) {
     throw validationError('code', '仅支持小写字母、数字和单个连字符。');
   }
   return code;
@@ -1057,7 +829,7 @@ function normalizeObjectCode(value: string): string {
 
 function normalizeFieldKey(value: string): string {
   const fieldKey = value.trim().toLowerCase();
-  if (!/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(fieldKey)) {
+  if (!FIELD_KEY_PATTERN.test(fieldKey)) {
     throw validationError('fieldKey', '仅支持小写字母、数字和下划线。');
   }
   return fieldKey;
@@ -1088,13 +860,13 @@ function normalizeSearchFieldKeys(
   return requested;
 }
 
-function validationError(field: string, message: string): ApiException {
+export function validationError(field: string, message: string): ApiException {
   return new ApiException('VALIDATION_FAILED', 400, {
     fieldErrors: { [field]: [message] },
   });
 }
 
-function toJsonRecord(value: object): Record<string, JsonValue> {
+export function toJsonRecord(value: object): Record<string, JsonValue> {
   // DTO class instances contain omitted properties with undefined values.
   // Match the JSON shape validated and stored by the existing field endpoints.
   return JSON.parse(JSON.stringify(value)) as Record<string, JsonValue>;
@@ -1116,7 +888,7 @@ function assignFieldMutation(
   if (field.type !== previousType) dropIncompatibleSettings(field);
 }
 
-function auditEvent(
+export function auditEvent(
   context: TenantContext,
   meta: RequestMeta,
   action: string,
@@ -1144,7 +916,7 @@ function hasErrorCode(error: unknown, code: string): boolean {
   );
 }
 
-function assertNotArchived(draft: ObjectDraft): void {
+export function assertNotArchived(draft: ObjectDraft): void {
   if (draft.object.status === 'ARCHIVED')
     throw new ApiException('OBJECT_ARCHIVED', 409);
 }
@@ -1155,4 +927,155 @@ function assertNoLifecycleBlockers(blockers: LifecycleBlocker[]): void {
       message: blockers.map((blocker) => blocker.description).join('；'),
       fieldErrors: { blockers: blockers.map((blocker) => blocker.description) },
     });
+}
+
+export function updateObject(
+  draft: ObjectDraft,
+  input: Omit<ObjectMutationInput, 'expectedVersion'>,
+) {
+  if (input.code !== undefined) {
+    const code = normalizeObjectCode(input.code);
+    if (draft.activeSchema && code !== draft.object.code) {
+      throw validationError('code', '对象发布后不能修改代码。');
+    }
+    draft.object.code = code;
+  }
+  if (input.name !== undefined) draft.object.name = input.name.trim();
+  if (input.description !== undefined)
+    draft.object.description = input.description;
+  if (input.icon !== undefined) draft.object.icon = input.icon;
+  if (input.titleFieldKey !== undefined)
+    draft.object.titleFieldKey = input.titleFieldKey;
+}
+
+export function appendField(
+  draft: ObjectDraft,
+  input: Omit<FieldCreateInput, 'expectedVersion'>,
+  id: string,
+) {
+  const fieldKey = normalizeFieldKey(input.fieldKey);
+  if (draft.fields.some((field) => field.fieldKey === fieldKey)) {
+    throw validationError('fieldKey', '字段键已被使用。');
+  }
+  draft.fields.push({
+    id,
+    fieldKey,
+    label: input.label.trim(),
+    type: input.type,
+    required: input.required,
+    defaultValue: input.defaultValue,
+    validation: { ...input.validation },
+    config: { ...input.config },
+    sortOrder:
+      draft.fields.reduce(
+        (maximum, field) => Math.max(maximum, field.sortOrder),
+        0,
+      ) + 10,
+    isSystem: input.isSystem,
+    status: 'ACTIVE',
+  });
+}
+
+export function orderFields(draft: ObjectDraft, input: { fieldIds: string[] }) {
+  const currentIds = draft.fields.map((field) => field.id);
+  if (
+    new Set(input.fieldIds).size !== currentIds.length ||
+    input.fieldIds.some((fieldId) => !currentIds.includes(fieldId))
+  ) {
+    throw validationError('fieldIds', '字段排序必须包含全部且不重复的字段。');
+  }
+  const order = new Map(
+    input.fieldIds.map((fieldId, index) => [fieldId, (index + 1) * 10]),
+  );
+  for (const field of draft.fields) field.sortOrder = order.get(field.id)!;
+  draft.fields.sort(
+    (left, right) =>
+      left.sortOrder - right.sortOrder ||
+      left.fieldKey.localeCompare(right.fieldKey),
+  );
+}
+
+export function setDefaultView(
+  draft: ObjectDraft,
+  input: Omit<DefaultViewInput, 'expectedVersion'>,
+) {
+  if (
+    !isSystemRecordSortField(input.sort.field) &&
+    !draft.fields.some(
+      (field) =>
+        field.fieldKey === input.sort.field &&
+        field.status === 'ACTIVE' &&
+        isSortableFieldType(field.type),
+    )
+  ) {
+    throw validationError(
+      'sort.field',
+      '默认排序必须使用系统字段或已启用的可排序业务字段。',
+    );
+  }
+  draft.defaultView = {
+    code: 'default',
+    name: input.name.trim(),
+    columnFieldKeys: [...input.columnFieldKeys],
+    ...(input.searchFieldKeys === undefined
+      ? draft.defaultView?.searchFieldKeys === undefined
+        ? {}
+        : { searchFieldKeys: draft.defaultView.searchFieldKeys }
+      : {
+          searchFieldKeys: normalizeSearchFieldKeys(
+            input.searchFieldKeys,
+            draft.fields,
+          ),
+        }),
+    sort: { ...input.sort },
+  };
+}
+
+export function setEmployeeAccess(
+  draft: ObjectDraft,
+  input: Omit<EmployeePermissionInput, 'expectedVersion'>,
+) {
+  // A granted action with "no access" as its scope is contradictory: the
+  // designer showed the switch as on while every record read was denied,
+  // and the publication analysis let that reach employees. Rejecting it
+  // here keeps one clear meaning per permission.
+  if (input.canRead && input.readScope === 'NONE')
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      fieldErrors: {
+        readScope: ['勾选“可以查看记录”后，查看范围不能是“无权访问”。'],
+      },
+    });
+  if (input.canUpdate && input.updateScope === 'NONE')
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      fieldErrors: {
+        updateScope: ['勾选“可以修改记录”后，修改范围不能是“无权访问”。'],
+      },
+    });
+  draft.employeeAccess = {
+    ...transferSettings(input, draft.employeeAccess),
+    canCreate: input.canCreate,
+    canRead: input.canRead,
+    canUpdate: input.canUpdate,
+    canDelete: false,
+    readScope: input.readScope,
+    updateScope: input.updateScope,
+    fields: { ...input.fields },
+  };
+}
+
+function assertObjectNameAvailable(
+  name: string,
+  objects: ObjectStructure[],
+  exceptId?: string,
+) {
+  if (
+    objects.some(
+      (o) =>
+        o.id !== exceptId &&
+        [o.name, o.publishedName].some(
+          (n) => n != null && canonicalName(n) === canonicalName(name),
+        ),
+    )
+  )
+    throw validationError('name', '业务表名称已被使用。');
 }
