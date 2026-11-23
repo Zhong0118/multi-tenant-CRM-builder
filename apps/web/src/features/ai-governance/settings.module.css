@@ -49,6 +49,9 @@
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 24px;
 }
+.grid > section:not(:first-child) {
+  margin-top: 0;
+}
 .features,
 .members {
   list-style: none;
@@ -69,9 +72,13 @@
 .check {
   color: var(--color-primary);
 }
+.helper,
+.secondary {
+  font-size: 13px;
+  line-height: 1.6;
+}
 .helper {
   margin: 12px 0;
-  line-height: 1.6;
 }
 .saveRow {
   display: flex;
@@ -146,7 +153,7 @@
   }
   .grid {
     grid-template-columns: 1fr;
-    gap: 0;
+    gap: 20px;
   }
   .members li {
     grid-template-columns: 1fr auto;

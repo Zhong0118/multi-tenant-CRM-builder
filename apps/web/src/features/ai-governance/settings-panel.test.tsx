@@ -72,7 +72,7 @@ describe("company AI settings", () => {
       .mockResolvedValue({ ...state, allocation: "equal" });
     show();
     fireEvent.click(await screen.findByText("按人均分"));
-    expect(screen.getByText("每人约 4 万 token · 已超份额 1 人")).toBeVisible();
+    expect(screen.getByText("每人约 4.0 万 token · 已超份额 1 人")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: /保\s*存/ }));
     expect(save).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole("button", { name: "确认切换" }));

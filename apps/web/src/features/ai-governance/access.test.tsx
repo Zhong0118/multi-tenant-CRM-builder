@@ -29,7 +29,7 @@ describe("workspace AI access", () => {
         capabilities={{ ...basic, notice: "company_warning", percent: 83 }}
       />,
     );
-    expect(screen.getByText(/公司本月 AI 额度已用 83%/)).toBeVisible();
+    expect(screen.getByText(/公司本月 AI 额度已用 83\.0%/)).toBeVisible();
     rerender(
       <QuotaNotice
         capabilities={{
@@ -40,7 +40,7 @@ describe("workspace AI access", () => {
         }}
       />,
     );
-    expect(screen.getByText(/本人本月已用 40%.*1.2 万 token/)).toBeVisible();
+    expect(screen.getByText(/本人本月已用 40\.0%.*1.2 万 token/)).toBeVisible();
     rerender(<QuotaNotice capabilities={basic} />);
     expect(screen.queryByRole("status")).toBeNull();
   });

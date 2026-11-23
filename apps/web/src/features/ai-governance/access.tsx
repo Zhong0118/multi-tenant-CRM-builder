@@ -1,11 +1,11 @@
 "use client";
+import { formatPercent, formatTokens } from "@/features/ai-governance/format";
 import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Alert } from "antd";
 import {
   workspaceAi,
-  tokens,
   type AiFeature,
   type Capabilities,
 } from "./workspace-api";
@@ -104,11 +104,11 @@ export function QuotaNotice({
         (c.notice === "company_exhausted" ? "恢复。如需增加，请联系管理员" : "恢复")
       : c.notice === "personal"
         ? "本人本月已用 " +
-          (c.percent ?? 0) +
-          "% · 剩余 " +
-          tokens(c.remainingTokens ?? 0)
+          formatPercent(c.percent ?? 0) +
+          " · 剩余 " +
+          formatTokens(c.remainingTokens ?? 0)
         : c.notice === "company_warning"
-          ? "公司本月 AI 额度已用 " + c.percent + "%"
+          ? "公司本月 AI 额度已用 " + formatPercent(c.percent ?? 0)
           : null;
   return message ? (
     <div role="status">

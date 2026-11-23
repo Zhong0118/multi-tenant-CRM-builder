@@ -1,11 +1,11 @@
 "use client";
+import { formatPercent, formatTokens } from "@/features/ai-governance/format";
 import dynamic from "next/dynamic";
 import { Empty, Progress } from "antd";
 import { PageSection } from "@/components/layout/page";
 import { MemberIdentity } from "@/components/identity/member-identity";
 import {
   featureNames,
-  tokens,
   type Settings,
   type Usage,
   type AiFeature,
@@ -53,7 +53,8 @@ export function UsagePanel({
         >
           {byDay.size > 0 ? (
             <Trend
-              title="用量（token）"
+              title="用量"
+              formatValue={formatTokens}
               data={[...byDay.entries()]
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([date, value]) => ({ date, value }))}
@@ -68,7 +69,7 @@ export function UsagePanel({
             .map(([feature, n]) => (
               <div key={feature} className={styles.featureUsage}>
                 <span>{featureNames[feature]}</span>
-                <b>{tokens(n)}</b>
+                <b>{formatTokens(n)}</b>
                 <Progress
                   size="small"
                   percent={Math.min(
@@ -99,11 +100,11 @@ export function UsagePanel({
                   }}
                 />
                 <span>
-                  {tokens(m.usedTokens)}
-                  {share !== null && <small> / {tokens(share)}</small>}
+                  {formatTokens(m.usedTokens)}
+                  {share !== null && <small> / {formatTokens(share)}</small>}
                 </span>
                 <span style={{ color: quotaColor(percent) }}>
-                  {Number(percent.toFixed(1))}%
+                  {formatPercent(percent)}
                 </span>
               </li>
             );

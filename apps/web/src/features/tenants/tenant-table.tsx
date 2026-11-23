@@ -1,5 +1,6 @@
 "use client";
 
+import { formatPercent } from "@/features/ai-governance/format";
 import type { components } from "@crm/contracts";
 import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -131,10 +132,7 @@ export function TenantTable({
                             : "neutral"
                       }
                     >
-                      {tenant.aiPercent.toLocaleString("zh-CN", {
-                        maximumFractionDigits: 1,
-                      })}
-                      %
+                      {formatPercent(tenant.aiPercent)}
                     </StatusTag>
                   </small>
                 )}

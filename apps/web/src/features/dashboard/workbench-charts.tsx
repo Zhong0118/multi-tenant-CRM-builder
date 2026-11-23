@@ -8,15 +8,21 @@ import { WORKSPACE_TOKENS } from "@/components/theme/workspace-theme";
 export function TrendChart({
   title,
   data,
+  formatValue,
 }: {
   title: string;
+  formatValue?: (value: number) => string;
   data: Array<{ date: string; value: number }>;
 }) {
   if (data.length === 1)
     return (
       <div className={styles.singleTrend}>
         <span>{data[0].date}</span>
-        <strong>{new Intl.NumberFormat("zh-CN").format(data[0].value)}</strong>
+        <strong>
+          {formatValue
+            ? formatValue(data[0].value)
+            : new Intl.NumberFormat("zh-CN").format(data[0].value)}
+        </strong>
         <p>当前范围仅有一个时间点，积累更多数据后显示趋势。</p>
       </div>
     );
@@ -29,7 +35,22 @@ export function TrendChart({
           data={data}
           xField="date"
           yField="value"
-          axis={{ x: { title: false }, y: { title: false } }}
+          axis={{
+            x: { title: false },
+            y: {
+              title: false,
+              ...(formatValue && {
+                labelFormatter: (v: number | string) => formatValue(Number(v)),
+              }),
+            },
+          }}
+          tooltip={
+            formatValue && {
+              items: [
+                { name: title, field: "value", valueFormatter: formatValue },
+              ],
+            }
+          }
           color={WORKSPACE_TOKENS.primary}
           style={{ lineWidth: 2 }}
         />
@@ -46,7 +67,7 @@ export function TrendChart({
           {data.map((item) => (
             <tr key={item.date}>
               <td>{item.date}</td>
-              <td>{item.value}</td>
+              <td>{formatValue ? formatValue(item.value) : item.value}</td>
             </tr>
           ))}
         </tbody>

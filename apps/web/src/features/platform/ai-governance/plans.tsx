@@ -1,4 +1,5 @@
 "use client";
+import { formatTokens } from "@/features/ai-governance/format";
 import { useState } from "react";
 import {
   Button,
@@ -28,7 +29,7 @@ import {
   useAction,
   usePlans,
   useSettings,
-  wan,
+  quotaInputValue,
 } from "./common";
 import styles from "./platform-ai.module.css";
 type Edit = {
@@ -73,7 +74,7 @@ export function PlatformPlans() {
             name: p.name,
             description: p.description,
             features: p.features,
-            quota: wan(p.monthlyTokens),
+            quota: quotaInputValue(p.monthlyTokens),
             assignable: stop ? false : p.assignable,
             replacement: "",
           },
@@ -163,7 +164,7 @@ export function PlatformPlans() {
               },
               {
                 title: "月额度",
-                render: (_, p) => wan(p.monthlyTokens) + " 万 token",
+                render: (_, p) => formatTokens(p.monthlyTokens),
               },
               { title: "使用公司", render: (_, p) => p.companies + " 家" },
               {

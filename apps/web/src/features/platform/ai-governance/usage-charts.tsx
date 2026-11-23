@@ -1,6 +1,7 @@
 "use client";
+import { formatTokens, formatPercent } from "@/features/ai-governance/format";
 import { Column } from "@ant-design/charts";
-import { names, wan, type Summary, type Feature } from "./common";
+import { names, type Summary, type Feature } from "./common";
 import styles from "./platform-ai.module.css";
 export function UsageCharts({ summary }: { summary: Summary }) {
   const totals = new Map<Feature, bigint>();
@@ -19,16 +20,27 @@ export function UsageCharts({ summary }: { summary: Summary }) {
   return (
     <div className={styles.charts}>
       <section>
-        <h4>近六个月用量（万 token）</h4>
+        <h4>近六个月用量</h4>
         <Column
           height={180}
           data={summary.trend.map((r) => ({
             month: r.month.slice(0, 7),
-            value: Number(r.usedTokens) / 10000,
+            value: Number(r.usedTokens),
           }))}
           xField="month"
           yField="value"
-          axis={{ y: { title: false }, x: { title: false } }}
+          axis={{
+            y: {
+              title: false,
+              labelFormatter: (v: number | string) => formatTokens(Number(v)),
+            },
+            x: { title: false },
+          }}
+          tooltip={{
+            items: [
+              { name: "用量", field: "value", valueFormatter: formatTokens },
+            ],
+          }}
         />
       </section>
       <section>
@@ -39,11 +51,10 @@ export function UsageCharts({ summary }: { summary: Summary }) {
             <div key={f} className={styles.line}>
               <span>{names[f]}</span>
               <strong>
-                {wan(sum.toString())} 万 token ·{" "}
-                {Math.round(
+                {formatTokens(sum)} ·{" "}
+                {formatPercent(
                   (Number(sum) / Math.max(1, Number(summary.usedTokens))) * 100,
                 )}
-                %
               </strong>
             </div>
           ))}

@@ -1,4 +1,5 @@
 "use client";
+import { formatTokens } from "@/features/ai-governance/format";
 import { Alert, Button, Input, Modal, Select, Space, Tag } from "antd";
 import { useState } from "react";
 import { PageSection, SettingRow } from "@/components/layout/page";
@@ -10,7 +11,6 @@ import {
   useAction,
   usePlans,
   useSettings,
-  wan,
 } from "./common";
 import styles from "./platform-ai.module.css";
 export function PlatformAiSettings() {
@@ -79,7 +79,7 @@ export function PlatformAiSettings() {
             title="模型实报超出预占"
             description={s.anomalies.map((a) => (
               <div key={a.model}>
-                {a.model} · {a.calls} 次 · 超出 {wan(a.excessTokens)} 万 token
+                {a.model} · {a.calls} 次 · 超出 {formatTokens(a.excessTokens)}
               </div>
             ))}
           />

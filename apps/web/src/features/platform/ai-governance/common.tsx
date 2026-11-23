@@ -21,7 +21,7 @@ export const names: Record<Feature, string> = {
 };
 export const list = (features: Feature[]) =>
   features.map((f) => names[f]).join("、") || "无";
-export const wan = (s: string) => {
+export const quotaInputValue = (s: string) => {
   const n = BigInt(s);
   const fraction = (n % BigInt(10000))
     .toString()

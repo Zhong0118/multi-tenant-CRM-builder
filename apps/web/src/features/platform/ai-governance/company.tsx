@@ -1,4 +1,5 @@
 "use client";
+import { formatTokens, formatPercent } from "@/features/ai-governance/format";
 import {
   Button,
   Empty,
@@ -24,7 +25,6 @@ import {
   tokenAmount,
   useAction,
   usePlans,
-  wan,
   type Feature,
 } from "./common";
 import styles from "./platform-ai.module.css";
@@ -155,9 +155,7 @@ export function CompanyAi({
         {c.usedTokens !== "0" ? (
           <>
             <div className={styles.meter}>
-              <strong>
-                {pct.toLocaleString("zh-CN", { maximumFractionDigits: 1 })}%
-              </strong>
+              <strong>{formatPercent(pct)}</strong>
               <span>本月已用</span>
             </div>
             <Progress
@@ -172,9 +170,9 @@ export function CompanyAi({
               }
             />
             <div className={styles.ledger}>
-              <span>已用 {wan(c.usedTokens)} 万 token</span>
-              <span>总额度 {wan(c.totalTokens)} 万 token</span>
-              <span>剩余 {wan(c.remainingTokens)} 万 token</span>
+              <span>已用 {formatTokens(c.usedTokens)}</span>
+              <span>总额度 {formatTokens(c.totalTokens)}</span>
+              <span>剩余 {formatTokens(c.remainingTokens)}</span>
             </div>
           </>
         ) : (
@@ -184,7 +182,7 @@ export function CompanyAi({
               description="本月还没有使用 AI"
             />
             <div className={styles.ledger}>
-              本月可用额度 {wan(c.totalTokens)} 万 token
+              本月可用额度 {formatTokens(c.totalTokens)}
             </div>
           </>
         )}
@@ -254,8 +252,8 @@ export function CompanyAi({
                   {list(impact.removedFeatures)}。
                 </p>
                 <p>
-                  本月额度将为 {wan(impact.totalTokens)} 万
-                  token，确认后立即生效。
+                  本月额度将为 {formatTokens(impact.totalTokens)}
+                  ，确认后立即生效。
                 </p>
               </>
             )}

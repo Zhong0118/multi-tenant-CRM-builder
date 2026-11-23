@@ -1,4 +1,5 @@
 "use client";
+import { formatPercent, formatTokens } from "@/features/ai-governance/format";
 import { useState } from "react";
 import {
   Alert,
@@ -18,7 +19,6 @@ import { useToast } from "@/components/feedback/use-toast";
 import { LoadError, quotaColor } from "./view-feedback";
 import {
   workspaceAi,
-  tokens,
   featureNames,
   type Settings,
   type AiFeature,
@@ -90,24 +90,22 @@ export function WorkspaceAiSettings({
                 本月已用 <Tag>{state.planName ?? "未开通"}</Tag>
               </div>
               <strong className={styles.total}>
-                {tokens(state.usedTokens)}
+                {formatTokens(state.usedTokens)}
               </strong>
               <span className={styles.secondary}>
                 {" "}
-                / {tokens(state.totalTokens)}
+                / {formatTokens(state.totalTokens)}
               </span>
             </div>
             <div className={styles.balance}>
-              剩余 <strong>{tokens(state.remainingTokens)}</strong>
+              剩余 <strong>{formatTokens(state.remainingTokens)}</strong>
               <span>{nextMonthLabel(state.month)}恢复</span>
             </div>
             <Progress
               className={styles.progress}
               percent={Math.min(100, state.percent ?? 0)}
               format={() =>
-                state.percent === null
-                  ? "—"
-                  : Number(state.percent.toFixed(1)) + "%"
+                state.percent === null ? "—" : formatPercent(state.percent)
               }
               strokeColor={quotaColor(state.percent ?? 0)}
             />
@@ -237,7 +235,7 @@ const shareText = (preview: Settings["preview"]) =>
   preview.shareTokens === null
     ? "暂无在职成员"
     : "每人约 " +
-      tokens(preview.shareTokens) +
+      formatTokens(preview.shareTokens) +
       " · 已超份额 " +
       preview.overShare +
       " 人";

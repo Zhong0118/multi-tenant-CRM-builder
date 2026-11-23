@@ -19,10 +19,6 @@ export const featureNames: Record<AiFeature, string> = {
   filter: "一句话筛选",
   table_builder: "AI 建表",
 };
-export const tokens = (n: string | number) =>
-  new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 4 }).format(
-    Number(n) / 10000,
-  ) + " 万 token";
 const base = (tenant: string) =>
   "/api/v1/workspaces/" + encodeURIComponent(tenant) + "/ai/";
 export const workspaceAi = {
