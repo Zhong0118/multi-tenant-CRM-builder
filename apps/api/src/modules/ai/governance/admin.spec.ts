@@ -1,3 +1,4 @@
+import type { PublishedField } from '../../objects/object-schema';
 import { inputs, validated } from './admin.contract';
 import { cursorValue, permittedChanges } from './admin-operations';
 import { validatePlan } from './admin-platform.service';
@@ -102,7 +103,7 @@ describe('AI governance contracts and projections', () => {
       'draft',
       'DRAFT',
       { items: { fields: snapshot } },
-      new Set(['visible']),
+      new Map([['visible', { type: 'TEXT', config: {} }]]),
     );
     expect(result).toEqual({
       complete: false,
@@ -115,6 +116,51 @@ describe('AI governance contracts and projections', () => {
       ],
     });
   });
+  it.each(['proposal', 'draft'])(
+    'resolves only visible single-select keys for %s records',
+    (source) => {
+      const stored = {
+        operationType: 'UPDATE_RECORD',
+        changes: [
+          {
+            fieldKey: 'stage',
+            label: '阶段',
+            before: 'proposal',
+            after: 'negotiation',
+          },
+          { fieldKey: 'stage', label: '阶段', before: '', after: 'retired' },
+          { fieldKey: 'name', label: '名称', after: 'proposal' },
+          { fieldKey: 'hidden', label: '隐藏字段', after: 'secret' },
+        ],
+      };
+      const result = permittedChanges(
+        source,
+        'EXECUTED',
+        source === 'draft' ? { items: { fields: stored } } : stored,
+        new Map<string, Pick<PublishedField, 'type' | 'config'>>([
+          [
+            'stage',
+            {
+              type: 'SINGLE_SELECT',
+              config: {
+                options: [
+                  { key: 'proposal', label: '报价', status: 'INACTIVE' },
+                  { key: 'negotiation', label: '谈判', status: 'ACTIVE' },
+                ],
+              },
+            },
+          ],
+          ['name', { type: 'TEXT', config: {} }],
+        ]),
+      );
+      expect(result.complete).toBe(false);
+      expect(result.items[0]?.changes).toEqual([
+        { label: '阶段', before: '报价', after: '谈判' },
+        { label: '阶段', before: '', after: 'retired（选项已删除）' },
+        { label: '名称', after: 'proposal' },
+      ]);
+    },
+  );
   it('accepts supported operation-type filters and rejects unknown types', () => {
     expect(
       validated(inputs.operations, { operationType: 'UPDATE_RECORD' }),

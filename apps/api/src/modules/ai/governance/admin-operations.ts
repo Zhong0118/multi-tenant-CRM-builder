@@ -2,6 +2,8 @@ import { Prisma } from '@crm/database';
 import { z } from 'zod';
 import { ApiException } from '../../../common/errors/api.exception';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
+import type { PublishedField } from '../../objects/object-schema';
+import { selectOptions } from '../../records/record-value-engine';
 import { recordFieldAccess } from '../../objects/effective-access';
 import { resolveReadableObjectByIdInTransaction } from '../../objects/published-object-transaction';
 import { recordOwnerFilter } from '../../objects/record-read-scope';
@@ -86,7 +88,7 @@ export function permittedChanges(
   source: string,
   status: string,
   stored: unknown,
-  visible: Set<string>,
+  visible: ReadonlyMap<string, Pick<PublishedField, 'type' | 'config'>>,
 ) {
   let complete = true;
   const container = z
@@ -106,12 +108,19 @@ export function permittedChanges(
     }
     const item = parsed.data;
     const changes = item.changes.flatMap(({ fieldKey, ...change }) => {
-      if (
-        item.operationType === 'UPDATE_RECORD' &&
-        (!fieldKey || !visible.has(fieldKey))
-      ) {
+      if (item.operationType !== 'UPDATE_RECORD') return [change];
+      const field = fieldKey ? visible.get(fieldKey) : undefined;
+      if (!field) {
         complete = false;
         return [];
+      }
+      if (field.type === 'SINGLE_SELECT') {
+        const options = selectOptions(field);
+        const optionLabel = (key: string) =>
+          options.find((option) => option.key === key)?.label ??
+          `${key}（选项已删除）`;
+        if (change.before) change.before = optionLabel(change.before);
+        if (change.after) change.after = optionLabel(change.after);
       }
       return [change];
     });
@@ -196,10 +205,10 @@ export async function operationDetail(tx: Tx, c: TenantContext, id: string) {
     });
     if (!record) return redacted;
     const access = recordFieldAccess(resolved.access, record);
-    const fields = new Set(
+    const fields = new Map(
       resolved.schema.fields
         .filter((f) => access[f.fieldKey] && access[f.fieldKey] !== 'HIDDEN')
-        .map((f) => f.fieldKey),
+        .map((f) => [f.fieldKey, f]),
     );
     const display = permittedChanges(row.source, row.status, changes, fields);
     // A free-text question may name fields outside the proposed diff.
