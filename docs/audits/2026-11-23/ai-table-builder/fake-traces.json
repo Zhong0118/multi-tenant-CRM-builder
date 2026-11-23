@@ -1,0 +1,2634 @@
+[
+  {
+    "dataset": "development",
+    "sampleId": "dev-01",
+    "raw": {
+      "needsDetails": false,
+      "tables": [
+        {
+          "name": "客户",
+          "description": null,
+          "icon": null,
+          "reason": "保存承租客户的联系资料。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "客户名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "用于识别客户。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:phone",
+              "label": "联系电话",
+              "type": "PHONE",
+              "required": false,
+              "reason": "联系客户时使用。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:email",
+              "label": "电子邮箱",
+              "type": "EMAIL",
+              "required": false,
+              "reason": "接收业务通知。",
+              "options": [],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:phone",
+            "new:email"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": [
+            {
+              "request": "销售只能看自己的记录",
+              "reason": "草稿默认隐藏全部字段，管理员可在发布前配置员工权限。"
+            }
+          ]
+        },
+        {
+          "name": "合同",
+          "description": null,
+          "icon": null,
+          "reason": "登记租赁合同及履约期限。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "合同名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "用于识别合同。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:rent",
+              "label": "租金",
+              "type": "MONEY",
+              "required": false,
+              "reason": "登记约定的租赁金额。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:end",
+              "label": "合同到期日",
+              "type": "DATE",
+              "required": false,
+              "reason": "记录租赁合同的结束日期。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:state",
+              "label": "合同状态",
+              "type": "SINGLE_SELECT",
+              "required": false,
+              "reason": "跟踪合同办理进度。",
+              "options": [
+                {
+                  "ref": "new:choice0",
+                  "label": "草拟",
+                  "reason": "供录入时选择。"
+                },
+                {
+                  "ref": "new:choice1",
+                  "label": "履行中",
+                  "reason": "供录入时选择。"
+                },
+                {
+                  "ref": "new:choice2",
+                  "label": "已结束",
+                  "reason": "供录入时选择。"
+                }
+              ],
+              "validation": null
+            },
+            {
+              "ref": "new:note",
+              "label": "备注",
+              "type": "TEXTAREA",
+              "required": false,
+              "reason": "记录其他约定。",
+              "options": [],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:rent",
+            "new:end",
+            "new:state"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": [
+            {
+              "request": "销售只能看自己的记录",
+              "reason": "草稿默认隐藏全部字段，管理员可在发布前配置员工权限。"
+            }
+          ]
+        },
+        {
+          "name": "设备",
+          "description": null,
+          "icon": null,
+          "reason": "管理可出租的设备。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "设备名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "用于识别出租设备。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:model",
+              "label": "设备型号",
+              "type": "TEXT",
+              "required": false,
+              "reason": "标明具体设备规格。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:state",
+              "label": "设备状态",
+              "type": "SINGLE_SELECT",
+              "required": false,
+              "reason": "跟踪设备可用性。",
+              "options": [
+                {
+                  "ref": "new:choice0",
+                  "label": "可租",
+                  "reason": "供录入时选择。"
+                },
+                {
+                  "ref": "new:choice1",
+                  "label": "已出租",
+                  "reason": "供录入时选择。"
+                },
+                {
+                  "ref": "new:choice2",
+                  "label": "维修中",
+                  "reason": "供录入时选择。"
+                }
+              ],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:model",
+            "new:state"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": [
+            {
+              "request": "销售只能看自己的记录",
+              "reason": "草稿默认隐藏全部字段，管理员可在发布前配置员工权限。"
+            }
+          ]
+        },
+        {
+          "name": "回款",
+          "description": null,
+          "icon": null,
+          "reason": "逐笔登记回款。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "回款名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "识别收款记录。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:amount",
+              "label": "回款金额",
+              "type": "MONEY",
+              "required": false,
+              "reason": "核对实际收到的金额。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:on",
+              "label": "回款日期",
+              "type": "DATE",
+              "required": false,
+              "reason": "按日期核对到账记录。",
+              "options": [],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:amount",
+            "new:on"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": [
+            {
+              "request": "销售只能看自己的记录",
+              "reason": "草稿默认隐藏全部字段，管理员可在发布前配置员工权限。"
+            }
+          ]
+        }
+      ],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "blueprint",
+      "blueprint": {
+        "version": 1,
+        "assumptions": [],
+        "omitted": [],
+        "tables": [
+          {
+            "id": "f21f31da-27d4-4646-bc88-36cfeac61a53",
+            "code": "obj-f8902c72e7157b9f",
+            "name": "客户",
+            "reason": "保存承租客户的联系资料。",
+            "fields": [
+              {
+                "id": "7052d6ba-22ac-4fc0-b5b9-eca3b2ff1b4a",
+                "fieldKey": "field_c1d1032824194473",
+                "label": "客户名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "用于识别客户。"
+              },
+              {
+                "id": "bd197835-8107-4d45-8d90-3672b48e50a5",
+                "fieldKey": "field_70a867c0652452f9",
+                "label": "联系电话",
+                "type": "PHONE",
+                "required": false,
+                "reason": "联系客户时使用。"
+              },
+              {
+                "id": "9bf77426-1c71-4695-8274-73db9c463ae4",
+                "fieldKey": "field_37fc620757f82e54",
+                "label": "电子邮箱",
+                "type": "EMAIL",
+                "required": false,
+                "reason": "接收业务通知。"
+              }
+            ],
+            "titleFieldId": "7052d6ba-22ac-4fc0-b5b9-eca3b2ff1b4a",
+            "view": {
+              "columnIds": [
+                "7052d6ba-22ac-4fc0-b5b9-eca3b2ff1b4a",
+                "bd197835-8107-4d45-8d90-3672b48e50a5",
+                "9bf77426-1c71-4695-8274-73db9c463ae4"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": [
+              {
+                "request": "销售只能看自己的记录",
+                "reason": "草稿默认隐藏全部字段，管理员可在发布前配置员工权限。"
+              }
+            ]
+          },
+          {
+            "id": "7935557b-79d2-4309-80bc-951caef156ee",
+            "code": "obj-4c312b77133fc4ec",
+            "name": "合同",
+            "reason": "登记租赁合同及履约期限。",
+            "fields": [
+              {
+                "id": "c6c492ae-2267-481a-a096-9543c8c5683c",
+                "fieldKey": "field_1240eb94ee3d65a1",
+                "label": "合同名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "用于识别合同。"
+              },
+              {
+                "id": "a394b7e9-3d5e-4a54-b30c-1a4abe27c29a",
+                "fieldKey": "field_c10d22757f8dc7bd",
+                "label": "租金",
+                "type": "MONEY",
+                "required": false,
+                "reason": "登记约定的租赁金额。"
+              },
+              {
+                "id": "35e92d0e-f66a-48d9-9729-49214c1e68f0",
+                "fieldKey": "field_4392c7cc490a718c",
+                "label": "合同到期日",
+                "type": "DATE",
+                "required": false,
+                "reason": "记录租赁合同的结束日期。"
+              },
+              {
+                "id": "553d20f6-58b8-4de8-ab11-eb010d0fa26c",
+                "fieldKey": "field_9661b97c06000ee3",
+                "label": "合同状态",
+                "type": "SINGLE_SELECT",
+                "required": false,
+                "reason": "跟踪合同办理进度。",
+                "options": [
+                  {
+                    "id": "355197c2-7867-4560-842b-572d18d3db55",
+                    "key": "opt_84dca5a017744dc9",
+                    "label": "草拟",
+                    "reason": "供录入时选择。"
+                  },
+                  {
+                    "id": "90733476-46ba-480f-920d-45b21fdbabf8",
+                    "key": "opt_d6830548fa0912f3",
+                    "label": "履行中",
+                    "reason": "供录入时选择。"
+                  },
+                  {
+                    "id": "9975b952-fd8c-42a1-b9a2-8e97c9eb01e0",
+                    "key": "opt_a5d9bdbb73a23e6f",
+                    "label": "已结束",
+                    "reason": "供录入时选择。"
+                  }
+                ]
+              },
+              {
+                "id": "51dd3d97-f72a-468a-9213-e289c9dea849",
+                "fieldKey": "field_0850d874302f0ef8",
+                "label": "备注",
+                "type": "TEXTAREA",
+                "required": false,
+                "reason": "记录其他约定。"
+              }
+            ],
+            "titleFieldId": "c6c492ae-2267-481a-a096-9543c8c5683c",
+            "view": {
+              "columnIds": [
+                "c6c492ae-2267-481a-a096-9543c8c5683c",
+                "a394b7e9-3d5e-4a54-b30c-1a4abe27c29a",
+                "35e92d0e-f66a-48d9-9729-49214c1e68f0",
+                "553d20f6-58b8-4de8-ab11-eb010d0fa26c"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": [
+              {
+                "request": "销售只能看自己的记录",
+                "reason": "草稿默认隐藏全部字段，管理员可在发布前配置员工权限。"
+              }
+            ]
+          },
+          {
+            "id": "863266bd-fb00-4a76-a547-bffb5816d2a8",
+            "code": "obj-64f5cba6957f6492",
+            "name": "设备",
+            "reason": "管理可出租的设备。",
+            "fields": [
+              {
+                "id": "838c34d8-5ad8-4f42-ac6f-40df2645fb63",
+                "fieldKey": "field_eb5e4d5fcfb3f27d",
+                "label": "设备名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "用于识别出租设备。"
+              },
+              {
+                "id": "8c8c9cb9-6d9b-42e2-9427-338bbd83b026",
+                "fieldKey": "field_cf9d9ab5d510a824",
+                "label": "设备型号",
+                "type": "TEXT",
+                "required": false,
+                "reason": "标明具体设备规格。"
+              },
+              {
+                "id": "444ca135-ba7b-445f-b021-ddced4bfbd3a",
+                "fieldKey": "field_ed94e1c8460e0e8b",
+                "label": "设备状态",
+                "type": "SINGLE_SELECT",
+                "required": false,
+                "reason": "跟踪设备可用性。",
+                "options": [
+                  {
+                    "id": "171ad813-f0b0-4339-aad3-f0af8c4d3fe5",
+                    "key": "opt_c00727bb8108835f",
+                    "label": "可租",
+                    "reason": "供录入时选择。"
+                  },
+                  {
+                    "id": "939fd588-70be-4f9a-a06f-dbc43f2753e6",
+                    "key": "opt_458ad85c55494453",
+                    "label": "已出租",
+                    "reason": "供录入时选择。"
+                  },
+                  {
+                    "id": "036ac969-069b-4185-9d64-364bfe58b737",
+                    "key": "opt_0faaa218a97ebae9",
+                    "label": "维修中",
+                    "reason": "供录入时选择。"
+                  }
+                ]
+              }
+            ],
+            "titleFieldId": "838c34d8-5ad8-4f42-ac6f-40df2645fb63",
+            "view": {
+              "columnIds": [
+                "838c34d8-5ad8-4f42-ac6f-40df2645fb63",
+                "8c8c9cb9-6d9b-42e2-9427-338bbd83b026",
+                "444ca135-ba7b-445f-b021-ddced4bfbd3a"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": [
+              {
+                "request": "销售只能看自己的记录",
+                "reason": "草稿默认隐藏全部字段，管理员可在发布前配置员工权限。"
+              }
+            ]
+          },
+          {
+            "id": "27c72a56-e135-4a1a-8b77-4f2858f9e0ce",
+            "code": "obj-0dbeb53ae3cc2e33",
+            "name": "回款",
+            "reason": "逐笔登记回款。",
+            "fields": [
+              {
+                "id": "bfda2afe-2485-48c0-9564-d7cbc202b602",
+                "fieldKey": "field_d7e7a489ce1a5885",
+                "label": "回款名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "识别收款记录。"
+              },
+              {
+                "id": "99d26f57-7102-4c98-af23-2727d3b0b5c9",
+                "fieldKey": "field_3d21700b7fa64464",
+                "label": "回款金额",
+                "type": "MONEY",
+                "required": false,
+                "reason": "核对实际收到的金额。"
+              },
+              {
+                "id": "d93aa603-6d43-4e45-8671-6ea19db1ddd4",
+                "fieldKey": "field_623cc303e418194d",
+                "label": "回款日期",
+                "type": "DATE",
+                "required": false,
+                "reason": "按日期核对到账记录。"
+              }
+            ],
+            "titleFieldId": "bfda2afe-2485-48c0-9564-d7cbc202b602",
+            "view": {
+              "columnIds": [
+                "bfda2afe-2485-48c0-9564-d7cbc202b602",
+                "99d26f57-7102-4c98-af23-2727d3b0b5c9",
+                "d93aa603-6d43-4e45-8671-6ea19db1ddd4"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": [
+              {
+                "request": "销售只能看自己的记录",
+                "reason": "草稿默认隐藏全部字段，管理员可在发布前配置员工权限。"
+              }
+            ]
+          }
+        ]
+      },
+      "issues": [
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「客户名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "f21f31da-27d4-4646-bc88-36cfeac61a53",
+          "fieldId": "7052d6ba-22ac-4fc0-b5b9-eca3b2ff1b4a",
+          "blocking": false
+        },
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「合同名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "7935557b-79d2-4309-80bc-951caef156ee",
+          "fieldId": "c6c492ae-2267-481a-a096-9543c8c5683c",
+          "blocking": false
+        },
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「设备名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "863266bd-fb00-4a76-a547-bffb5816d2a8",
+          "fieldId": "838c34d8-5ad8-4f42-ac6f-40df2645fb63",
+          "blocking": false
+        },
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「回款名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "27c72a56-e135-4a1a-8b77-4f2858f9e0ce",
+          "fieldId": "bfda2afe-2485-48c0-9564-d7cbc202b602",
+          "blocking": false
+        }
+      ]
+    },
+    "admitted": true,
+    "failures": [
+      "缺少业务表 租赁合同",
+      "租赁合同 缺少匹配字段 金额 / MONEY"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-02",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 课程",
+      "课程 缺少匹配字段 课程名称 / TEXT",
+      "课程 缺少匹配字段 开课日期 / DATE",
+      "课程 缺少匹配字段 学费 / MONEY",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-03",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 验收单",
+      "验收单 缺少匹配字段 验收日期 / DATE",
+      "验收单 缺少匹配字段 缺陷说明 / TEXTAREA",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-04",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 询盘",
+      "询盘 缺少匹配字段 询盘主题 / TEXT",
+      "询盘 缺少匹配字段 买家邮箱 / EMAIL",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-05",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 订阅",
+      "订阅 缺少匹配字段 席位数 / NUMBER",
+      "订阅 缺少匹配字段 续订日 / DATE",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-06",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 预约",
+      "预约 缺少匹配字段 预约时间 / DATETIME",
+      "预约 缺少匹配字段 到店 / BOOLEAN",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-07",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 巡检",
+      "巡检 缺少匹配字段 巡检人 / MEMBER",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-08",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 职位",
+      "职位 缺少匹配字段 工作模式 / SINGLE_SELECT",
+      "工作模式 缺少选项 现场",
+      "工作模式 缺少选项 混合",
+      "工作模式 缺少选项 远程",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-09",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 材料",
+      "材料 缺少匹配字段 用途 / MULTI_SELECT",
+      "用途 缺少选项 墙面",
+      "用途 缺少选项 地板",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-10",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 维修",
+      "维修 缺少匹配字段 维修名称 / TEXT",
+      "未正确说明或移除 含税费用",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-11",
+    "raw": {
+      "needsDetails": false,
+      "tables": [
+        {
+          "name": "客户",
+          "description": null,
+          "icon": null,
+          "reason": "保存承租客户的联系资料。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "客户名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "用于识别客户。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:phone",
+              "label": "联系电话",
+              "type": "PHONE",
+              "required": false,
+              "reason": "联系客户时使用。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:email",
+              "label": "电子邮箱",
+              "type": "EMAIL",
+              "required": false,
+              "reason": "接收业务通知。",
+              "options": [],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:phone",
+            "new:email"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": []
+        }
+      ],
+      "assumptions": [],
+      "omitted": [
+        {
+          "request": "关联客户",
+          "reason": "使用已有平台能力或手动配置。",
+          "alternative": "使用记录关联。"
+        }
+      ]
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "blueprint",
+      "blueprint": {
+        "version": 1,
+        "assumptions": [],
+        "omitted": [
+          {
+            "request": "关联客户",
+            "reason": "使用已有平台能力或手动配置。",
+            "alternative": "使用记录关联。"
+          }
+        ],
+        "tables": [
+          {
+            "id": "dc611f02-b882-4296-9145-dfca5cea712b",
+            "code": "obj-7277033784bd8fd7",
+            "name": "客户",
+            "reason": "保存承租客户的联系资料。",
+            "fields": [
+              {
+                "id": "77e28f90-ba12-4c30-b019-d0fc7425661e",
+                "fieldKey": "field_ac595dda7912f517",
+                "label": "客户名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "用于识别客户。"
+              },
+              {
+                "id": "77b506bd-66a0-44b4-9fad-aaf21223e96d",
+                "fieldKey": "field_ef3631a084a0032b",
+                "label": "联系电话",
+                "type": "PHONE",
+                "required": false,
+                "reason": "联系客户时使用。"
+              },
+              {
+                "id": "7827903c-3ac2-400f-b64c-33bbc52b6ce6",
+                "fieldKey": "field_d573e9a367451a66",
+                "label": "电子邮箱",
+                "type": "EMAIL",
+                "required": false,
+                "reason": "接收业务通知。"
+              }
+            ],
+            "titleFieldId": "77e28f90-ba12-4c30-b019-d0fc7425661e",
+            "view": {
+              "columnIds": [
+                "77e28f90-ba12-4c30-b019-d0fc7425661e",
+                "77b506bd-66a0-44b4-9fad-aaf21223e96d",
+                "7827903c-3ac2-400f-b64c-33bbc52b6ce6"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": []
+          }
+        ]
+      },
+      "issues": [
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「客户名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "dc611f02-b882-4296-9145-dfca5cea712b",
+          "fieldId": "77e28f90-ba12-4c30-b019-d0fc7425661e",
+          "blocking": false
+        }
+      ]
+    },
+    "admitted": true,
+    "failures": [
+      "缺少业务表 报价",
+      "未正确说明或移除 对应客户"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-12",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 教室",
+      "未正确说明或移除 教室照片",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-13",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 订单",
+      "未正确说明或移除 跟进",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-14",
+    "raw": {
+      "needsDetails": false,
+      "tables": [
+        {
+          "name": "客户",
+          "description": null,
+          "icon": null,
+          "reason": "保存承租客户的联系资料。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "客户名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "用于识别客户。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:phone",
+              "label": "联系电话",
+              "type": "PHONE",
+              "required": false,
+              "reason": "联系客户时使用。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:email",
+              "label": "电子邮箱",
+              "type": "EMAIL",
+              "required": false,
+              "reason": "接收业务通知。",
+              "options": [],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:phone",
+            "new:email"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": []
+        }
+      ],
+      "assumptions": [],
+      "omitted": [
+        {
+          "request": "负责人",
+          "reason": "使用已有平台能力或手动配置。",
+          "alternative": "使用记录负责人。"
+        },
+        {
+          "request": "跟进记录",
+          "reason": "使用已有平台能力或手动配置。",
+          "alternative": "使用记录的跟进待办。"
+        }
+      ]
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "blueprint",
+      "blueprint": {
+        "version": 1,
+        "assumptions": [],
+        "omitted": [
+          {
+            "request": "负责人",
+            "reason": "使用已有平台能力或手动配置。",
+            "alternative": "使用记录负责人。"
+          },
+          {
+            "request": "跟进记录",
+            "reason": "使用已有平台能力或手动配置。",
+            "alternative": "使用记录的跟进待办。"
+          }
+        ],
+        "tables": [
+          {
+            "id": "50c8fcc4-195e-444b-bff7-592c73a9523e",
+            "code": "obj-c1a209ea90b2b8e7",
+            "name": "客户",
+            "reason": "保存承租客户的联系资料。",
+            "fields": [
+              {
+                "id": "191afab0-d10a-4452-ae74-e88b68f0f636",
+                "fieldKey": "field_e73911d1105338b4",
+                "label": "客户名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "用于识别客户。"
+              },
+              {
+                "id": "ea48583f-fa50-47e1-be59-37c99ec3aae5",
+                "fieldKey": "field_2b8a19e1e51b2431",
+                "label": "联系电话",
+                "type": "PHONE",
+                "required": false,
+                "reason": "联系客户时使用。"
+              },
+              {
+                "id": "a7e2f824-a015-4893-a7dc-54d2c86de76c",
+                "fieldKey": "field_a1a73af45c8cfb90",
+                "label": "电子邮箱",
+                "type": "EMAIL",
+                "required": false,
+                "reason": "接收业务通知。"
+              }
+            ],
+            "titleFieldId": "191afab0-d10a-4452-ae74-e88b68f0f636",
+            "view": {
+              "columnIds": [
+                "191afab0-d10a-4452-ae74-e88b68f0f636",
+                "ea48583f-fa50-47e1-be59-37c99ec3aae5",
+                "a7e2f824-a015-4893-a7dc-54d2c86de76c"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": []
+          }
+        ]
+      },
+      "issues": [
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「客户名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "50c8fcc4-195e-444b-bff7-592c73a9523e",
+          "fieldId": "191afab0-d10a-4452-ae74-e88b68f0f636",
+          "blocking": false
+        }
+      ]
+    },
+    "admitted": true,
+    "failures": [
+      "未正确说明或移除 下次跟进"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-15",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-16",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 候选人",
+      "候选人 缺少匹配字段 候选人姓名 / TEXT",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-17",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-18",
+    "raw": {
+      "needsDetails": false,
+      "tables": [
+        {
+          "name": "客户",
+          "description": null,
+          "icon": null,
+          "reason": "保存承租客户的联系资料。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "客户名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "用于识别客户。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:phone",
+              "label": "联系电话",
+              "type": "PHONE",
+              "required": false,
+              "reason": "联系客户时使用。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:email",
+              "label": "电子邮箱",
+              "type": "EMAIL",
+              "required": false,
+              "reason": "接收业务通知。",
+              "options": [],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:phone",
+            "new:email"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": []
+        },
+        {
+          "name": "合同",
+          "description": null,
+          "icon": null,
+          "reason": "登记租赁合同及履约期限。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "合同名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "用于识别合同。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:rent",
+              "label": "租金",
+              "type": "MONEY",
+              "required": false,
+              "reason": "登记约定的租赁金额。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:end",
+              "label": "合同到期日",
+              "type": "DATE",
+              "required": false,
+              "reason": "记录租赁合同的结束日期。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:state",
+              "label": "合同状态",
+              "type": "SINGLE_SELECT",
+              "required": false,
+              "reason": "跟踪合同办理进度。",
+              "options": [
+                {
+                  "ref": "new:choice0",
+                  "label": "草拟",
+                  "reason": "供录入时选择。"
+                },
+                {
+                  "ref": "new:choice1",
+                  "label": "履行中",
+                  "reason": "供录入时选择。"
+                },
+                {
+                  "ref": "new:choice2",
+                  "label": "已结束",
+                  "reason": "供录入时选择。"
+                }
+              ],
+              "validation": null
+            },
+            {
+              "ref": "new:note",
+              "label": "备注",
+              "type": "TEXTAREA",
+              "required": false,
+              "reason": "记录其他约定。",
+              "options": [],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:rent",
+            "new:end",
+            "new:state"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": []
+        },
+        {
+          "name": "设备",
+          "description": null,
+          "icon": null,
+          "reason": "管理可出租的设备。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "设备名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "用于识别出租设备。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:model",
+              "label": "设备型号",
+              "type": "TEXT",
+              "required": false,
+              "reason": "标明具体设备规格。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:state",
+              "label": "设备状态",
+              "type": "SINGLE_SELECT",
+              "required": false,
+              "reason": "跟踪设备可用性。",
+              "options": [
+                {
+                  "ref": "new:choice0",
+                  "label": "可租",
+                  "reason": "供录入时选择。"
+                },
+                {
+                  "ref": "new:choice1",
+                  "label": "已出租",
+                  "reason": "供录入时选择。"
+                },
+                {
+                  "ref": "new:choice2",
+                  "label": "维修中",
+                  "reason": "供录入时选择。"
+                }
+              ],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:model",
+            "new:state"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": []
+        },
+        {
+          "name": "回款",
+          "description": null,
+          "icon": null,
+          "reason": "逐笔登记回款。",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "回款名称",
+              "type": "TEXT",
+              "required": true,
+              "reason": "识别收款记录。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:amount",
+              "label": "回款金额",
+              "type": "MONEY",
+              "required": false,
+              "reason": "核对实际收到的金额。",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:on",
+              "label": "回款日期",
+              "type": "DATE",
+              "required": false,
+              "reason": "按日期核对到账记录。",
+              "options": [],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:amount",
+            "new:on"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": []
+        }
+      ],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "blueprint",
+      "blueprint": {
+        "version": 1,
+        "assumptions": [],
+        "omitted": [],
+        "tables": [
+          {
+            "id": "07ca21aa-bdda-4681-9eae-8c20bbaf1929",
+            "code": "obj-69689e9c09f11504",
+            "name": "客户",
+            "reason": "保存承租客户的联系资料。",
+            "fields": [
+              {
+                "id": "87ad1070-ab39-4a4a-b37a-3c6bf6588a8a",
+                "fieldKey": "field_7e458bc472a16283",
+                "label": "客户名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "用于识别客户。"
+              },
+              {
+                "id": "b46aaca4-b4e0-4b63-8b4b-2b02aad0fcff",
+                "fieldKey": "field_48235dc9907b1b8b",
+                "label": "联系电话",
+                "type": "PHONE",
+                "required": false,
+                "reason": "联系客户时使用。"
+              },
+              {
+                "id": "f4a8ff02-bd6f-4f0d-b808-7f40aeea6023",
+                "fieldKey": "field_c5d8aef741c26179",
+                "label": "电子邮箱",
+                "type": "EMAIL",
+                "required": false,
+                "reason": "接收业务通知。"
+              }
+            ],
+            "titleFieldId": "87ad1070-ab39-4a4a-b37a-3c6bf6588a8a",
+            "view": {
+              "columnIds": [
+                "87ad1070-ab39-4a4a-b37a-3c6bf6588a8a",
+                "b46aaca4-b4e0-4b63-8b4b-2b02aad0fcff",
+                "f4a8ff02-bd6f-4f0d-b808-7f40aeea6023"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": []
+          },
+          {
+            "id": "4aff8b9f-9e2d-4863-a9bb-828d7179e388",
+            "code": "obj-8feb8ad01fc6b58f",
+            "name": "合同",
+            "reason": "登记租赁合同及履约期限。",
+            "fields": [
+              {
+                "id": "e474d904-f178-414b-9b01-b70b5f33dbca",
+                "fieldKey": "field_9bce1ca8d6da2dd7",
+                "label": "合同名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "用于识别合同。"
+              },
+              {
+                "id": "a32a849f-8c42-40a6-90a2-b4c418d8b885",
+                "fieldKey": "field_aaf7a89c334f16d2",
+                "label": "租金",
+                "type": "MONEY",
+                "required": false,
+                "reason": "登记约定的租赁金额。"
+              },
+              {
+                "id": "56560f04-bb75-4dda-832f-66483d3df946",
+                "fieldKey": "field_99718cfe8a582ce3",
+                "label": "合同到期日",
+                "type": "DATE",
+                "required": false,
+                "reason": "记录租赁合同的结束日期。"
+              },
+              {
+                "id": "3329017b-0557-4adc-82fb-f8950be805b1",
+                "fieldKey": "field_9cfa9214a43649e9",
+                "label": "合同状态",
+                "type": "SINGLE_SELECT",
+                "required": false,
+                "reason": "跟踪合同办理进度。",
+                "options": [
+                  {
+                    "id": "a99dc020-1bd7-47db-bf37-3e621b5a9b0e",
+                    "key": "opt_a3282cd9e7246d6b",
+                    "label": "草拟",
+                    "reason": "供录入时选择。"
+                  },
+                  {
+                    "id": "9c862997-0d77-477f-99f0-4cb4d5bcf7c1",
+                    "key": "opt_30fcac6fc60c2e0a",
+                    "label": "履行中",
+                    "reason": "供录入时选择。"
+                  },
+                  {
+                    "id": "e2c28a2f-4134-46ff-82f9-142600ed5d32",
+                    "key": "opt_90bd154c2225a14f",
+                    "label": "已结束",
+                    "reason": "供录入时选择。"
+                  }
+                ]
+              },
+              {
+                "id": "58923d58-942e-4472-aa90-dbf4291fccef",
+                "fieldKey": "field_b2f69d5dd58a1ba7",
+                "label": "备注",
+                "type": "TEXTAREA",
+                "required": false,
+                "reason": "记录其他约定。"
+              }
+            ],
+            "titleFieldId": "e474d904-f178-414b-9b01-b70b5f33dbca",
+            "view": {
+              "columnIds": [
+                "e474d904-f178-414b-9b01-b70b5f33dbca",
+                "a32a849f-8c42-40a6-90a2-b4c418d8b885",
+                "56560f04-bb75-4dda-832f-66483d3df946",
+                "3329017b-0557-4adc-82fb-f8950be805b1"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": []
+          },
+          {
+            "id": "48e9a164-ed27-448f-9e05-d4ec8eab029c",
+            "code": "obj-13614dc0df56bb39",
+            "name": "设备",
+            "reason": "管理可出租的设备。",
+            "fields": [
+              {
+                "id": "805948c9-9db2-418d-a27f-4025d791cc7b",
+                "fieldKey": "field_94c9f6c15f252f94",
+                "label": "设备名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "用于识别出租设备。"
+              },
+              {
+                "id": "1d8034e2-462b-45ab-b000-a6925757647a",
+                "fieldKey": "field_ffcd0df5b8f26430",
+                "label": "设备型号",
+                "type": "TEXT",
+                "required": false,
+                "reason": "标明具体设备规格。"
+              },
+              {
+                "id": "a7ba188f-62f4-4606-9a7c-d5dfdc2d7363",
+                "fieldKey": "field_049a39684017147d",
+                "label": "设备状态",
+                "type": "SINGLE_SELECT",
+                "required": false,
+                "reason": "跟踪设备可用性。",
+                "options": [
+                  {
+                    "id": "52688f37-3727-4330-b2c5-9302e1708bd1",
+                    "key": "opt_96bb19ed1ea31b19",
+                    "label": "可租",
+                    "reason": "供录入时选择。"
+                  },
+                  {
+                    "id": "c8d1d512-4588-4082-807e-61bd33fd09ba",
+                    "key": "opt_4bf8bfa25c932959",
+                    "label": "已出租",
+                    "reason": "供录入时选择。"
+                  },
+                  {
+                    "id": "d21fb0ec-0806-49c0-96b1-dd38f4f687bf",
+                    "key": "opt_36e8c78ad2d9afbb",
+                    "label": "维修中",
+                    "reason": "供录入时选择。"
+                  }
+                ]
+              }
+            ],
+            "titleFieldId": "805948c9-9db2-418d-a27f-4025d791cc7b",
+            "view": {
+              "columnIds": [
+                "805948c9-9db2-418d-a27f-4025d791cc7b",
+                "1d8034e2-462b-45ab-b000-a6925757647a",
+                "a7ba188f-62f4-4606-9a7c-d5dfdc2d7363"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": []
+          },
+          {
+            "id": "81863e2c-dfa9-4ed3-b716-770712cc530b",
+            "code": "obj-04db3622475aa2ab",
+            "name": "回款",
+            "reason": "逐笔登记回款。",
+            "fields": [
+              {
+                "id": "7bdef10b-82e4-427f-852f-e60a2569b18c",
+                "fieldKey": "field_d49ac9bf5e38a086",
+                "label": "回款名称",
+                "type": "TEXT",
+                "required": true,
+                "reason": "识别收款记录。"
+              },
+              {
+                "id": "3cff1571-2eb0-4cd6-8bd3-f6a5ecdc3565",
+                "fieldKey": "field_911b47ad990ec510",
+                "label": "回款金额",
+                "type": "MONEY",
+                "required": false,
+                "reason": "核对实际收到的金额。"
+              },
+              {
+                "id": "67eff750-cfc0-480f-ba21-67ae2bc6d6c6",
+                "fieldKey": "field_a53f3b6fb1336137",
+                "label": "回款日期",
+                "type": "DATE",
+                "required": false,
+                "reason": "按日期核对到账记录。"
+              }
+            ],
+            "titleFieldId": "7bdef10b-82e4-427f-852f-e60a2569b18c",
+            "view": {
+              "columnIds": [
+                "7bdef10b-82e4-427f-852f-e60a2569b18c",
+                "3cff1571-2eb0-4cd6-8bd3-f6a5ecdc3565",
+                "67eff750-cfc0-480f-ba21-67ae2bc6d6c6"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": []
+          }
+        ]
+      },
+      "issues": [
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「客户名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "07ca21aa-bdda-4681-9eae-8c20bbaf1929",
+          "fieldId": "87ad1070-ab39-4a4a-b37a-3c6bf6588a8a",
+          "blocking": false
+        },
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「合同名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "4aff8b9f-9e2d-4863-a9bb-828d7179e388",
+          "fieldId": "e474d904-f178-414b-9b01-b70b5f33dbca",
+          "blocking": false
+        },
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「设备名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "48e9a164-ed27-448f-9e05-d4ec8eab029c",
+          "fieldId": "805948c9-9db2-418d-a27f-4025d791cc7b",
+          "blocking": false
+        },
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「回款名称」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "81863e2c-dfa9-4ed3-b716-770712cc530b",
+          "fieldId": "7bdef10b-82e4-427f-852f-e60a2569b18c",
+          "blocking": false
+        }
+      ]
+    },
+    "admitted": true,
+    "failures": [
+      "未保留并阻止超限实体"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-19",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 Shipments",
+      "Shipments 缺少匹配字段 Shipment name / TEXT",
+      "Shipments 缺少匹配字段 Delivery date / DATE",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "development",
+    "sampleId": "dev-20",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 面试",
+      "面试 缺少匹配字段 面试官 / MEMBER",
+      "面试 缺少匹配字段 初试时间 / DATETIME",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-01",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 灯具交接单",
+      "灯具交接单 缺少匹配字段 交接名称 / TEXT",
+      "灯具交接单 缺少匹配字段 交接时间 / DATETIME",
+      "缺少业务表 维修工单",
+      "维修工单 缺少匹配字段 故障简述 / TEXT",
+      "维修工单 缺少匹配字段 检修技师 / MEMBER",
+      "未正确说明或移除 签收照片",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-02",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 试听预约",
+      "试听预约 缺少匹配字段 学员姓名 / TEXT",
+      "试听预约 缺少匹配字段 家长电话 / PHONE",
+      "试听预约 缺少匹配字段 可试听时段 / MULTI_SELECT",
+      "可试听时段 缺少选项 周六上午",
+      "可试听时段 缺少选项 周六下午",
+      "可试听时段 缺少选项 周日上午",
+      "试听预约 缺少匹配字段 需要围裙 / BOOLEAN",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-03",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 隐蔽工程验收",
+      "隐蔽工程验收 缺少匹配字段 验收部位 / TEXT",
+      "隐蔽工程验收 缺少匹配字段 验收结论 / SINGLE_SELECT",
+      "验收结论 缺少选项 通过",
+      "验收结论 缺少选项 返工",
+      "验收结论 缺少选项 复验通过",
+      "隐蔽工程验收 缺少匹配字段 整改截止日 / DATE",
+      "隐蔽工程验收 缺少匹配字段 整改说明 / TEXTAREA",
+      "未正确说明或移除 负责人",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-04",
+    "raw": {
+      "needsDetails": false,
+      "tables": [
+        {
+          "name": "Customers",
+          "description": null,
+          "icon": null,
+          "reason": "Manage customer contact details.",
+          "fields": [
+            {
+              "ref": "new:name",
+              "label": "Customer name",
+              "type": "TEXT",
+              "required": true,
+              "reason": "Identifies the customer.",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:phone",
+              "label": "Phone",
+              "type": "PHONE",
+              "required": false,
+              "reason": "Stores the customer contact number.",
+              "options": [],
+              "validation": null
+            },
+            {
+              "ref": "new:email",
+              "label": "Email",
+              "type": "EMAIL",
+              "required": false,
+              "reason": "Stores the contact email address.",
+              "options": [],
+              "validation": null
+            }
+          ],
+          "titleRef": "new:name",
+          "columnRefs": [
+            "new:name",
+            "new:phone",
+            "new:email"
+          ],
+          "viewReason": "列表优先展示识别记录和办理业务所需的信息。",
+          "employeeIntent": []
+        }
+      ],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "blueprint",
+      "blueprint": {
+        "version": 1,
+        "assumptions": [],
+        "omitted": [],
+        "tables": [
+          {
+            "id": "389a9e04-1304-4c94-9a88-ce2e1ec26769",
+            "code": "obj-a7972c52afb291b3",
+            "name": "Customers",
+            "reason": "Manage customer contact details.",
+            "fields": [
+              {
+                "id": "c15ec689-613b-4508-9df5-33fe5a3d0d53",
+                "fieldKey": "field_8f6b462a29cfa564",
+                "label": "Customer name",
+                "type": "TEXT",
+                "required": true,
+                "reason": "Identifies the customer."
+              },
+              {
+                "id": "64681544-df04-4067-980c-f11c0becf45b",
+                "fieldKey": "field_52cb904ab5ab9974",
+                "label": "Phone",
+                "type": "PHONE",
+                "required": false,
+                "reason": "Stores the customer contact number."
+              },
+              {
+                "id": "4a517b13-97fa-476f-9b24-66db0febdaa9",
+                "fieldKey": "field_c7fe5da10f11c7e0",
+                "label": "Email",
+                "type": "EMAIL",
+                "required": false,
+                "reason": "Stores the contact email address."
+              }
+            ],
+            "titleFieldId": "c15ec689-613b-4508-9df5-33fe5a3d0d53",
+            "view": {
+              "columnIds": [
+                "c15ec689-613b-4508-9df5-33fe5a3d0d53",
+                "64681544-df04-4067-980c-f11c0becf45b",
+                "4a517b13-97fa-476f-9b24-66db0febdaa9"
+              ],
+              "reason": "列表优先展示识别记录和办理业务所需的信息。"
+            },
+            "employeeIntent": []
+          }
+        ]
+      },
+      "issues": [
+        {
+          "code": "REQUIRED_FIELD_HIDDEN",
+          "message": "必填字段「Customer name」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。",
+          "path": "fields",
+          "tableId": "389a9e04-1304-4c94-9a88-ce2e1ec26769",
+          "fieldId": "c15ec689-613b-4508-9df5-33fe5a3d0d53",
+          "blocking": false
+        }
+      ]
+    },
+    "admitted": true,
+    "failures": [
+      "缺少业务表 Sample Dispatch",
+      "Sample Dispatch 缺少匹配字段 Parcel Name / TEXT",
+      "Sample Dispatch 缺少匹配字段 Customs Value / MONEY",
+      "Sample Dispatch 缺少匹配字段 Recipient Email / EMAIL",
+      "未正确说明或移除 Customer Link"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-05",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 上线排期",
+      "上线排期 缺少匹配字段 上线主题 / TEXT",
+      "上线排期 缺少匹配字段 切换时间 / DATETIME",
+      "上线排期 缺少匹配字段 席位数 / NUMBER",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-06",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 到店咨询",
+      "到店咨询 缺少匹配字段 咨询主题 / TEXT",
+      "到店咨询 缺少匹配字段 预算上限 / MONEY",
+      "缺少业务表 体验券",
+      "体验券 缺少匹配字段 券名 / TEXT",
+      "体验券 缺少匹配字段 可用截止日 / DATE",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-07",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 Visitor Pass",
+      "Visitor Pass 缺少匹配字段 Visitor Name / TEXT",
+      "Visitor Pass 缺少匹配字段 Arrival Time / DATETIME",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-08",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 职位",
+      "职位 缺少匹配字段 职位名称 / TEXT",
+      "缺少业务表 候选人",
+      "候选人 缺少匹配字段 候选人姓名 / TEXT",
+      "缺少业务表 推荐单",
+      "推荐单 缺少匹配字段 推荐主题 / TEXT",
+      "缺少业务表 面试",
+      "面试 缺少匹配字段 面试主题 / TEXT",
+      "缺少业务表 录用通知",
+      "录用通知 缺少匹配字段 通知名称 / TEXT",
+      "缺少业务表 到岗登记",
+      "到岗登记 缺少匹配字段 登记名称 / TEXT",
+      "未正确说明或移除 保用期回访",
+      "明确需求被追问"
+    ],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-09",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [],
+    "violations": []
+  },
+  {
+    "dataset": "holdout",
+    "sampleId": "holdout-10",
+    "raw": {
+      "needsDetails": true,
+      "tables": [],
+      "assumptions": [],
+      "omitted": []
+    },
+    "rejection": null,
+    "preview": {
+      "kind": "question",
+      "key": "industry",
+      "prompt": "你主要从事哪个行业？",
+      "options": [
+        {
+          "id": "rental",
+          "label": "设备租赁"
+        },
+        {
+          "id": "education",
+          "label": "教育培训"
+        },
+        {
+          "id": "services",
+          "label": "专业服务"
+        },
+        {
+          "id": "trade",
+          "label": "贸易"
+        },
+        {
+          "id": "other",
+          "label": "其他"
+        }
+      ]
+    },
+    "admitted": false,
+    "failures": [
+      "缺少业务表 摊位报价",
+      "摊位报价 缺少匹配字段 报价主题 / TEXT",
+      "摊位报价 缺少匹配字段 对客报价 / MONEY",
+      "摊位报价 缺少匹配字段 预计成本 / MONEY",
+      "未正确说明或移除 预计毛利",
+      "明确需求被追问"
+    ],
+    "violations": []
+  }
+]
