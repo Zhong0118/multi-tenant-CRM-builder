@@ -541,3 +541,26 @@ it('defers append-only fields until selected and prevents a later refinement fro
     },
   });
 });
+
+it('offers an opt-in hand-entered amount in the local single-table demo', async () => {
+  const result = await generateTablePlan(
+    new FakeAiProvider(),
+    {
+      mode: 'create',
+      description: '只建合同表，需要自动计算毛利。',
+      existing: [],
+    },
+    new AbortController().signal,
+  );
+  if (result.kind !== 'blueprint') throw Error('Expected a preview');
+  const t = result.blueprint.tables[0];
+  expect(t.fields.some((f) => f.label === '毛利')).toBe(false);
+  expect(result.blueprint.omitted).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        tableId: t.id,
+        manualField: expect.objectContaining({ label: '毛利', type: 'MONEY' }),
+      }),
+    ]),
+  );
+});

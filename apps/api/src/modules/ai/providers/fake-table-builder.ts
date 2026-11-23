@@ -243,11 +243,21 @@ export function fakeTableBlueprint(
       test: /毛利|公式|自动计算/,
       request: '毛利公式',
       alternative: '可选择手工录入金额。',
+      manualField: {
+        label: '毛利',
+        fieldKey: 'gross_profit',
+        type: 'MONEY' as const,
+      },
     },
     {
       test: /关联客户|客户关联|关联记录/,
       request: '关联客户',
       alternative: '使用记录关联。',
+      manualField: {
+        label: '对应客户',
+        fieldKey: 'linked_customer_name',
+        type: 'TEXT' as const,
+      },
     },
     { test: /附件/, request: '附件', alternative: '使用记录附件区。' },
     { test: /负责人/, request: '负责人', alternative: '使用记录负责人。' },
@@ -263,8 +273,9 @@ export function fakeTableBlueprint(
         request: entry.request,
         reason: '使用已有平台能力或手动配置。',
         alternative: entry.alternative,
-        tableName: null,
-        manualField: null,
+        tableName: output.tables.length === 1 ? output.tables[0].name : null,
+        manualField:
+          output.tables.length === 1 ? (entry.manualField ?? null) : null,
       });
   if (!output.tables.length && !output.omitted.length)
     output.omitted.push({
