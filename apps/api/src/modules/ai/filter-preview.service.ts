@@ -1,3 +1,5 @@
+import { AiLedgerService } from './governance/ai-ledger.service';
+import { isAiGovernanceError } from './ai-governance-error';
 import {
   FILTER_FIELD_OPERATORS,
   FILTER_OPERATORS,
@@ -173,6 +175,7 @@ export class FilterPreviewService {
     @Inject(RECORDS_REPOSITORY) private readonly records: RecordsRepository,
     private readonly objects: PublishedObjectService,
     @Inject(AI_PROVIDER) private readonly provider: AiProvider,
+    private readonly ledger: AiLedgerService,
   ) {}
 
   async preview(
@@ -300,6 +303,7 @@ export class FilterPreviewService {
         followUpAssignees:
           actor.role === 'TENANT_ADMIN' ? ['$me', 'any'] : ['$me'],
       }));
+      await this.ledger.assertFeature(actor, 'filter');
       if (!this.provider.generateFilter)
         throw new ApiException('AI_PROVIDER_UNAVAILABLE', 503);
       if (Buffer.byteLength(JSON.stringify(input)) > 81920)
@@ -307,8 +311,9 @@ export class FilterPreviewService {
       const signal = AbortSignal.timeout(45000);
       let output: unknown;
       try {
-        output = await this.provider.generateFilter(input, signal);
-      } catch {
+        output = await this.provider.generateFilter(input, signal, actor);
+      } catch (error) {
+        if (isAiGovernanceError(error)) throw error;
         throw new ApiException(
           signal.aborted ? 'AI_PROVIDER_TIMEOUT' : 'AI_PROVIDER_UNAVAILABLE',
           signal.aborted ? 504 : 503,

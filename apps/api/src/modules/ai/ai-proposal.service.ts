@@ -1,3 +1,11 @@
+import {
+  AiLedgerService,
+  type AiFeature,
+} from './governance/ai-ledger.service';
+import {
+  isAiGovernanceError,
+  recordRolledBackDenial,
+} from './ai-governance-error';
 import { isGroupPeer, recordFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
@@ -146,6 +154,7 @@ export class AiProposalService {
     @Inject(RECORDS_REPOSITORY) private readonly records: RecordsRepository,
     private readonly operations: AiOperationRepository,
     private readonly audit: AuditService,
+    private readonly ledger: AiLedgerService,
   ) {}
 
   async preview(
@@ -162,27 +171,37 @@ export class AiProposalService {
     }
     if (typeof requestText !== 'string')
       throw new ApiException('VALIDATION_FAILED', 400);
-    const snapshot = await this.records.withTenantTransaction(
-      context,
-      ({ tx, store }) => this.snapshot(tx, store, context, candidate),
-    );
-    return this.operations.createValidated(
-      context,
-      turnId,
-      {
-        conversationId: await this.conversationForTurn(context, turnId),
-        operationType: candidate.operationType,
-        requestText: requestText.slice(0, 4000),
-        proposal: candidate,
-        targetRef: {
-          objectCode: candidate.objectCode,
-          recordId: candidate.recordId,
-        },
-        expectedVersion: snapshot.record.version,
-        expectedPublicationId: snapshot.resolved.schema.publication.id,
-      },
-      snapshot.display,
-    );
+    return this.records
+      .withTenantTransaction(context, async ({ tx, store }) => {
+        const conversationId = await this.conversationForTurn(
+          tx,
+          context,
+          turnId,
+        );
+        const snapshot = await this.snapshot(tx, store, context, candidate);
+        await this.ledger.assertFeature(context, 'write_proposal', tx);
+        return this.operations.createValidatedInTransaction(
+          tx,
+          context,
+          turnId,
+          {
+            conversationId,
+            operationType: candidate.operationType,
+            requestText: requestText.slice(0, 4000),
+            proposal: candidate,
+            targetRef: {
+              objectCode: candidate.objectCode,
+              recordId: candidate.recordId,
+            },
+            expectedVersion: snapshot.record.version,
+            expectedPublicationId: snapshot.resolved.schema.publication.id,
+          },
+          snapshot.display,
+        );
+      })
+      .catch((error: unknown) =>
+        recordRolledBackDenial(this.ledger, context, 'write_proposal', error),
+      );
   }
 
   async completeWithProposal(
@@ -226,25 +245,18 @@ export class AiProposalService {
     } catch {
       throw new ApiException('VALIDATION_FAILED', 400);
     }
-    return this.records.withTenantTransaction(
-      context,
-      async ({ tx, store }) => {
-        const turn = await tx.aiMessage.findFirst({
-          where: {
-            tenantId: context.tenantId,
-            turnId,
-            role: 'USER',
-            conversation: {
-              createdByMemberId: context.memberId,
-              deletedAt: null,
-            },
-          },
-          select: { conversationId: true },
-        });
-        if (!turn) throw new ApiException('AI_TURN_NOT_FOUND', 404);
+    return this.records
+      .withTenantTransaction(context, async ({ tx, store }) => {
+        const conversationId = await this.conversationForTurn(
+          tx,
+          context,
+          turnId,
+        );
         const items: AiProposalView[] = [];
         for (const candidate of candidates) {
           const snapshot = await this.snapshot(tx, store, context, candidate);
+          if (!items.length)
+            await this.ledger.assertFeature(context, 'write_proposal', tx);
           if (!items.length && coverage) snapshot.display.coverage = coverage;
           items.push(
             await this.operations.createValidatedInTransaction(
@@ -253,7 +265,7 @@ export class AiProposalService {
               turnId,
               {
                 itemKey: items.length + 1,
-                conversationId: turn.conversationId,
+                conversationId,
                 operationType: candidate.operationType,
                 requestText: requestText.slice(0, 4000),
                 proposal: candidate,
@@ -270,8 +282,10 @@ export class AiProposalService {
         }
         await finalize(tx, context, turnId, outcome);
         return { items, ...(coverage ? { coverage } : {}) };
-      },
-    );
+      })
+      .catch((error: unknown) =>
+        recordRolledBackDenial(this.ledger, context, 'write_proposal', error),
+      );
   }
 
   async retryCandidate(
@@ -279,9 +293,8 @@ export class AiProposalService {
     conversationId: string,
     proposalId: string,
   ) {
-    return this.records.withTenantTransaction(
-      context,
-      async ({ tx, store }) => {
+    return this.records
+      .withTenantTransaction(context, async ({ tx, store }) => {
         const row = await this.operations.findFailedInConversation(
           tx,
           context,
@@ -292,8 +305,11 @@ export class AiProposalService {
         const candidate = validateProposalCandidate(row.proposalJson);
         await this.snapshot(tx, store, context, candidate);
         return candidate;
-      },
-    );
+      })
+      .then(async (candidate) => {
+        await this.ledger.assertFeature(context, 'write_proposal');
+        return candidate;
+      });
   }
 
   private async snapshot(
@@ -533,6 +549,7 @@ export class AiProposalService {
       )
     )
       throw new ApiException('VALIDATION_FAILED', 400);
+    let feature: AiFeature = 'write_proposal';
     let safeFieldCodes:
       | Record<
           string,
@@ -550,7 +567,13 @@ export class AiProposalService {
           );
           if (locked.kind === 'NOT_FOUND')
             throw new ApiException('AI_TURN_NOT_FOUND', 404);
-          if (locked.kind !== 'PROPOSED') return locked.view; // Expiration must COMMIT, not throw.
+          if (locked.kind !== 'PROPOSED') {
+            await this.ledger.assertFeature(context, feature, tx);
+            return locked.view;
+          }
+          feature = locked.operation.draftId
+            ? 'communication'
+            : 'write_proposal';
           let row = locked.operation;
           if (edits && Object.keys(edits).length) {
             const candidate = applyProposalEdits(row.proposalJson, edits);
@@ -581,6 +604,8 @@ export class AiProposalService {
         },
       );
     } catch (error) {
+      if (isAiGovernanceError(error))
+        return recordRolledBackDenial(this.ledger, context, feature, error);
       if (error instanceof ApiException && error.code === 'AI_TURN_NOT_FOUND')
         throw error;
       // The command transaction has rolled back. Never persist failure in it or
@@ -629,134 +654,141 @@ export class AiProposalService {
   ): Promise<AiProposalView> {
     if (!Object.hasOwn(draftOperations, input.itemKey))
       throw new ApiException('VALIDATION_FAILED', 400);
-    return this.records.withTenantTransaction(context, async (session) => {
-      const { tx, store } = session;
-      // A draft is the lock for both absent items and their subsequent retries.
-      const [draft] = await tx.$queryRaw<
-        Array<{
-          id: string;
-          recordId: string;
-          objectCode: string;
-          expectedVersion: number;
-          publicationId: string;
-          expiresAt: Date;
-          ready: boolean;
-        }>
-      >`
+    return this.records
+      .withTenantTransaction(context, async (session) => {
+        const { tx, store } = session;
+        // A draft is the lock for both absent items and their subsequent retries.
+        const [draft] = await tx.$queryRaw<
+          Array<{
+            id: string;
+            recordId: string;
+            objectCode: string;
+            expectedVersion: number;
+            publicationId: string;
+            expiresAt: Date;
+            ready: boolean;
+          }>
+        >`
         SELECT d.id, d.record_id AS "recordId", o.code AS "objectCode", d.expected_version AS "expectedVersion",
           d.publication_id AS "publicationId", d.expires_at AS "expiresAt", d.output IS NOT NULL AS ready
         FROM ai_record_drafts d JOIN object_definitions o ON (o.tenant_id,o.id) = (d.tenant_id,d.object_id)
         WHERE d.id=${input.draftId}::uuid AND d.tenant_id=${context.tenantId}::uuid
           AND d.member_id=${context.memberId}::uuid
         FOR UPDATE OF d`;
-      if (!draft) throw new ApiException('AI_TURN_NOT_FOUND', 404);
-      if (!draft.ready)
-        throw new ApiException('AI_MEMBER_TURN_IN_PROGRESS', 409);
-      const identity = {
-        tenantId: context.tenantId,
-        draftId: draft.id,
-        draftItemKey: input.itemKey,
-      };
-      const existing = await tx.aiOperation.findUnique({
-        where: { tenantId_draftId_draftItemKey: identity },
-      });
-      if (existing?.status === 'EXECUTED')
-        return this.operations.projectInTransaction(tx, context, existing);
+        if (!draft) throw new ApiException('AI_TURN_NOT_FOUND', 404);
+        if (!draft.ready)
+          throw new ApiException('AI_MEMBER_TURN_IN_PROGRESS', 409);
+        const identity = {
+          tenantId: context.tenantId,
+          draftId: draft.id,
+          draftItemKey: input.itemKey,
+        };
+        const existing = await tx.aiOperation.findUnique({
+          where: { tenantId_draftId_draftItemKey: identity },
+        });
+        if (existing?.status === 'EXECUTED') {
+          await this.ledger.assertFeature(context, 'communication', tx);
+          return this.operations.projectInTransaction(tx, context, existing);
+        }
 
-      const operationType = draftOperations[input.itemKey];
-      const row =
-        existing ??
-        (await tx.aiOperation.create({
-          data: {
-            ...identity,
-            requestedByMemberId: context.memberId,
-            operationType,
-            expectedVersion: draft.expectedVersion,
-            expectedPublicationId: draft.publicationId,
-            expiresAt: draft.expiresAt,
-            requestText: input.requestText.slice(0, 4000),
-            proposalJson: {},
-            targetRefJson: {
-              objectCode: draft.objectCode,
-              recordId: draft.recordId,
+        const operationType = draftOperations[input.itemKey];
+        const row =
+          existing ??
+          (await tx.aiOperation.create({
+            data: {
+              ...identity,
+              requestedByMemberId: context.memberId,
+              operationType,
+              expectedVersion: draft.expectedVersion,
+              expectedPublicationId: draft.publicationId,
+              expiresAt: draft.expiresAt,
+              requestText: input.requestText.slice(0, 4000),
+              proposalJson: {},
+              targetRefJson: {
+                objectCode: draft.objectCode,
+                recordId: draft.recordId,
+              },
+              displayChangesJson: {
+                title: {
+                  note: '添加备注',
+                  followUp: '创建跟进',
+                  fields: '修改记录',
+                }[input.itemKey],
+                changes: [],
+                targetSummary: '',
+              },
             },
-            displayChangesJson: {
-              title: {
-                note: '添加备注',
-                followUp: '创建跟进',
-                fields: '修改记录',
-              }[input.itemKey],
-              changes: [],
-              targetSummary: '',
-            },
-          },
-        }));
-      if (!store.withSavepoint) throw new ApiException('INTERNAL_ERROR', 500);
-      try {
-        return await store.withSavepoint(async () => {
-          if (draft.expiresAt.getTime() <= Date.now())
-            throw new ApiException('AI_TURN_NOT_FOUND', 404);
-          let candidate: ProposalCandidate;
-          try {
-            candidate = validateProposalCandidate(input.candidate);
-          } catch {
-            throw new ApiException('VALIDATION_FAILED', 400);
-          }
-          if (
-            candidate.recordId !== draft.recordId ||
-            candidate.objectCode !== draft.objectCode ||
-            candidate.operationType !== operationType
-          )
-            throw new ApiException('VALIDATION_FAILED', 400);
-          const saved = await tx.aiOperation.update({
+          }));
+        if (!store.withSavepoint) throw new ApiException('INTERNAL_ERROR', 500);
+        try {
+          return await store.withSavepoint(async () => {
+            if (draft.expiresAt.getTime() <= Date.now())
+              throw new ApiException('AI_TURN_NOT_FOUND', 404);
+            let candidate: ProposalCandidate;
+            try {
+              candidate = validateProposalCandidate(input.candidate);
+            } catch {
+              throw new ApiException('VALIDATION_FAILED', 400);
+            }
+            if (
+              candidate.recordId !== draft.recordId ||
+              candidate.objectCode !== draft.objectCode ||
+              candidate.operationType !== operationType
+            )
+              throw new ApiException('VALIDATION_FAILED', 400);
+            const saved = await tx.aiOperation.update({
+              where: { id: row.id },
+              data: {
+                status: 'PROPOSED',
+                failureCode: null,
+                auditId: null,
+                proposalJson: candidate,
+              },
+            });
+            return this.executeOperation(session, context, row.id, saved, meta);
+          });
+        } catch (error) {
+          if (isAiGovernanceError(error)) throw error;
+          // The savepoint rolled back any business writes and success audit. The
+          // failed attempt commits under the same item lock with a safe reason.
+          const code =
+            error instanceof ApiException && error.getStatus() < 500
+              ? error.code
+              : 'INTERNAL_ERROR';
+          const status =
+            draft.expiresAt.getTime() <= Date.now()
+              ? 'EXPIRED'
+              : error instanceof ApiException &&
+                  [403, 404, 409].includes(error.getStatus())
+                ? 'CONFLICTED'
+                : 'FAILED';
+          const auditId = await this.audit.appendReturningId(tx, {
+            tenantId: context.tenantId,
+            actorType: 'USER',
+            actorId: context.userId,
+            action: 'ai.communication_item_failed',
+            resourceType: 'ai_record_draft',
+            resourceId: draft.id,
+            reason: input.itemKey,
+            after: { code },
+            ...meta,
+          });
+          const failed = await tx.aiOperation.update({
             where: { id: row.id },
             data: {
-              status: 'PROPOSED',
-              failureCode: null,
-              auditId: null,
-              proposalJson: candidate,
+              status,
+              failureCode: code,
+              auditId,
+              confirmedByMemberId: context.memberId,
+              confirmedAt: new Date(),
             },
           });
-          return this.executeOperation(session, context, row.id, saved, meta);
-        });
-      } catch (error) {
-        // The savepoint rolled back any business writes and success audit. The
-        // failed attempt commits under the same item lock with a safe reason.
-        const code =
-          error instanceof ApiException && error.getStatus() < 500
-            ? error.code
-            : 'INTERNAL_ERROR';
-        const status =
-          draft.expiresAt.getTime() <= Date.now()
-            ? 'EXPIRED'
-            : error instanceof ApiException &&
-                [403, 404, 409].includes(error.getStatus())
-              ? 'CONFLICTED'
-              : 'FAILED';
-        const auditId = await this.audit.appendReturningId(tx, {
-          tenantId: context.tenantId,
-          actorType: 'USER',
-          actorId: context.userId,
-          action: 'ai.communication_item_failed',
-          resourceType: 'ai_record_draft',
-          resourceId: draft.id,
-          reason: input.itemKey,
-          after: { code },
-          ...meta,
-        });
-        const failed = await tx.aiOperation.update({
-          where: { id: row.id },
-          data: {
-            status,
-            failureCode: code,
-            auditId,
-            confirmedByMemberId: context.memberId,
-            confirmedAt: new Date(),
-          },
-        });
-        return this.operations.projectInTransaction(tx, context, failed);
-      }
-    });
+          return this.operations.projectInTransaction(tx, context, failed);
+        }
+      })
+      .catch((error: unknown) =>
+        recordRolledBackDenial(this.ledger, context, 'communication', error),
+      );
   }
 
   private async executeOperation(
@@ -786,8 +818,6 @@ export class AiProposalService {
     );
     requireReadable(resolved);
     requireUpdatable(resolved, candidate.operationType === 'UPDATE_RECORD');
-    if (resolved.schema.publication.id !== row.expectedPublicationId)
-      throw new ApiException('RECORD_VERSION_CONFLICT', 409);
     const ownerMemberId = ownerFor(
       resolved,
       context,
@@ -817,7 +847,23 @@ export class AiProposalService {
     };
     if (row.draftId && row.expiresAt.getTime() <= Date.now())
       throw new ApiException('AI_TURN_NOT_FOUND', 404);
-    if (record.version !== row.expectedVersion)
+    if (candidate.operationType === 'UPDATE_RECORD') {
+      for (const key of Object.keys(candidate.values)) {
+        const access = resolved.access.fields[key];
+        if (!access || access === 'HIDDEN')
+          throw new ApiException('FIELD_HIDDEN', 403);
+        if (access !== 'EDIT') throw new ApiException('FIELD_READ_ONLY', 403);
+      }
+    }
+    await this.ledger.assertFeature(
+      context,
+      row.draftId ? 'communication' : 'write_proposal',
+      tx,
+    );
+    if (
+      resolved.schema.publication.id !== row.expectedPublicationId ||
+      record.version !== row.expectedVersion
+    )
       throw new ApiException('RECORD_VERSION_CONFLICT', 409);
     const meta = {
       ...requestMeta,
@@ -932,24 +978,23 @@ export class AiProposalService {
   }
 
   private async conversationForTurn(
+    tx: Tx,
     context: TenantContext,
     turnId: string,
   ): Promise<string> {
-    return this.records.withTenantTransaction(context, async ({ tx }) => {
-      const turn = await tx.aiMessage.findFirst({
-        where: {
-          tenantId: context.tenantId,
-          turnId,
-          role: 'USER',
-          conversation: {
-            createdByMemberId: context.memberId,
-            deletedAt: null,
-          },
+    const turn = await tx.aiMessage.findFirst({
+      where: {
+        tenantId: context.tenantId,
+        turnId,
+        role: 'USER',
+        conversation: {
+          createdByMemberId: context.memberId,
+          deletedAt: null,
         },
-        select: { conversationId: true },
-      });
-      if (!turn) throw new ApiException('AI_TURN_NOT_FOUND', 404);
-      return turn.conversationId;
+      },
+      select: { conversationId: true },
     });
+    if (!turn) throw new ApiException('AI_TURN_NOT_FOUND', 404);
+    return turn.conversationId;
   }
 }

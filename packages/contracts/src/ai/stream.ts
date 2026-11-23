@@ -98,6 +98,7 @@ export type AiPublicStreamEvent =
       data: {
         turnId: string;
         code: string;
+        message?: string;
         messageId: string;
         durationMs?: number;
       };

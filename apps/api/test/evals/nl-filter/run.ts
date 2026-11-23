@@ -9,6 +9,7 @@ import {
   createAiProvider,
   type AiProvider,
 } from '../../../src/modules/ai/ai-provider';
+import { AiLedgerService } from '../../../src/modules/ai/governance/ai-ledger.service';
 import { FilterPreviewService } from '../../../src/modules/ai/filter-preview.service';
 import type { FilterProviderInput } from '../../../src/modules/ai/filter-generation';
 import { PublishedObjectService } from '../../../src/modules/objects/published-object.service';
@@ -55,6 +56,10 @@ export async function evaluate(generate: Generate, samples: Sample[]) {
   const module = await Test.createTestingModule({
     providers: [
       FilterPreviewService,
+      {
+        provide: AiLedgerService,
+        useValue: { assertFeature: () => Promise.resolve() },
+      },
       { provide: PublishedObjectService, useValue: objects },
       {
         provide: RECORDS_REPOSITORY,

@@ -1,3 +1,4 @@
+import { isAiGovernanceError } from './ai-governance-error';
 import { randomUUID } from 'node:crypto';
 import type {
   FieldPlan,
@@ -216,6 +217,7 @@ export async function generateTablePlan(
   provider: AiProvider,
   input: TableGenerationInput,
   signal: AbortSignal,
+  actor?: import('../../common/tenancy/tenant-context').TenantContext,
 ): Promise<TableBuilderResult> {
   signal.throwIfAborted();
   const dest =
@@ -232,8 +234,9 @@ export async function generateTablePlan(
     throw new ApiException('AI_PROVIDER_UNAVAILABLE', 503);
   let raw: unknown;
   try {
-    raw = await provider.generateTableBlueprint(request, signal);
-  } catch {
+    raw = await provider.generateTableBlueprint(request, signal, actor);
+  } catch (error) {
+    if (isAiGovernanceError(error)) throw error;
     signal.throwIfAborted();
     throw new ApiException('AI_PROVIDER_UNAVAILABLE', 503);
   }

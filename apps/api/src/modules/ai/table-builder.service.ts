@@ -1,3 +1,5 @@
+import { AiLedgerService } from './governance/ai-ledger.service';
+import { recordRolledBackDenial } from './ai-governance-error';
 import { Inject, Injectable } from '@nestjs/common';
 import type { TableBuilderResult, TableBuilderTarget } from '@crm/contracts';
 import { TABLE_EMPLOYEE_PRESETS } from '@crm/contracts';
@@ -83,6 +85,7 @@ export class TableBuilderService {
   constructor(
     private readonly objects: ObjectDraftBatchService,
     @Inject(AI_PROVIDER) private readonly provider: AiProvider,
+    private readonly ledger: AiLedgerService,
   ) {}
   async preview(
     c: TenantContext,
@@ -94,7 +97,9 @@ export class TableBuilderService {
     const answers = validateAnswers(dto.answers);
     const existing = await this.objects.blueprintMetadata(c);
     checkTarget(existing, dto.target);
+    await this.ledger.assertFeature(c, 'table_builder');
     const result = await this.generate(
+      c,
       {
         description: dto.description,
         existing,
@@ -119,14 +124,13 @@ export class TableBuilderService {
   async validate(c: TenantContext, raw: unknown): Promise<TableBuilderResult> {
     admin(c);
     const dto = parse(builderBodies.validate, raw);
-    return {
-      kind: 'blueprint',
-      ...validateEditableBlueprint(
-        dto.blueprint,
-        await this.objects.blueprintMetadata(c),
-        dto.target,
-      ),
-    };
+    const checked = validateEditableBlueprint(
+      dto.blueprint,
+      await this.objects.blueprintMetadata(c),
+      dto.target,
+    );
+    await this.ledger.assertFeature(c, 'table_builder');
+    return { kind: 'blueprint', ...checked };
   }
   async refine(
     c: TenantContext,
@@ -146,7 +150,9 @@ export class TableBuilderService {
       throw new ApiException('VALIDATION_FAILED', 400, {
         message: '请选择当前方案中的业务表。',
       });
+    await this.ledger.assertFeature(c, 'table_builder');
     const result = await this.generate(
+      c,
       {
         mode: 'refine',
         description: dto.description,
@@ -208,15 +214,21 @@ export class TableBuilderService {
         },
       });
     assertBlueprintFitsRequest(dto.blueprint);
-    return this.objects.confirmTableBlueprint(
-      c,
-      dto.blueprint,
-      dto.target,
-      meta,
-      dto.employeePresets,
-    );
+    return this.objects
+      .confirmTableBlueprint(
+        c,
+        dto.blueprint,
+        dto.target,
+        meta,
+        (tx) => this.ledger.assertFeature(c, 'table_builder', tx),
+        dto.employeePresets,
+      )
+      .catch((error: unknown) =>
+        recordRolledBackDenial(this.ledger, c, 'table_builder', error),
+      );
   }
   private async generate(
+    actor: TenantContext,
     input: Parameters<typeof generateTablePlan>[1],
     clientSignal?: AbortSignal,
   ) {
@@ -225,7 +237,12 @@ export class TableBuilderService {
       ? AbortSignal.any([clientSignal, timeout])
       : timeout;
     try {
-      const result = await generateTablePlan(this.provider, input, signal);
+      const result = await generateTablePlan(
+        this.provider,
+        input,
+        signal,
+        actor,
+      );
       if (result.kind === 'blueprint')
         assertBlueprintFitsRequest(result.blueprint);
       return result;

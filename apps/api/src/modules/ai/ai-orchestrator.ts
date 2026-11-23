@@ -1,3 +1,5 @@
+import { isAiGovernanceCode, isAiGovernanceError } from './ai-governance-error';
+import { AiLedgerService } from './governance/ai-ledger.service';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { AiPublicStreamEvent, FilterRule } from '@crm/contracts';
 import { ApiException } from '../../common/errors/api.exception';
@@ -64,6 +66,7 @@ export class AiOrchestrator {
   private readonly logger = new Logger(AiOrchestrator.name);
 
   constructor(
+    private readonly ledger: AiLedgerService,
     private readonly conversations: ConversationService,
     @Inject(AI_PROVIDER) private readonly provider: AiProvider,
     private readonly registry: AiToolRegistry,
@@ -220,6 +223,8 @@ export class AiOrchestrator {
     const toolSummaries: AiToolCallbacks['toolSummaries'] = [];
     const sources: AiToolCallbacks['sources'] = [];
     try {
+      await this.ledger.assertFeature(context, 'assistant');
+      const features = await this.ledger.features(context);
       const timeout = AbortSignal.timeout(timeoutMs());
       const stop = new AbortController();
       const abortSignal = AbortSignal.any([clientAbort, timeout, stop.signal]);
@@ -240,6 +245,8 @@ export class AiOrchestrator {
             questions: this.questions,
             actions: this.actions,
             canPropose: !!this.proposals,
+            ledger: this.ledger,
+            features,
             page,
             filterDraft,
             userText: answer?.otherText ?? begun.user.content,
@@ -262,15 +269,18 @@ export class AiOrchestrator {
       let inputTokens: number | undefined;
       let outputTokens: number | undefined;
       let failedCode: string | null = null;
+      let failureMessage: string | undefined;
       let completed = false;
 
       try {
         if (regenerate) {
+          await this.ledger.assertFeature(context, 'write_proposal');
           await collector.tool.execute(regenerate, 'regenerate');
           completed = true;
         } else {
           const merged = mergeProviderAndPublicEvents(
             this.provider.streamTurn({
+              actor: context,
               messages,
               system: [
                 AI_SYSTEM_PROMPT,
@@ -349,15 +359,19 @@ export class AiOrchestrator {
                 break;
               case 'FAILED':
                 failedCode = publicFailureCode(event.code);
+                if (isAiGovernanceCode(event.code))
+                  failureMessage = event.message;
                 break;
               default:
                 break;
             }
           }
         }
-      } catch {
+      } catch (error) {
+        if (isAiGovernanceError(error)) throw error;
         if (!abortSignal.aborted) failedCode = 'AI_TURN_FAILED';
       }
+      if (card.denial) throw card.denial;
       const latencyMs = Date.now() - startedAt;
       const usage = {
         inputTokens,
@@ -380,6 +394,12 @@ export class AiOrchestrator {
         brief?.content ||
         collector.failureCode === 'PROPOSAL_LIMIT'
       ) {
+        await this.ledger.assertFeature(context, 'assistant');
+        if (action)
+          await this.ledger.assertFeature(
+            context,
+            action.kind === 'communication' ? 'communication' : 'filter',
+          );
         const content =
           openQuestion === null
             ? '已追问三次，信息仍不足。请补充具体的记录、字段或期望值后再试。'
@@ -454,6 +474,7 @@ export class AiOrchestrator {
           data: {
             turnId: begun.turnId,
             code: failedCode,
+            ...(failureMessage ? { message: failureMessage } : {}),
             messageId: begun.assistant.id,
             durationMs: latencyMs,
           },
@@ -592,7 +613,9 @@ export class AiOrchestrator {
           durationMs: latencyMs,
         },
       };
-    } catch {
+    } catch (error) {
+      const denial = isAiGovernanceError(error) ? error : undefined;
+      const code = denial?.code ?? 'AI_TURN_FAILED';
       const latencyMs = Date.now() - startedAt;
       const cancelled = clientAbort.aborted;
       await this.finish(context, begun, latencyMs, {
@@ -604,7 +627,7 @@ export class AiOrchestrator {
         },
         toolSummary: toolSummaries,
         sourceSummary: sources,
-        errorCode: 'AI_TURN_FAILED',
+        errorCode: code,
         providerKey: this.provider.providerKey,
         modelKey: this.provider.modelKey,
       });
@@ -621,7 +644,8 @@ export class AiOrchestrator {
             event: 'turn.failed',
             data: {
               turnId: begun.turnId,
-              code: 'AI_TURN_FAILED',
+              code,
+              ...(denial ? { message: denial.message } : {}),
               messageId: begun.assistant.id,
               durationMs: latencyMs,
             },
@@ -769,7 +793,9 @@ function timeoutMs(): number {
 }
 
 function publicFailureCode(code: string): string {
-  return PUBLIC_FAILURE_CODES.has(code) ? code : 'AI_TURN_FAILED';
+  return PUBLIC_FAILURE_CODES.has(code) || isAiGovernanceCode(code)
+    ? code
+    : 'AI_TURN_FAILED';
 }
 
 function toProviderMessages(

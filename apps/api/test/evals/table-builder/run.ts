@@ -1,3 +1,4 @@
+import type { AiLedgerService } from '../../../src/modules/ai/governance/ai-ledger.service';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs, isDeepStrictEqual } from 'node:util';
@@ -167,6 +168,7 @@ export async function forgedProbes() {
       },
     } as unknown as ObjectDraftBatchService,
     adapter(() => Promise.reject(new Error('Unexpected provider call'))),
+    { assertFeature: () => Promise.resolve() } as unknown as AiLedgerService,
   );
   const id = '00000000-0000-4000-8000-000000000001',
     fieldId = '00000000-0000-4000-8000-000000000002';

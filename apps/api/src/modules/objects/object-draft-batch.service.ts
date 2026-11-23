@@ -283,6 +283,9 @@ export class ObjectDraftBatchService {
     submitted: TableBlueprint,
     target: TableBuilderTarget | undefined,
     meta: RequestMeta,
+    authorize: (
+      tx?: import('@crm/database').Prisma.TransactionClient,
+    ) => Promise<void>,
     employeePresets?: Record<string, TableEmployeePreset>,
   ) {
     assertTenantAdmin(context);
@@ -314,6 +317,7 @@ export class ObjectDraftBatchService {
             },
           );
         }
+        await authorize(store.transaction);
         const objects: { id: string; code: string; version: number }[] = [];
         for (const [index, table] of blueprint.tables.entries()) {
           const keys = executionKeys(submitted.tables[index]);
@@ -353,6 +357,12 @@ export class ObjectDraftBatchService {
             employeePresets?.[table.id] ?? 'CLOSED',
           );
           const { id, code, version } = updated.object;
+          await store.appendAudit(
+            auditEvent(context, meta, 'ai.table_blueprint_confirmed', id, {
+              mode: target ? 'append' : 'create',
+              version,
+            }),
+          );
           objects.push({ id, code, version });
           if (!target)
             structures.push({ ...updated.object, fields: updated.fields });

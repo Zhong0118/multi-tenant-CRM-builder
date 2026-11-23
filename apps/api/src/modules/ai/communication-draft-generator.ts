@@ -1,3 +1,4 @@
+import { isAiGovernanceError } from './ai-governance-error';
 import { Inject, Injectable } from '@nestjs/common';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -177,17 +178,24 @@ export class CommunicationDraftGenerator {
       const timeout = new Promise<never>((_resolve, reject) => {
         timer = setTimeout(
           () => {
-            controller.abort();
+            controller.abort(
+              new DOMException('AI generation timed out', 'TimeoutError'),
+            );
             reject(new ApiException('AI_PROVIDER_TIMEOUT', 504));
           },
           Number.isSafeInteger(timeoutMs) && timeoutMs > 0 ? timeoutMs : 45000,
         );
       });
       raw = await Promise.race([
-        this.provider.generateCommunication(input, controller.signal),
+        this.provider.generateCommunication(
+          input,
+          controller.signal,
+          ctx.actor,
+        ),
         timeout,
       ]);
     } catch (error) {
+      if (isAiGovernanceError(error)) throw error;
       if (
         controller.signal.aborted ||
         (error instanceof Error &&
