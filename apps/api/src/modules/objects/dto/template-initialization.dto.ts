@@ -85,6 +85,8 @@ export class PublishDraftGroupDto {
 }
 
 export class AnalyzedDraftObjectDto extends TemplateInitializationObjectDto {
+  @ApiProperty() nextPublicationNumber!: number;
+
   @ApiProperty({ type: PublicationAnalysisResponseDto })
   analysis!: PublicationAnalysisResponseDto;
 }
