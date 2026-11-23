@@ -63,6 +63,7 @@ export function workspaceSettingsNavigation(
     {
       label: "数据",
       items: [
+        { href: `${root}/settings/ai`, label: "AI", icon: "ai" },
         { href: `${root}/settings/objects`, label: "业务表", icon: "object" },
         {
           href: `${root}/settings/relationships`,

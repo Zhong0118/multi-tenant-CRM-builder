@@ -24,6 +24,7 @@ describe("SettingsOverview", () => {
         status={{ pendingTables: 0, values: {} }}
       />,
     );
+    expect(rowFor("AI")).toHaveAttribute("href", "/workspace/northwind/settings/ai");
     expect(within(rowFor("成员")).getByText("保存即生效")).toBeInTheDocument();
     for (const label of ["业务表", "关系与自动化", "工作台配置"]) {
       expect(within(rowFor(label)).getByText("发布后生效")).toBeInTheDocument();
