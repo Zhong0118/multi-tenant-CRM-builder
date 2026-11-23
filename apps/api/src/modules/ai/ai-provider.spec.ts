@@ -532,7 +532,10 @@ describe('VercelOpenAiProvider mapping', () => {
       { type: 'USAGE', inputTokens: 11, outputTokens: 7 },
       { type: 'COMPLETED' },
     ]);
-    expect((streamText as jest.Mock).mock.calls[0][0]).not.toHaveProperty('maxOutputTokens');
+    expect((streamText as jest.Mock).mock.calls[0][0]).toMatchObject({
+      maxOutputTokens: 4096,
+      maxRetries: 0,
+    });
     const serialized = JSON.stringify(events);
     expect(serialized).not.toContain('hidden-chain-of-thought');
     expect(serialized).not.toContain('sk-live-secret');

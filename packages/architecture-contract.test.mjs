@@ -36,3 +36,30 @@ test("shared packages keep generic contracts separate from tenant templates", as
     }),
   );
 });
+
+test("model SDK and raw provider construction stay behind governance in production", async () => {
+  const src = new URL("../apps/api/src/", packageRoot);
+  const { readdir } = await import("node:fs/promises");
+  const allowed = new Set([
+    "modules/ai/ai-provider.ts",
+    "modules/ai/governance/governed-provider.ts",
+    "modules/ai/providers/vercel-openai.provider.ts",
+    "modules/ai/providers/metered-fake.provider.ts",
+    "modules/ai/providers/fake-ai.provider.ts",
+  ]);
+  for (const file of await readdir(src, { recursive: true })) {
+    if (!file.endsWith(".ts") || file.endsWith(".spec.ts") || allowed.has(file))
+      continue;
+    const text = await readFile(new URL(file, src), "utf8");
+    assert.doesNotMatch(
+      text,
+      /\bcreateAiProvider\b|(?:\bfrom\s*|\b(?:import|require|requireFromModule)\s*\(\s*)["'](?:ai|@ai-sdk\/[^"']+|[^"']*\/(?:vercel-openai|fake-ai|metered-fake)\.provider)["']/,
+      file,
+    );
+  }
+  const factory = await readFile(
+    new URL("modules/ai/governance/governed-provider.ts", src),
+    "utf8",
+  );
+  assert.match(factory, /new ModelMeter\(/);
+});

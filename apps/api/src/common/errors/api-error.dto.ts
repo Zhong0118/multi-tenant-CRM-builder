@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ApiErrorResponseDto {
   @ApiProperty() code!: string;
@@ -9,5 +9,6 @@ export class ApiErrorResponseDto {
   })
   fieldErrors!: Record<string, string[]>;
   @ApiProperty() requestId!: string;
+  @ApiPropertyOptional() retryAfterSeconds?: number;
   @ApiProperty() status!: number;
 }
