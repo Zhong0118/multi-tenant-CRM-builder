@@ -1,3 +1,5 @@
+import { fakeTableBlueprint } from './fake-table-builder';
+import type { TableProviderInput } from '../table-model';
 import { simulateAssistant } from './fake-assistant';
 import type { FilterProviderInput } from '../filter-generation';
 import type { CommunicationProviderInput } from '../communication-output';
@@ -27,6 +29,11 @@ export function getFakeAiProviderCapturedToolResult(): unknown {
 export class FakeAiProvider implements AiProvider {
   readonly providerKey = 'fake';
   readonly modelKey = 'fake';
+
+  generateTableBlueprint(input: TableProviderInput, signal: AbortSignal) {
+    signal.throwIfAborted();
+    return Promise.resolve(fakeTableBlueprint(input));
+  }
 
   generateFilter(input: FilterProviderInput, signal: AbortSignal) {
     signal.throwIfAborted();
