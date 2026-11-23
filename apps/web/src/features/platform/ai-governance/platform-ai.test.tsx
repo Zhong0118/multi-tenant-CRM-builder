@@ -75,6 +75,13 @@ beforeEach(() => {
   }));
 });
 describe("平台 AI 治理", () => {
+  it("只在编辑时挂载套餐抽屉，以便服务器和客户端使用相同的初始结构", async () => {
+    show(<PlatformPlans />);
+    const edit = await screen.findByRole("button", { name: "编辑" });
+    expect(document.querySelector(".ant-drawer")).toBeNull();
+    fireEvent.click(edit);
+    expect(await screen.findByDisplayValue("试用版")).toBeVisible();
+  });
   it("正在使用的套餐先预览影响范围，再确认保存", async () => {
     api.POST.mockResolvedValue({
       data: {

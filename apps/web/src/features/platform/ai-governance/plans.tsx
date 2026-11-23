@@ -213,7 +213,6 @@ export function PlatformPlans() {
       )}
       <Drawer
         open={!!editor}
-        forceRender
         onClose={() => {
           if (!action.busy) setEditor(null);
         }}
