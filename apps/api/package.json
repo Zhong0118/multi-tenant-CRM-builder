@@ -50,6 +50,7 @@
     "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "unicode-case-folding": "1.1.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {

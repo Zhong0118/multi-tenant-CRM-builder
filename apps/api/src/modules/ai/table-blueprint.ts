@@ -1,3 +1,4 @@
+import { caseFold } from 'unicode-case-folding';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { plainToInstance } from 'class-transformer';
@@ -98,7 +99,7 @@ export function blueprintCode(
   );
 }
 export const canonicalName = (s: string) =>
-  s.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
+  caseFold(s.normalize('NFKC').trim().replace(/\s+/gu, ' '));
 const platformFeatures = [
   {
     names: [
