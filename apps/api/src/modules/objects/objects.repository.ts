@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { transferSettings } from './effective-access';
 import { configOf } from '../records/record-pool-config';
 import type { PoolConfig } from '../records/record-ownership';
@@ -14,7 +15,10 @@ import type {
   PublicationAnalysis,
   PublicationDraft,
 } from './object-publication.policy';
-import type { PublishedObjectSchema } from './object-schema';
+import type {
+  PublishedFieldAccess,
+  PublishedObjectSchema,
+} from './object-schema';
 import { RECORD_TITLE_MAX_LENGTH } from '../records/record-value-engine';
 import { lockObjectConfiguration } from './object-configuration-lock';
 import {
@@ -28,6 +32,11 @@ import {
 } from '../workflows/workflow.types';
 
 export interface ObjectDraft extends PublicationDraft {
+  fields: Array<
+    PublicationDraft['fields'][number] & {
+      storedEmployeeAccess?: PublishedFieldAccess;
+    }
+  >;
   pool?: PoolConfig;
   object: PublicationDraft['object'] & {
     status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
@@ -61,6 +70,11 @@ export interface ObjectStructure {
   sortOrder: number;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   fields: { fieldKey: string; label: string; type: string }[];
+}
+
+interface SaveOptions {
+  bumpVersion?: boolean;
+  previous?: ObjectDraft;
 }
 
 export interface ObjectsStore {
@@ -101,7 +115,7 @@ export interface ObjectsStore {
   saveObject(
     draft: ObjectDraft,
     expectedVersion: number,
-    options?: { bumpVersion?: boolean },
+    options?: SaveOptions,
   ): Promise<ObjectDraft | null>;
   /**
    * Hard delete for a draft that was never published. Returns false when the
@@ -137,6 +151,7 @@ export interface ObjectsRepository {
   withTenant<T>(
     context: TenantContext,
     work: (store: ObjectsStore) => Promise<T>,
+    transactionOptions?: { timeout: number },
   ): Promise<T>;
 }
 
@@ -150,9 +165,13 @@ export class PrismaObjectsRepository implements ObjectsRepository {
   withTenant<T>(
     context: TenantContext,
     work: (store: ObjectsStore) => Promise<T>,
+    transactionOptions?: { timeout: number },
   ): Promise<T> {
-    return this.runner.withTenant(context, (transaction) =>
-      work(new PrismaObjectsStore(transaction, this.audit, context)),
+    return this.runner.withTenant(
+      context,
+      (transaction) =>
+        work(new PrismaObjectsStore(transaction, this.audit, context)),
+      transactionOptions,
     );
   }
 }
@@ -452,6 +471,7 @@ class PrismaObjectsStore implements ObjectsStore {
       fields: object.fields.map((field) => ({
         id: field.id,
         fieldKey: field.fieldKey,
+        storedEmployeeAccess: fieldAccess.get(field.id),
         label: field.label,
         type: field.type,
         required: field.required,
@@ -559,7 +579,7 @@ class PrismaObjectsStore implements ObjectsStore {
   async saveObject(
     draft: ObjectDraft,
     expectedVersion: number,
-    options: { bumpVersion?: boolean } = {},
+    options: SaveOptions = {},
   ): Promise<ObjectDraft | null> {
     const locked = await this.transaction.$queryRaw<Array<{ version: number }>>`
       SELECT version
@@ -594,7 +614,12 @@ class PrismaObjectsStore implements ObjectsStore {
       },
     });
 
-    for (const field of draft.fields) {
+    const fieldsToSave =
+      options.previous &&
+      isDeepStrictEqual(options.previous.fields, draft.fields)
+        ? []
+        : draft.fields;
+    for (const field of fieldsToSave) {
       const existing = await this.transaction.fieldDefinition.findUnique({
         where: { id: field.id },
         select: { id: true },
@@ -617,7 +642,10 @@ class PrismaObjectsStore implements ObjectsStore {
       }
     }
 
-    if (draft.defaultView) {
+    if (
+      draft.defaultView &&
+      !isDeepStrictEqual(options.previous?.defaultView, draft.defaultView)
+    ) {
       await this.transaction.viewDefinition.upsert({
         where: {
           tenantId_objectId_code: {
@@ -645,7 +673,10 @@ class PrismaObjectsStore implements ObjectsStore {
       });
     }
 
-    if (draft.employeeAccess) {
+    if (
+      draft.employeeAccess &&
+      !isDeepStrictEqual(options.previous?.employeeAccess, draft.employeeAccess)
+    ) {
       const permission = await this.transaction.objectPermission.findFirst({
         where: {
           tenantId: this.context.tenantId,

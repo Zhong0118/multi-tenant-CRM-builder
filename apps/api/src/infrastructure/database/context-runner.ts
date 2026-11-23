@@ -25,13 +25,14 @@ export class DatabaseContextRunner {
   withTenant<T>(
     context: TenantContext,
     work: (transaction: Prisma.TransactionClient) => Promise<T>,
+    options?: { timeout: number },
   ): Promise<T> {
     return this.database
       .transaction(async (transaction) => {
         await transaction.$queryRawUnsafe(SET_USER, context.userId);
         await transaction.$queryRawUnsafe(SET_TENANT, context.tenantId);
         return work(transaction);
-      })
+      }, options)
       .catch((error: unknown) => {
         throw translatePoolTriggerError(error);
       });

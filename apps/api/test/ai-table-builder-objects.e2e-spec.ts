@@ -363,11 +363,23 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
           id: randomUUID(),
           fieldKey: '',
           label: '顾问岗位' + i,
+          reason: '管理员需要在列表中查看这项信息。'.repeat(7),
         })),
       ];
     }
     const { blueprint: ready, issues } = validateBlueprint(plan, []);
     expect(issues.filter((i) => i.blocking)).toEqual([]);
+    const bytes = Buffer.byteLength(JSON.stringify({ blueprint: ready }));
+    expect(bytes).toBeGreaterThan(100 * 1024);
+    await api('post', defs)
+      .send({ name: 'x'.repeat(bytes) })
+      .expect(413);
+    await api('post', builder + '/validate')
+      .send({ description: 'x'.repeat(2 * 1024 * 1024) })
+      .expect(413);
+    await api('post', builder + '/validate')
+      .send({ blueprint: ready })
+      .expect(200);
     const res = await confirm(ready).expect(200);
     const { objects } = res.body as { objects: Summary[] };
     expect(
@@ -375,5 +387,37 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
         where: { objectId: { in: objects.map((o) => o.id) } },
       }),
     ).toBe(240);
+  });
+  it('appends an explicitly hidden field while leaving an unfinished manual draft editable', async () => {
+    const { object } = (
+      await api('post', defs)
+        .send({ name: '待配置的合同', code: 'incomplete' })
+        .expect(201)
+    ).body as Draft;
+    const plan = blueprint(['待配置的合同']);
+    const t = plan.tables[0];
+    Object.assign(t, {
+      id: object.id,
+      code: object.code,
+      titleFieldId: '',
+      employeeIntent: [],
+      view: { columnIds: [], reason: '保留既有配置' },
+    });
+    t.fields = [{ ...t.fields[1], label: '技术顾问' }];
+    const target = { objectId: object.id, expectedVersion: object.version };
+    const checked = await api('post', builder + '/validate')
+      .send({ blueprint: plan, target })
+      .expect(200);
+    expect(
+      (checked.body as { issues: { blocking: boolean }[] }).issues.filter(
+        (i) => i.blocking,
+      ),
+    ).toEqual([]);
+    await confirm(plan, target).expect(200);
+    const draft = (await api('get', defs + '/' + object.id).expect(200))
+      .body as Draft & { employeeAccess: unknown; defaultView: unknown };
+    expect(draft.employeeAccess).toBeNull();
+    expect(draft.defaultView).toBeNull();
+    expect(draft.fields[0].employeeAccess).toBe('HIDDEN');
   });
 });

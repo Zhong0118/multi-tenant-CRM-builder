@@ -377,76 +377,80 @@ export class ObjectsService {
     meta: RequestMeta,
   ) {
     assertTenantAdmin(context);
-    return this.repository.withTenant(context, async (store) => {
-      await store.lockLifecycleConfiguration();
-      await store.assertActiveAdmin();
-      if (target) await store.lockObject(target.objectId);
-      const structures = await store.listObjectStructures();
-      const { blueprint, issues } = validateBlueprint(
-        submitted,
-        structures,
-        target,
-      );
-      const blocking = issues.filter((i) => i.blocking);
-      if (blocking.length) {
-        const conflict = blocking.some((i) => i.code === 'NAME_IN_USE');
-        throw new ApiException(
-          conflict ? 'CONFIG_VERSION_CONFLICT' : 'VALIDATION_FAILED',
-          conflict ? 409 : 400,
-          {
-            fieldErrors: Object.fromEntries(
-              blocking.map((i) => [
-                [i.tableId, i.fieldId, i.path].filter(Boolean).join('.'),
-                [i.message],
-              ]),
-            ),
-          },
+    return this.repository.withTenant(
+      context,
+      async (store) => {
+        await store.lockLifecycleConfiguration();
+        await store.assertActiveAdmin();
+        if (target) await store.lockObject(target.objectId);
+        const structures = await store.listObjectStructures();
+        const { blueprint, issues } = validateBlueprint(
+          submitted,
+          structures,
+          target,
         );
-      }
-      const objects: { id: string; code: string; version: number }[] = [];
-      for (const [index, table] of blueprint.tables.entries()) {
-        const keys = executionKeys(submitted.tables[index]);
-        const canonical = executionKeys(table);
-        if (
-          keys.length !== canonical.length ||
-          keys.some((k, i) => k !== canonical[i])
-        )
-          throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-        const draft = target
-          ? await requireDraft(store, target.objectId)
-          : await this.createInStore(
-              store,
-              context,
-              {
-                name: table.name,
-                code: table.code,
-                icon: table.icon,
-                titleFieldKey: table.fields.find(
-                  (f) => f.id === table.titleFieldId,
-                )!.fieldKey,
-                initialFields: table.fields
-                  .filter((f) => f.type !== 'MEMBER')
-                  .map(projectField),
-              },
-              meta,
-              structures,
-            );
-        assertNotArchived(draft);
-        const updated = await this.applyTablePlan(
-          store,
-          context,
-          draft,
-          table,
-          !!target,
-          meta,
-        );
-        const { id, code, version } = updated.object;
-        objects.push({ id, code, version });
-        if (!target)
-          structures.push({ ...updated.object, fields: updated.fields });
-      }
-      return { objects };
-    });
+        const blocking = issues.filter((i) => i.blocking);
+        if (blocking.length) {
+          const conflict = blocking.some((i) => i.code === 'NAME_IN_USE');
+          throw new ApiException(
+            conflict ? 'CONFIG_VERSION_CONFLICT' : 'VALIDATION_FAILED',
+            conflict ? 409 : 400,
+            {
+              fieldErrors: Object.fromEntries(
+                blocking.map((i) => [
+                  [i.tableId, i.fieldId, i.path].filter(Boolean).join('.'),
+                  [i.message],
+                ]),
+              ),
+            },
+          );
+        }
+        const objects: { id: string; code: string; version: number }[] = [];
+        for (const [index, table] of blueprint.tables.entries()) {
+          const keys = executionKeys(submitted.tables[index]);
+          const canonical = executionKeys(table);
+          if (
+            keys.length !== canonical.length ||
+            keys.some((k, i) => k !== canonical[i])
+          )
+            throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+          const draft = target
+            ? await requireDraft(store, target.objectId)
+            : await this.createInStore(
+                store,
+                context,
+                {
+                  name: table.name,
+                  code: table.code,
+                  icon: table.icon,
+                  titleFieldKey: table.fields.find(
+                    (f) => f.id === table.titleFieldId,
+                  )!.fieldKey,
+                  initialFields: table.fields
+                    .filter((f) => f.type !== 'MEMBER')
+                    .map(projectField),
+                },
+                meta,
+                structures,
+              );
+          assertNotArchived(draft);
+          const updated = await this.applyTablePlan(
+            store,
+            context,
+            draft,
+            table,
+            !!target,
+            meta,
+          );
+          const { id, code, version } = updated.object;
+          objects.push({ id, code, version });
+          if (!target)
+            structures.push({ ...updated.object, fields: updated.fields });
+        }
+        return { objects };
+      },
+      { timeout: 30_000 },
+    );
   }
 
   private async applyTablePlan(
@@ -457,9 +461,11 @@ export class ObjectsService {
     appendOnly: boolean,
     meta: RequestMeta,
   ) {
-    const save = async (action: string) => {
-      draft = await this.saveChange(store, context, draft, action, meta);
-    };
+    const preexisting = new Set(
+      appendOnly
+        ? draftConfigurationBlockers(draft).map((i) => JSON.stringify(i))
+        : [],
+    );
     const additions = appendOnly
       ? table.fields
       : table.fields.filter((f) => f.type === 'MEMBER');
@@ -484,6 +490,19 @@ export class ObjectsService {
         );
     }
     if (!appendOnly) {
+      let previous = structuredClone(draft);
+      const save = async (action: string) => {
+        draft = await this.saveChange(
+          store,
+          context,
+          draft,
+          action,
+          meta,
+          previous,
+        );
+        previous = structuredClone(draft);
+      };
+
       if (table.description !== undefined) {
         updateObject(draft, { description: table.description });
         await save('object.updated');
@@ -507,11 +526,9 @@ export class ObjectsService {
       setEmployeeAccess(draft, draft.employeeAccess!);
       await save('object.permissions_updated');
     }
-    const blocking = analyzeObjectConfiguration({
-      ...draft,
-      previousFields: draft.activeSchema?.fields,
-      historicalFields: draft.previousPublishedFields,
-    }).blocking.filter((i) => i.code !== 'REQUIRED_FIELD_HIDDEN');
+    const blocking = draftConfigurationBlockers(draft).filter(
+      (i) => !preexisting.has(JSON.stringify(i)),
+    );
     if (blocking.length)
       throw validationError(
         'fields',
@@ -1149,8 +1166,11 @@ export class ObjectsService {
     draft: ObjectDraft,
     action: string,
     meta: RequestMeta,
+    previous?: ObjectDraft,
   ) {
-    const saved = await store.saveObject(draft, draft.object.version);
+    const saved = await store.saveObject(draft, draft.object.version, {
+      previous,
+    });
     if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
     await store.appendAudit(
       auditEvent(context, meta, action, draft.object.id, {
@@ -1485,4 +1505,12 @@ function executionKeys(table: TablePlan) {
       ...(f.options ?? []).map((o) => o.key),
     ]),
   ];
+}
+
+function draftConfigurationBlockers(draft: ObjectDraft) {
+  return analyzeObjectConfiguration({
+    ...draft,
+    previousFields: draft.activeSchema?.fields,
+    historicalFields: draft.previousPublishedFields,
+  }).blocking.filter((i) => i.code !== 'REQUIRED_FIELD_HIDDEN');
 }

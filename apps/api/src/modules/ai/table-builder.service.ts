@@ -11,7 +11,16 @@ import {
   validateBlueprint,
   type BlueprintMetadata,
 } from './table-blueprint';
+import { assertBlueprintFitsRequest } from './table-builder-payload';
 import { generateTablePlan, validateAnswers } from './table-generation';
+
+function validateEditableBlueprint(
+  ...args: Parameters<typeof validateBlueprint>
+) {
+  const result = validateBlueprint(...args);
+  assertBlueprintFitsRequest(result.blueprint);
+  return result;
+}
 
 const description = z.string().trim().min(1).max(4000);
 const target = targetSchema.optional();
@@ -79,7 +88,7 @@ export class TableBuilderService {
       answers,
     });
     if (result.kind === 'question') return result;
-    const checked = validateBlueprint(
+    const checked = validateEditableBlueprint(
       result.blueprint,
       await this.objects.blueprintMetadata(c),
       dto.target,
@@ -95,7 +104,7 @@ export class TableBuilderService {
     const dto = parse(builderBodies.validate, raw);
     return {
       kind: 'blueprint',
-      ...validateBlueprint(
+      ...validateEditableBlueprint(
         dto.blueprint,
         await this.objects.blueprintMetadata(c),
         dto.target,
@@ -106,7 +115,7 @@ export class TableBuilderService {
     admin(c);
     const dto = parse(builderBodies.refine, raw);
     const existing = await this.objects.blueprintMetadata(c);
-    const { blueprint } = validateBlueprint(
+    const { blueprint } = validateEditableBlueprint(
       dto.blueprint,
       existing,
       dto.target,
@@ -138,7 +147,7 @@ export class TableBuilderService {
       ...new Set([...blueprint.assumptions, ...result.blueprint.assumptions]),
     ];
     blueprint.omitted.push(...result.blueprint.omitted);
-    const checked = validateBlueprint(
+    const checked = validateEditableBlueprint(
       blueprint,
       await this.objects.blueprintMetadata(c),
       dto.target,
@@ -156,6 +165,7 @@ export class TableBuilderService {
   ) {
     admin(c);
     const dto = parse(builderBodies.confirm, raw);
+    assertBlueprintFitsRequest(dto.blueprint);
     return this.objects.confirmTableBlueprint(
       c,
       dto.blueprint,
@@ -166,7 +176,10 @@ export class TableBuilderService {
   private async generate(input: Parameters<typeof generateTablePlan>[1]) {
     const signal = AbortSignal.timeout(60_000);
     try {
-      return await generateTablePlan(this.provider, input, signal);
+      const result = await generateTablePlan(this.provider, input, signal);
+      if (result.kind === 'blueprint')
+        assertBlueprintFitsRequest(result.blueprint);
+      return result;
     } catch (error) {
       if (error instanceof ApiException) throw error;
       throw new ApiException(

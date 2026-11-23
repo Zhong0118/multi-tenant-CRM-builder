@@ -125,7 +125,12 @@ class MemoryObjectsStore implements ObjectsStore {
   ) {
     const draft = await this.findObject(objectId);
     if (!draft) return null;
-    draft.fields.push(...fields);
+    draft.fields.push(
+      ...fields.map((field) => ({
+        ...field,
+        storedEmployeeAccess: 'HIDDEN' as const,
+      })),
+    );
     if (draft.employeeAccess)
       for (const f of fields)
         draft.employeeAccess.fields[f.fieldKey] = 'HIDDEN';
@@ -1878,5 +1883,29 @@ describe('blueprint draft confirmation', () => {
       service.confirmTableBlueprint(admin, plan, undefined, meta),
     ).rejects.toMatchObject({ code: 'CONFIG_VERSION_CONFLICT' });
     expect(store.audits).toEqual([]);
+  });
+  it('allows additive changes when unrelated configuration issues predate the change', async () => {
+    const { service, store } = fixture();
+    await service.create(admin, { name: '租赁合同', code: 'unfinished' }, meta);
+    store.objects[0].object.id = tableId;
+    const plan = example();
+    const t = plan.tables[0];
+    Object.assign(t, {
+      code: 'unfinished',
+      titleFieldId: '',
+      view: { columnIds: [], reason: '保持原值' },
+    });
+    delete t.description;
+    t.fields = [t.fields[0]];
+    await service.confirmTableBlueprint(
+      admin,
+      plan,
+      { objectId: tableId, expectedVersion: 1 },
+      meta,
+    );
+    const detail = toObjectDraftResponse(store.objects[0]);
+    expect(detail.employeeAccess).toBeNull();
+    expect(detail.defaultView).toBeNull();
+    expect(detail.fields[0].employeeAccess).toBe('HIDDEN');
   });
 });

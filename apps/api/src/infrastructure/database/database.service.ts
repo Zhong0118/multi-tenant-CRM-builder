@@ -32,8 +32,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   transaction<T>(
     work: (transaction: Prisma.TransactionClient) => Promise<T>,
+    options?: { timeout: number },
   ): Promise<T> {
-    return this.client.$transaction(work);
+    return this.client.$transaction(work, options);
   }
 
   async onModuleDestroy(): Promise<void> {

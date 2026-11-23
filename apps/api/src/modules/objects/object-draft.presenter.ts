@@ -141,7 +141,8 @@ export function toObjectDraftResponse(draft: ObjectDraft): ObjectDraftResponse {
         status: field.status,
         publishedType:
           field.publishedType ?? publishedTypes.get(field.fieldKey) ?? null,
-        employeeAccess: fieldAccess[field.fieldKey] ?? 'EDIT',
+        employeeAccess:
+          fieldAccess[field.fieldKey] ?? field.storedEmployeeAccess ?? 'EDIT',
       })),
     defaultView: draft.defaultView
       ? {

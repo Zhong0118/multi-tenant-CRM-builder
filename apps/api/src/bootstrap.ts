@@ -1,6 +1,8 @@
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import { TABLE_BUILDER_REQUEST_LIMIT } from './modules/ai/table-builder-payload';
 import {
   DocumentBuilder,
   type OpenAPIObject,
@@ -43,6 +45,14 @@ export async function createApp(): Promise<INestApplication> {
   app.use(helmet());
   app.use(createHttpLogger());
   app.use(cookieParser());
+  const tableBuilderParser = new ExpressAdapter();
+  tableBuilderParser.useBodyParser('json', false, {
+    limit: TABLE_BUILDER_REQUEST_LIMIT,
+  });
+  app.use(
+    '/api/v1/workspaces/:tenantCode/ai/table-builder',
+    tableBuilderParser.getInstance(),
+  );
   app.useGlobalPipes(
     new ValidationPipe({
       forbidNonWhitelisted: true,
