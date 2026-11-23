@@ -285,8 +285,8 @@ describe('AI governance administration over HTTP with restricted PostgreSQL role
     const id = randomUUID();
     const requestId = randomUUID();
     await h.adminDatabase
-      .$executeRaw`INSERT INTO ai_operation_records(id,tenant_id,member_id,feature,source,status,request_id,request_text,object_id,record_id)
- VALUES (${id}::uuid,${f.tenantA.id}::uuid,${f.employee.memberId}::uuid,'write_proposal','proposal','EXECUTED',${requestId},'secret historical input',${f.object.id}::uuid,${randomUUID()}::uuid)`;
+      .$executeRaw`INSERT INTO ai_operation_records(id,tenant_id,member_id,feature,source,status,request_id,request_text,object_id,record_id,changes)
+ VALUES (${id}::uuid,${f.tenantA.id}::uuid,${f.employee.memberId}::uuid,'write_proposal','proposal','EXECUTED',${requestId},'secret historical input',${f.object.id}::uuid,${randomUUID()}::uuid,'{"operationType":"UPDATE_RECORD"}'::jsonb)`;
     await h.adminDatabase.auditLog.create({
       data: {
         tenantId: f.tenantA.id,
@@ -312,6 +312,21 @@ describe('AI governance administration over HTTP with restricted PostgreSQL role
       ).body,
     );
     expect(page.items[0]?.id).toBe(id);
+    for (const [operationType, matches] of [
+      ['UPDATE_RECORD', true],
+      ['ADD_ACTIVITY_NOTE', false],
+    ] as const) {
+      const url =
+        workspace +
+        '/operations?memberId=' +
+        f.employee.memberId +
+        '&operationType=' +
+        operationType;
+      const filtered = outputs.operations.parse(
+        (await http(f.admin, 'get', url).expect(200)).body,
+      );
+      expect(filtered.items.some((item) => item.id === id)).toBe(matches);
+    }
     const operation = outputs.detail.parse(
       (await http(f.admin, 'get', workspace + '/operations/' + id).expect(200))
         .body,

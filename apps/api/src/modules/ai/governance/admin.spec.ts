@@ -115,6 +115,14 @@ describe('AI governance contracts and projections', () => {
       ],
     });
   });
+  it('accepts supported operation-type filters and rejects unknown types', () => {
+    expect(
+      validated(inputs.operations, { operationType: 'UPDATE_RECORD' }),
+    ).toMatchObject({ operationType: 'UPDATE_RECORD' });
+    expect(() =>
+      validated(inputs.operations, { operationType: 'TRANSFER_OWNER' }),
+    ).toThrow();
+  });
   it('rejects malformed cursors', () =>
     expect(() =>
       cursorValue(

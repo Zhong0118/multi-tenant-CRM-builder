@@ -30,6 +30,11 @@ export async function listOperations(
   const after = q.cursor ? cursorValue(q.cursor) : null;
   const conditions = [Prisma.sql`r.tenant_id=${c.tenantId}::uuid`];
   if (q.memberId) conditions.push(Prisma.sql`r.member_id=${q.memberId}::uuid`);
+  if (q.operationType) {
+    conditions.push(Prisma.sql`(r.changes->>'operationType'=${q.operationType} OR EXISTS
+      (SELECT 1 FROM jsonb_each(COALESCE(r.changes->'items','{}'::jsonb)) item
+       WHERE item.value->>'operationType'=${q.operationType}))`);
+  }
   if (q.feature) conditions.push(Prisma.sql`r.feature=${q.feature}`);
   if (q.status) conditions.push(Prisma.sql`r.status=${q.status}`);
   if (q.source) conditions.push(Prisma.sql`r.source=${q.source}`);

@@ -144,6 +144,9 @@ export const inputs = {
     memberId: z.uuid().optional(),
     from: date.optional(),
     to: date.optional(),
+    operationType: z
+      .enum(['UPDATE_RECORD', 'CREATE_FOLLOW_UP', 'ADD_ACTIVITY_NOTE'])
+      .optional(),
     source: z
       .enum(['proposal', 'draft', 'blueprint', 'denial', 'provider'])
       .optional(),
