@@ -169,6 +169,19 @@ describe('AI governance administration over HTTP with restricted PostgreSQL role
         ).body,
       ).items[0]?.tenantId,
     ).toBe(f.tenantA.id);
+    for (const sort of ['', '&aiOrder=desc', '&aiOrder=asc']) {
+      const { body } = await http(
+        platform,
+        'get',
+        '/platform/tenants?search=critical-a' + sort,
+      ).expect(200);
+      expect(body.items[0]).toMatchObject({
+        id: f.tenantA.id,
+        aiPlanName: aggregate.planName,
+        aiPercent: aggregate.percent,
+      });
+      expect(body.items[0]).toHaveProperty('configuration');
+    }
     expect(
       await h.adminDatabase.auditLog.count({
         where: { tenantId: f.tenantA.id, action: 'ai.quota_added' },

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { companies, pageBudgets } from '../ai/governance/admin-usage';
 import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
@@ -179,19 +180,41 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
           }
         : {}),
     };
-    const [tenants, total] = await Promise.all([
-      this.transaction.tenant.findMany({
-        where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (page.page - 1) * page.limit,
-        take: page.limit,
-      }),
-      this.transaction.tenant.count({ where }),
+    // Rank all matching companies before pagination. The original creation-time
+    // order is retained when the user has not sorted the AI column.
+    const ranked = page.aiOrder
+      ? await companies(this.transaction, { ...page, order: page.aiOrder })
+      : undefined;
+    const [rows, total] = await Promise.all([
+      ranked
+        ? this.transaction.tenant.findMany({
+            where: { id: { in: ranked.items.map((row) => row.tenantId) } },
+          })
+        : this.transaction.tenant.findMany({
+            where,
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            skip: (page.page - 1) * page.limit,
+            take: page.limit,
+          }),
+      ranked ? ranked.total : this.transaction.tenant.count({ where }),
     ]);
-    const enriched: PlatformTenant[] = [];
-    for (const tenant of tenants) {
-      await this.enterTenant(tenant.id);
-      enriched.push(await this.enrichTenant(tenant));
+    const byId = new Map(rows.map((t) => [t.id, t]));
+    const ids = ranked
+      ? ranked.items.map((r) => r.tenantId)
+      : rows.map((t) => t.id);
+    const budgets = ranked?.items ?? (await pageBudgets(this.transaction, ids));
+    const budgetById = new Map(budgets.map((c) => [c.tenantId, c]));
+    const enriched = [];
+    for (const id of ids) {
+      const tenant = byId.get(id);
+      if (!tenant) continue;
+      await this.enterTenant(id);
+      const budget = budgetById.get(id);
+      enriched.push({
+        ...(await this.enrichTenant(tenant)),
+        aiPlanName: budget?.planName ?? null,
+        aiPercent: budget?.percent ?? null,
+      });
     }
     return {
       items: enriched,

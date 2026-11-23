@@ -14,6 +14,7 @@ export const INVITATION_TOKEN_GENERATOR = Symbol('INVITATION_TOKEN_GENERATOR');
 
 export type TenantStatus = 'DRAFT' | 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
 export interface TenantPageQuery {
+  aiOrder?: 'asc' | 'desc';
   status?: TenantStatus;
   search?: string;
   page: number;

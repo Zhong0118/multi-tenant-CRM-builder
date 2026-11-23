@@ -56,6 +56,14 @@ export async function company(tx: Tx, id: string) {
   if (!row) throw new ApiException('TENANT_NOT_FOUND', 404);
   return present(row);
 }
+export async function pageBudgets(tx: Tx, ids: string[]) {
+  if (!ids.length) return [];
+  return tx.$queryRaw<
+    { tenantId: string; planName: string | null; percent: number | null }[]
+  >(
+    Prisma.sql`SELECT t.id AS "tenantId",p.name AS "planName", (100*budget.used/nullif(budget.total,0))::float8 AS percent ${companyFrom} WHERE t.id IN (${Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`))})`,
+  );
+}
 export async function companies(tx: Tx, q: z.infer<typeof inputs.companies>) {
   await tx.$queryRaw`SELECT ai_recover_platform_expired()`;
   const where = Prisma.sql`WHERE (${q.status ?? null}::text IS NULL OR t.status::text=${q.status ?? null}) AND
