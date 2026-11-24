@@ -1,0 +1,519 @@
+{
+  "id": "h22-commissioning-ledger",
+  "scenario": "commissioning-ledger",
+  "source": "final/h22-commissioning-ledger.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "personalName",
+      "value": "Marla Linton"
+    },
+    {
+      "kind": "personalName",
+      "value": "Reed Felman"
+    },
+    {
+      "kind": "personalName",
+      "value": "Ella Dorran"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "Installation site",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "Building wing",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "Floor number",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C4",
+      "header": "Asset model",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C5",
+      "header": "Serial number",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C6",
+      "header": "Machine family",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C7",
+      "header": "Work order",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C8",
+      "header": "Purchase order",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C9",
+      "header": "Start-up window",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C10",
+      "header": "Commissioning engineer",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C11",
+      "header": "Load class",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C12",
+      "header": "Billing account name",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C13",
+      "header": "Customer code",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C14",
+      "header": "Last visit date",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      }
+    },
+    {
+      "col": "C15",
+      "header": "Next follow-up date",
+      "target": {
+        "mode": "field",
+        "field": "follow_day"
+      }
+    },
+    {
+      "col": "C16",
+      "header": "Contract signing date",
+      "target": {
+        "mode": "field",
+        "field": "signed_day"
+      }
+    },
+    {
+      "col": "C17",
+      "header": "Budget (CNY)",
+      "target": {
+        "mode": "field",
+        "field": "budget"
+      },
+      "bareAmountUnit": "yuan"
+    },
+    {
+      "col": "C18",
+      "header": "Contract amount (CNY)",
+      "target": {
+        "mode": "field",
+        "field": "contract_sum"
+      },
+      "bareAmountUnit": "yuan"
+    },
+    {
+      "col": "C19",
+      "header": "Sales revenue (CNY)",
+      "target": {
+        "mode": "field",
+        "field": "sales_total"
+      },
+      "bareAmountUnit": "yuan"
+    },
+    {
+      "col": "C20",
+      "header": "Sales notes",
+      "target": {
+        "mode": "field",
+        "field": "memo"
+      }
+    },
+    {
+      "col": "C21",
+      "header": "Rated power (kW)",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C22",
+      "header": "Voltage (V)",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C23",
+      "header": "Assembly mode",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C24",
+      "header": "Warranty months",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C25",
+      "header": "Spare-part kit",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C26",
+      "header": "Pallet count",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C27",
+      "header": "Dispatch center",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C28",
+      "header": "Carrier",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C29",
+      "header": "Vehicle class",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C30",
+      "header": "Acceptance ticket",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C31",
+      "header": "Safety test",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C32",
+      "header": "Training language",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C33",
+      "header": "Training seats",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C34",
+      "header": "Warranty expiry",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C35",
+      "header": "Installation charge",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C36",
+      "header": "Tax rate",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C37",
+      "header": "Freight charge",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C38",
+      "header": "Balance outstanding",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C39",
+      "header": "Drawing revision",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C40",
+      "header": "Product finish",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "North Yard",
+        "Pump house",
+        "2",
+        "PX150",
+        "SN-67290",
+        "Servo press",
+        "WO421",
+        "PO880",
+        "Morning",
+        "Marla Linton",
+        "Medium",
+        "Hollowmere Motors",
+        "CM-650",
+        "2026-03-12",
+        "2026-04-17",
+        "2026-02-20",
+        "18000",
+        "14000",
+        "9500",
+        "Bring a second gauge",
+        "5",
+        "240",
+        "On site",
+        "24",
+        "Standard",
+        "3",
+        "West depot",
+        "Blue Cartage",
+        "Rigid truck",
+        "AC-712",
+        "Passed",
+        "English",
+        "4",
+        "2028-03-01",
+        "1500",
+        "13%",
+        "680",
+        "2400",
+        "B2",
+        "Zinc"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Hollowmere Motors",
+        "acct_code": "CM-650",
+        "contact_day": "2026-03-12",
+        "follow_day": "2026-04-17",
+        "signed_day": "2026-02-20",
+        "budget": "18000",
+        "contract_sum": "14000",
+        "sales_total": "9500",
+        "memo": "Bring a second gauge"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "North Yard",
+        "Pump house",
+        "2",
+        "PX151",
+        "SN-67291",
+        "Servo press",
+        "WO422",
+        "PO881",
+        "Morning",
+        "Reed Felman",
+        "Medium",
+        "Rainmill Robotics",
+        "CM-651",
+        "2026-03-13",
+        "2026-04-18",
+        "2026-02-21",
+        "19500",
+        "15200",
+        "9850",
+        "Confirm motor mounting",
+        "6",
+        "240",
+        "On site",
+        "24",
+        "Standard",
+        "3",
+        "West depot",
+        "Blue Cartage",
+        "Rigid truck",
+        "AC-713",
+        "Passed",
+        "English",
+        "4",
+        "2028-03-01",
+        "1500",
+        "13%",
+        "680",
+        "2400",
+        "B2",
+        "Zinc"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Rainmill Robotics",
+        "acct_code": "CM-651",
+        "contact_day": "2026-03-13",
+        "follow_day": "2026-04-18",
+        "signed_day": "2026-02-21",
+        "budget": "19500",
+        "contract_sum": "15200",
+        "sales_total": "9850",
+        "memo": "Confirm motor mounting"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "North Yard",
+        "Pump house",
+        "2",
+        "PX152",
+        "SN-67292",
+        "Servo press",
+        "WO423",
+        "PO882",
+        "Morning",
+        "Ella Dorran",
+        "Medium",
+        "Alder Forge",
+        "CM-652",
+        "2026-03-14",
+        "2026-04-19",
+        "2026-02-22",
+        "21000",
+        "16400",
+        "10200",
+        "Ask about spare sensors",
+        "7",
+        "240",
+        "On site",
+        "24",
+        "Standard",
+        "3",
+        "West depot",
+        "Blue Cartage",
+        "Rigid truck",
+        "AC-714",
+        "Passed",
+        "English",
+        "4",
+        "2028-03-01",
+        "1500",
+        "13%",
+        "680",
+        "2400",
+        "B2",
+        "Zinc"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Alder Forge",
+        "acct_code": "CM-652",
+        "contact_day": "2026-03-14",
+        "follow_day": "2026-04-19",
+        "signed_day": "2026-02-22",
+        "budget": "21000",
+        "contract_sum": "16400",
+        "sales_total": "10200",
+        "memo": "Ask about spare sensors"
+      }
+    }
+  ]
+}

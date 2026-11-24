@@ -1,0 +1,1351 @@
+{
+  "id": "h28-tariff-register",
+  "scenario": "tariff-register",
+  "source": "final/h28-tariff-register.xls",
+  "sheetName": "客档交叉分类",
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "企业全称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户档案号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "外评布-包材",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评纸-包材",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评钢-包材",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铜-包材",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铝-包材",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评木-包材",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评塑-包材",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评橡-包材",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评玻-包材",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评布-工具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评纸-工具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评钢-工具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铜-工具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铝-工具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评木-工具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评塑-工具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评橡-工具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评玻-工具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评布-仪表",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评纸-仪表",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评钢-仪表",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铜-仪表",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铝-仪表",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评木-仪表",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评塑-仪表",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评橡-仪表",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评玻-仪表",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评布-灯具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评纸-灯具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评钢-灯具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铜-灯具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铝-灯具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评木-灯具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评塑-灯具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评橡-灯具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评玻-灯具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评布-配件",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评纸-配件",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评钢-配件",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铜-配件",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铝-配件",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评木-配件",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评塑-配件",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评橡-配件",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评玻-配件",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评布-家具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评纸-家具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评钢-家具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铜-家具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评铝-家具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评木-家具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评塑-家具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评橡-家具",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评玻-家具",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "宝川包材厂",
+        "CL34001",
+        "外评布-包材"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宝川包材厂",
+        "acct_code": "CL34001",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "宏谷包材厂",
+        "CL34002",
+        "外评纸-包材"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宏谷包材厂",
+        "acct_code": "CL34002",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "石塘包材厂",
+        "CL34003",
+        "外评钢-包材"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "石塘包材厂",
+        "acct_code": "CL34003",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "黄岸包材厂",
+        "CL34004",
+        "外评铜-包材"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "黄岸包材厂",
+        "acct_code": "CL34004",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松岭包材厂",
+        "CL34005",
+        "外评铝-包材"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松岭包材厂",
+        "acct_code": "CL34005",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "齐云包材厂",
+        "CL34006",
+        "外评木-包材"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "齐云包材厂",
+        "acct_code": "CL34006",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "丰渡包材厂",
+        "CL34007",
+        "外评塑-包材"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "丰渡包材厂",
+        "acct_code": "CL34007",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "陆桥包材厂",
+        "CL34008",
+        "外评橡-包材"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "陆桥包材厂",
+        "acct_code": "CL34008",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "莲溪包材厂",
+        "CL34009",
+        "外评玻-包材"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "莲溪包材厂",
+        "acct_code": "CL34009",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 11,
+      "cells": [
+        "宝川工具厂",
+        "CL34010",
+        "外评布-工具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宝川工具厂",
+        "acct_code": "CL34010",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 12,
+      "cells": [
+        "宏谷工具厂",
+        "CL34011",
+        "外评纸-工具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宏谷工具厂",
+        "acct_code": "CL34011",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 13,
+      "cells": [
+        "石塘工具厂",
+        "CL34012",
+        "外评钢-工具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "石塘工具厂",
+        "acct_code": "CL34012",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 14,
+      "cells": [
+        "黄岸工具厂",
+        "CL34013",
+        "外评铜-工具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "黄岸工具厂",
+        "acct_code": "CL34013",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 15,
+      "cells": [
+        "松岭工具厂",
+        "CL34014",
+        "外评铝-工具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松岭工具厂",
+        "acct_code": "CL34014",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 16,
+      "cells": [
+        "齐云工具厂",
+        "CL34015",
+        "外评木-工具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "齐云工具厂",
+        "acct_code": "CL34015",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 17,
+      "cells": [
+        "丰渡工具厂",
+        "CL34016",
+        "外评塑-工具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "丰渡工具厂",
+        "acct_code": "CL34016",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 18,
+      "cells": [
+        "陆桥工具厂",
+        "CL34017",
+        "外评橡-工具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "陆桥工具厂",
+        "acct_code": "CL34017",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 19,
+      "cells": [
+        "莲溪工具厂",
+        "CL34018",
+        "外评玻-工具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "莲溪工具厂",
+        "acct_code": "CL34018",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 20,
+      "cells": [
+        "宝川仪表厂",
+        "CL34019",
+        "外评布-仪表"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宝川仪表厂",
+        "acct_code": "CL34019",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 21,
+      "cells": [
+        "宏谷仪表厂",
+        "CL34020",
+        "外评纸-仪表"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宏谷仪表厂",
+        "acct_code": "CL34020",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 22,
+      "cells": [
+        "石塘仪表厂",
+        "CL34021",
+        "外评钢-仪表"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "石塘仪表厂",
+        "acct_code": "CL34021",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 23,
+      "cells": [
+        "黄岸仪表厂",
+        "CL34022",
+        "外评铜-仪表"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "黄岸仪表厂",
+        "acct_code": "CL34022",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 24,
+      "cells": [
+        "松岭仪表厂",
+        "CL34023",
+        "外评铝-仪表"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松岭仪表厂",
+        "acct_code": "CL34023",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 25,
+      "cells": [
+        "齐云仪表厂",
+        "CL34024",
+        "外评木-仪表"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "齐云仪表厂",
+        "acct_code": "CL34024",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 26,
+      "cells": [
+        "丰渡仪表厂",
+        "CL34025",
+        "外评塑-仪表"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "丰渡仪表厂",
+        "acct_code": "CL34025",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 27,
+      "cells": [
+        "陆桥仪表厂",
+        "CL34026",
+        "外评橡-仪表"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "陆桥仪表厂",
+        "acct_code": "CL34026",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 28,
+      "cells": [
+        "莲溪仪表厂",
+        "CL34027",
+        "外评玻-仪表"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "莲溪仪表厂",
+        "acct_code": "CL34027",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 29,
+      "cells": [
+        "宝川灯具厂",
+        "CL34028",
+        "外评布-灯具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宝川灯具厂",
+        "acct_code": "CL34028",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 30,
+      "cells": [
+        "宏谷灯具厂",
+        "CL34029",
+        "外评纸-灯具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宏谷灯具厂",
+        "acct_code": "CL34029",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 31,
+      "cells": [
+        "石塘灯具厂",
+        "CL34030",
+        "外评钢-灯具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "石塘灯具厂",
+        "acct_code": "CL34030",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 32,
+      "cells": [
+        "黄岸灯具厂",
+        "CL34031",
+        "外评铜-灯具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "黄岸灯具厂",
+        "acct_code": "CL34031",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 33,
+      "cells": [
+        "松岭灯具厂",
+        "CL34032",
+        "外评铝-灯具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松岭灯具厂",
+        "acct_code": "CL34032",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 34,
+      "cells": [
+        "齐云灯具厂",
+        "CL34033",
+        "外评木-灯具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "齐云灯具厂",
+        "acct_code": "CL34033",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 35,
+      "cells": [
+        "丰渡灯具厂",
+        "CL34034",
+        "外评塑-灯具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "丰渡灯具厂",
+        "acct_code": "CL34034",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 36,
+      "cells": [
+        "陆桥灯具厂",
+        "CL34035",
+        "外评橡-灯具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "陆桥灯具厂",
+        "acct_code": "CL34035",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 37,
+      "cells": [
+        "莲溪灯具厂",
+        "CL34036",
+        "外评玻-灯具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "莲溪灯具厂",
+        "acct_code": "CL34036",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 38,
+      "cells": [
+        "宝川配件厂",
+        "CL34037",
+        "外评布-配件"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宝川配件厂",
+        "acct_code": "CL34037",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 39,
+      "cells": [
+        "宏谷配件厂",
+        "CL34038",
+        "外评纸-配件"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宏谷配件厂",
+        "acct_code": "CL34038",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 40,
+      "cells": [
+        "石塘配件厂",
+        "CL34039",
+        "外评钢-配件"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "石塘配件厂",
+        "acct_code": "CL34039",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 41,
+      "cells": [
+        "黄岸配件厂",
+        "CL34040",
+        "外评铜-配件"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "黄岸配件厂",
+        "acct_code": "CL34040",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 42,
+      "cells": [
+        "松岭配件厂",
+        "CL34041",
+        "外评铝-配件"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松岭配件厂",
+        "acct_code": "CL34041",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 43,
+      "cells": [
+        "齐云配件厂",
+        "CL34042",
+        "外评木-配件"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "齐云配件厂",
+        "acct_code": "CL34042",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 44,
+      "cells": [
+        "丰渡配件厂",
+        "CL34043",
+        "外评塑-配件"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "丰渡配件厂",
+        "acct_code": "CL34043",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 45,
+      "cells": [
+        "陆桥配件厂",
+        "CL34044",
+        "外评橡-配件"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "陆桥配件厂",
+        "acct_code": "CL34044",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 46,
+      "cells": [
+        "莲溪配件厂",
+        "CL34045",
+        "外评玻-配件"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "莲溪配件厂",
+        "acct_code": "CL34045",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 47,
+      "cells": [
+        "宝川家具厂",
+        "CL34046",
+        "外评布-家具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宝川家具厂",
+        "acct_code": "CL34046",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 48,
+      "cells": [
+        "宏谷家具厂",
+        "CL34047",
+        "外评纸-家具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "宏谷家具厂",
+        "acct_code": "CL34047",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 49,
+      "cells": [
+        "石塘家具厂",
+        "CL34048",
+        "外评钢-家具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "石塘家具厂",
+        "acct_code": "CL34048",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 50,
+      "cells": [
+        "黄岸家具厂",
+        "CL34049",
+        "外评铜-家具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "黄岸家具厂",
+        "acct_code": "CL34049",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 51,
+      "cells": [
+        "松岭家具厂",
+        "CL34050",
+        "外评铝-家具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松岭家具厂",
+        "acct_code": "CL34050",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 52,
+      "cells": [
+        "齐云家具厂",
+        "CL34051",
+        "外评木-家具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "齐云家具厂",
+        "acct_code": "CL34051",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 53,
+      "cells": [
+        "丰渡家具厂",
+        "CL34052",
+        "外评塑-家具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "丰渡家具厂",
+        "acct_code": "CL34052",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 54,
+      "cells": [
+        "陆桥家具厂",
+        "CL34053",
+        "外评橡-家具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "陆桥家具厂",
+        "acct_code": "CL34053",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 55,
+      "cells": [
+        "莲溪家具厂",
+        "CL34054",
+        "外评玻-家具"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "莲溪家具厂",
+        "acct_code": "CL34054",
+        "grade": null
+      }
+    }
+  ]
+}

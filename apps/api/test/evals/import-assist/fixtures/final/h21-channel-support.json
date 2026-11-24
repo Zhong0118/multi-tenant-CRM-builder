@@ -1,0 +1,608 @@
+{
+  "id": "h21-channel-support",
+  "scenario": "channel-support",
+  "source": "final/h21-channel-support.xlsx",
+  "sheetName": "渠道活动登记",
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "展馆名称",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "展区位置",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "摊位编号",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C4",
+      "header": "活动类别",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C5",
+      "header": "入场批次",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C6",
+      "header": "撤场日",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C7",
+      "header": "进场日",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C8",
+      "header": "展台面积",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C9",
+      "header": "采购单位",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C10",
+      "header": "客商编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C11",
+      "header": "销售阶段",
+      "target": {
+        "mode": "field",
+        "field": "sale_stage"
+      },
+      "values": [
+        {
+          "raw": "线索登记",
+          "option": "lead",
+          "confidence": "high"
+        },
+        {
+          "raw": "方案报价",
+          "option": "quote",
+          "confidence": "high"
+        },
+        {
+          "raw": "已成交",
+          "option": "won",
+          "confidence": "high"
+        }
+      ]
+    },
+    {
+      "col": "C12",
+      "header": "销售额",
+      "target": {
+        "mode": "field",
+        "field": "sales_total"
+      },
+      "bareAmountUnit": "yuan"
+    },
+    {
+      "col": "C13",
+      "header": "归属区域",
+      "target": {
+        "mode": "field",
+        "field": "sales_region"
+      },
+      "values": [
+        {
+          "raw": "华东",
+          "option": "east",
+          "confidence": "high"
+        },
+        {
+          "raw": "华北",
+          "option": "north",
+          "confidence": "high"
+        },
+        {
+          "raw": "华南",
+          "option": "south",
+          "confidence": "high"
+        }
+      ]
+    },
+    {
+      "col": "C14",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "重要客户",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "一般",
+          "option": "B",
+          "confidence": "review"
+        },
+        {
+          "raw": "暂缓",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    },
+    {
+      "col": "C15",
+      "header": "华北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_1"
+      }
+    },
+    {
+      "col": "C16",
+      "header": "华北耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_2"
+      }
+    },
+    {
+      "col": "C17",
+      "header": "华北维护配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_3"
+      }
+    },
+    {
+      "col": "C18",
+      "header": "华北培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_4"
+      }
+    },
+    {
+      "col": "C19",
+      "header": "华南展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_5"
+      }
+    },
+    {
+      "col": "C20",
+      "header": "华南耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_6"
+      }
+    },
+    {
+      "col": "C21",
+      "header": "华南维护配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_7"
+      }
+    },
+    {
+      "col": "C22",
+      "header": "华南培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_8"
+      }
+    },
+    {
+      "col": "C23",
+      "header": "西北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_9"
+      }
+    },
+    {
+      "col": "C24",
+      "header": "西北耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_10"
+      }
+    },
+    {
+      "col": "C25",
+      "header": "西北维护配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_11"
+      }
+    },
+    {
+      "col": "C26",
+      "header": "西北培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_12"
+      }
+    },
+    {
+      "col": "C27",
+      "header": "华东展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_17"
+      }
+    },
+    {
+      "col": "C28",
+      "header": "华东耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_18"
+      }
+    },
+    {
+      "col": "C29",
+      "header": "华东维护配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_19"
+      }
+    },
+    {
+      "col": "C30",
+      "header": "华东培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_20"
+      }
+    },
+    {
+      "col": "C31",
+      "header": "展品类别",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C32",
+      "header": "布展方式",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C33",
+      "header": "电源规格",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C34",
+      "header": "展位方案编号",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C35",
+      "header": "承建单位",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C36",
+      "header": "布展状态",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C37",
+      "header": "运输渠道",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C38",
+      "header": "证件领取点",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C39",
+      "header": "押金收据号",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C40",
+      "header": "车辆入场窗",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "江岸工业展馆",
+        "装配专区",
+        "C21",
+        "渠道订货会",
+        "第二批",
+        "2026-04-26",
+        "2026-04-21",
+        "12",
+        "滨桥电机商行",
+        "ZQ510",
+        "线索登记",
+        "12600.60",
+        "华东",
+        "重要客户",
+        "6",
+        "8",
+        "10",
+        "12",
+        "14",
+        "16",
+        "18",
+        "1",
+        "3",
+        "5",
+        "7",
+        "9",
+        "11",
+        "13",
+        "15",
+        "17",
+        "传动件",
+        "自搭",
+        "220V",
+        "TZ-313",
+        "棠溪会展",
+        "审核通过",
+        "巡回班车",
+        "西门",
+        "R88001",
+        "上午"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "滨桥电机商行",
+        "acct_code": "ZQ510",
+        "sale_stage": "lead",
+        "sales_total": "12600.6",
+        "sales_region": "east",
+        "grade": "A",
+        "quota_1": 6,
+        "quota_2": 8,
+        "quota_3": 10,
+        "quota_4": 12,
+        "quota_5": 14,
+        "quota_6": 16,
+        "quota_7": 18,
+        "quota_8": 1,
+        "quota_9": 3,
+        "quota_10": 5,
+        "quota_11": 7,
+        "quota_12": 9,
+        "quota_17": 11,
+        "quota_18": 13,
+        "quota_19": 15,
+        "quota_20": 17
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "江岸工业展馆",
+        "装配专区",
+        "C22",
+        "渠道订货会",
+        "第二批",
+        "2026-04-26",
+        "2026-04-21",
+        "18",
+        "鹤塘传动设备",
+        "ZQ511",
+        "方案报价",
+        "4730.80",
+        "华北",
+        "一般",
+        "6",
+        "9",
+        "12",
+        "15",
+        "18",
+        "2",
+        "5",
+        "8",
+        "11",
+        "14",
+        "17",
+        "1",
+        "4",
+        "7",
+        "10",
+        "13",
+        "传动件",
+        "自搭",
+        "220V",
+        "TZ-314",
+        "棠溪会展",
+        "审核通过",
+        "巡回班车",
+        "西门",
+        "R88002",
+        "上午"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "鹤塘传动设备",
+        "acct_code": "ZQ511",
+        "sale_stage": "quote",
+        "sales_total": "4730.8",
+        "sales_region": "north",
+        "grade": "B",
+        "quota_1": 6,
+        "quota_2": 9,
+        "quota_3": 12,
+        "quota_4": 15,
+        "quota_5": 18,
+        "quota_6": 2,
+        "quota_7": 5,
+        "quota_8": 8,
+        "quota_9": 11,
+        "quota_10": 14,
+        "quota_11": 17,
+        "quota_12": 1,
+        "quota_17": 4,
+        "quota_18": 7,
+        "quota_19": 10,
+        "quota_20": 13
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "江岸工业展馆",
+        "装配专区",
+        "C23",
+        "渠道订货会",
+        "第二批",
+        "2026-04-26",
+        "2026-04-21",
+        "24",
+        "东堤工具社",
+        "ZQ512",
+        "已成交",
+        "910.25",
+        "华南",
+        "暂缓",
+        "6",
+        "10",
+        "14",
+        "18",
+        "3",
+        "7",
+        "11",
+        "15",
+        "19",
+        "4",
+        "8",
+        "12",
+        "16",
+        "1",
+        "5",
+        "9",
+        "传动件",
+        "自搭",
+        "220V",
+        "TZ-315",
+        "棠溪会展",
+        "审核通过",
+        "巡回班车",
+        "西门",
+        "R88003",
+        "上午"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "东堤工具社",
+        "acct_code": "ZQ512",
+        "sale_stage": "won",
+        "sales_total": "910.25",
+        "sales_region": "south",
+        "grade": null,
+        "quota_1": 6,
+        "quota_2": 10,
+        "quota_3": 14,
+        "quota_4": 18,
+        "quota_5": 3,
+        "quota_6": 7,
+        "quota_7": 11,
+        "quota_8": 15,
+        "quota_9": 19,
+        "quota_10": 4,
+        "quota_11": 8,
+        "quota_12": 12,
+        "quota_17": 16,
+        "quota_18": 1,
+        "quota_19": 5,
+        "quota_20": 9
+      }
+    }
+  ]
+}

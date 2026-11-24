@@ -1,0 +1,606 @@
+{
+  "id": "h23-materials-handover",
+  "scenario": "materials-handover",
+  "source": "final/h23-materials-handover.xls",
+  "sheetName": "handover@sample.invalid",
+  "profile": "admin",
+  "headerRow": 3,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "freeText",
+      "value": "再生材料渠道移交表　经办人：楼渚示"
+    },
+    {
+      "kind": "personalName",
+      "value": "楼渚示"
+    },
+    {
+      "kind": "sheetEmail",
+      "value": "handover@sample.invalid"
+    },
+    {
+      "kind": "distinctValueEmail",
+      "value": "ledger7@sample.invalid"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "内部底价"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "审批编号"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "系统流水"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "协作成员"
+    },
+    {
+      "kind": "personalName",
+      "value": "周扉示"
+    },
+    {
+      "kind": "personalName",
+      "value": "席青示"
+    },
+    {
+      "kind": "personalName",
+      "value": "俞光示"
+    },
+    {
+      "kind": "personalName",
+      "value": "何弦示"
+    },
+    {
+      "kind": "personalName",
+      "value": "朱涛示"
+    },
+    {
+      "kind": "personalName",
+      "value": "温帘示"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "待分配样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "退件样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    },
+    {
+      "kind": "mobile",
+      "value": "+86 137-4000-2716"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "73552"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HD-APR-3071"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HX-LINE-4150"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "协调专员景岑示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "纸档封签72104"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "旧线只收原色包装"
+    },
+    {
+      "kind": "landline",
+      "value": "021-5890-2716"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "73623"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HD-APR-3072"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HX-LINE-4151"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "协调专员陈岑示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "纸档封签72105"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "旧线只收红色包装"
+    },
+    {
+      "kind": "email",
+      "value": "transfer7@sample.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "73694"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HD-APR-3073"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HX-LINE-4152"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "协调专员崔岑示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "纸档封签72106"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "旧线只收蓝色包装"
+    },
+    {
+      "kind": "nationalId",
+      "value": "11010519491231002X"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "73765"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HD-APR-3074"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HX-LINE-4153"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "协调专员袁岑示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "纸档封签72107"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "旧线只收白色包装"
+    },
+    {
+      "kind": "bank",
+      "value": "6222 0200 0000 2716"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "73836"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HD-APR-3075"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HX-LINE-4154"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "协调专员顾岑示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "纸档封签72108"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "旧线只收绿色包装"
+    },
+    {
+      "kind": "mobile",
+      "value": "+86 137-5000-2716"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "73907"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HD-APR-3076"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HX-LINE-4155"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "协调专员唐岑示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "纸档封签72109"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "旧线只收黄色包装"
+    },
+    {
+      "kind": "freeText",
+      "value": "这批样品已经移到北仓二层，收货单与箱号记录需要在月末盘点时一起复核并放回资料柜。"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "73978"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HD-APR-3077"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "HX-LINE-4156"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "协调专员闻岑示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "纸档封签72110"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "旧线只收灰色包装"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "公司全称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户编码",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "负责人",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "manualOwner"
+    },
+    {
+      "col": "C4",
+      "header": "联系人",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C5",
+      "header": "移交凭证摘录",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C6",
+      "header": "内部底价",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C7",
+      "header": "审批编号",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C8",
+      "header": "系统流水",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C9",
+      "header": "协作成员",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C10",
+      "header": "封存档案名",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "userExcluded"
+    },
+    {
+      "col": "C11",
+      "header": "销售备注",
+      "target": {
+        "mode": "field",
+        "field": "memo"
+      },
+      "locked": true
+    },
+    {
+      "col": "C12",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "甲",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "乙",
+          "option": "B",
+          "confidence": "review"
+        },
+        {
+          "raw": "丙",
+          "option": "C",
+          "confidence": "review"
+        },
+        {
+          "raw": "封存",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "后补",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "ledger7@sample.invalid",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 4,
+      "cells": [
+        "青野塑料",
+        "RX-631",
+        "蓝桐样员",
+        "周扉示",
+        "+86 137-4000-2716",
+        "73552",
+        "HD-APR-3071",
+        "HX-LINE-4150",
+        "协调专员景岑示",
+        "纸档封签72104",
+        "旧线只收原色包装",
+        "甲"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "青野塑料",
+        "acct_code": "RX-631",
+        "memo": "旧线只收原色包装",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "曙石再生",
+        "RX-754",
+        "待分配样员",
+        "席青示",
+        "021-5890-2716",
+        "73623",
+        "HD-APR-3072",
+        "HX-LINE-4151",
+        "协调专员陈岑示",
+        "纸档封签72105",
+        "旧线只收红色包装",
+        "乙"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "曙石再生",
+        "acct_code": "RX-754",
+        "memo": "旧线只收红色包装",
+        "grade": "B"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "今川纤维",
+        "RX-918",
+        "退件样员",
+        "俞光示",
+        "transfer7@sample.invalid",
+        "73694",
+        "HD-APR-3073",
+        "HX-LINE-4152",
+        "协调专员崔岑示",
+        "纸档封签72106",
+        "旧线只收蓝色包装",
+        "丙"
+      ],
+      "destination": {
+        "kind": "skip"
+      },
+      "status": "SKIPPED",
+      "reason": "ownerSkip"
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "谷池包装",
+        "EXISTING",
+        "白槿样员",
+        "何弦示",
+        "11010519491231002X",
+        "73765",
+        "HD-APR-3074",
+        "HX-LINE-4153",
+        "协调专员袁岑示",
+        "纸档封签72107",
+        "旧线只收白色包装",
+        "封存"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "SKIPPED",
+      "reason": "existingRecord"
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "牛庙织造",
+        "RX-631",
+        "蓝桐样员",
+        "朱涛示",
+        "6222 0200 0000 2716",
+        "73836",
+        "HD-APR-3075",
+        "HX-LINE-4154",
+        "协调专员顾岑示",
+        "纸档封签72108",
+        "旧线只收绿色包装",
+        "后补"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "SKIPPED",
+      "reason": "duplicateInFile"
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "五溪物流",
+        "RX-055",
+        "白槿样员",
+        "温帘示",
+        "+86 137-5000-2716",
+        "73907",
+        "HD-APR-3076",
+        "HX-LINE-4155",
+        "协调专员唐岑示",
+        "纸档封签72109",
+        "旧线只收黄色包装",
+        "ledger7@sample.invalid"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "五溪物流",
+        "acct_code": "RX-055",
+        "memo": "旧线只收黄色包装",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "石廊新材",
+        "RX-279",
+        "待分配样员",
+        "周扉示",
+        "这批样品已经移到北仓二层，收货单与箱号记录需要在月末盘点时一起复核并放回资料柜。",
+        "73978",
+        "HD-APR-3077",
+        "HX-LINE-4156",
+        "协调专员闻岑示",
+        "纸档封签72110",
+        "旧线只收灰色包装",
+        "甲"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "石廊新材",
+        "acct_code": "RX-279",
+        "memo": "旧线只收灰色包装",
+        "grade": "A"
+      }
+    }
+  ]
+}

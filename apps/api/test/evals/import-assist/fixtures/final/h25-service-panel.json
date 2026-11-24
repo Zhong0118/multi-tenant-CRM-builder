@@ -1,0 +1,266 @@
+{
+  "id": "h25-service-panel",
+  "scenario": "service-panel",
+  "source": "final/h25-service-panel.xlsx",
+  "sheetName": "服务抽评",
+  "profile": "employee",
+  "headerRow": 1,
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户单位名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "服务星等",
+      "target": {
+        "mode": "field",
+        "field": "service_stars"
+      },
+      "values": [
+        {
+          "raw": "一星",
+          "option": "s1",
+          "confidence": "high"
+        },
+        {
+          "raw": "二星",
+          "option": "s2",
+          "confidence": "high"
+        },
+        {
+          "raw": "三星",
+          "option": "s3",
+          "confidence": "high"
+        },
+        {
+          "raw": "四星",
+          "option": "s4",
+          "confidence": "high"
+        },
+        {
+          "raw": "五星",
+          "option": "s5",
+          "confidence": "high"
+        },
+        {
+          "raw": "未测",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "暂缓",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    },
+    {
+      "col": "C3",
+      "header": "客户评级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "甲",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "乙",
+          "option": "B",
+          "confidence": "review"
+        },
+        {
+          "raw": "丙",
+          "option": "C",
+          "confidence": "review"
+        },
+        {
+          "raw": "未分",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    },
+    {
+      "col": "C4",
+      "header": "业务员",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "owner"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "川隅电器",
+        "一星",
+        "甲",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "川隅电器",
+        "service_stars": "s1",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "银谷工贸",
+        "二星",
+        "乙",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "银谷工贸",
+        "service_stars": "s2",
+        "grade": "B"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "苍碧门窗",
+        "三星",
+        "丙",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苍碧门窗",
+        "service_stars": "s3",
+        "grade": "C"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "青扇材料",
+        "四星",
+        "未分",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "青扇材料",
+        "service_stars": "s4",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "临衡线缆",
+        "五星",
+        "甲",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "临衡线缆",
+        "service_stars": "s5",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "杜河机械",
+        "未测",
+        "乙",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "杜河机械",
+        "service_stars": null,
+        "grade": "B"
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "石笋电工",
+        "暂缓",
+        "丙",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "石笋电工",
+        "service_stars": null,
+        "grade": "C"
+      }
+    }
+  ]
+}

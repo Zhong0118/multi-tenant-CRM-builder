@@ -1,0 +1,331 @@
+{
+  "id": "h24-account-classes",
+  "scenario": "account-classes",
+  "source": "final/h24-account-classes.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "采购主体",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户分级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "重要客户",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "一般",
+          "option": "B",
+          "confidence": "review"
+        },
+        {
+          "raw": "VIP",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "战略",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "暂缓",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "观察中",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "归档",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "一档",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "二档",
+          "option": "B",
+          "confidence": "review"
+        },
+        {
+          "raw": "候补",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    },
+    {
+      "col": "C3",
+      "header": "销售备注",
+      "target": {
+        "mode": "field",
+        "field": "memo"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "青坞磨具",
+        "重要客户",
+        "年审通过"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "青坞磨具",
+        "grade": "A",
+        "memo": "年审通过"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "飞芦阀门",
+        "一般",
+        "月结沟通"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "飞芦阀门",
+        "grade": "B",
+        "memo": "月结沟通"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "新河仪器",
+        "VIP",
+        "安排回访"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "新河仪器",
+        "grade": "A",
+        "memo": "安排回访"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "横浦电气",
+        "战略",
+        "联采协议"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "横浦电气",
+        "grade": "A",
+        "memo": "联采协议"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "蒿冈轻工",
+        "暂缓",
+        "等待预算"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "蒿冈轻工",
+        "grade": null,
+        "memo": "等待预算"
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "渡畔铜器",
+        "观察中",
+        "试单跟进"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "渡畔铜器",
+        "grade": null,
+        "memo": "试单跟进"
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "春江塑业",
+        "归档",
+        "移交完成"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "春江塑业",
+        "grade": null,
+        "memo": "移交完成"
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "闸中包装",
+        "一档",
+        "已核资质"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "闸中包装",
+        "grade": "A",
+        "memo": "已核资质"
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "沙渡机床",
+        "二档",
+        "初审通过"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "沙渡机床",
+        "grade": "B",
+        "memo": "初审通过"
+      }
+    },
+    {
+      "rowNumber": 11,
+      "cells": [
+        "芃桥制衣",
+        "候补",
+        "未排计划"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "芃桥制衣",
+        "grade": null,
+        "memo": "未排计划"
+      }
+    },
+    {
+      "rowNumber": 12,
+      "cells": [
+        "江南缆线",
+        "重要客户",
+        "展后拜访"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "江南缆线",
+        "grade": "A",
+        "memo": "展后拜访"
+      }
+    },
+    {
+      "rowNumber": 13,
+      "cells": [
+        "岭海电炉",
+        "一般",
+        "安排演示"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "岭海电炉",
+        "grade": "B",
+        "memo": "安排演示"
+      }
+    }
+  ]
+}

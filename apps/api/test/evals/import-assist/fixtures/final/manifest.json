@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "split": "final",
+      "id": "h21-channel-support",
+      "source": "final/h21-channel-support.xlsx",
+      "answer": "final/h21-channel-support.json"
+    },
+    {
+      "split": "final",
+      "id": "h22-commissioning-ledger",
+      "source": "final/h22-commissioning-ledger.csv",
+      "answer": "final/h22-commissioning-ledger.json"
+    },
+    {
+      "split": "final",
+      "id": "h23-materials-handover",
+      "source": "final/h23-materials-handover.xls",
+      "answer": "final/h23-materials-handover.json"
+    },
+    {
+      "split": "final",
+      "id": "h24-account-classes",
+      "source": "final/h24-account-classes.csv",
+      "answer": "final/h24-account-classes.json"
+    },
+    {
+      "split": "final",
+      "id": "h25-service-panel",
+      "source": "final/h25-service-panel.xlsx",
+      "answer": "final/h25-service-panel.json"
+    },
+    {
+      "split": "final",
+      "id": "h26-repair-archive",
+      "source": "final/h26-repair-archive.csv",
+      "answer": "final/h26-repair-archive.json"
+    },
+    {
+      "split": "final",
+      "id": "h27-repair-archive-note",
+      "source": "final/h27-repair-archive-note.csv",
+      "answer": "final/h27-repair-archive-note.json"
+    },
+    {
+      "split": "final",
+      "id": "h28-tariff-register",
+      "source": "final/h28-tariff-register.xls",
+      "answer": "final/h28-tariff-register.json"
+    },
+    {
+      "split": "final",
+      "id": "h29-settlement-review",
+      "source": "final/h29-settlement-review.xlsx",
+      "answer": "final/h29-settlement-review.json"
+    },
+    {
+      "split": "final",
+      "id": "h30-signed-register",
+      "source": "final/h30-signed-register.xls",
+      "answer": "final/h30-signed-register.json"
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "fields": [
+    {
+      "fieldKey": "sale_stage",
+      "label": "销售阶段",
+      "type": "SINGLE_SELECT",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false,
+      "options": [
+        {
+          "key": "lead",
+          "label": "线索登记",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "quote",
+          "label": "方案报价",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "won",
+          "label": "已成交",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "fieldKey": "sales_region",
+      "label": "归属区域",
+      "type": "SINGLE_SELECT",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false,
+      "options": [
+        {
+          "key": "east",
+          "label": "华东",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "north",
+          "label": "华北",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "south",
+          "label": "华南",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "fieldKey": "service_stars",
+      "label": "服务星级",
+      "type": "SINGLE_SELECT",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false,
+      "options": [
+        {
+          "key": "s1",
+          "label": "一星级",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "s2",
+          "label": "二星级",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "s3",
+          "label": "三星级",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "s4",
+          "label": "四星级",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "s5",
+          "label": "五星级",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "fieldKey": "sales_total",
+      "label": "销售额",
+      "type": "MONEY",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "contract_sum",
+      "label": "合同金额",
+      "type": "MONEY",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "follow_day",
+      "label": "下次跟进日期",
+      "type": "DATE",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "signed_day",
+      "label": "合同签订日期",
+      "type": "DATE",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    }
+  ]
+}

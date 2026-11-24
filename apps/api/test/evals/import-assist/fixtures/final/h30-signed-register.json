@@ -1,0 +1,146 @@
+{
+  "id": "h30-signed-register",
+  "scenario": "signed-register",
+  "source": "final/h30-signed-register.xls",
+  "sheetName": "已核记录",
+  "profile": "admin",
+  "headerRow": 3,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": 0,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "freeText",
+      "value": "客户客服月报　制表人：邹昧示"
+    },
+    {
+      "kind": "personalName",
+      "value": "邹昧示"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "已签约",
+      "target": {
+        "mode": "field",
+        "field": "enabled"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 4,
+      "cells": [
+        "北岊物流",
+        "CZ2481",
+        "是"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "北岊物流",
+        "acct_code": "CZ2481",
+        "enabled": true
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "桂枝包装",
+        "CZ6590",
+        "否"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "桂枝包装",
+        "acct_code": "CZ6590",
+        "enabled": false
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "黄田门业",
+        "EXISTING",
+        "是"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "SKIPPED",
+      "reason": "existingRecord"
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "北岊物流",
+        "CZ2481",
+        "否"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "SKIPPED",
+      "reason": "duplicateInFile"
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "金湾成衣",
+        "CZ6712",
+        "是"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "金湾成衣",
+        "acct_code": "CZ6712",
+        "enabled": true
+      }
+    }
+  ]
+}
