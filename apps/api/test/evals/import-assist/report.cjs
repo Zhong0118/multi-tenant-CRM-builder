@@ -526,6 +526,37 @@ if (!supplemental) {
       ]),
     );
   }
+  lines.push(
+    '',
+    '采用后各自按标注 READY 行加权达到 80% 与每份宽表至少命中一行检查。',
+    '',
+  );
+  table([
+    '业务方案',
+    '行加权 ≥80%',
+    '每份宽表 ≥1 行',
+    '各宽表命中 / 标注 READY',
+  ]);
+  for (const [title, record, key] of paths) {
+    const stats = record.files.map((f) => f[key]);
+    const wide = record.files.filter((f) => f.columns === 40);
+    lines.push(
+      row([
+        title,
+        total(stats, 'matchedReady') / total(stats, 'expectedReady') >= 0.8
+          ? '通过'
+          : '未通过',
+        wide.length >= 2 && wide.every((f) => f[key].matchedReady > 0)
+          ? '通过'
+          : '未通过',
+        wide
+          .map(
+            (f) => f.id + ' ' + rate(f[key].matchedReady, f[key].expectedReady),
+          )
+          .join('、'),
+      ]),
+    );
+  }
   lines.push('', '## 逐文件标注 READY 命中', '');
   table([
     '原件',
