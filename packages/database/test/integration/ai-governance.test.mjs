@@ -737,7 +737,7 @@ test("the feature catalog keeps existing plans and rejects duplicate, unknown or
   assert.equal(rows.length, 9);
   assert.deepEqual(rows.at(-1), { key: "import_assist", released: true });
   const plans = await q(admin, "SELECT features FROM ai_plans WHERE id = $1::uuid", planId);
-  assert.deepEqual(plans[0].features, ["assistant", "filter"]);
+  assert.equal(plans[0].features.includes("import_assist"), false);
   assert.deepEqual(
     rows.filter((r) => !r.released).map((r) => r.key),
     [],

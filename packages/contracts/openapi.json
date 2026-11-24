@@ -10726,7 +10726,8 @@
                                 "table_builder",
                                 "daily_brief",
                                 "writing",
-                                "daily_report"
+                                "daily_report",
+                                "import_assist"
                               ],
                               "type": "string"
                             },
@@ -12298,7 +12299,8 @@
                             "table_builder",
                             "daily_brief",
                             "writing",
-                            "daily_report"
+                            "daily_report",
+                            "import_assist"
                           ],
                           "type": "string"
                         },
@@ -12379,7 +12381,8 @@
                         "table_builder",
                         "daily_brief",
                         "writing",
-                        "daily_report"
+                        "daily_report",
+                        "import_assist"
                       ],
                       "type": "string"
                     },
@@ -12438,7 +12441,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -12591,7 +12595,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -12682,7 +12687,8 @@
                         "table_builder",
                         "daily_brief",
                         "writing",
-                        "daily_report"
+                        "daily_report",
+                        "import_assist"
                       ],
                       "type": "string"
                     },
@@ -12748,7 +12754,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -12837,7 +12844,8 @@
                         "table_builder",
                         "daily_brief",
                         "writing",
-                        "daily_report"
+                        "daily_report",
+                        "import_assist"
                       ],
                       "type": "string"
                     },
@@ -12899,7 +12907,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -12988,7 +12997,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "type": "string"
                           },
@@ -13016,7 +13026,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "nullable": true,
                             "type": "string"
@@ -13969,7 +13980,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "type": "string"
                           },
@@ -13997,7 +14009,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "nullable": true,
                             "type": "string"
@@ -14066,7 +14079,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -14191,7 +14205,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "type": "string"
                           },
@@ -14345,7 +14360,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -14512,7 +14528,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -14541,7 +14558,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -14926,7 +14944,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -15330,7 +15349,8 @@
                 "table_builder",
                 "daily_brief",
                 "writing",
-                "daily_report"
+                "daily_report",
+                "import_assist"
               ],
               "type": "string"
             }
@@ -15402,7 +15422,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "type": "string"
                           },
@@ -15513,7 +15534,8 @@
                         "table_builder",
                         "daily_brief",
                         "writing",
-                        "daily_report"
+                        "daily_report",
+                        "import_assist"
                       ],
                       "type": "string"
                     },
@@ -15809,7 +15831,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "type": "string"
                           },
@@ -15837,7 +15860,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "nullable": true,
                             "type": "string"
@@ -15877,7 +15901,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -16094,7 +16119,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "type": "string"
                           },
@@ -16122,7 +16148,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "nullable": true,
                             "type": "string"
@@ -16162,7 +16189,8 @@
                           "table_builder",
                           "daily_brief",
                           "writing",
-                          "daily_report"
+                          "daily_report",
+                          "import_assist"
                         ],
                         "type": "string"
                       },
@@ -17224,7 +17252,8 @@
                               "table_builder",
                               "daily_brief",
                               "writing",
-                              "daily_report"
+                              "daily_report",
+                              "import_assist"
                             ],
                             "type": "string"
                           },
@@ -21230,6 +21259,316 @@
           }
         ],
         "tags": ["filter-preview"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/import-assist": {
+      "post": {
+        "operationId": "ImportAssistController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "candidates": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "columns": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "col": {
+                                "pattern": "^C(?:[1-9]|[1-3]\\d|40)$",
+                                "type": "string"
+                              },
+                              "excluded": {
+                                "type": "boolean"
+                              },
+                              "header": {
+                                "maxLength": 4096,
+                                "type": "string"
+                              },
+                              "locked": {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "field": {
+                                        "maxLength": 128,
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      "mode": {
+                                        "enum": ["field", "append"],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": ["mode", "field"],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "mode": {
+                                        "enum": ["owner", "skip"],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": ["mode"],
+                                    "type": "object"
+                                  }
+                                ]
+                              },
+                              "samples": {
+                                "items": {
+                                  "maxLength": 4096,
+                                  "type": "string"
+                                },
+                                "maxItems": 5,
+                                "type": "array"
+                              },
+                              "values": {
+                                "items": {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "count": {
+                                      "maximum": 10000,
+                                      "minimum": 1,
+                                      "type": "integer"
+                                    },
+                                    "id": {
+                                      "pattern": "^[a-zA-Z0-9:_-]{1,64}$",
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "maxLength": 4096,
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["id", "text", "count"],
+                                  "type": "object"
+                                },
+                                "maxItems": 50,
+                                "type": "array"
+                              }
+                            },
+                            "required": ["col", "header", "samples"],
+                            "type": "object"
+                          },
+                          "maxItems": 40,
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "headerRow": {
+                          "maximum": 10,
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      },
+                      "required": ["headerRow", "columns"],
+                      "type": "object"
+                    },
+                    "maxItems": 10,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "currentHeader": {
+                    "maximum": 10,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "headerEvidence": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "col": {
+                          "pattern": "^C(?:[1-9]|[1-3]\\d|40)$",
+                          "type": "string"
+                        },
+                        "hashes": {
+                          "items": {
+                            "pattern": "^[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "maxItems": 10,
+                          "type": "array"
+                        }
+                      },
+                      "required": ["col", "hashes"],
+                      "type": "object"
+                    },
+                    "maxItems": 40,
+                    "type": "array"
+                  },
+                  "headerLocked": {
+                    "type": "boolean"
+                  },
+                  "sheet": {
+                    "maxLength": 4096,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "headerEvidence",
+                  "sheet",
+                  "currentHeader",
+                  "headerLocked",
+                  "candidates"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "columns": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "bareAmountUnit": {
+                            "enum": ["yuan", "wan"],
+                            "type": "string"
+                          },
+                          "col": {
+                            "type": "string"
+                          },
+                          "confidence": {
+                            "enum": ["high", "review"],
+                            "type": "string"
+                          },
+                          "dateOrder": {
+                            "enum": ["DMY", "MDY"],
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "target": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "field": {
+                                    "maxLength": 128,
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "mode": {
+                                    "enum": ["field", "append"],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["mode", "field"],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "mode": {
+                                    "enum": ["skip"],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["mode"],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "values": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "confidence": {
+                                  "enum": ["high", "review"],
+                                  "type": "string"
+                                },
+                                "option": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "value": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["value", "option", "confidence"],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": ["col", "target", "confidence", "reason"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "generatedAt": {
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "type": "string"
+                    },
+                    "headerRow": {
+                      "maximum": 10,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "matchFields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 3,
+                      "type": "array"
+                    },
+                    "version": {
+                      "enum": [1],
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "generatedAt",
+                    "headerRow",
+                    "columns",
+                    "matchFields"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["import-assist"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/pool-config": {

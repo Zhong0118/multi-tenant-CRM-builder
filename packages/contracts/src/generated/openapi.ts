@@ -2228,6 +2228,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/import-assist": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ImportAssistController_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/pool-config": {
     parameters: {
       query?: never;
@@ -6514,6 +6530,7 @@ export interface operations {
                 | "daily_brief"
                 | "writing"
                 | "daily_report"
+                | "import_assist"
               )[];
               month: string & string;
               name: string;
@@ -7065,6 +7082,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             /** Format: uuid */
             id: string;
@@ -7098,6 +7116,7 @@ export interface operations {
             | "daily_brief"
             | "writing"
             | "daily_report"
+            | "import_assist"
           )[];
           /** @description Exact token count in decimal notation */
           monthlyTokens: string;
@@ -7124,6 +7143,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             /** Format: uuid */
             id: string;
@@ -7165,6 +7185,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             /** Format: uuid */
             id: string;
@@ -7230,6 +7251,7 @@ export interface operations {
             | "daily_brief"
             | "writing"
             | "daily_report"
+            | "import_assist"
           )[];
           /** @description Exact token count in decimal notation */
           monthlyTokens: string;
@@ -7258,6 +7280,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             /** Format: uuid */
             id: string;
@@ -7293,6 +7316,7 @@ export interface operations {
             | "daily_brief"
             | "writing"
             | "daily_report"
+            | "import_assist"
           )[];
           /** @description Exact token count in decimal notation */
           monthlyTokens: string;
@@ -7320,6 +7344,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             version: number;
           };
@@ -7361,7 +7386,8 @@ export interface operations {
                 | "table_builder"
                 | "daily_brief"
                 | "writing"
-                | "daily_report";
+                | "daily_report"
+                | "import_assist";
               label: string;
               outputLimit: number | null;
               purpose: string;
@@ -7376,6 +7402,7 @@ export interface operations {
                 | "daily_brief"
                 | "writing"
                 | "daily_report"
+                | "import_assist"
                 | null;
             }[];
             configured: boolean;
@@ -7811,7 +7838,8 @@ export interface operations {
                 | "table_builder"
                 | "daily_brief"
                 | "writing"
-                | "daily_report";
+                | "daily_report"
+                | "import_assist";
               label: string;
               outputLimit: number | null;
               purpose: string;
@@ -7826,6 +7854,7 @@ export interface operations {
                 | "daily_brief"
                 | "writing"
                 | "daily_report"
+                | "import_assist"
                 | null;
             }[];
             code: string;
@@ -7848,6 +7877,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             month: string & string;
             name: string;
@@ -7887,7 +7917,8 @@ export interface operations {
                 | "table_builder"
                 | "daily_brief"
                 | "writing"
-                | "daily_report";
+                | "daily_report"
+                | "import_assist";
               /** @description Exact token count in decimal notation */
               inputTokens: string;
               /** @description Exact token count in decimal notation */
@@ -7944,6 +7975,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             month: string & string;
             name: string;
@@ -8003,6 +8035,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             confirmation: string;
             name: string;
@@ -8017,6 +8050,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             /** @description Exact token count in decimal notation */
             totalTokens: string;
@@ -8261,6 +8295,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             /** @enum {string|null} */
             notice: "company_warning" | "company_exhausted" | "personal" | null;
@@ -8427,7 +8462,8 @@ export interface operations {
           | "table_builder"
           | "daily_brief"
           | "writing"
-          | "daily_report";
+          | "daily_report"
+          | "import_assist";
         from?: string;
         limit?: number;
         memberId?: string;
@@ -8464,7 +8500,8 @@ export interface operations {
                 | "table_builder"
                 | "daily_brief"
                 | "writing"
-                | "daily_report";
+                | "daily_report"
+                | "import_assist";
               /** Format: uuid */
               id: string;
               /** Format: uuid */
@@ -8511,7 +8548,8 @@ export interface operations {
               | "table_builder"
               | "daily_brief"
               | "writing"
-              | "daily_report";
+              | "daily_report"
+              | "import_assist";
             /** Format: uuid */
             id: string;
             items: {
@@ -8642,7 +8680,8 @@ export interface operations {
                 | "table_builder"
                 | "daily_brief"
                 | "writing"
-                | "daily_report";
+                | "daily_report"
+                | "import_assist";
               label: string;
               outputLimit: number | null;
               purpose: string;
@@ -8657,6 +8696,7 @@ export interface operations {
                 | "daily_brief"
                 | "writing"
                 | "daily_report"
+                | "import_assist"
                 | null;
             }[];
             code: string;
@@ -8672,6 +8712,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             month: string & string;
             name: string;
@@ -8745,7 +8786,8 @@ export interface operations {
                 | "table_builder"
                 | "daily_brief"
                 | "writing"
-                | "daily_report";
+                | "daily_report"
+                | "import_assist";
               label: string;
               outputLimit: number | null;
               purpose: string;
@@ -8760,6 +8802,7 @@ export interface operations {
                 | "daily_brief"
                 | "writing"
                 | "daily_report"
+                | "import_assist"
                 | null;
             }[];
             code: string;
@@ -8775,6 +8818,7 @@ export interface operations {
               | "daily_brief"
               | "writing"
               | "daily_report"
+              | "import_assist"
             )[];
             month: string & string;
             name: string;
@@ -9188,7 +9232,8 @@ export interface operations {
                 | "table_builder"
                 | "daily_brief"
                 | "writing"
-                | "daily_report";
+                | "daily_report"
+                | "import_assist";
               /** @description Exact token count in decimal notation */
               inputTokens: string;
               /** @description Exact token count in decimal notation */
@@ -11173,6 +11218,97 @@ export interface operations {
                 /** @enum {string} */
                 kind: "unavailable";
               };
+        };
+      };
+    };
+  };
+  ImportAssistController_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          candidates: {
+            columns: {
+              col: string;
+              excluded?: boolean;
+              header: string;
+              locked?:
+                | {
+                    field: string;
+                    /** @enum {string} */
+                    mode: "field" | "append";
+                  }
+                | {
+                    /** @enum {string} */
+                    mode: "owner" | "skip";
+                  };
+              samples: string[];
+              values?: {
+                count: number;
+                id: string;
+                text: string;
+              }[];
+            }[];
+            headerRow: number;
+          }[];
+          currentHeader: number;
+          headerEvidence: {
+            col: string;
+            hashes: string[];
+          }[];
+          headerLocked: boolean;
+          sheet: string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            columns: {
+              /** @enum {string} */
+              bareAmountUnit?: "yuan" | "wan";
+              col: string;
+              /** @enum {string} */
+              confidence: "high" | "review";
+              /** @enum {string} */
+              dateOrder?: "DMY" | "MDY";
+              reason: string;
+              target:
+                | {
+                    field: string;
+                    /** @enum {string} */
+                    mode: "field" | "append";
+                  }
+                | {
+                    /** @enum {string} */
+                    mode: "skip";
+                  };
+              values?: {
+                /** @enum {string} */
+                confidence: "high" | "review";
+                option: string | null;
+                value: string;
+              }[];
+            }[];
+            /** Format: date-time */
+            generatedAt: string;
+            headerRow: number;
+            matchFields: string[];
+            /** @enum {number} */
+            version: 1;
+          };
         };
       };
     };
