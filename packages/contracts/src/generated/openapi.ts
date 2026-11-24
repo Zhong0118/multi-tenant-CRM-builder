@@ -980,6 +980,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/ai/daily-report": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SalesDraftsController_report"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/ai/operations": {
     parameters: {
       query?: never;
@@ -1204,6 +1220,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/ai/writing/{objectCode}/{recordId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SalesDraftsController_write"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/writing/{objectCode}/{recordId}/activity-access": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SalesDraftsController_checkActivity"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/audit": {
     parameters: {
       query?: never;
@@ -1212,6 +1260,70 @@ export interface paths {
       cookie?: never;
     };
     get: operations["CompanyAuditController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/daily-brief": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["DailyBriefController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/daily-brief/generate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["DailyBriefController_generate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/daily-brief/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["DailyBriefController_settings"];
+    put: operations["DailyBriefController_save"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/daily-brief/suggestions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["DailyBriefController_suggestions"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8277,6 +8389,30 @@ export interface operations {
       };
     };
   };
+  SalesDraftsController_report: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: date */
+          workDate: string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   WorkspaceAiAdminController_operations: {
     parameters: {
       query?: {
@@ -9074,6 +9210,64 @@ export interface operations {
       };
     };
   };
+  SalesDraftsController_write: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          kind: string;
+          length: string;
+          purpose: string;
+          rewrite?: {
+            basis: string;
+            /** @enum {string} */
+            mode: "regenerate" | "shorter" | "formal";
+            previousLength: number;
+            refs: string[];
+          };
+          supplement?: string;
+          tone: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Newline-delimited JSON. Metadata, verified text blocks, then completion. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SalesDraftsController_checkActivity: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   CompanyAuditController_list: {
     parameters: {
       query?: {
@@ -9104,6 +9298,94 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["CompanyAuditPageDto"];
         };
+      };
+    };
+  };
+  DailyBriefController_list: {
+    parameters: {
+      query: {
+        cursor: string;
+        group: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  DailyBriefController_generate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  DailyBriefController_settings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  DailyBriefController_save: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  DailyBriefController_suggestions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

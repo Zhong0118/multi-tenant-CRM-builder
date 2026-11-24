@@ -15218,6 +15218,40 @@
         "tags": ["ai"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/ai/daily-report": {
+      "post": {
+        "operationId": "SalesDraftsController_report",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "workDate": {
+                    "format": "date",
+                    "type": "string"
+                  }
+                },
+                "required": ["workDate"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["sales-drafts"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/ai/operations": {
       "get": {
         "operationId": "WorkspaceAiAdminController_operations",
@@ -17281,6 +17315,125 @@
         "tags": ["workspace-ai-governance"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/ai/writing/{objectCode}/{recordId}": {
+      "post": {
+        "operationId": "SalesDraftsController_write",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "length": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  },
+                  "rewrite": {
+                    "properties": {
+                      "basis": {
+                        "type": "string"
+                      },
+                      "mode": {
+                        "enum": ["regenerate", "shorter", "formal"],
+                        "type": "string"
+                      },
+                      "previousLength": {
+                        "type": "integer"
+                      },
+                      "refs": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": ["basis", "mode", "refs", "previousLength"],
+                    "type": "object"
+                  },
+                  "supplement": {
+                    "maxLength": 1000,
+                    "type": "string"
+                  },
+                  "tone": {
+                    "type": "string"
+                  }
+                },
+                "required": ["kind", "purpose", "length", "tone"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Newline-delimited JSON. Metadata, verified text blocks, then completion."
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["sales-drafts"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/writing/{objectCode}/{recordId}/activity-access": {
+      "get": {
+        "operationId": "SalesDraftsController_checkActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["sales-drafts"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/audit": {
       "get": {
         "operationId": "CompanyAuditController_list",
@@ -17390,6 +17543,106 @@
           }
         ],
         "tags": ["company-audit"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/daily-brief": {
+      "get": {
+        "operationId": "DailyBriefController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "group",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["daily-brief"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/daily-brief/generate": {
+      "post": {
+        "operationId": "DailyBriefController_generate",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["daily-brief"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/daily-brief/settings": {
+      "get": {
+        "operationId": "DailyBriefController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["daily-brief"]
+      },
+      "put": {
+        "operationId": "DailyBriefController_save",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["daily-brief"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/daily-brief/suggestions": {
+      "get": {
+        "operationId": "DailyBriefController_suggestions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["daily-brief"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/daily-reports/{workDate}": {
