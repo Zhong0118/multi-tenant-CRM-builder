@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { runDataset } from '../run-dataset';
 import { loadCases } from './cases';
+import { writingChecks } from './writing-checks';
 import { FakeAiProvider } from '../../../src/modules/ai/providers/fake-ai.provider';
 import { VercelOpenAiProvider } from '../../../src/modules/ai/providers/vercel-openai.provider';
 import type { AiProvider } from '../../../src/modules/ai/ai-provider';
@@ -109,7 +110,8 @@ async function main() {
             output.length >= 3 &&
             output.length <= 5 &&
             output.length === expected.length;
-          return { output, raw, valid, usage };
+          const fallbacks = output.filter((item) => item.usedFallback).length;
+          return { output, raw, valid, usage, fallbacks };
         }
         if (feature === 'writing') {
           const { options, facts, title } = samples.writing[i];
@@ -121,15 +123,25 @@ async function main() {
           const output = validateWriting(raw, options, facts);
           const source = writingSchema.parse(raw);
           const sentences = source.blocks
-            .flatMap((b) => b.text.match(/[^。！？!?\n]+[。！？!?]?/gu) ?? [])
+            .map((b) =>
+              options.kind === 'visit'
+                ? b.text.replace(/^(目的|情况|问题|材料)[：:]\s*/u, '')
+                : b.text,
+            )
+            .flatMap((text) => text.match(/[^。！？!?\n]+[。！？!?]?/gu) ?? [])
             .map((s) => s.trim())
             .filter(Boolean);
           const joined = output.blocks.map((b) => b.text).join('\n');
           const altered = sentences.filter((s) => !joined.includes(s)).length;
+          const quality = writingChecks(source, output, options, facts);
           return {
             output,
             raw,
-            valid: joined.length > 0 && output.kind === options.kind,
+            quality,
+            valid:
+              joined.length > 0 &&
+              output.kind === options.kind &&
+              Object.values(quality).every(Boolean),
             usage,
             sentences: sentences.length,
             altered,
