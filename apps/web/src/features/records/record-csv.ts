@@ -111,6 +111,21 @@ export function splitImportOptions(value: string): string[] {
     .filter(Boolean);
 }
 
+const nullableImportTypes = new Set([
+  "NUMBER",
+  "MONEY",
+  "DATE",
+  "DATETIME",
+  "SINGLE_SELECT",
+  "MULTI_SELECT",
+]);
+
+export function isImportNullMarker(type: string, raw: string) {
+  return (
+    nullableImportTypes.has(type) && /^(?:nan|#?n\/a|null)$/i.test(raw.trim())
+  );
+}
+
 export function coerceImportValue(
   type: string,
   raw: string,
@@ -118,7 +133,12 @@ export function coerceImportValue(
   context: ImportValueContext = {},
 ): unknown {
   const value = raw.trim();
-  if (value === "") return null;
+  if (value === "" || isImportNullMarker(type, value)) return null;
+  if (
+    nullableImportTypes.has(type) &&
+    /^#(?:REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!)$/i.test(value)
+  )
+    throw new Error(`公式错误 ${value}`);
   switch (type) {
     case "BOOLEAN":
       if (

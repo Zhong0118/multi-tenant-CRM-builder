@@ -367,6 +367,9 @@ export function RecordImportDrawer({
     Array.from(resolvedOwners),
   ]);
   const checked = readyPlan?.scope === scope ? checkResult : undefined;
+  const emptyMarkerCount = checked
+    ? readyPlan!.rows.reduce((n, row) => n + (row.emptyMarkerCount ?? 0), 0)
+    : 0;
   const eligible =
     checked?.items.filter((item) => item.status === "READY").length ?? 0;
 
@@ -901,6 +904,9 @@ export function RecordImportDrawer({
               }{" "}
               · 错误 {checked.failed}
             </span>
+          )}
+          {emptyMarkerCount > 0 && (
+            <span>已把 {emptyMarkerCount} 格 NaN/#N/A 按空值处理</span>
           )}
           <Button onClick={close}>关闭</Button>
           <Button

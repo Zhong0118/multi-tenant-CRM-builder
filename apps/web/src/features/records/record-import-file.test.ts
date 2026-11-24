@@ -1,3 +1,4 @@
+import { buildImportRows } from "./record-import-mapping";
 import { coerceImportValue } from "./record-csv";
 import { webcrypto } from "node:crypto";
 import { describe, expect, it } from "vitest";
@@ -292,6 +293,8 @@ describe("record file import", () => {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([["编号"], [], ["错误"]]);
     ws.A3 = { t: "e", v: 7, f: "1/0" };
+    XLSX.utils.sheet_add_aoa(ws, [["cached"]], { origin: "A4" });
+    ws.A4 = { t: "e", v: 42 };
     XLSX.utils.book_append_sheet(wb, ws, "清单");
     const source = await readImportFile(
       file(
@@ -300,7 +303,25 @@ describe("record file import", () => {
       ),
       "auto",
     );
-    expect(() => source.sheet("清单")).toThrow(/第 3 行.*公式/);
+    const parsed = source.sheet("清单");
+    expect(parsed.rowNumbers).toEqual([3, 4]);
+    expect(parsed.rows).toEqual([["#DIV/0!"], ["#N/A"]]);
+    expect(parsed.formulaErrors).toEqual({ 3: [0] });
+    const planned = buildImportRows({
+      parsed,
+      fields: [],
+      mapping: [":skip"],
+      dateOrders: {},
+      destination: () => ({ kind: "default" }),
+    });
+    expect(planned[0]).toMatchObject({
+      rowNumber: 3,
+      error: {
+        code: "RECORD_IMPORT_INVALID",
+        message: "编号：公式错误 #DIV/0!",
+      },
+    });
+    expect(planned[1].error).toBeUndefined();
   });
   it("rejects a formula with no cached result and keeps a calculated zero", async () => {
     const wb = XLSX.utils.book_new();

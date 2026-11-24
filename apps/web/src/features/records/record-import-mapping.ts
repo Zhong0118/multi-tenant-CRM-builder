@@ -6,6 +6,7 @@ import {
   coerceImportValue,
   suggestFieldKey,
   inferImportDateOrder,
+  isImportNullMarker,
   type ParsedCsv,
 } from "./record-csv";
 import type {
@@ -61,10 +62,18 @@ export function buildImportRows(input: {
       destination: destination(row),
     };
     if (planned.destination.kind === "skip") return planned;
-    const errors: string[] = [];
+    const formulaErrors = parsed.formulaErrors?.[planned.rowNumber] ?? [];
+    const errors = formulaErrors.map(
+      (column) =>
+        `${parsed.headers[column] || `第 ${column + 1} 列`}：公式错误 ${row[column]}`,
+    );
+
     for (const [column, key] of mapping.entries()) {
       const field = fields.get(key);
-      if (!field) continue;
+      if (!field || formulaErrors.includes(column)) continue;
+      if (isImportNullMarker(field.type, row[column] ?? "")) {
+        planned.emptyMarkerCount = (planned.emptyMarkerCount ?? 0) + 1;
+      }
       try {
         planned.values[key] = coerceImportValue(
           field.type,

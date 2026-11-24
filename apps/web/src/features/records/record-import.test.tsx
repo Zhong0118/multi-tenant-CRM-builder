@@ -147,6 +147,23 @@ async function checkAndImport() {
   fireEvent.click(await screen.findByRole("button", { name: /确认导入/ }));
 }
 describe("RecordImportDrawer", () => {
+  it("counts only typed cells treated as empty in the checked plan", async () => {
+    const { api } = setup(recordApi(), schema);
+    chooseFile("姓名,线索状态\nNaN,#N/A\n普通姓名,null");
+    await screen.findByText("2 行 · 2 列");
+    fireEvent.click(await screen.findByRole("button", { name: "检查数据" }));
+    await screen.findByText("已把 2 格 NaN/#N/A 按空值处理");
+    expect(api.importRows).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      expect.objectContaining({
+        rows: [
+          { rowNumber: 2, values: { name: "NaN", lead_status: null } },
+          { rowNumber: 3, values: { name: "普通姓名", lead_status: null } },
+        ],
+      }),
+    );
+  });
   it("changes physical header only on confirmation, applies the returned plan and restores the original header", async () => {
     const call = vi
       .spyOn(assistApi, "requestImportAssist")

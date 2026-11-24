@@ -2,11 +2,13 @@ export interface ParsedCsv {
   headers: string[];
   rows: string[][];
   rowNumbers?: number[];
+  formulaErrors?: Record<number, number[]>;
 }
 
 export interface SourceRow {
   rowNumber: number;
   cells: string[];
+  formulaErrors?: number[];
 }
 
 export function* parseCsvRows(

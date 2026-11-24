@@ -136,6 +136,15 @@ function readTable(
     headers: pad(header.cells).map((label) => label.trim()),
     rows: body.map((row) => pad(row.cells)),
     rowNumbers: body.map((row) => row.rowNumber),
+    ...(body.some((row) => row.formulaErrors)
+      ? {
+          formulaErrors: Object.fromEntries(
+            body
+              .filter((row) => row.formulaErrors)
+              .map((row) => [row.rowNumber, row.formulaErrors!]),
+          ),
+        }
+      : {}),
   };
 }
 
@@ -208,16 +217,25 @@ export async function readImportFile(
     const ws = workbook.Sheets[name];
     if (!ws) throw new Error("无法读取工作表，请在 Excel 中另存为 XLSX 重试。");
     const byNumber = new Map<number, string[]>();
+    const formulaErrors = new Map<number, number[]>();
     for (const address of Object.keys(ws)) {
       if (address.startsWith("!")) continue;
       const { r, c } = XLSX.utils.decode_cell(address);
       const cell = ws[address];
-      if (cell.t === "e" || (cell.f && (cell.t === "z" || cell.v == null)))
+      if (cell.f && (cell.t === "z" || cell.v == null))
         throw new Error(
           `第 ${r + 1} 行存在错误或未计算的公式，请在 Excel 中重新计算并保存。`,
         );
       if (cell.t === "z" || cell.v == null) continue;
       let value = String(cell.v);
+      if (cell.t === "e") {
+        value = XLSX.utils.format_cell(cell);
+        if (value !== "#N/A") {
+          const columns = formulaErrors.get(r + 1) ?? [];
+          columns.push(c);
+          formulaErrors.set(r + 1, columns);
+        }
+      }
       if (cell.t === "n") {
         if (cell.z && XLSX.SSF.is_date(cell.z)) {
           const date = XLSX.SSF.parse_date_code(cell.v as number, {
@@ -247,6 +265,9 @@ export async function readImportFile(
       byNumber.set(number, cells);
     }
     cachedRows = Array.from(byNumber, ([rowNumber, cells]) => ({
+      ...(formulaErrors.has(rowNumber)
+        ? { formulaErrors: formulaErrors.get(rowNumber) }
+        : {}),
       rowNumber,
       cells,
     }))

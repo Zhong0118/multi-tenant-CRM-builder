@@ -37,6 +37,30 @@ describe("suggestFieldKey", () => {
 
 describe("coerceImportValue", () => {
   it.each([
+    "DATE",
+    "DATETIME",
+    "NUMBER",
+    "MONEY",
+    "SINGLE_SELECT",
+    "MULTI_SELECT",
+  ])("reads whole-cell empty markers before converting %s", (type) => {
+    for (const raw of [" NaN ", "#n/A", "N/A", " NULL "]) {
+      expect(
+        coerceImportValue(type, raw, [], {
+          valueChoices: new Map([[raw.trim(), "unrelated"]]),
+        }),
+      ).toBeNull();
+      expect(coerceImportValue("TEXT", raw, [])).toBe(raw.trim());
+    }
+    for (const raw of ["#REF!", "#DIV/0!", "#VALUE!"]) {
+      expect(() =>
+        coerceImportValue(type, raw, [], {
+          valueChoices: new Map([[raw, null]]),
+        }),
+      ).toThrow(/公式/);
+    }
+  });
+  it.each([
     ["2026.11.5", "2026-11-05"],
     ["2026/11/5", "2026-11-05"],
     ["2026-11-5", "2026-11-05"],
