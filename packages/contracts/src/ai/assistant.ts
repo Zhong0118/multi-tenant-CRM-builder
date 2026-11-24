@@ -1,3 +1,4 @@
+import type { WritingDraft, WritingOptions } from "./sales-drafts.js";
 import type { FilterPreview, FilterRule } from "../records/index.js";
 import type { AiProposalView } from "./stream.js";
 
@@ -45,6 +46,7 @@ export interface AssistantBatch {
   coverage?: { total: number; targets: number };
 }
 export type AssistantAction =
+  | { kind:"writing"; objectCode:string; recordId:string; options:WritingOptions; draft?:WritingDraft & {title:string;generatedAt:string;canLog:boolean;basis?:string} }
   | {
       kind: "communication";
       draftId: string;
