@@ -1277,6 +1277,15 @@ model AiModelCall {
   feature String
   provider String
   model String
+  purpose String?
+  configSource String @default("historical") @map("config_source")
+  providerId String? @map("provider_id") @db.Uuid
+  revisionId String? @map("revision_id") @db.Uuid
+  assignmentVersion Int? @map("assignment_version")
+  deploymentConfigId String? @map("deployment_config_id")
+  inputPrice Decimal? @map("input_price") @db.Decimal(20,8)
+  outputPrice Decimal? @map("output_price") @db.Decimal(20,8)
+  currency String?
   requestId String @map("request_id")
   startedAt DateTime @map("started_at") @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
   expiresAt DateTime @map("expires_at") @db.Timestamptz(6)

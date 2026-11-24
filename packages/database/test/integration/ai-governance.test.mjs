@@ -224,13 +224,21 @@ test("forced tenant isolation, per-member visibility and platform-only assignmen
   ]) {
     assert.deepEqual(
       await asPlatform((tx) =>
-        q(tx, "select * from " + table + " where tenant_id=$1::uuid", a.id),
+        q(
+          tx,
+          "select tenant_id from " + table + " where tenant_id=$1::uuid",
+          a.id,
+        ),
       ),
       [],
     );
     assert.deepEqual(
       await as(outsider, (tx) =>
-        q(tx, "select * from " + table + " where tenant_id=$1::uuid", a.id),
+        q(
+          tx,
+          "select tenant_id from " + table + " where tenant_id=$1::uuid",
+          a.id,
+        ),
       ),
       [],
     );
@@ -747,4 +755,84 @@ test("the feature catalog keeps existing plans and rejects unreleased, duplicate
       ),
     );
   }
+});
+
+test("snapshots keep historical cost across allocation changes and protect tenant pricing", async () => {
+  await clearUsage();
+  await setCap(100000);
+  const legacy = randomUUID();
+  assert.equal(await reserve(staff, legacy), null);
+  await settle(staff, legacy, "success", 10, 5);
+  const revision = randomUUID(),
+    provider = randomUUID();
+  for (const [version, currency, outputPrice] of [
+    [1, "USD", "8"],
+    [2, "CNY", null],
+  ]) {
+    const call = randomUUID();
+    const data = {
+      configSource: "platform",
+      purpose: "text",
+      providerId: provider,
+      revisionId: revision,
+      assignmentVersion: version,
+      inputPrice: "2",
+      outputPrice,
+      currency,
+    };
+    const [row] = await as(staff, (tx) =>
+      q(
+        tx,
+        "SELECT code FROM ai_reserve_snapshot_call($1::uuid,$2::uuid,$3::uuid,'snapshot','filter','openai','trial',100::bigint,3500::bigint,now()+interval '1 minute',$4::jsonb)",
+        a.id,
+        staff.id,
+        call,
+        JSON.stringify(data),
+      ),
+    );
+    assert.equal(row.code, null);
+    await settle(staff, call, "success", 100, 25);
+  }
+  const { month: mo } = await month();
+  const sql =
+    "select currency,calls,priced_input_tokens,priced_output_tokens,known_cost::float8 from ai_company_model_costs($1::uuid,$2::date) order by currency nulls last";
+  const costs = await asPlatform((tx) => q(tx, sql, a.id, mo));
+  assert.deepEqual(costs, [
+    {
+      currency: "CNY",
+      calls: 1n,
+      priced_input_tokens: 100n,
+      priced_output_tokens: 0n,
+      known_cost: 0.0002,
+    },
+    {
+      currency: "USD",
+      calls: 1n,
+      priced_input_tokens: 100n,
+      priced_output_tokens: 25n,
+      known_cost: 0.0004,
+    },
+    {
+      currency: null,
+      calls: 1n,
+      priced_input_tokens: 0n,
+      priced_output_tokens: 0n,
+      known_cost: null,
+    },
+  ]);
+  assert.deepEqual(await as(lead, (tx) => q(tx, sql, a.id, mo)), []);
+  await assert.rejects(
+    as(staff, (tx) => q(tx, "select input_price from ai_model_calls limit 1")),
+    /permission denied|42501/,
+  );
+  assert.equal(
+    (
+      await q(
+        admin,
+        "select config_source from ai_model_calls where id=$1::uuid",
+        legacy,
+      )
+    )[0].config_source,
+    "historical",
+  );
 });
