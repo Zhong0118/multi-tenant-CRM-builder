@@ -87,17 +87,20 @@ function normalizeOption(value: string) {
   return value.normalize("NFKC").replace(/\s+/gu, "");
 }
 
-export function matchImportOption(
-  value: string,
-  options: ImportOption[],
-): string | undefined {
+export function matchingImportOptions(value: string, options: ImportOption[]) {
   const normalized = normalizeOption(value);
-  if (!normalized) return undefined;
-  const matches = options.filter(
+  if (!normalized) return [];
+  return options.filter(
     (option) =>
       normalizeOption(option.key) === normalized ||
       normalizeOption(option.label) === normalized,
   );
+}
+export function matchImportOption(
+  value: string,
+  options: ImportOption[],
+): string | undefined {
+  const matches = matchingImportOptions(value, options);
   return matches.length === 1 ? matches[0].key : undefined;
 }
 

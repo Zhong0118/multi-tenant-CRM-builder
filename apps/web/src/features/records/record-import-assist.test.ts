@@ -7,6 +7,7 @@ import {
   buildImportPreview,
   buildImportHeaderEvidence,
   emptyAssistDraft,
+  draftForImportHeader,
   applyImportAdvice,
 } from "./record-import-assist";
 
@@ -109,6 +110,115 @@ describe("browser import assistance", () => {
       destination: () => ({ kind: "default" }),
     });
     expect(rows[0].values.date).toBe("2024-03-15");
+  });
+  it("previews per-token aliases in an unmapped multi-select column", async () => {
+    const p = (await preview("客户标签\nA级；A类\nA级；重点客户")).preview;
+    expect(p.request.candidates[0].columns[0].values).toEqual([
+      { id: "V1", text: "A级", count: 2 },
+      { id: "V2", text: "A类", count: 1 },
+      { id: "V3", text: "重点客户", count: 1 },
+    ]);
+  });
+  it("can request outstanding values for a manually mapped opaque heading", async () => {
+    const file = await readImportFile(
+      new File(["缩写XYZ\nB类"], "test.csv"),
+      "auto",
+    );
+    const draft = emptyAssistDraft(["缩写XYZ"], fields, false);
+    draft.mapping[0] = "tier";
+    draft.manual = [0];
+    const p = buildImportPreview({
+      headerEvidence: await buildImportHeaderEvidence(file, ""),
+      file,
+      sheet: "",
+      headerRow: 1,
+      headerLocked: true,
+      fields,
+      draft,
+    });
+    expect(p.needed).toBe(true);
+    expect(p.request.candidates[0].columns[0]).toMatchObject({
+      locked: { mode: "field", field: "tier" },
+      samples: [],
+      values: [{ text: "B类" }],
+    });
+  });
+  it("does not transmit a long identifier split with commas", async () => {
+    const p = (await preview('联系号码\n"1234,5678,9012,3456"')).preview;
+    expect(JSON.stringify(p.request)).not.toContain("1234,5678,9012,3456");
+  });
+  it("requires a manual option when normalized active labels collide", async () => {
+    const f = {
+      ...field("tier", "评级", "SINGLE_SELECT"),
+      config: {
+        options: [
+          { key: "one", label: "A级" },
+          { key: "two", label: "Ａ 级" },
+        ],
+      },
+    };
+    const candidate = await readImportFile(
+      new File(["评级\nＡ级"], "test.csv"),
+      "auto",
+    );
+    const d = emptyAssistDraft(["评级"], [f], false);
+    const p = buildImportPreview({
+      headerEvidence: await buildImportHeaderEvidence(candidate, ""),
+      file: candidate,
+      sheet: "",
+      headerRow: 1,
+      headerLocked: true,
+      fields: [f],
+      draft: d,
+    });
+    expect(p.needed).toBe(false);
+    expect(p.unresolvedValues).toBe(1);
+  });
+  it("keeps manual column, value, format and match choices when adopting another header", () => {
+    const draft = emptyAssistDraft(["旧栏", "旧金额"], fields, false);
+    draft.mapping = ["tier", "amount"];
+    draft.manual = [0, 1];
+    draft.valueChoices = { 0: new Map([["B类", null]]) };
+    draft.amountUnits = { 1: "wan" };
+    draft.matchFields = ["amount"];
+    const next = draftForImportHeader(
+      ["单位名称", "预计金额"],
+      fields,
+      false,
+      draft,
+    );
+    expect(next).toEqual(draft);
+  });
+  it("uses shapes only for unrecognized headers and sends zero requests when every column is excluded", async () => {
+    const file = await readImportFile(
+      new File(
+        ["来源,隐别名\n客户渠道,13980001234\n线上,隐私姓名"],
+        "test.csv",
+      ),
+      "auto",
+    );
+    const fields = [] as PublishedFieldView[];
+    fields.push(field("source", "来源方式"));
+    const input = {
+      headerEvidence: await buildImportHeaderEvidence(file, ""),
+      file,
+      sheet: "",
+      headerRow: 1,
+      headerLocked: false,
+      fields,
+      draft: emptyAssistDraft(file.sheet("").headers, fields, false),
+    };
+    const p = buildImportPreview(input);
+    expect(p.request.candidates[0].columns[1]).toMatchObject({
+      header: "[文本]",
+      samples: ["[号码]", "[文本]"],
+    });
+    expect(JSON.stringify(p.request)).not.toMatch(
+      /隐别名|13980001234|隐私姓名/,
+    );
+    expect(buildImportPreview({ ...input, excluded: [0, 1] }).needed).toBe(
+      false,
+    );
   });
   it("only sends unresolved value IDs, keeps locked/owner/restricted columns private, and counts the whole file", async () => {
     const { preview: p } = await preview(

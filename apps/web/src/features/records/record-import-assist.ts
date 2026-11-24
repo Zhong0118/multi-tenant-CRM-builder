@@ -9,7 +9,7 @@ import {
 } from "@/features/objects/object-types";
 import {
   normalizeHeader,
-  matchImportOption,
+  matchingImportOptions,
   inferImportDateOrder,
   splitImportOptions,
 } from "./record-csv";
@@ -30,6 +30,7 @@ export type AssistDraft = {
   mapping: string[];
   manual: number[];
   matchFields: string[];
+  matchLocked?: boolean;
   dateOrders: Record<number, "DMY" | "MDY">;
   amountUnits: Record<number, "yuan" | "wan">;
   valueChoices: Record<number, ReadonlyMap<string, string | null>>;
@@ -47,6 +48,30 @@ export function emptyAssistDraft(
     amountUnits: {},
     valueChoices: {},
   };
+}
+
+// Physical positions remain stable even when the user chooses another header.
+export function draftForImportHeader(
+  headers: string[],
+  fields: PublishedFieldView[],
+  admin: boolean,
+  previous: AssistDraft,
+) {
+  const next = emptyAssistDraft(headers, fields, admin);
+  next.manual = previous.manual.filter((i) => i < headers.length);
+  for (const i of next.manual) next.mapping[i] = previous.mapping[i];
+  for (const [i, key] of next.mapping.entries()) {
+    if (previous.mapping[i] !== key) continue;
+    if (previous.valueChoices[i])
+      next.valueChoices[i] = previous.valueChoices[i];
+    if (previous.dateOrders[i]) next.dateOrders[i] = previous.dateOrders[i];
+    if (previous.amountUnits[i]) next.amountUnits[i] = previous.amountUnits[i];
+  }
+  next.matchFields = previous.matchFields.filter((key) =>
+    next.mapping.includes(key),
+  );
+  next.matchLocked = previous.matchLocked;
+  return next;
 }
 
 // Unknown text (including plausible personal names and workbook titles) stays local.
@@ -75,7 +100,7 @@ function maskText(text: string) {
       /[\w.%+\-]+@([\w.-]+\.[a-z]{2,})/gi,
       (full: string, domain: string) => full[0] + "***@" + domain,
     )
-    .replace(/\+?\d(?:[\s().\-–—]*\d){6,}[xX]?/gu, maskDigits);
+    .replace(/\+?\d(?:[\s(),.\-–—]*\d){6,}[xX]?/gu, maskDigits);
 }
 function safeLabel(s: string, fields: PublishedFieldView[]) {
   const key = normalizeHeader(s);
@@ -97,7 +122,7 @@ function safeValue(raw: string): string | undefined {
     return v;
   if (/^[\w.%+\-]+@[\w.-]+\.[a-z]{2,}$/i.test(v)) return clip(maskText(v));
   if (
-    /^[+\d(][\d\s()+.\-–—]{5,}\d[xX]?$/.test(v) &&
+    /^[+\d(][\d\s()+,.\-–—]{5,}\d[xX]?$/.test(v) &&
     v.replace(/\D/g, "").length >= 7
   )
     return maskDigits(v);
@@ -109,6 +134,15 @@ function safeValue(raw: string): string | undefined {
   )
     return clip(v);
 }
+function valueShape(raw: string) {
+  const safe = safeValue(raw);
+  if (!safe) return "[文本]";
+  if (safe.includes("@")) return "[邮箱]";
+  if (safe.includes("****") || safe === "[号码]") return "[号码]";
+  if (/^\d+[-/]\d+[-/]\d+$/.test(safe)) return "[日期]";
+  if (/^[¥￥+\d-]/.test(safe)) return "[数值]";
+  return "[文本]";
+}
 export function importValueCounts(
   rows: string[][],
   index: number,
@@ -117,8 +151,12 @@ export function importValueCounts(
   const counts = new Map<string, number>();
   for (const row of rows) {
     const raw = (row[index] ?? "").trim();
-    const parts =
-      field?.type === "MULTI_SELECT" ? splitImportOptions(raw) : [raw];
+    let parts = [raw];
+    if (field?.type === "MULTI_SELECT") parts = splitImportOptions(raw);
+    else if (!field && /[;；,，]/.test(raw)) {
+      const tokens = splitImportOptions(raw);
+      if (tokens.every((token) => enumLabel.test(token))) parts = tokens;
+    }
     for (const part of new Set(parts))
       if (part) counts.set(part, (counts.get(part) ?? 0) + 1);
   }
@@ -240,7 +278,7 @@ export function buildImportPreview({
     }
     const base = current
       ? draft
-      : emptyAssistDraft(parsed.headers, fields, admin);
+      : draftForImportHeader(parsed.headers, fields, admin, draft);
     const columns = parsed.headers.map((raw, i): ImportPreviewColumn => {
       const col = "C" + (i + 1),
         key = base.mapping[i];
@@ -257,11 +295,25 @@ export function buildImportPreview({
       else if (key.startsWith(APPEND))
         c.locked = { mode: "append", field: key.slice(APPEND.length) };
       else if (base.manual.includes(i)) c.locked = { mode: "skip" };
-      const header = safeLabel(raw, allowed);
+      const header =
+        safeLabel(raw, allowed) || (field ? clip(maskText(field.label)) : "");
       c.header = header;
       const isEnum = isOptionField(field);
       const isDate = field?.type === "DATE" || field?.type === "DATETIME";
-      if (!header || (c.locked && !isEnum && !isDate)) return c;
+      if (c.locked && !isEnum && !isDate) return c;
+      if (!header) {
+        c.header = raw ? "[文本]" : "";
+        c.samples = [
+          ...new Set(
+            parsed.rows
+              .slice(0, 5)
+              .map((r) => r[i])
+              .filter(Boolean)
+              .map(valueShape),
+          ),
+        ];
+        return c;
+      }
       if (isDate || !c.locked) {
         if (inferImportDateOrder(parsed.rows.map((r) => r[i])) === "ambiguous")
           ambiguousDates.add(candidate.rowNumber + ":" + col);
@@ -273,25 +325,30 @@ export function buildImportPreview({
           return c;
       }
       const counts = importValueCounts(parsed.rows, i, field);
+      const lowCardinality =
+        counts.size <= 50 &&
+        new Set(parsed.rows.map((r) => r[i]?.trim()).filter(Boolean)).size <=
+          50;
       const options = activeOptions(field),
         samples = new Set<string>();
       const values: NonNullable<ImportPreviewColumn["values"]> = [];
       for (const [raw, count] of counts) {
-        if (
-          isEnum &&
-          (matchImportOption(raw, options) !== undefined ||
-            base.valueChoices[i]?.has(raw))
-        )
+        const exact = isEnum ? matchingImportOptions(raw, options) : [];
+        if (isEnum && (exact.length === 1 || base.valueChoices[i]?.has(raw)))
           continue;
         if (current && isEnum) unresolvedValues++;
+        if (exact.length > 1) {
+          partial = true;
+          continue;
+        }
         const safe = safeValue(raw);
         if (!safe) {
           if (isEnum) partial = true;
           continue;
         }
-        if (counts.size > 50 && isEnum) partial = true;
-        if (!c.locked || isDate) if (samples.size < 5) samples.add(safe);
-        if (counts.size <= 50 && !isDate) {
+        if (!lowCardinality && isEnum) partial = true;
+        if ((!c.locked || isDate) && samples.size < 5) samples.add(safe);
+        if (lowCardinality && !isDate) {
           const id = "V" + (values.length + 1);
           values.push({ id, text: safe, count });
           bindings.set(candidate.rowNumber + ":" + col + ":" + id, raw);
@@ -337,11 +394,21 @@ export function buildImportPreview({
       (c) =>
         !c.excluded &&
         c.header &&
+        c.header !== "[文本]" &&
         (!c.locked ||
           c.values?.length ||
           (c.samples.length && c.locked.mode === "field")),
     ) ||
-      (!headerLocked && request.candidates.length > 1));
+      (!headerLocked &&
+        request.candidates.filter((row) =>
+          row.columns.some(
+            (c) =>
+              !c.excluded &&
+              c.locked?.mode !== "skip" &&
+              c.header &&
+              c.header !== "[文本]",
+          ),
+        ).length > 1));
   return {
     request,
     bindings,
@@ -442,6 +509,7 @@ export function applyImportAdvice(
       if (
         raw !== undefined &&
         !choices.has(raw) &&
+        matchingImportOptions(raw, activeOptions(field)).length === 0 &&
         (v.option === null ||
           activeOptions(field).some((o) => o.key === v.option))
       )
@@ -449,16 +517,19 @@ export function applyImportAdvice(
     }
     next.valueChoices[i] = choices;
   }
-  next.matchFields = [
-    ...new Set([
-      ...draft.matchFields,
-      ...plan.matchFields.filter(
-        (k) =>
-          next.mapping.includes(k) &&
-          allowed.some((f) => f.fieldKey === k && f.type !== "MULTI_SELECT") &&
-          (!queryKeys || queryKeys.includes(k)),
-      ),
-    ]),
-  ].slice(0, 3);
+  if (!draft.matchLocked)
+    next.matchFields = [
+      ...new Set([
+        ...draft.matchFields,
+        ...plan.matchFields.filter(
+          (k) =>
+            next.mapping.includes(k) &&
+            allowed.some(
+              (f) => f.fieldKey === k && f.type !== "MULTI_SELECT",
+            ) &&
+            (!queryKeys || queryKeys.includes(k)),
+        ),
+      ]),
+    ].slice(0, 3);
   return next;
 }
