@@ -12,6 +12,7 @@ import {
 
 // Standalone feature components rely on their host workspace to provide entitlements.
 // A mounted workspace fails closed while its capabilities are unavailable.
+export const WorkspaceMemberContext = createContext<string | null>(null);
 export const AiAccessContext = createContext<Capabilities | null | undefined>(
   undefined,
 );
@@ -36,9 +37,11 @@ export function WorkspaceAiAccess({
     void refetch();
   }, [path, refetch]);
   return (
-    <AiAccessContext.Provider value={data ?? null}>
-      {children}
-    </AiAccessContext.Provider>
+    <WorkspaceMemberContext.Provider value={memberId}>
+      <AiAccessContext.Provider value={data ?? null}>
+        {children}
+      </AiAccessContext.Provider>
+    </WorkspaceMemberContext.Provider>
   );
 }
 export function useAiFeature(feature: AiFeature) {
@@ -76,8 +79,10 @@ export function CurrentQuotaNotice() {
   return caps?.disabled ? null : <QuotaNotice capabilities={caps} />;
 }
 function quotaExhausted(c: Capabilities | null | undefined) {
-  return c?.notice === "company_exhausted" ||
-    (c?.notice === "personal" && c.percent !== null && c.percent >= 100);
+  return (
+    c?.notice === "company_exhausted" ||
+    (c?.notice === "personal" && c.percent !== null && c.percent >= 100)
+  );
 }
 export function useQuotaExhausted() {
   return quotaExhausted(useContext(AiAccessContext));
@@ -101,7 +106,9 @@ export function QuotaNotice({
           : "本月 AI 额度已用完") +
         "，" +
         date +
-        (c.notice === "company_exhausted" ? "恢复。如需增加，请联系管理员" : "恢复")
+        (c.notice === "company_exhausted"
+          ? "恢复。如需增加，请联系管理员"
+          : "恢复")
       : c.notice === "personal"
         ? "本人本月已用 " +
           formatPercent(c.percent ?? 0) +

@@ -1,0 +1,93 @@
+.box {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle, #dde3ea);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+}
+.header,
+.actions,
+.item,
+.records li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.header,
+.item,
+.records li {
+  justify-content: space-between;
+}
+.header h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.content,
+.records,
+.item {
+  animation: brief-enter 0.18s ease-out;
+}
+.content,
+.records {
+  margin-top: 8px;
+}
+.actions,
+.empty,
+.records li span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.item {
+  padding: 10px 0 0;
+  overflow-wrap: anywhere;
+}
+.item p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+.records {
+  padding: 0;
+  list-style: none;
+}
+.records li {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border-subtle, #eee);
+}
+.box button,
+.box a {
+  transition: transform 0.15s ease;
+}
+.box button:active,
+.box a:active {
+  transform: scale(0.98);
+}
+.form {
+  max-width: 650px;
+  display: grid;
+  gap: 18px;
+}
+.form label {
+  display: grid;
+  gap: 6px;
+}
+@keyframes brief-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .content,
+  .records,
+  .item,
+  .box button,
+  .box a {
+    animation: none;
+    transition: none;
+  }
+}

@@ -63,6 +63,11 @@ export function workspaceSettingsNavigation(
     {
       label: "数据",
       items: [
+        {
+          href: `${root}/settings/daily-brief`,
+          label: "今日简报",
+          icon: "calendar",
+        },
         { href: `${root}/settings/ai`, label: "AI", icon: "ai" },
         { href: `${root}/settings/objects`, label: "业务表", icon: "object" },
         {

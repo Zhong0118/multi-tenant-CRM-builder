@@ -506,7 +506,7 @@
 
 .agendaBody {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 34fr) minmax(0, 30fr) minmax(0, 36fr);
   gap: 16px 24px;
 }
 

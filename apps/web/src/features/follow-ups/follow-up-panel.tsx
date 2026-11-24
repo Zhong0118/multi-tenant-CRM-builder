@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { briefApi } from "@/features/daily-brief/brief-api";
 import { EllipsisOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Alert,
@@ -89,6 +90,25 @@ export function FollowUpPanel({
   });
   const [newDate, setNewDate] = useState("");
   const [error, setError] = useState<string>();
+  const canCompose = record?.canCreate;
+  useEffect(() => {
+    if (!recordId || !canCompose || new URLSearchParams(window.location.search).get("briefFollowup") !== "1") return;
+    let active = true;
+    void briefApi.suggestions(tenantCode).then((result) => {
+      if (!active) return;
+      const item = result.items.find((entry) => entry.recordId === recordId && entry.canFollowUp);
+      if (!item) {
+        setError("这条建议已失效，请返回工作台查看。");
+        return;
+      }
+      setTitle(item.suggestedTitle);
+      setDueAt(item.suggestedDue ? item.suggestedDue + "T09:00" : "");
+      setComposing(true);
+    }).catch((error) => {
+      if (active) setError(toApiError(error).message);
+    });
+    return () => { active = false; };
+  }, [tenantCode, recordId, canCompose]);
   const key = followUpQueryKeys.root(tenantCode);
   const query = useQuery({
     queryKey: [...key, record?.id, status, page],
