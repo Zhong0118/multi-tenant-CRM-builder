@@ -186,7 +186,7 @@ export class DailyBriefService {
               objectCode: c.objectCode,
               canFollowUp: c.canFollowUp,
               overdueFollowUpId: c.overdueFollowUpId,
-              reason: displayBriefReason(c.title, cited),
+              reason: displayBriefReason(c.title, cited, c.titleFieldLabel),
               ...displayBriefWording(
                 i.wordingScope === currentWordingScope
                   ? {

@@ -1,6 +1,7 @@
 import {
   briefPromptRecords,
   displayBriefWording,
+  displayBriefReason,
   validateSuggestions,
 } from './brief-suggestions';
 
@@ -309,4 +310,20 @@ it('summarizes a multiline communication only for the visible reason', () => {
   expect(
     validateSuggestions({ items: [grounded] }, rows, '2026-11-24')[0].reason,
   ).toBe('示例客户：记录沟通，已核对收件地址；样品尚未收到。');
+});
+
+it('omits the repeated title field and separates cited facts cleanly', () => {
+  expect(
+    displayBriefReason(
+      '远山科技',
+      ['沟通：已确认交期。', '企业字号：远山科技', '商机阶段：方案报价'],
+      '企业字号',
+    ),
+  ).toBe('远山科技：记录沟通，已确认交期；商机阶段：方案报价');
+  expect(
+    displayBriefReason('远山科技', ['企业字号：远山科技'], '企业字号'),
+  ).toBe('');
+  expect(displayBriefReason('远山科技', ['合作方：远山科技'], '企业字号')).toBe(
+    '合作方：远山科技',
+  );
 });

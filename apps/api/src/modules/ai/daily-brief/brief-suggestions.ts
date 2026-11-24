@@ -51,6 +51,7 @@ const reasonLabels = [
   '最后联系或创建于',
 ];
 interface Candidate {
+  titleFieldLabel?: string;
   recordRef: string;
   recordId: string;
   fingerprint: string;
@@ -194,6 +195,9 @@ export async function briefCandidates(
     return [
       {
         ...record,
+        titleFieldLabel: schema.fields.find(
+          (f) => f.fieldKey === schema.object.titleFieldKey,
+        )?.label,
         overdueFollowUpId: record.canFollowUp ? detail.overdueFollowUpId : null,
         recordRef,
         fingerprint,
@@ -280,14 +284,22 @@ export function displayBriefWording(item: {
   };
 }
 
-export function displayBriefReason(title: string, facts: string[]) {
+export function displayBriefReason(
+  title: string,
+  facts: string[],
+  titleFieldLabel?: string,
+) {
   return facts
+    .filter(
+      (text) => !titleFieldLabel || text !== titleFieldLabel + '：' + title,
+    )
     .map((text) =>
       text.startsWith('沟通：')
         ? reportCommunication(title, '记录沟通', text.slice(3))
         : text,
     )
-    .join('；');
+    .join('；')
+    .replace(/。；/gu, '；');
 }
 
 export function validateSuggestions(
@@ -346,7 +358,7 @@ export function validateSuggestions(
           recordId: c.recordId,
           fingerprint: c.fingerprint,
           reasonFactRefs: i.reasonFactRefs,
-          reason: displayBriefReason(c.title, sources),
+          reason: displayBriefReason(c.title, sources, c.titleFieldLabel),
           action: i.action,
           ...(usedFallback
             ? fallbackWording(i.action)

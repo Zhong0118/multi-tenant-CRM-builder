@@ -179,7 +179,7 @@ export function BriefSuggestions({
                           <strong>{i.suggestedTitle}</strong> · {i.title}（
                           {i.objectName}）
                           {i.explanation && <p>{i.explanation}</p>}
-                          <p>依据 · {i.reason}</p>
+                          {i.reason && <p>依据 · {i.reason}</p>}
                         </div>
                         <div className={styles.actions}>
                           <Link href={href}>打开记录</Link>
