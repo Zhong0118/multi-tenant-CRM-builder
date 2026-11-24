@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
+import { isModelAdminPath } from '../security/http-logger';
 import { API_ERROR_MESSAGES, type ApiErrorCode } from './api-error-code';
 import { ApiException, type FieldErrors } from './api.exception';
 
@@ -29,7 +30,19 @@ interface RequestWithId extends Request {
 export class ApiExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ApiExceptionFilter.name);
 
-  toBody(exception: unknown, requestId: string): ApiErrorBody {
+  toBody(
+    exception: unknown,
+    requestId: string,
+    modelAdmin = false,
+  ): ApiErrorBody {
+    if (
+      modelAdmin &&
+      exception instanceof Error &&
+      'type' in exception &&
+      exception.type === 'entity.parse.failed'
+    ) {
+      exception = new ApiException('VALIDATION_FAILED', 400);
+    }
     if (
       exception instanceof Error &&
       'type' in exception &&
@@ -68,10 +81,13 @@ export class ApiExceptionFilter implements ExceptionFilter {
     // An unexpected failure is a defect, not a domain outcome. The client only
     // ever sees the generic envelope, so the cause has to reach the server log
     // against its request id or it is unrecoverable in production.
-    this.logger.error(
-      `Unhandled failure for request ${requestId}: ${describe(exception)}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    if (modelAdmin)
+      this.logger.error(`Model configuration request failed: ${requestId}`);
+    else
+      this.logger.error(
+        `Unhandled failure for request ${requestId}: ${describe(exception)}`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
 
     return {
       code: 'INTERNAL_ERROR',
@@ -86,7 +102,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const http = host.switchToHttp();
     const request = http.getRequest<RequestWithId>();
     const response = http.getResponse<Response>();
-    const body = this.toBody(exception, request.requestId ?? 'req_unknown');
+    const body = this.toBody(
+      exception,
+      request.requestId ?? 'req_unknown',
+      isModelAdminPath(request.originalUrl ?? request.url),
+    );
 
     if (body.retryAfterSeconds)
       response.setHeader('Retry-After', body.retryAfterSeconds);
