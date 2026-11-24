@@ -884,6 +884,7 @@ export function RecordImportDrawer({
             <Select
               mode="multiple"
               aria-label="查重字段"
+              style={{ minWidth: "min(320px, 100%)" }}
               value={matchFields}
               maxCount={3}
               disabled={!!busy || loadingFile || mappingLocked}
