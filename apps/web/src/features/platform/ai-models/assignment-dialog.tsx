@@ -14,6 +14,7 @@ import {
   type Purpose,
   type Requirement,
 } from "./model-data";
+import { SelectField } from "./select-field";
 import styles from "./models.module.css";
 
 export function AssignmentDialog({
@@ -52,7 +53,9 @@ export function AssignmentDialog({
   const selected = revision?.models.find((m) => m.name === model);
   const revisionId = revision?.id,
     version = p?.version;
-  const available = !!selected && !ineligible(selected, purpose, requirements);
+  const available =
+    !!selected &&
+    !ineligible(selected, purpose, requirements, !!revision?.embeddings);
   const requestKey = JSON.stringify([
     providerId,
     version,
@@ -160,48 +163,42 @@ export function AssignmentDialog({
       <div className={styles.form}>
         {!testOnly && (
           <>
-            <label>
-              供应商
-              <select
-                value={providerId}
-                disabled={saving}
-                onChange={(e) => {
-                  reset();
-                  setProvider(e.target.value);
-                  setModel("");
-                }}
-              >
-                <option value="">请选择供应商</option>
-                {usable.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SelectField
+              label="供应商"
+              value={providerId || undefined}
+              disabled={saving}
+              placeholder="请选择供应商"
+              options={usable.map((p) => ({ value: p.id, label: p.name }))}
+              onChange={(id: string) => {
+                reset();
+                setProvider(id);
+                setModel("");
+              }}
+            />
             {!usable.length && <p>先添加供应商并完成连接测试</p>}
-            <label>
-              模型
-              <select
-                value={model}
-                disabled={!revision || saving}
-                onChange={(e) => {
-                  reset();
-                  setModel(e.target.value);
-                }}
-              >
-                <option value="">请选择模型</option>
-                {revision?.models.map((m) => {
-                  const why = ineligible(m, purpose, requirements);
-                  return (
-                    <option key={m.name} value={m.name} disabled={!!why}>
-                      {m.name}
-                      {why ? " · " + why : ""}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
+            <SelectField
+              label="模型"
+              value={model || undefined}
+              disabled={!revision || saving}
+              placeholder="请选择模型"
+              options={revision?.models.map((m) => {
+                const why = ineligible(
+                  m,
+                  purpose,
+                  requirements,
+                  revision.embeddings,
+                );
+                return {
+                  value: m.name,
+                  label: why ? m.name + " · " + why : m.name,
+                  disabled: !!why,
+                };
+              })}
+              onChange={(name: string) => {
+                reset();
+                setModel(name);
+              }}
+            />
           </>
         )}
         {testOnly && (

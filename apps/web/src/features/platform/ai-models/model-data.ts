@@ -55,6 +55,7 @@ export function ineligible(
   m: Model,
   purpose: Purpose,
   requirements: Requirement[],
+  embeddings: boolean,
 ) {
   if (!m.capabilities.includes(purpose))
     return {
@@ -62,6 +63,18 @@ export function ineligible(
       vision: "不支持图片输入",
       embedding: "不支持向量接口",
     }[purpose];
+  if (purpose === "embedding") return embeddings ? "" : "连接未开启向量接口";
+  if (!m.contextTokens || !m.maxOutputTokens)
+    return (
+      "请补齐" +
+      [
+        !m.contextTokens ? "上下文长度" : "",
+        !m.maxOutputTokens ? "最大输出" : "",
+      ]
+        .filter(Boolean)
+        .join("和")
+    );
+  if (m.maxOutputTokens > m.contextTokens) return "最大输出超过上下文长度";
   if (purpose === "text") {
     const insufficient = requirements.filter(
       (r) => r.tokens > (m.maxOutputTokens ?? 0),

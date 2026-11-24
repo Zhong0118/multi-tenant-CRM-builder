@@ -1,6 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Checkbox, Drawer, Input, Space, Steps } from "antd";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Collapse,
+  Drawer,
+  Input,
+  Space,
+  Steps,
+} from "antd";
 import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { CheckResults } from "./check-results";
 import {
@@ -23,6 +32,7 @@ import {
 } from "./model-data";
 import { ModelFields } from "./model-fields";
 import { modelEntry, presets } from "./presets";
+import { SelectField } from "./select-field";
 import styles from "./models.module.css";
 
 export function ProviderEditor({
@@ -82,7 +92,9 @@ export function ProviderEditor({
       ? target
       : m?.capabilities[0];
   const blocked =
-    m && purpose ? ineligible(m, purpose, requirements) : "请选择模型和用途";
+    m && purpose
+      ? ineligible(m, purpose, requirements, draft.embeddings)
+      : "请选择模型和用途";
   const passed =
     checks.length > 0 && checks.every((c) => c.status === "success");
   const assigned = data.assignments.filter(
@@ -349,81 +361,86 @@ export function ProviderEditor({
               />
             </label>
             <p>Key 仅在服务端加密保存</p>
-            <details open={draft.preset === "custom" || undefined}>
-              <summary>高级设置</summary>
-              <div className={styles.form}>
-                {draft.preset === "kimi" && (
-                  <label>
-                    服务地域
-                    <select
-                      value={
-                        draft.baseURL === "https://api.moonshot.ai/v1"
-                          ? "international"
-                          : draft.baseURL === "https://api.moonshot.cn/v1"
-                            ? "china"
-                            : "custom"
-                      }
-                      onChange={(e) =>
-                        patch({
-                          baseURL:
-                            e.target.value === "china"
-                              ? "https://api.moonshot.cn/v1"
-                              : "https://api.moonshot.ai/v1",
-                        })
-                      }
-                    >
-                      <option value="china">中国站</option>
-                      <option value="international">国际站</option>
-                      {![
-                        "https://api.moonshot.ai/v1",
-                        "https://api.moonshot.cn/v1",
-                      ].includes(draft.baseURL) && (
-                        <option value="custom">自定义</option>
+            <Collapse
+              size="small"
+              defaultActiveKey={draft.preset === "custom" ? ["connection"] : []}
+              items={[
+                {
+                  key: "connection",
+                  label: "高级设置",
+                  children: (
+                    <div className={styles.form}>
+                      {draft.preset === "kimi" && (
+                        <SelectField
+                          label="服务地域"
+                          value={draft.baseURL}
+                          disabled={!!busy}
+                          options={[
+                            {
+                              value: "https://api.moonshot.cn/v1",
+                              label: "中国站",
+                            },
+                            {
+                              value: "https://api.moonshot.ai/v1",
+                              label: "国际站",
+                            },
+                            ...(![
+                              "https://api.moonshot.cn/v1",
+                              "https://api.moonshot.ai/v1",
+                            ].includes(draft.baseURL)
+                              ? [{ value: draft.baseURL, label: "自定义" }]
+                              : []),
+                          ]}
+                          onChange={(baseURL: string) => {
+                            patch({ baseURL });
+                            setDiscovered([]);
+                          }}
+                        />
                       )}
-                    </select>
-                  </label>
-                )}
-                <label>
-                  API 地址
-                  <Input
-                    value={draft.baseURL}
-                    placeholder="https://"
-                    onChange={(e) => {
-                      patch({ baseURL: e.target.value });
-                      setDiscovered([]);
-                    }}
-                  />
-                </label>
-                <label>
-                  对话格式
-                  <select
-                    value={draft.protocol}
-                    onChange={(e) =>
-                      patch({ protocol: e.target.value as Protocol })
-                    }
-                  >
-                    <option value="chat">Chat Completions</option>
-                    <option value="responses">Responses</option>
-                  </select>
-                </label>
-                <Checkbox
-                  checked={draft.embeddings}
-                  onChange={(e) =>
-                    patch({
-                      embeddings: e.target.checked,
-                      models: draft.models.map((m) => ({
-                        ...m,
-                        capabilities: e.target.checked
-                          ? m.capabilities
-                          : m.capabilities.filter((c) => c !== "embedding"),
-                      })),
-                    })
-                  }
-                >
-                  支持向量接口
-                </Checkbox>
-              </div>
-            </details>
+                      <label>
+                        API 地址
+                        <Input
+                          value={draft.baseURL}
+                          placeholder="https://"
+                          onChange={(e) => {
+                            patch({ baseURL: e.target.value });
+                            setDiscovered([]);
+                          }}
+                        />
+                      </label>
+                      <SelectField<Protocol>
+                        label="对话格式"
+                        value={draft.protocol}
+                        disabled={!!busy}
+                        options={[
+                          { value: "chat", label: "Chat Completions" },
+                          { value: "responses", label: "Responses" },
+                        ]}
+                        onChange={(protocol) => patch({ protocol })}
+                      />
+                      <Checkbox
+                        checked={draft.embeddings}
+                        onChange={(e) =>
+                          patch({
+                            embeddings: e.target.checked,
+                            models: draft.models.map((m) => ({
+                              ...m,
+                              capabilities: e.target.checked
+                                ? m.capabilities
+                                : m.capabilities.filter(
+                                    (c) => c !== "embedding",
+                                  ),
+                            })),
+                          })
+                        }
+                      >
+                        支持向量接口
+                      </Checkbox>
+                    </div>
+                  ),
+                },
+              ]}
+            />
             {keyAddress && !keyStored && !key && (
               <p>更换服务地址后，请输入该服务的 Key</p>
             )}
@@ -447,47 +464,35 @@ export function ProviderEditor({
               </Button>
             </Space>
             {!!discovered.length && (
-              <label>
-                发现的模型
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    if (name) append(modelEntry(name));
-                  }}
-                >
-                  <option value="">选择并添加模型</option>
-                  {discovered.map((name) => (
-                    <option
-                      key={name}
-                      value={name}
-                      disabled={draft.models.some((m) => m.name === name)}
-                    >
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SelectField<string>
+                label="发现的模型"
+                value={undefined}
+                disabled={!!busy}
+                placeholder="选择并添加模型"
+                options={discovered.map((name) => ({
+                  value: name,
+                  label: name,
+                  disabled: draft.models.some((m) => m.name === name),
+                }))}
+                onChange={(name) => append(modelEntry(name))}
+              />
             )}
             {draft.models.length > 0 ? (
               <>
-                <label>
-                  编辑模型
-                  <select
-                    value={selected}
-                    onChange={(e) => {
-                      select(Number(e.target.value));
-                      setChecks([]);
-                      setError("");
-                    }}
-                  >
-                    {draft.models.map((m, i) => (
-                      <option key={i} value={i}>
-                        {m.name || "新模型"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <SelectField<number>
+                  label="编辑模型"
+                  value={selected}
+                  disabled={!!busy}
+                  options={draft.models.map((m, i) => ({
+                    value: i,
+                    label: m.name || "新模型",
+                  }))}
+                  onChange={(i) => {
+                    select(i);
+                    setChecks([]);
+                    setError("");
+                  }}
+                />
                 {m && (
                   <ModelFields
                     model={m}
@@ -502,25 +507,21 @@ export function ProviderEditor({
                   />
                 )}
                 {m && (
-                  <label>
-                    测试用途
-                    <select
-                      disabled={importing}
-                      value={purpose ?? ""}
-                      onChange={(e) => {
-                        setTarget(e.target.value as Purpose);
-                        setChecks([]);
-                        setError("");
-                      }}
-                    >
-                      {!purpose && <option value="">请选择支持用途</option>}
-                      {m.capabilities.map((c) => (
-                        <option key={c} value={c}>
-                          {purposeNames[c]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <SelectField<Purpose>
+                    label="测试用途"
+                    value={purpose}
+                    disabled={importing || !!busy}
+                    placeholder="请选择支持用途"
+                    options={m.capabilities.map((c) => ({
+                      value: c,
+                      label: purposeNames[c],
+                    }))}
+                    onChange={(c) => {
+                      setTarget(c);
+                      setChecks([]);
+                      setError("");
+                    }}
+                  />
                 )}
                 {blocked && <p>{blocked}</p>}
               </>

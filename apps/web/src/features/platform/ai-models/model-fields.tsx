@@ -1,4 +1,4 @@
-import { Button, Checkbox, Input, Space } from "antd";
+import { Button, Checkbox, Collapse, Input, Space } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import { purposes, purposeNames, type Model } from "./model-data";
 import styles from "./models.module.css";
@@ -78,32 +78,42 @@ export function ModelFields({
           </label>
         )}
       </div>
-      <details>
-        <summary>计价（每百万 token）</summary>
-        <div className={styles.columns}>
-          {(["inputPrice", "outputPrice"] as const).map((field, i) => (
-            <label key={field}>
-              {i ? "输出单价" : "输入单价"}
-              <Input
-                inputMode="decimal"
-                value={model[field] ?? ""}
-                onChange={(e) => change({ [field]: e.target.value || null })}
-              />
-            </label>
-          ))}
-          <label>
-            币种
-            <Input
-              placeholder="CNY / USD"
-              maxLength={3}
-              value={model.currency ?? ""}
-              onChange={(e) =>
-                change({ currency: e.target.value.toUpperCase() || null })
-              }
-            />
-          </label>
-        </div>
-      </details>
+      <Collapse
+        size="small"
+        items={[
+          {
+            key: "pricing",
+            label: "计价（每百万 token）",
+            children: (
+              <div className={styles.columns}>
+                {(["inputPrice", "outputPrice"] as const).map((field, i) => (
+                  <label key={field}>
+                    {i ? "输出单价" : "输入单价"}
+                    <Input
+                      inputMode="decimal"
+                      value={model[field] ?? ""}
+                      onChange={(e) =>
+                        change({ [field]: e.target.value || null })
+                      }
+                    />
+                  </label>
+                ))}
+                <label>
+                  币种
+                  <Input
+                    placeholder="CNY / USD"
+                    maxLength={3}
+                    value={model.currency ?? ""}
+                    onChange={(e) =>
+                      change({ currency: e.target.value.toUpperCase() || null })
+                    }
+                  />
+                </label>
+              </div>
+            ),
+          },
+        ]}
+      />
       <div>
         <Button
           danger

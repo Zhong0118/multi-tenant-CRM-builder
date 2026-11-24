@@ -20,7 +20,7 @@ vi.mock("../ai-governance/common", () => ({
 const model = (
   name: string,
   capabilities: string[],
-  maxOutputTokens = 32768,
+  maxOutputTokens: number | null = 32768,
 ) => ({
   name,
   capabilities,
@@ -59,6 +59,7 @@ const provider = {
         model("vector", ["embedding"]),
         model("short", ["text"], 4096),
         model("writer", ["text"]),
+        model("glm-4.6v", ["text", "vision"], null),
       ],
       tests: [test],
     },
@@ -106,8 +107,68 @@ function show(
   );
   return send;
 }
+async function openChoices(label: string) {
+  const control = screen.getByRole("combobox", { name: label });
+  fireEvent.mouseDown(control);
+  return waitFor(() => {
+    expect(control).toHaveAttribute("aria-expanded", "true");
+    const menu = document.getElementById(
+      control.getAttribute("aria-controls")!,
+    );
+    expect(menu).toHaveAttribute("role", "listbox");
+    return within(menu!);
+  });
+}
+async function choose(label: string, name: string) {
+  const menu = await openChoices(label);
+  fireEvent.click(menu.getByRole("option", { name }));
+}
 afterEach(() => vi.unstubAllGlobals());
 describe("平台模型设置", () => {
+  it("视觉分配和供应商编辑都说明最大输出未填写", async () => {
+    const send = show();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "更换视觉模型" }),
+    );
+    await choose("供应商", "百炼北京");
+    const menu = await openChoices("模型");
+    fireEvent.click(
+      menu.getByRole("option", { name: /glm-4.6v.*请补齐最大输出/ }),
+    );
+    expect(send.mock.calls.some(([u]) => u.endsWith("/test"))).toBe(false);
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.click(dialog.getByRole("button", { name: /取\s*消/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /编辑/ }));
+    const editor = within(screen.getByRole("dialog"));
+    fireEvent.click(editor.getByRole("button", { name: "下一步" }));
+    await choose("编辑模型", "glm-4.6v");
+    await choose("测试用途", "视觉模型");
+    expect(editor.getByText("请补齐最大输出")).toBeInTheDocument();
+    expect(editor.getByRole("button", { name: "测试连接" })).toBeDisabled();
+  });
+  it("连接的向量开关关闭时，模型清单与测试表单均禁止使用向量用途", async () => {
+    const disabled = {
+      ...provider,
+      revisions: [{ ...provider.revisions[0], embeddings: false }],
+    };
+    const send = show(undefined, () => ({ ...data, providers: [disabled] }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "更换向量模型" }),
+    );
+    await choose("供应商", "百炼北京");
+    const options = await openChoices("模型");
+    fireEvent.click(
+      options.getByRole("option", { name: "vector · 连接未开启向量接口" }),
+    );
+    expect(send.mock.calls.some(([url]) => url.endsWith("/test"))).toBe(false);
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.click(dialog.getByRole("button", { name: /取\s*消/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /编辑/ }));
+    const editor = within(screen.getByRole("dialog"));
+    fireEvent.click(editor.getByRole("button", { name: "下一步" }));
+    expect(editor.getByText("连接未开启向量接口")).toBeVisible();
+    expect(editor.getByRole("button", { name: "测试连接" })).toBeDisabled();
+  });
   it("文字沿用环境配置，向量分配展示实测维度、状态和延迟", async () => {
     show();
     expect(await screen.findByText("部署模型 / previous")).toBeInTheDocument();
@@ -129,18 +190,16 @@ describe("平台模型设置", () => {
       await screen.findByRole("button", { name: "更换文字模型" }),
     );
     const dialog = within(screen.getByRole("dialog"));
-    fireEvent.change(dialog.getByLabelText("供应商"), {
-      target: { value: "p" },
-    });
-    expect(
-      dialog.getByRole("option", { name: /short.*最大输出不足 16000/ }),
-    ).toBeDisabled();
-    expect(
-      dialog.getByRole("option", { name: /vector.*不支持文字/ }),
-    ).toBeDisabled();
-    fireEvent.change(dialog.getByLabelText("模型"), {
-      target: { value: "writer" },
-    });
+    await choose("供应商", "百炼北京");
+    const options = await openChoices("模型");
+    fireEvent.click(
+      options.getByRole("option", { name: /short.*最大输出不足 16000/ }),
+    );
+    fireEvent.click(
+      options.getByRole("option", { name: /vector.*不支持文字/ }),
+    );
+    expect(send.mock.calls.some(([url]) => url.endsWith("/test"))).toBe(false);
+    fireEvent.click(options.getByRole("option", { name: "writer" }));
     expect(await dialog.findByText(/43 ms/)).toBeInTheDocument();
     expect(dialog.getByText(/所有公司立即生效/)).toBeInTheDocument();
     expect(dialog.getByText(/部署模型 \/ previous/)).toBeInTheDocument();
@@ -183,9 +242,8 @@ describe("平台模型设置", () => {
     expect(dialog.getByLabelText("API 地址")).toHaveValue(
       "https://api.moonshot.cn/v1",
     );
-    fireEvent.change(dialog.getByLabelText("服务地域"), {
-      target: { value: "international" },
-    });
+    await choose("服务地域", "国际站");
+    await choose("对话格式", "Responses");
     expect(dialog.getByLabelText("API 地址")).toHaveValue(
       "https://api.moonshot.ai/v1",
     );
@@ -205,6 +263,9 @@ describe("平台模型设置", () => {
         .filter((req) => Object.values(req.body).includes("test-only-input"))
         .map((req) => req.path),
     ).toEqual(["/api/v1/platform/ai-models/providers/kimi/key"]);
+    expect(
+      requests.find((req) => req.path.endsWith("/providers"))?.body.protocol,
+    ).toBe("responses");
     expect(requests.some((req) => req.path.endsWith("/activate"))).toBe(false);
   });
   it("向量维度有变化时，确认重建资料索引后才能应用", async () => {
@@ -213,12 +274,8 @@ describe("平台模型设置", () => {
       await screen.findByRole("button", { name: "更换向量模型" }),
     );
     const modal = within(screen.getByRole("dialog"));
-    fireEvent.change(modal.getByLabelText("供应商"), {
-      target: { value: "p" },
-    });
-    fireEvent.change(modal.getByLabelText("模型"), {
-      target: { value: "vector" },
-    });
+    await choose("供应商", "百炼北京");
+    await choose("模型", "vector");
     const reindex = await modal.findByRole("checkbox", {
       name: /已有资料需要重新建立索引/,
     });
@@ -323,7 +380,12 @@ describe("平台模型设置", () => {
     });
     fireEvent.click(modal.getByRole("button", { name: "下一步" }));
     fireEvent.click(modal.getByRole("button", { name: /获取模型列表/ }));
-    await modal.findByLabelText("发现的模型");
+    await modal.findByRole("combobox", { name: "发现的模型" });
+    await choose("发现的模型", "discovered");
+    expect(modal.getByLabelText("模型 ID")).toHaveValue("discovered");
+    await choose("编辑模型", "deepseek-flash");
+    await choose("测试用途", "视觉模型");
+    expect(modal.getByLabelText("模型 ID")).toHaveValue("deepseek-flash");
     fireEvent.click(modal.getByRole("button", { name: "上一步" }));
     expect(modal.getByLabelText("API Key")).toHaveValue("");
     fireEvent.click(modal.getByText("高级设置"));
