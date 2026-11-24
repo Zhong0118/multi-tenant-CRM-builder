@@ -105,6 +105,32 @@ describe('personal daily brief over HTTP', () => {
     >`INSERT INTO ai_plans(name,features,monthly_tokens) VALUES('brief fixture',ARRAY['daily_brief'],2000000) ON CONFLICT(name) DO UPDATE SET monthly_tokens=2000000 RETURNING id`;
     await db.$executeRaw`UPDATE tenant_ai_configs SET plan_id=${plan.id}::uuid WHERE tenant_id=${f.tenantA.id}::uuid`;
     const capture = jest.spyOn(FakeAiProvider.prototype, 'generateSalesDaily');
+    capture.mockImplementationOnce(async (input) => {
+      await input.onSend?.();
+      const { records } = JSON.parse(input.prompt) as {
+        records: {
+          recordRef: string;
+          facts: { ref: string; text: string }[];
+        }[];
+      };
+      return {
+        items: records.map((r) => {
+          const code = r.facts.find((fact) =>
+            fact.text.includes('initial-review-code'),
+          );
+          return {
+            recordRef: r.recordRef,
+            reasonFactRefs: [code?.ref ?? r.facts[0].ref],
+            action: 'call',
+            explanation: code
+              ? '请核对initial-review-code。'
+              : '联系经办人确认跟进安排。',
+            suggestedTitle: code ? '核对审核编号' : '确认跟进安排',
+            suggestedDue: null,
+          };
+        }),
+      };
+    });
     try {
       await Promise.all([
         post('/generate').send({ previous: null }).expect(201),
@@ -112,6 +138,33 @@ describe('personal daily brief over HTTP', () => {
       ]);
       let cached = read<'suggestions'>(await get('/suggestions').expect(200));
       expect(cached.items).toHaveLength(2);
+      expect(
+        cached.items.find((i) => i.recordId === f.ownedRecord.id),
+      ).toMatchObject({
+        suggestedTitle: '核对审核编号',
+        explanation: '请核对initial-review-code。',
+      });
+      await db.record.update({
+        where: { id: f.ownedRecord.id },
+        data: { ownerMemberId: f.otherEmployee.memberId },
+      });
+      const afterTransfer = read<'suggestions'>(
+        await get('/suggestions').expect(200),
+      );
+      expect(afterTransfer.items.map((i) => i.recordId)).toEqual([
+        f.workflowRecord.id,
+      ]);
+      expect(afterTransfer.items[0]).toMatchObject({
+        suggestedTitle: '致电确认近况',
+        explanation: '建议致电确认近况',
+      });
+      expect(JSON.stringify(afterTransfer)).not.toContain(
+        'initial-review-code',
+      );
+      await db.record.update({
+        where: { id: f.ownedRecord.id },
+        data: { ownerMemberId: f.employee.memberId },
+      });
       expect(cached.remaining).toBe(3);
       expect(capture).toHaveBeenCalledTimes(1);
       expect(capture.mock.calls[0][0].prompt).not.toContain('hidden-owned');

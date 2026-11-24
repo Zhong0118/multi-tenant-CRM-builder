@@ -18,6 +18,8 @@ import {
   briefCandidates,
   briefRecord,
   briefSystem,
+  fallbackWording,
+  wordingScope,
   suggestionSchema,
   validateSuggestions,
   type SavedItem,
@@ -158,6 +160,7 @@ export class DailyBriefService {
         const candidates = row?.items.length
           ? await briefCandidates(tx, a, scope)
           : [];
+        const currentWordingScope = wordingScope(candidates);
         const items = (row?.items ?? []).flatMap((i) => {
           const c = candidates.find(
             (c) => c.recordId === i.recordId && c.fingerprint === i.fingerprint,
@@ -171,9 +174,13 @@ export class DailyBriefService {
               objectCode: c.objectCode,
               canFollowUp: c.canFollowUp,
               reason: i.reason,
-              explanation: i.explanation,
+              ...(i.wordingScope === currentWordingScope
+                ? {
+                    explanation: i.explanation,
+                    suggestedTitle: i.suggestedTitle,
+                  }
+                : fallbackWording(i.action)),
               suggestedDue: i.suggestedDue,
-              suggestedTitle: i.suggestedTitle,
             },
           ];
         });
