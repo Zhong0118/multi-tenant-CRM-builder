@@ -126,6 +126,13 @@ export function isImportNullMarker(type: string, raw: string) {
   );
 }
 
+export function isImportFormulaError(type: string, value: string) {
+  return (
+    nullableImportTypes.has(type) &&
+    /^#(?:REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!)$/i.test(value)
+  );
+}
+
 export function coerceImportValue(
   type: string,
   raw: string,
@@ -134,11 +141,7 @@ export function coerceImportValue(
 ): unknown {
   const value = raw.trim();
   if (value === "" || isImportNullMarker(type, value)) return null;
-  if (
-    nullableImportTypes.has(type) &&
-    /^#(?:REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!)$/i.test(value)
-  )
-    throw new Error(`公式错误 ${value}`);
+  if (isImportFormulaError(type, value)) throw new Error(`公式错误 ${value}`);
   switch (type) {
     case "BOOLEAN":
       if (

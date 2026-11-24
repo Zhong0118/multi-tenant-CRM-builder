@@ -17,6 +17,7 @@ import {
 } from "@/features/objects/object-types";
 import {
   coerceImportValue,
+  isImportFormulaError,
   isImportNullMarker,
   matchImportOption,
   normalizeHeader,
@@ -519,7 +520,12 @@ export function remainingImportValues(
   let rowCount = 0;
   for (const row of rows) {
     const raw = row[index]?.trim();
-    if (!raw || isImportNullMarker(field.type, raw)) continue;
+    if (
+      !raw ||
+      isImportNullMarker(field.type, raw) ||
+      isImportFormulaError(field.type, raw)
+    )
+      continue;
     const parts =
       field.type === "MULTI_SELECT" ? splitImportOptions(raw) : [raw];
     let affected = false;

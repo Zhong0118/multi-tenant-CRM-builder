@@ -51,6 +51,17 @@ it("leaves only unresolved values blank across every page and undoes the batch w
   );
 });
 
+it("offers a mixed multi-select token while skipping a standalone null marker", () => {
+  const pending = remainingImportValues(
+    [["N/A"], ["A级；N/A；N/A"], ["#REF!"]],
+    0,
+    tier,
+  );
+  expect(pending.entries).toEqual([["N/A", 1]]);
+  expect(pending.values).toEqual(["N/A"]);
+  expect(pending.rowCount).toBe(1);
+});
+
 it.each([
   ["DATE", "2026年11月3日", "日期"],
   ["DATETIME", "2026-11-03T11:45:02+08:00", "日期时间"],

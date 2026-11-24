@@ -818,7 +818,7 @@ it("uses physical row three, appends two columns after the original note and kee
     ],
   });
   chooseFile(
-    "业务底表\n\n姓名,备注,来源渠道,客户评价,销售\n张三,待联系,展会,满意,员工乙",
+    "业务底表\n\n姓名,备注,来源渠道,客户评价,销售员\n张三,待联系,展会,满意,员工乙",
   );
   await screen.findByText(/已识别第 3 行为表头/);
   expect(screen.getByText(/仅公司管理员可按行指定负责人/)).toBeInTheDocument();

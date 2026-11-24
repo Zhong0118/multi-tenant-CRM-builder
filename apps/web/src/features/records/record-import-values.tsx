@@ -2,10 +2,8 @@ import { Button, Collapse, Select, Table } from "antd";
 import { useMemo, useState } from "react";
 import type { ImportColumnAdvice } from "@crm/contracts";
 import type { PublishedFieldView } from "@/features/objects/object-types";
-import { isImportNullMarker, matchImportOption } from "./record-csv";
 import {
   activeOptions,
-  importValueCounts,
   remainingImportValues,
   setRemainingImportValues,
   type ImportPreview,
@@ -41,15 +39,7 @@ export function ImportValues({
   );
   const canUndo = batchValues.some((raw) => choices?.get(raw) === null);
   const options = useMemo(() => activeOptions(field), [field]);
-  const entries = useMemo(
-    () =>
-      [...importValueCounts(rows, index, field)].filter(
-        ([v]) =>
-          !isImportNullMarker(field.type, v) &&
-          matchImportOption(v, options) === undefined,
-      ),
-    [rows, index, field, options],
-  );
+  const { entries } = remaining;
   if (!entries.length) return null;
   return (
     <Collapse
