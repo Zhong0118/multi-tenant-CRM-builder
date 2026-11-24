@@ -7,6 +7,7 @@
 | 三种用途均已有分配 | [1440](model-settings-1440.png) | [1280](model-settings-1280.png) |
 | 仅环境变量有文字模型 | [1440](environment-1440.png) | [1280](environment-1280.png) |
 | 新 Key 测试失败，旧分配仍在使用 | [1440](failed-edit-1440.png) | [1280](failed-edit-1280.png) |
+| 展开模型选项，显示无法分配的原因 | [1440](model-choices-1440.png) | [1280](model-choices-1280.png) |
 | 更换文字模型并确认影响 | [1440](model-switch-1440.png) | [1280](model-switch-1280.png) |
 | 添加供应商，选择预设 | [1440](provider-preset-1440.png) | [1280](provider-preset-1280.png) |
 | Kimi 中国站及高级连接设置 | [1440](provider-connection-1440.png) | [1280](provider-connection-1280.png) |
