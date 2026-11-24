@@ -1,6 +1,12 @@
 import { webcrypto } from "node:crypto";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { RuntimeObjectSchema } from "@/features/objects/object-types";
@@ -338,7 +344,7 @@ describe("RecordImportDrawer", () => {
       ],
     });
     setup(api);
-    chooseFile("姓名,线索状态\n张三,错误");
+    chooseFile("姓名,线索状态\n张三,待联系");
     await screen.findByText("1 行 · 2 列");
     fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
     await screen.findByText(/第 2 行：线索状态：字段值无效/);
@@ -470,4 +476,104 @@ it("drops retained duplicate fields when shared query permission is removed", as
       }),
     ),
   );
+});
+
+it("uses physical row three, appends two columns after the original note and keeps employee assignment local", async () => {
+  const { api } = setup(recordApi(), {
+    ...schema,
+    fields: [
+      ...schema.fields,
+      {
+        ...schema.fields[0],
+        id: "notes",
+        fieldKey: "notes",
+        label: "备注",
+        type: "TEXTAREA",
+        required: false,
+      },
+    ],
+  });
+  chooseFile(
+    "业务底表\n\n姓名,备注,来源渠道,客户评价,销售\n张三,待联系,展会,满意,员工乙",
+  );
+  await screen.findByText(/已识别第 3 行为表头/);
+  expect(screen.getByText(/仅公司管理员可按行指定负责人/)).toBeInTheDocument();
+  for (const header of ["来源渠道", "客户评价"]) {
+    const control = screen.getByLabelText("映射 " + header);
+    fireEvent.mouseDown(control);
+    const list = document.getElementById(
+      control.getAttribute("aria-controls")!,
+    )!;
+    fireEvent.click(
+      within(list.closest(".ant-select-dropdown") as HTMLElement).getByText(
+        "追加到「备注」",
+        { selector: ".ant-select-item-option-content" },
+      ),
+    );
+  }
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "检查数据" })).toBeEnabled(),
+  );
+  await checkAndImport();
+  await waitFor(() => expect(api.importRows).toHaveBeenCalledTimes(2));
+  const request = vi.mocked(api.importRows).mock.calls[1][2];
+  expect(request.rows).toEqual([
+    {
+      rowNumber: 4,
+      values: { name: "张三", notes: "待联系\n来源渠道：展会\n客户评价：满意" },
+    },
+  ]);
+  expect(request).not.toHaveProperty("ownerMemberId");
+  expect(request).not.toHaveProperty("importToPool");
+});
+
+it("requires admin resolution of unknown owners before checking and splits the confirmed rows", async () => {
+  const { api } = setup(recordApi(), schema, true);
+  chooseFile("姓名,业务员\n甲,员工乙\n乙,未匹配");
+  await screen.findByText("2 行 · 2 列");
+  expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
+  fireEvent.click(screen.getByText(/查看负责人对照/));
+  fireEvent.mouseDown(screen.getByLabelText("归属 未匹配"));
+  fireEvent.click(
+    await screen.findByText("这些行不导入", {
+      selector: ".ant-select-item-option-content",
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "检查数据" })).toBeEnabled(),
+  );
+  await checkAndImport();
+  await waitFor(() => expect(api.importRows).toHaveBeenCalledTimes(2));
+  for (const [, , input] of vi.mocked(api.importRows).mock.calls) {
+    expect(input.ownerMemberId).toBe("m2");
+    expect(input.rows).toEqual([{ rowNumber: 2, values: { name: "甲" } }]);
+  }
+});
+
+it("invalidates a completed check when a mapped field becomes read-only", async () => {
+  const { api, client, rerender, onClose, onCompleted } = setup();
+  chooseFile("姓名,线索状态\n张三,待联系");
+  await screen.findByText("1 行 · 2 列");
+  fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+  await screen.findByRole("button", { name: /确认导入/ });
+  const restricted = {
+    ...schema,
+    fields: schema.fields.map((f) =>
+      f.fieldKey === "lead_status" ? { ...f, access: "READ_ONLY" as const } : f,
+    ),
+  };
+  rerender(
+    <QueryClientProvider client={client}>
+      <RecordImportDrawer
+        schema={restricted}
+        tenantCode="northwind"
+        api={api}
+        onClose={onClose}
+        onCompleted={onCompleted}
+      />
+    </QueryClientProvider>,
+  );
+  expect(
+    screen.queryByRole("button", { name: /确认导入/ }),
+  ).not.toBeInTheDocument();
 });
