@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 // Rounded median wall times from the sales-daily development set.
-const seconds = { daily_brief: 15, writing: 5, daily_report: 1 };
+const seconds = { daily_brief: 2, writing: 5, daily_report: 1 };
 
 export function GenerationWait({ feature }: { feature: keyof typeof seconds }) {
   const [slow, setSlow] = useState(false);
