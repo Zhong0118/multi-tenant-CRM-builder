@@ -15,6 +15,8 @@ export interface ImportAssistRequest {
   sheet: string;
   currentHeader: number;
   headerLocked: boolean;
+  /** CRM-only fingerprints of leading cells, by physical column, for restricted-heading detection. */
+  headerEvidence: { col: string; hashes: string[] }[];
   /** All plausible physical header rows share a single model request. */
   candidates: { headerRow: number; columns: ImportPreviewColumn[] }[];
 }
