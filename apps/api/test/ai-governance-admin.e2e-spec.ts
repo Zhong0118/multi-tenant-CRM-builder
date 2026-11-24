@@ -46,7 +46,7 @@ describe('AI governance administration over HTTP with restricted PostgreSQL role
     }
     await closeCriticalHarness(h);
   });
-  it('serves the migrated catalog and refuses upcoming features over HTTP', async () => {
+  it('serves the migrated catalog and allows an explicit daily-feature grant over HTTP', async () => {
     const expected = featureCatalog;
     const platform = await http(
       f.tenantBAdmin,
@@ -61,12 +61,12 @@ describe('AI governance administration over HTTP with restricted PostgreSQL role
     expect(platform.body.catalog).toEqual(expected);
     expect(workspace.body.catalog).toEqual(expected);
     await http(f.tenantBAdmin, 'post', '/platform/ai-plans', {
-      name: 'Unreleased',
+      name: 'Daily writing',
       description: '',
       features: ['writing'],
       assignable: true,
       monthlyTokens: '100',
-    }).expect(400);
+    }).expect(200);
   });
   it('enforces session roles, stale previews, exact quota replays, audit and zero-content platform aggregates', async () => {
     const workspace = '/workspaces/' + f.tenantA.code + '/ai';

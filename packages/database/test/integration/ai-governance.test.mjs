@@ -729,7 +729,7 @@ test("effective quota can add a top-up to the maximum bigint plan", async () => 
   assert.equal((await month()).input_tokens, 1n);
 });
 
-test("the feature catalog keeps existing plans and rejects unreleased, duplicate, unknown or dependent-only grants", async () => {
+test("the feature catalog keeps existing plans and rejects duplicate, unknown or dependent-only grants", async () => {
   const rows = await q(
     admin,
     "SELECT key,released FROM ai_feature_catalog ORDER BY position",
@@ -737,10 +737,9 @@ test("the feature catalog keeps existing plans and rejects unreleased, duplicate
   assert.equal(rows.length, 8);
   assert.deepEqual(
     rows.filter((r) => !r.released).map((r) => r.key),
-    ["daily_brief", "writing", "daily_report"],
+    [],
   );
   for (const keys of [
-    "ARRAY['writing']",
     "ARRAY['assistant','assistant']",
     "ARRAY['unknown']",
     "ARRAY['write_proposal']",

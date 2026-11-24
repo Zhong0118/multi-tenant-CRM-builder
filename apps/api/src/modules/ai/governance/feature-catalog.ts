@@ -53,7 +53,7 @@ export const featureCatalog = [
     group: '销售日常',
     requires: null,
     outputLimit: 2000,
-    released: false,
+    released: true,
   },
   {
     key: 'writing',
@@ -62,7 +62,7 @@ export const featureCatalog = [
     group: '销售日常',
     requires: null,
     outputLimit: 1500,
-    released: false,
+    released: true,
   },
   {
     key: 'daily_report',
@@ -71,7 +71,7 @@ export const featureCatalog = [
     group: '销售日常',
     requires: null,
     outputLimit: 2500,
-    released: false,
+    released: true,
   },
 ] as const;
 export type FeatureKey = (typeof featureCatalog)[number]['key'];
