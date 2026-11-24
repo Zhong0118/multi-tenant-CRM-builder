@@ -1,3 +1,4 @@
+import type { ImportAssistModelInput } from '../import-assist-model';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import type {
   AiProvider,
@@ -35,6 +36,15 @@ export class MeteredFakeProvider extends FakeAiProvider {
       await meter.finish(failureStatus(signal));
       throw error;
     }
+  }
+  override generateImportAssist(
+    input: ImportAssistModelInput,
+    actor: TenantContext,
+    signal = new AbortController().signal,
+  ) {
+    return this.generate(actor, 'import_assist', input, signal, () =>
+      super.generateImportAssist(input, actor, signal),
+    );
   }
   override generateSalesDaily(input: SalesDailyInput) {
     return this.generate(

@@ -469,3 +469,39 @@ it.each([
     expect(body.input[0].role).toBe('system');
   },
 );
+
+it.each(['default', 'none'] as const)(
+  'makes one import mapping request with %s reasoning',
+  async (mode) => {
+    const send = mockUpstream(() => new Response(null, { status: 400 }));
+    const provider = new VercelOpenAiProvider({
+      apiKey: 'fixture',
+      modelKey: 'deepseek-flash',
+      baseURL: 'https://api.deepseek.com',
+      protocol: 'responses',
+    });
+    await expect(
+      provider.generateImportAssist(
+        {
+          sheet: '商机',
+          currentHeader: 1,
+          headerLocked: true,
+          fields: [],
+          candidates: [],
+        },
+        {} as never,
+        new AbortController().signal,
+        mode,
+      ),
+    ).rejects.toBeDefined();
+    expect(send).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(String(send.mock.calls[0][1]?.body)) as {
+      reasoning?: unknown;
+      max_output_tokens: number;
+    };
+    expect(body.reasoning).toEqual(
+      mode === 'none' ? { effort: 'none' } : undefined,
+    );
+    expect(body.max_output_tokens).toBe(4000);
+  },
+);

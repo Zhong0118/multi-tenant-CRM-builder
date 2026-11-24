@@ -1,3 +1,6 @@
+import type { TenantContext } from '../../../common/tenancy/tenant-context';
+import type { ImportAssistModelInput } from '../import-assist-model';
+import { fakeImportAssist } from './fake-import-assist';
 import { fakeTableBlueprint } from './fake-table-builder';
 import type { TableProviderInput } from '../table-model';
 import { simulateAssistant } from './fake-assistant';
@@ -28,6 +31,14 @@ export function getFakeAiProviderCapturedToolResult(): unknown {
 
 // Local scripted provider for deterministic integration and browser testing.
 export class FakeAiProvider implements AiProvider {
+  async generateImportAssist(
+    input: ImportAssistModelInput,
+    _actor: TenantContext,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    signal?.throwIfAborted();
+    return Promise.resolve(fakeImportAssist(input));
+  }
   async generateSalesDaily(input: SalesDailyInput): Promise<unknown> {
     input.signal?.throwIfAborted();
     await input.onSend?.();

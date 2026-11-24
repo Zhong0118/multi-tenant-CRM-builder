@@ -1,6 +1,8 @@
 import { TABLE_BUILDER_GENERATION_TIMEOUT_MS } from '../table-builder-payload';
 import { modelClient } from './model-client';
-import type { ZodType } from 'zod';
+import type { FlexibleSchema } from 'ai';
+import type { ImportAssistModelInput } from '../import-assist-model';
+import { importSystem, importWireSchema } from './import-mapping-output';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import {
   failureStatus,
@@ -80,6 +82,29 @@ export class VercelOpenAiProvider implements AiProvider {
     return openai[this.protocol](this.modelKey);
   }
 
+  generateImportAssist(
+    input: ImportAssistModelInput,
+    actor: TenantContext,
+    signal: AbortSignal = new AbortController().signal,
+    reasoning: 'default' | 'none' = 'default',
+  ) {
+    const bytes = Buffer.byteLength(
+      JSON.stringify({
+        system: importSystem,
+        input,
+        schema: importWireSchema.jsonSchema,
+      }),
+    );
+    if (bytes > 48 * 1024) throw new Error('IMPORT_PREVIEW_TOO_LARGE');
+    return this.generateStructured(input, signal, actor, {
+      feature: 'import_assist',
+      name: 'import_plan',
+      schema: importWireSchema,
+      system: importSystem,
+      disableReasoning: reasoning === 'none',
+    });
+  }
+
   generateSalesDaily(input: SalesDailyInput) {
     return this.generateStructured(
       JSON.parse(input.prompt) as unknown,
@@ -152,7 +177,8 @@ export class VercelOpenAiProvider implements AiProvider {
     config: {
       feature: Exclude<GenerationFeature, 'assistant'>;
       name: string;
-      schema: ZodType<T>;
+      schema: FlexibleSchema<T>;
+      disableReasoning?: boolean;
       onSend?: () => void | Promise<void>;
       system: string;
     },
@@ -185,7 +211,7 @@ export class VercelOpenAiProvider implements AiProvider {
             // On long shortlists DeepSeek can spend the entire output budget
             // on reasoning before returning any suggestions. The SDK needs
             // forceReasoning to forward the official endpoint's effort setting.
-            ...(config.feature === 'daily_brief' &&
+            ...((config.feature === 'daily_brief' || config.disableReasoning) &&
             this.protocol === 'responses' &&
             this.modelKey === 'deepseek-flash' &&
             this.baseURL &&
