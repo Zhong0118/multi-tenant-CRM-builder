@@ -387,16 +387,14 @@ describe('platform model configuration over HTTP', () => {
       ).body,
     );
     async function probe(dimensions: number) {
-      jest
-        .mocked(testModel)
-        .mockResolvedValue({
-          steps: [{ name: 'embedding', durationMs: 2, ok: true }],
-          durationMs: 2,
-          inputTokens: 2,
-          outputTokens: 0,
-          errorCode: null,
-          dimensions,
-        });
+      jest.mocked(testModel).mockResolvedValue({
+        steps: [{ name: 'embedding', durationMs: 2, ok: true }],
+        durationMs: 2,
+        inputTokens: 2,
+        outputTokens: 0,
+        errorCode: null,
+        dimensions,
+      });
       return outputs.result.parse(
         (
           await api(platform, 'post', path + '/test', {
