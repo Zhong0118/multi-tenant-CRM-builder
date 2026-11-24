@@ -5,13 +5,7 @@ import { useState } from "react";
 import { PageSection, SettingRow } from "@/components/layout/page";
 import { ReadingPanel } from "@/components/workbench/surface";
 import { browserApiClient as api } from "@/lib/api/browser-client";
-import {
-  ReadState,
-  result,
-  useAction,
-  usePlans,
-  useSettings,
-} from "./common";
+import { ReadState, result, useAction, usePlans, useSettings } from "./common";
 import styles from "./platform-ai.module.css";
 export function PlatformAiSettings() {
   const q = useSettings(),
@@ -68,9 +62,12 @@ export function PlatformAiSettings() {
             [s.provider, s.model].filter(Boolean).join(" · ") || "供应商未设置"
           }
         >
-          <Tag color={s.configured ? "green" : "orange"}>
-            {s.configured ? "已配置" : "待配置"}
-          </Tag>
+          <Space wrap>
+            <Tag color={s.configured ? "green" : "orange"}>
+              {s.configured ? "已配置" : "待配置"}
+            </Tag>
+            <Button href="/platform/settings/ai-models">管理 AI 模型</Button>
+          </Space>
         </SettingRow>
         {!!s.anomalies.length && (
           <Alert
