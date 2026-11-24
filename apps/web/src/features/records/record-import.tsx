@@ -7,11 +7,12 @@ import {
   Collapse,
   Tag,
   Drawer,
+  Popconfirm,
   Progress,
   Select,
   Typography,
 } from "antd";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   FIELD_TYPE_LABELS,
@@ -58,7 +59,42 @@ import styles from "./records.module.css";
 
 import { memberSelectOptions } from "@/components/identity/member-identity";
 
+import type { ImportAssistPlan } from "@crm/contracts";
+import { ImportValues } from "./record-import-values";
+import { requestImportAssist } from "./record-import-assist-api";
+import {
+  buildImportHeaderEvidence,
+  buildImportPreview,
+  applyImportAdvice,
+  draftForImportHeader,
+  importableField,
+  isOptionField,
+  type AssistDraft,
+  type ImportPreview,
+  type AdoptChoice,
+} from "./record-import-assist";
+
+// Byte identity survives renames, sheet changes and reopening the drawer.
+const attemptedFiles = new Set<string>();
+type AssistSnapshot = {
+  scope: string;
+  draft: AssistDraft;
+  headerRow: number;
+  autoHeader: boolean;
+  headerLocked: boolean;
+  ownerChoices: Map<string, ImportDestination>;
+  ownerMemberId?: string;
+  importToPool: boolean;
+  excluded: number[];
+};
+type Generated = {
+  plan: ImportAssistPlan;
+  preview: ImportPreview;
+  scope: string;
+};
 export interface RecordImportDrawerProps {
+  assistEnabled?: boolean;
+  memberKey?: string | null;
   tenantCode: string;
   schema: RuntimeObjectSchema;
   api: RecordApi;
@@ -71,6 +107,8 @@ export interface RecordImportDrawerProps {
 }
 
 export function RecordImportDrawer({
+  assistEnabled = false,
+  memberKey,
   tenantCode,
   schema,
   api,
@@ -81,12 +119,60 @@ export function RecordImportDrawer({
   onClose,
   onCompleted,
 }: RecordImportDrawerProps) {
-  const importable = schema.fields.filter(
-    (field) =>
-      (field.access === "EDIT" || field.access === "CREATE_ONLY") &&
-      !field.isSystem &&
-      field.type !== "MEMBER",
+  const importable = useMemo(
+    () => schema.fields.filter(importableField),
+    [schema.fields],
   );
+  const [evidence, setEvidence] = useState<
+    Awaited<ReturnType<typeof buildImportHeaderEvidence>>
+  >([]);
+  const [fileKey, setFileKey] = useState("");
+  const [headerLocked, setHeaderLocked] = useState(false);
+  const [excluded, setExcluded] = useState<number[]>([]);
+  const [amountUnits, setAmountUnits] = useState<AssistDraft["amountUnits"]>(
+    {},
+  );
+  const [valueChoices, setValueChoices] = useState<AssistDraft["valueChoices"]>(
+    {},
+  );
+  const [adoptedColumns, setAdoptedColumns] = useState<string[]>([]);
+  const [generated, setGenerated] = useState<Generated>();
+  const [snapshot, setSnapshot] = useState<AssistSnapshot>();
+  const [draftChanged, setDraftChanged] = useState(false);
+  const [started, setStarted] = useState<number>();
+  const [elapsed, setElapsed] = useState(0);
+  const [aiNotice, setAiNotice] = useState("");
+  const [revoked, setRevoked] = useState(false);
+  const [featureDenied, setFeatureDenied] = useState(false);
+  const assistScope = JSON.stringify([
+    tenantCode,
+    memberKey,
+    schema.object.code,
+    schema.publication.number,
+    schema.fields,
+    schema.queryFieldKeys,
+    assistEnabled,
+    canChooseOwner,
+  ]);
+  const controller = useRef<AbortController | null>(null);
+  useLayoutEffect(
+    () => () => {
+      if (controller.current) {
+        controller.current.abort();
+        controller.current = null;
+        setStarted(undefined);
+      }
+    },
+    [assistScope],
+  );
+  useEffect(() => {
+    if (started === undefined) return;
+    const timer = setInterval(
+      () => setElapsed(Math.floor((Date.now() - started) / 1000)),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [started]);
   const [ownerMemberId, setOwnerMemberId] = useState<string>();
   const [importToPool, setImportToPool] = useState(
     Boolean(
@@ -101,6 +187,7 @@ export function RecordImportDrawer({
   const readRequest = useRef(0);
   const [source, setSource] = useState<ImportFile>();
   const [sheetName, setSheetName] = useState("");
+  const [matchLocked, setMatchLocked] = useState(false);
   const [selectedMatchFields, setMatchFields] = useState<string[]>([]);
   const [busy, setBusy] = useState<"check" | "import">();
   const [loadingFile, setLoadingFile] = useState(false);
@@ -250,6 +337,7 @@ export function RecordImportDrawer({
       .map((item) => item.rowNumber),
   );
   const canCheck =
+    !revoked &&
     !!parsed &&
     !!batchId &&
     (mappedFields.length > 0 ||
@@ -279,6 +367,8 @@ export function RecordImportDrawer({
 
   async function run(dryRun: boolean) {
     if (
+      revoked ||
+      controller.current ||
       !parsed ||
       !batchId ||
       running.current ||
@@ -299,6 +389,8 @@ export function RecordImportDrawer({
             fields: importable,
             timeZone,
             dateOrders,
+            amountUnits,
+            valueChoices,
             destination: (row) => {
               if (!canChooseOwner) return { kind: "default" };
               if (ownerColumn >= 0)
@@ -346,6 +438,13 @@ export function RecordImportDrawer({
     } catch (caught) {
       if (!stopped.current) {
         const error = toApiError(caught);
+        if (
+          error.status === 403 &&
+          ["OBJECT_ACTION_FORBIDDEN", "WORKSPACE_FORBIDDEN"].includes(
+            error.code,
+          )
+        )
+          setRevoked(true);
         if (error.status >= 400 && error.status < 500) {
           const created = dryRun ? (result?.created ?? 0) : latest.created;
           const ownerHint =
@@ -374,6 +473,7 @@ export function RecordImportDrawer({
   function close() {
     stopped.current = true;
     ++readRequest.current;
+    controller.current?.abort();
     onClose();
   }
 
@@ -383,10 +483,18 @@ export function RecordImportDrawer({
     request: number,
   ) {
     const selection = nextSource.headerSelection(name, importable);
-    const id = await importBatchId(nextSource.bytes, name);
+    const [id, identity, proof] = await Promise.all([
+      importBatchId(nextSource.bytes, name),
+      importBatchId(nextSource.bytes, ""),
+      buildImportHeaderEvidence(nextSource, name),
+    ]);
+
     if (request !== readRequest.current || stopped.current) return;
     setSheetName(name);
     setBatchId(id);
+    setFileKey(JSON.stringify([tenantCode, memberKey, identity]));
+    setEvidence(proof);
+    setHeaderLocked(selection.detected);
     setHeaders(selection.candidates);
     applyHeader(nextSource, name, selection.headerRow, selection.detected);
   }
@@ -397,10 +505,14 @@ export function RecordImportDrawer({
     automatic: boolean,
   ) {
     setHeaderRow(row);
+    setAmountUnits({});
+    setValueChoices({});
     setAutoHeader(automatic);
     setParseError(undefined);
     setParsed(undefined);
+    setMapping([]);
     setManual([]);
+    setMatchLocked(false);
     setOwnerChoices(new Map());
     setOverrides({});
     setMatchFields([]);
@@ -413,7 +525,7 @@ export function RecordImportDrawer({
       showFileError(err);
     }
   }
-  function resetResult(keepCreated = false) {
+  function clearCheck(keepCreated = false) {
     setReadyPlan(undefined);
     setChecked(undefined);
     setResult((previous) =>
@@ -425,8 +537,242 @@ export function RecordImportDrawer({
     setProgress({ done: 0, total: 0 });
   }
 
+  function cancelAssist(message = "") {
+    controller.current?.abort();
+    controller.current = null;
+    setStarted(undefined);
+    setAiNotice(message);
+  }
+  function resetResult(keepCreated = false) {
+    if (controller.current) cancelAssist("草稿已更改，请手动核对");
+    if (snapshot) setDraftChanged(true);
+    setGenerated(undefined);
+    clearCheck(keepCreated);
+  }
+  function newSelection() {
+    cancelAssist();
+    setSnapshot(undefined);
+    setDraftChanged(false);
+    setExcluded([]);
+    setGenerated(undefined);
+  }
+  const draft = useMemo<AssistDraft>(
+    () => ({
+      mapping,
+      manual,
+      matchFields: selectedMatchFields,
+      matchLocked,
+      dateOrders: overrides,
+      amountUnits,
+      valueChoices,
+    }),
+    [
+      mapping,
+      manual,
+      selectedMatchFields,
+      matchLocked,
+      overrides,
+      amountUnits,
+      valueChoices,
+    ],
+  );
+  const preview = useMemo(
+    () =>
+      source &&
+      assistEnabled &&
+      !featureDenied &&
+      !revoked &&
+      batchId &&
+      !loadingFile &&
+      !importStarted
+        ? buildImportPreview({
+            headerEvidence: evidence,
+            file: source,
+            sheet: sheetName,
+            headerRow,
+            headerLocked,
+            fields: schema.fields,
+            draft,
+            excluded,
+            admin: canChooseOwner,
+          })
+        : undefined,
+    [
+      source,
+      assistEnabled,
+      featureDenied,
+      revoked,
+      batchId,
+      loadingFile,
+      importStarted,
+      evidence,
+      sheetName,
+      headerRow,
+      headerLocked,
+      schema.fields,
+      draft,
+      excluded,
+      canChooseOwner,
+    ],
+  );
+  const attempted = attemptedFiles.has(fileKey);
+  const current =
+    generated?.scope === assistScope && assistEnabled && !importStarted
+      ? generated
+      : undefined;
+  const alternate = current && current.plan.headerRow !== headerRow;
+  function install(next: AssistDraft) {
+    setMapping(next.mapping);
+    setManual(next.manual);
+    setOverrides(next.dateOrders);
+    setValueChoices(next.valueChoices);
+    setAmountUnits(next.amountUnits);
+    setMatchFields(next.matchFields);
+    setMatchLocked(!!next.matchLocked);
+    clearCheck();
+  }
+  async function generate() {
+    if (
+      !preview?.needed ||
+      !fileKey ||
+      attemptedFiles.has(fileKey) ||
+      busy ||
+      !assistEnabled ||
+      featureDenied ||
+      revoked ||
+      importStarted
+    )
+      return;
+    attemptedFiles.add(fileKey);
+    const abort = new AbortController();
+    controller.current = abort;
+    const before = {
+      scope: assistScope,
+      draft,
+      headerRow,
+      autoHeader,
+      headerLocked,
+      ownerChoices,
+      ownerMemberId,
+      importToPool,
+      excluded,
+    };
+    setAdoptedColumns([]);
+    setAiNotice("");
+    setElapsed(0);
+    setStarted(Date.now());
+    clearCheck();
+    try {
+      const plan = await requestImportAssist(
+        tenantCode,
+        schema.object.code,
+        preview.request,
+        abort.signal,
+      );
+      if (
+        abort.signal.aborted ||
+        controller.current !== abort ||
+        stopped.current
+      )
+        return;
+      if (
+        !preview.request.candidates.some(
+          (c) => c.headerRow === plan.headerRow,
+        ) ||
+        (headerLocked && plan.headerRow !== headerRow)
+      ) {
+        setAiNotice("表头建议与当前文件不符，请手动核对");
+        return;
+      }
+      setGenerated({ plan, preview, scope: assistScope });
+      setSnapshot(before);
+      setDraftChanged(false);
+      if (plan.headerRow === headerRow)
+        install(
+          applyImportAdvice(
+            draft,
+            preview,
+            plan,
+            schema.fields,
+            undefined,
+            schema.queryFieldKeys,
+          ),
+        );
+    } catch (e) {
+      if (abort.signal.aborted || stopped.current) return;
+      const error = toApiError(e);
+      if (error.status === 403) {
+        if (
+          ["OBJECT_ACTION_FORBIDDEN", "WORKSPACE_FORBIDDEN"].includes(
+            error.code,
+          )
+        )
+          setRevoked(true);
+        else setFeatureDenied(true);
+      }
+      setAiNotice(error.message + " 手动对照已保留");
+    } finally {
+      if (controller.current === abort) {
+        controller.current = null;
+        setStarted(undefined);
+      }
+    }
+  }
+  function adopt(choice?: AdoptChoice) {
+    if (!current || !source || busy || revoked || importStarted) return;
+    let base = draft;
+    if (alternate) {
+      const next = source.sheet(sheetName, current.plan.headerRow);
+      setParsed(next);
+      setHeaderRow(current.plan.headerRow);
+      setAutoHeader(false);
+      setParseError(undefined);
+      setHeaderLocked(true);
+      base = draftForImportHeader(
+        next.headers,
+        schema.fields,
+        canChooseOwner,
+        draft,
+      );
+      if (base.mapping.indexOf(OWNER) !== draft.mapping.indexOf(OWNER))
+        setOwnerChoices(new Map());
+    }
+    if (choice && !choice.value)
+      setAdoptedColumns((cols) => [...cols, choice.column]);
+    install(
+      applyImportAdvice(
+        base,
+        current.preview,
+        current.plan,
+        schema.fields,
+        choice,
+        schema.queryFieldKeys,
+      ),
+    );
+  }
+  function restore() {
+    if (
+      !snapshot ||
+      snapshot.scope !== assistScope ||
+      !source ||
+      busy ||
+      importStarted
+    )
+      return;
+    applyHeader(source, sheetName, snapshot.headerRow, snapshot.autoHeader);
+    setHeaderLocked(snapshot.headerLocked);
+    setOwnerChoices(snapshot.ownerChoices);
+    setOwnerMemberId(snapshot.ownerMemberId);
+    setImportToPool(snapshot.importToPool);
+    setExcluded(snapshot.excluded);
+    install(snapshot.draft);
+    setSnapshot(undefined);
+    setGenerated(undefined);
+    setAiNotice("已恢复到 AI 之前的对照");
+  }
   async function onFile(file: File | undefined, nextEncoding: CsvEncoding) {
     const request = ++readRequest.current;
+    newSelection();
     setSelectedFile(file);
     setEncoding(nextEncoding);
     setDecodedEncoding(undefined);
@@ -489,6 +835,22 @@ export function RecordImportDrawer({
     URL.revokeObjectURL(url);
   }
 
+  if (revoked)
+    return (
+      <Drawer
+        open
+        title="导入 Excel / CSV"
+        onClose={close}
+        footer={<Button onClick={close}>关闭</Button>}
+      >
+        <Alert
+          type="error"
+          showIcon
+          title="当前已无导入权限，请关闭抽屉"
+          description={summary}
+        />
+      </Drawer>
+    );
   return (
     <Drawer
       footer={
@@ -513,7 +875,13 @@ export function RecordImportDrawer({
             type={eligible > 0 ? "default" : "primary"}
             aria-label={importStarted ? "检查剩余行" : "检查数据"}
             loading={busy === "check"}
-            disabled={!canCheck || !!busy || loadingFile}
+            disabled={
+              !canCheck ||
+              !!busy ||
+              loadingFile ||
+              started !== undefined ||
+              !!alternate
+            }
             onClick={() => void run(true)}
           >
             {importStarted ? "检查剩余行" : "检查数据"}
@@ -522,7 +890,9 @@ export function RecordImportDrawer({
             <Button
               type="primary"
               loading={busy === "import"}
-              disabled={!!busy}
+              disabled={
+                !!busy || started !== undefined || revoked || !!alternate
+              }
               onClick={() => void run(false)}
             >
               确认导入 {eligible} 行
@@ -678,6 +1048,7 @@ export function RecordImportDrawer({
             }))}
             onChange={async (name) => {
               const request = ++readRequest.current;
+              newSelection();
               setSheetName(name);
               setParsed(undefined);
               setBatchId(undefined);
@@ -709,9 +1080,177 @@ export function RecordImportDrawer({
               value: h.rowNumber,
               label: `第 ${h.rowNumber} 行 · ${h.cells.filter(Boolean).slice(0, 4).join(" / ").slice(0, 70)}`,
             }))}
-            onChange={(row) => applyHeader(source, sheetName, row, false)}
+            onChange={(row) => {
+              setHeaderLocked(true);
+              applyHeader(source, sheetName, row, false);
+            }}
           />
         </label>
+      )}
+      {aiNotice && <Alert type="info" showIcon title={aiNotice} />}
+      {preview && (
+        <section aria-label="AI 文件对照" className={importStyles.assist}>
+          <Typography.Paragraph>
+            {preview.unresolvedColumns || preview.unresolvedValues
+              ? `还有 ${preview.unresolvedColumns} 列、${preview.unresolvedValues} 个取值没对上`
+              : preview.needed
+                ? "表头或日期格式待确认"
+                : "已用规则对齐"}
+          </Typography.Paragraph>
+          {started !== undefined ? (
+            <>
+              <span role="status">正在生成对照 · 已等 {elapsed} 秒</span>{" "}
+              <Button onClick={() => cancelAssist("已取消，手动对照已保留")}>
+                取消生成
+              </Button>
+            </>
+          ) : (
+            !attempted &&
+            preview.needed && (
+              <Button disabled={!!busy} onClick={() => void generate()}>
+                AI 帮我对列
+              </Button>
+            )
+          )}
+          {!attempted && preview.needed && (
+            <small>将发送打码后的表头与样例</small>
+          )}
+          {!attempted && (
+            <Collapse
+              size="small"
+              items={[
+                {
+                  key: "scope",
+                  label: "查看发送范围",
+                  children: (
+                    <>
+                      <p>
+                        将发送打码后的表头与样例、低基数未解值及频数。取消勾选即可排除整列。前十行的校验摘要用于服务端排除受限列。
+                      </p>
+                      {preview.partial && (
+                        <p>仅部分取值可提供建议，余项请手动核对</p>
+                      )}
+                      {Array.from(
+                        {
+                          length: Math.max(
+                            0,
+                            ...preview.request.candidates.map(
+                              (c) => c.columns.length,
+                            ),
+                          ),
+                        },
+                        (_, i) => {
+                          const label =
+                            parsed?.headers[i] ||
+                            preview.request.candidates
+                              .map((c) => c.columns[i]?.header)
+                              .find(Boolean);
+                          const cols = preview.request.candidates.flatMap((c) =>
+                            c.columns.filter(
+                              (col) => col.col === "C" + (i + 1),
+                            ),
+                          );
+                          const privateColumn =
+                            cols.every((c) => c.excluded) &&
+                            !excluded.includes(i);
+                          return (
+                            <div key={i}>
+                              <Checkbox
+                                checked={
+                                  !privateColumn && !excluded.includes(i)
+                                }
+                                disabled={!!busy || privateColumn}
+                                onChange={(e) =>
+                                  setExcluded((prev) =>
+                                    e.target.checked
+                                      ? prev.filter((v) => v !== i)
+                                      : [...prev, i],
+                                  )
+                                }
+                              >
+                                {label || "空表头"}（C{i + 1}） ·{" "}
+                                {cols.reduce((n, c) => n + c.samples.length, 0)}{" "}
+                                个样例 ·{" "}
+                                {cols.reduce(
+                                  (n, c) => n + (c.values?.length ?? 0),
+                                  0,
+                                )}{" "}
+                                个取值
+                              </Checkbox>
+                            </div>
+                          );
+                        },
+                      )}
+                    </>
+                  ),
+                },
+              ]}
+            />
+          )}
+          {alternate && (
+            <Alert
+              type="info"
+              title={"建议第 " + current.plan.headerRow + " 行为表头"}
+              description={
+                <>
+                  {headers
+                    .find((h) => h.rowNumber === current.plan.headerRow)
+                    ?.cells.filter(Boolean)
+                    .join(" / ")}
+                  {manual.length ||
+                  selectedMatchFields.length ||
+                  ownerChoices.size ||
+                  Object.keys(overrides).length ||
+                  Object.keys(valueChoices).length ||
+                  Object.keys(amountUnits).length ? (
+                    <Popconfirm
+                      title="改用此表头并应用新对照？"
+                      description="当前列对照、查重和按行归属将重新计算"
+                      onConfirm={() => adopt()}
+                      okText="确认改用"
+                      cancelText="返回"
+                    >
+                      <Button>预览并改用第 {current.plan.headerRow} 行</Button>
+                    </Popconfirm>
+                  ) : (
+                    <Button onClick={() => adopt()}>
+                      预览并改用第 {current.plan.headerRow} 行
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => {
+                      setGenerated(undefined);
+                      setSnapshot(undefined);
+                    }}
+                  >
+                    保留当前表头
+                  </Button>
+                </>
+              }
+            />
+          )}
+          {current && (
+            <small>
+              AI 生成 ·{" "}
+              {new Date(current.plan.generatedAt).toLocaleTimeString()}
+            </small>
+          )}
+          {snapshot?.scope === assistScope &&
+            (draftChanged ? (
+              <Popconfirm
+                title="恢复后将覆盖生成建议以来的人工修改"
+                onConfirm={restore}
+                okText="恢复"
+                cancelText="取消"
+              >
+                <Button disabled={!!busy}>恢复到 AI 之前的对照</Button>
+              </Popconfirm>
+            ) : (
+              <Button disabled={!!busy} onClick={restore}>
+                恢复到 AI 之前的对照
+              </Button>
+            ))}
+        </section>
       )}
       {autoHeader && headerRow > 1 && (
         <Typography.Text type="secondary">
@@ -760,14 +1299,37 @@ export function RecordImportDrawer({
           <div className={importStyles.mapping} aria-label="文件列对照">
             {parsed.headers.map((header, index) => {
               const label = header || `第 ${index + 1} 列`;
+              const field = importable.find(
+                (f) => f.fieldKey === mapping[index],
+              );
+              const advice = !alternate
+                ? current?.plan.columns.find((a) => a.col === "C" + (index + 1))
+                : undefined;
+              const target = advice?.target;
+              const targetField =
+                target && target.mode !== "skip"
+                  ? importable.find((f) => f.fieldKey === target.field)
+                  : undefined;
+              const needsReview =
+                advice?.confidence === "review" &&
+                !adoptedColumns.includes(advice.col);
               const lockedOwner = !canChooseOwner && ownerHeader(header);
               return (
                 <div key={index} className={importStyles.row}>
                   <div>
                     <strong>{label}</strong>
-                    <div className={importStyles.example}>
-                      {sheetSummary?.samples[index]}
-                    </div>
+                    {(sheetSummary?.samples[index].length ?? 0) > 70 ? (
+                      <details>
+                        <summary className={importStyles.example}>
+                          {sheetSummary?.samples[index].slice(0, 70)}… 展开
+                        </summary>
+                        {sheetSummary?.samples[index]}
+                      </details>
+                    ) : (
+                      <div className={importStyles.example}>
+                        {sheetSummary?.samples[index]}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Select
@@ -780,6 +1342,16 @@ export function RecordImportDrawer({
                       onChange={(next) => {
                         resetResult(importStarted);
                         setMatchFields([]);
+                        setAmountUnits((prev) => {
+                          const n = { ...prev };
+                          delete n[index];
+                          return n;
+                        });
+                        setValueChoices((prev) => {
+                          const n = { ...prev };
+                          delete n[index];
+                          return n;
+                        });
                         setManual((prev) =>
                           prev.includes(index) ? prev : [...prev, index],
                         );
@@ -842,13 +1414,82 @@ export function RecordImportDrawer({
                         />
                       )
                     )}
+                    {field &&
+                      (field.type === "NUMBER" || field.type === "MONEY") && (
+                        <Select
+                          aria-label={"无单位数值 " + label}
+                          value={amountUnits[index] ?? "yuan"}
+                          disabled={!!busy || mappingLocked}
+                          options={[
+                            { value: "yuan", label: "原数值" },
+                            { value: "wan", label: "无单位数值按万" },
+                          ]}
+                          onChange={(v) => {
+                            setAmountUnits((prev) => ({
+                              ...prev,
+                              [index]: v,
+                            }));
+                            resetResult(importStarted);
+                          }}
+                        />
+                      )}
+                    {field && isOptionField(field) && (
+                      <ImportValues
+                        rows={parsed.rows}
+                        index={index}
+                        field={field}
+                        choices={valueChoices[index]}
+                        advice={advice}
+                        preview={current?.preview}
+                        headerRow={headerRow}
+                        disabled={!!busy || mappingLocked}
+                        onChange={(raw, option) => {
+                          const choices = new Map(valueChoices[index]);
+                          if (option === undefined) choices.delete(raw);
+                          else choices.set(raw, option);
+                          setValueChoices((prev) => ({
+                            ...prev,
+                            [index]: choices,
+                          }));
+                          resetResult(importStarted);
+                        }}
+                        onAdopt={(value) =>
+                          adopt({ column: "C" + (index + 1), value })
+                        }
+                      />
+                    )}
+                    {advice && (
+                      <small>
+                        {needsReview ? "把握不大 · " : "AI 建议 · "}
+                        {targetField
+                          ? (target?.mode === "append" ? "追加到" : "") +
+                            targetField.label
+                          : "跳过此列"}{" "}
+                        {advice.dateOrder}{" "}
+                        {advice.bareAmountUnit === "wan"
+                          ? "无单位数值按万"
+                          : ""}{" "}
+                        · {Array.from(advice.reason).slice(0, 20).join("")}
+                        {needsReview && (
+                          <Button
+                            size="small"
+                            disabled={!!busy || mappingLocked}
+                            onClick={() => adopt({ column: advice.col })}
+                          >
+                            采用
+                          </Button>
+                        )}
+                      </small>
+                    )}
                   </div>
                   <Tag>
                     {manual.includes(index)
                       ? "手动"
-                      : mapping[index] === SKIP
-                        ? "未对照"
-                        : "自动"}
+                      : advice && !needsReview
+                        ? "AI 建议"
+                        : mapping[index] === SKIP
+                          ? "未对照"
+                          : "自动"}
                   </Tag>
                 </div>
               );
@@ -895,6 +1536,7 @@ export function RecordImportDrawer({
               }))}
               onChange={(fields) => {
                 setMatchFields(fields);
+                setMatchLocked(true);
                 resetResult(importStarted);
               }}
             />
