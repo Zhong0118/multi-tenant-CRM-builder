@@ -1,4 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { fork, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
+import { join } from 'node:path';
 import request from 'supertest';
 import { ConfigService } from '@nestjs/config';
 import { modelOutputs as outputs } from '../src/modules/ai/governance/model-admin.contract';
@@ -25,6 +28,7 @@ describe('platform model configuration over HTTP', () => {
   jest.setTimeout(120_000);
   let h: CriticalHarness, f: CriticalFixture;
   const createdIds: string[] = [];
+  let peer: ChildProcess | undefined;
   const api = (
     actor: CriticalActor,
     method: 'get' | 'post' | 'patch' | 'delete',
@@ -50,6 +54,11 @@ describe('platform model configuration over HTTP', () => {
     });
   });
   afterAll(async () => {
+    if (peer?.connected) {
+      const exited = once(peer, 'exit');
+      peer.disconnect();
+      await exited;
+    }
     if (!h) return;
     for (const providerId of createdIds) {
       await h.adminDatabase
@@ -170,6 +179,33 @@ describe('platform model configuration over HTTP', () => {
       config,
     );
     expect(await secondInstance.resolve(actor, 'text')).toBeNull();
+    peer = fork(join(__dirname, 'helpers', 'model-snapshot-process.ts'), [], {
+      cwd: join(__dirname, '..'),
+      execArgv: ['--require', 'ts-node/register/transpile-only'],
+      env: {
+        ...process.env,
+        AI_MODEL_KEYRING: config.getOrThrow<string>('AI_MODEL_KEYRING'),
+      },
+      stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+    });
+    const reader = peer;
+    const peerSnapshot = async () => {
+      const reply = new Promise<unknown>((resolve, reject) => {
+        const exit = () => {
+          reader.off('message', result);
+          reject(new Error('Model reader exited'));
+        };
+        const result = (value: unknown) => {
+          reader.off('exit', exit);
+          resolve(value);
+        };
+        reader.once('exit', exit);
+        reader.once('message', result);
+      });
+      reader.send(actor);
+      return reply;
+    };
+    expect(await peerSnapshot()).toEqual({ configured: false });
     const path = '/providers/' + id,
       model = 'imported-model';
     const fields = {
@@ -288,6 +324,7 @@ describe('platform model configuration over HTTP', () => {
     expect(snapshot?.apiKey === vendorKey).toBe(true);
     expect(snapshot?.revisionId).toBe(revisionId);
     expect(snapshot?.assignmentVersion).toBe(1);
+    expect(await peerSnapshot()).toEqual({ revisionId, assignmentVersion: 1 });
     await api(platform, 'delete', path, { version: 4 }).expect(409);
     await api(platform, 'post', path + '/status', {
       version: 4,
@@ -317,7 +354,10 @@ describe('platform model configuration over HTTP', () => {
     revisionId = outputs.saved.parse(next.body).revisionId;
     const retest = await probe(5);
     await assign(5, retest.id, 0).expect(409);
+    const switchedAt = performance.now();
     await assign(5, retest.id, 1).expect(200);
+    expect(await peerSnapshot()).toEqual({ revisionId, assignmentVersion: 2 });
+    expect(performance.now() - switchedAt).toBeLessThan(60_000);
     const upgraded = await secondInstance.resolve(actor, 'text');
     expect(upgraded?.assignmentVersion).toBe(2);
     expect(upgraded?.revisionId).toBe(revisionId);
