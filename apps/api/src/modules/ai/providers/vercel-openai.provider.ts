@@ -2,7 +2,7 @@ import { TABLE_BUILDER_GENERATION_TIMEOUT_MS } from '../table-builder-payload';
 import { modelClient } from './model-client';
 import type { FlexibleSchema } from 'ai';
 import type { ImportAssistModelInput } from '../import-assist-model';
-import { importSystem, importWireSchema } from './import-mapping-output';
+import { importSystem, importMappingSchema } from './import-mapping-output';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import {
   failureStatus,
@@ -88,6 +88,7 @@ export class VercelOpenAiProvider implements AiProvider {
     signal: AbortSignal = new AbortController().signal,
     reasoning: 'default' | 'none' = 'default',
   ) {
+    const importWireSchema = importMappingSchema(input);
     const bytes = Buffer.byteLength(
       JSON.stringify({
         system: importSystem,
