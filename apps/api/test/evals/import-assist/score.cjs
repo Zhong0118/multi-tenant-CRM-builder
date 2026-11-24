@@ -186,6 +186,17 @@ async function business(h, actor, object, parsed, draft, fields, answer) {
     } else throw Error('Unexpected dryRun status');
   }
   result.unexpectedRows = actual.size;
+  assert.equal(
+    result.rows,
+    result.ready +
+      result.conversionFailed +
+      result.serverFailed +
+      result.unprocessed +
+      result.existingDuplicate +
+      result.fileDuplicate +
+      result.ownerSkip,
+    'every original row must have one outcome',
+  );
   return result;
 }
 module.exports = { targetKey, score, business };

@@ -131,7 +131,43 @@ function observedProvider(mode, answer, resolved, h, log) {
       });
       const start = performance.now();
       try {
-        return await provider.generateImportAssist(input, actor, signal, mode);
+        const output = await provider.generateImportAssist(
+          input,
+          actor,
+          signal,
+          mode,
+        );
+        const forbidden = new Set(
+          resolved.schema.fields
+            .filter((f) => answer.forbiddenTargets.includes(f.fieldKey))
+            .flatMap((f) => [f.id, f.fieldKey, f.label]),
+        );
+        const suggestions = Array.isArray(output?.columns)
+          ? output.columns
+          : [];
+        log.modelForbiddenTargets = suggestions.filter((s) =>
+          forbidden.has(s?.target?.field),
+        ).length;
+        log.modelForbiddenTargets += (
+          Array.isArray(output?.matchFields) ? output.matchFields : []
+        ).filter((k) => forbidden.has(k)).length;
+        if (answer.pair) {
+          const semantic = suggestions
+            .map((s) => [
+              s?.col,
+              s?.target?.mode,
+              s?.target?.field ?? null,
+              (Array.isArray(s?.values) ? s.values : [])
+                .map((v) => [v?.value, v?.option])
+                .sort(),
+            ])
+            .sort();
+          log.modelOutputDigest = require('node:crypto')
+            .createHash('sha256')
+            .update(JSON.stringify([output?.headerRow, semantic]))
+            .digest('hex');
+        }
+        return output;
       } catch (e) {
         log.error =
           e.finishReason === 'length'

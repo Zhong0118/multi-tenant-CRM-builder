@@ -6,6 +6,7 @@ const { runtime, web, tenant } = require('./runtime.cjs');
 const { readImportFile } = web('record-import-file');
 const {
   emptyAssistDraft,
+  draftForImportHeader,
   buildImportHeaderEvidence,
   buildImportPreview,
   applyImportAdvice,
@@ -159,6 +160,7 @@ async function run(h, entry) {
     entries: 0,
     calls: 0,
     privacy: [],
+    modelForbiddenTargets: 0,
     inputTokens: null,
     outputTokens: null,
     modelMs: null,
@@ -186,7 +188,7 @@ async function run(h, entry) {
     ? parse(file, sheet, candidateHeader)
     : parsed;
   const candidateBase = alternate
-    ? initial(candidateParsed, fields, admin, answer.columns)
+    ? draftForImportHeader(candidateParsed?.headers ?? [], fields, admin, draft)
     : draft;
   const apply = (base, choice) =>
     applyImportAdvice(base, preview, plan, fields, choice, queryFieldKeys);
@@ -318,6 +320,9 @@ async function main() {
     await h.close();
   }
   assert.equal(results.length, split === 'development' ? 30 : 10);
+  const size = split === 'development' ? [30, 164, 449] : [10, 107, 102];
+  const sum = (k) => results.reduce((n, r) => n + r[k], 0);
+  assert.deepEqual([results.length, sum('columns'), sum('rowCount')], size);
   fs.mkdirSync(reports, { recursive: true });
   const metadata = {
     split,

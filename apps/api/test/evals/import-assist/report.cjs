@@ -42,10 +42,18 @@ if (process.argv[2] === 'freeze') {
   return;
 }
 const split = process.argv[2];
-assert(['development', 'holdout'].includes(split));
-const records = modes.map((m) => load(split, m));
+const supplemental = split === 'employee-supplement-development';
+assert(supplemental || ['development', 'holdout'].includes(split));
+const records = (supplemental ? ['default', 'none'] : modes).map((m) =>
+  load(split, m),
+);
 const lines = [
-  '# AI 导入评测 · ' + split,
+  supplemental
+    ? '# 开发集补充实测 · 全部文件使用员工身份'
+    : '# AI 导入评测 · ' + split,
+  supplemental
+    ? '29 份原始管理员样本切换至员工身份，1 份样本原本就是员工。以下结果只用于开发诊断和实呼延时，正式验收使用原角色报告。'
+    : '',
   '',
   '冻结集 `f808ea8`。所有列、取值及原始行进入各自分母。表头失误或请求失败时保留实际草稿；人工场景仅采纳已提出且与标注一致的 review 项。',
   '',
@@ -84,6 +92,7 @@ for (const { mode, files } of records) {
     (pair) =>
       pair.length === 2 &&
       pair[0].outputDigest === pair[1].outputDigest &&
+      pair[0].modelOutputDigest === pair[1].modelOutputDigest &&
       pair.every((f) => !f.error),
   );
   const wide = files.filter((f) => f.columns === 40);
@@ -102,6 +111,7 @@ for (const { mode, files } of records) {
           f.calls > 1 ||
           f.entries > 1 ||
           !f.authorization.pass ||
+          f.modelForbiddenTargets ||
           f.auto.forbiddenTargets ||
           f.review.forbiddenTargets ||
           f.candidate.forbiddenTargets,
@@ -211,7 +221,9 @@ for (const [i, { mode, files }] of records.entries()) {
 }
 lines.push(
   '',
-  '| 文件 | 规则 / 默认 / none 物理调用 | 默认 / none 失败原因 |',
+  supplemental
+    ? '| 文件 | 默认 / none 物理调用 | 默认 / none 失败原因 |'
+    : '| 文件 | 规则 / 默认 / none 物理调用 | 默认 / none 失败原因 |',
   '|---|---:|---|',
 );
 for (let i = 0; i < records[0].files.length; i++) {
@@ -222,7 +234,7 @@ for (let i = 0; i < records[0].files.length; i++) {
         f[0].id,
         f.map((x) => x.calls).join(' / '),
         f
-          .slice(1)
+          .slice(supplemental ? 0 : 1)
           .map((x) => x.error ?? '—')
           .join(' / '),
       ].join(' | ') +
