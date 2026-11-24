@@ -17,7 +17,7 @@ const { targetKey, score, business } = require('./score.cjs');
 const { observedProvider } = require('./provider.cjs');
 const fixture = path.join(__dirname, 'fixtures');
 const root = path.resolve(__dirname, '../../../../..');
-const reports = path.join(root, 'docs/audits/2026-11-24/ai-import-assist');
+const { reports } = require('./revision.cjs');
 const read = (file) => JSON.parse(fs.readFileSync(path.join(fixture, file)));
 const sha = (content) => createHash('sha256').update(content).digest('hex');
 const [split, mode, profile] = process.argv.slice(2);
@@ -27,7 +27,7 @@ assert(
     (supplemental && split === 'development' && mode !== 'rules'),
 );
 assert(
-  ['development', 'holdout'].includes(split) &&
+  ['development', 'holdout', 'fresh'].includes(split) &&
     ['rules', 'default', 'none'].includes(mode),
 );
 function initial(parsed, fields, admin, columns) {
@@ -303,7 +303,7 @@ async function main() {
   const { revision } = require('./revision.cjs');
   const fingerprint = revision();
   console.log('implementation', fingerprint);
-  if (split === 'holdout') {
+  if (split !== 'development') {
     const freeze = JSON.parse(
       fs.readFileSync(path.join(reports, 'eval-freeze.json')),
     );
@@ -318,7 +318,42 @@ async function main() {
     [path.join(fixture, 'verify.cjs')],
     { cwd: root },
   );
-  const files = read('manifest.json').files.filter((f) => f.split === split);
+  const fresh = split === 'fresh';
+  const manifest = fresh ? 'fresh/manifest.json' : 'manifest.json';
+  const checksums = fresh ? 'fresh/SHA256SUMS' : 'SHA256SUMS';
+  // Verify the manifest of checksums against its independently frozen Git object.
+  const fixtureCommit = fresh
+    ? '49217f9a5dcbcd01b99f83593a138c274a5cf17d'
+    : 'f808ea8';
+  const frozen = require('node:child_process').execFileSync(
+    'git',
+    [
+      'show',
+      fixtureCommit + ':' + path.relative(root, path.join(fixture, checksums)),
+    ],
+    { cwd: root },
+  );
+  assert.deepEqual(fs.readFileSync(path.join(fixture, checksums)), frozen);
+  if (fresh)
+    for (const line of frozen.toString().trimEnd().split('\n')) {
+      const [digest, name] = line.split('  ');
+      assert.equal(
+        sha(fs.readFileSync(path.join(fixture, name))),
+        digest,
+        name,
+      );
+    }
+  const files = read(manifest).files.filter((f) => f.split === split);
+  const resultName =
+    'eval-' +
+    (supplemental ? 'employee-supplement-' : '') +
+    split +
+    '-' +
+    mode +
+    '.json';
+  const output = path.join(reports, resultName);
+  assert(!fs.existsSync(output), 'this round already has ' + resultName);
+
   const h = await runtime(),
     results = [];
   const sends = [];
@@ -351,7 +386,8 @@ async function main() {
   assert.equal(results.length, split === 'development' ? 30 : 10);
   const size = split === 'development' ? [30, 164, 449] : [10, 107, 102];
   const sum = (k) => results.reduce((n, r) => n + r[k], 0);
-  assert.deepEqual([results.length, sum('columns'), sum('rowCount')], size);
+  if (!fresh)
+    assert.deepEqual([results.length, sum('columns'), sum('rowCount')], size);
   fs.mkdirSync(reports, { recursive: true });
   const metadata = {
     split,
@@ -359,22 +395,13 @@ async function main() {
     profile: supplemental ? 'employee supplement' : 'frozen',
     fingerprint,
     model: mode === 'rules' ? null : process.env.AI_MODEL,
-    fixtureCommit: 'f808ea8',
-    manifestHash: sha(fs.readFileSync(path.join(fixture, 'SHA256SUMS'))),
+    fixtureCommit,
+    manifestHash: sha(frozen),
     files: results,
   };
-  fs.writeFileSync(
-    path.join(
-      reports,
-      'eval-' +
-        (supplemental ? 'employee-supplement-' : '') +
-        split +
-        '-' +
-        mode +
-        '.json',
-    ),
-    JSON.stringify(metadata, null, 2) + '\n',
-  );
+  fs.writeFileSync(output, JSON.stringify(metadata, null, 2) + '\n', {
+    flag: 'wx',
+  });
 }
 main().catch((e) => {
   console.error(e.stack?.split('\n').slice(0, 10).join('\n'));

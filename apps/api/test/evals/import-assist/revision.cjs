@@ -3,6 +3,10 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const root = path.resolve(__dirname, '../../../../..');
+const reports = path.join(
+  root,
+  'docs/audits/2026-11-24/ai-import-assist/round-2',
+);
 const folders = [
   'apps/api/src/modules/ai',
   'apps/api/src/modules/objects',
@@ -10,7 +14,8 @@ const folders = [
   'apps/web/src/features/records',
   'apps/api/test/evals/import-assist',
   'apps/web/src/lib/csv.ts',
-  'packages/contracts/src/ai/import-assist.ts',
+  'packages/contracts/src/ai',
+  'packages/contracts/package.json',
   'packages/database/prisma/schema.prisma',
 ];
 function revision() {
@@ -32,6 +37,7 @@ function revision() {
     .split('\0')
     .filter(Boolean)
     .filter((f) => !/(\.spec\.|\.test\.|\/fixtures\/)/.test(f))
+    .filter((f) => !f.endsWith('/report.cjs') && !f.endsWith('.md'))
     .sort();
   for (const f of files)
     hash
@@ -41,4 +47,4 @@ function revision() {
       .update('\0');
   return hash.digest('hex');
 }
-module.exports = { revision, root };
+module.exports = { revision, root, reports };

@@ -4,7 +4,7 @@ const { runGroupedImport } = web('record-import-groups');
 const { activeOptions } = web('record-import-assist');
 const { inferImportDateOrder, matchImportOption } = web('record-csv');
 const assert = require('node:assert/strict');
-const { isDeepStrictEqual } = require('node:util');
+const { compareReady } = require('./metrics.cjs');
 
 const targetKey = (t) =>
   t.mode === 'skip' ? SKIP : (t.mode === 'append' ? APPEND : '') + t.field;
@@ -141,13 +141,22 @@ async function business(h, actor, object, parsed, draft, fields, answer) {
     existingDuplicate: 0,
     fileDuplicate: 0,
     ownerSkip: 0,
+    expectedReady: answer.rows.filter((r) => r.status === 'READY').length,
+    matchedReady: 0,
+    readyWithoutValueLabels: 0,
     readyValuesMismatch: 0,
+    missingRows: 0,
+    wrongRows: 0,
+    missingFields: 0,
+    wrongFields: 0,
+    wrongDetails: [],
     unexpectedRows: 0,
     batches,
     noWrites: true,
   };
   const actual = new Map(checked.items.map((i) => [i.rowNumber, i]));
   const byRow = new Map(rows.map((r) => [r.rowNumber, r]));
+  const types = new Map(fields.map((f) => [f.fieldKey, f.type]));
   for (const truth of answer.rows) {
     const r = byRow.get(truth.rowNumber),
       item = actual.get(truth.rowNumber);
@@ -158,18 +167,34 @@ async function business(h, actor, object, parsed, draft, fields, answer) {
     actual.delete(truth.rowNumber);
     if (item.status === 'READY') {
       result.ready++;
-      if (
-        truth.values &&
-        Object.entries(truth.values).some(([k, v]) => {
-          const value = r.values[k];
-          return fields.find((f) => f.fieldKey === k)?.type === 'MONEY' &&
-            v != null &&
-            value != null
-            ? Number(v) !== Number(value)
-            : !isDeepStrictEqual(v, value);
-        })
-      )
-        result.readyValuesMismatch++;
+      if (truth.status === 'READY') result.matchedReady++;
+      if (!truth.values) {
+        result.readyWithoutValueLabels++;
+        continue;
+      }
+      const { missing, wrong } = compareReady(truth.values, r.values, types);
+      if (missing.length || wrong.length) result.readyValuesMismatch++;
+      if (missing.length) result.missingRows++;
+      if (wrong.length) result.wrongRows++;
+      result.missingFields += missing.length;
+      result.wrongFields += wrong.length;
+      for (const issue of wrong) {
+        const sources = draft.mapping.flatMap((key, i) =>
+          key === issue.field || key === APPEND + issue.field
+            ? [answer.columns[i]?.col ?? 'C' + (i + 1)]
+            : [],
+        );
+        const expectedSources = answer.columns
+          .filter((c) => c.target.field === issue.field)
+          .map((c) => c.col);
+        result.wrongDetails.push({
+          rowNumber: truth.rowNumber,
+          ...issue,
+          sources,
+          expectedSources,
+          type: types.get(issue.field),
+        });
+      }
     } else if (item.status === 'FAILED') {
       if (r.error) result.conversionFailed++;
       else result.serverFailed++;
