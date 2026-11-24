@@ -256,9 +256,52 @@ it('keeps raw previews out of unknown title rows and treats system and owner hea
 });
 
 it('keeps unlabeled text-only columns local when another column needs advice', () => {
-  const r = req(['表外代号', '单位名称']);
+  const r = req(['沈雨婷', '单位名称']);
   r.candidates[0].columns[0].samples = ['[文本]', '[文本]'];
   const { input, needed } = prepareImport(schema, r);
   expect(needed).toBe(true);
   expect(input.candidates[0].columns.map((c) => c.col)).toEqual(['C2']);
+});
+
+it.each([true, false])(
+  'preserves business headings at provider input with headerLocked=%s',
+  (locked) => {
+    const labels = [
+      '联系人',
+      '下次跟进日',
+      '合同额',
+      '回款日期',
+      '微信',
+      '职务',
+      '决策人',
+      '成交概率',
+      '客商代码',
+      '签单与否',
+      '采购方',
+      '报价（万元）',
+    ];
+    const r = req([...labels, '负责人']);
+    r.headerLocked = locked;
+    expect(
+      prepareImport(schema, r).input.candidates[0].columns.map((c) => c.header),
+    ).toEqual(labels);
+  },
+);
+
+it('masks embedded contacts and identifiers before clipping a confirmed physical heading', () => {
+  const r = req([
+    '收款6222,1234,5678,9012',
+    '联络lin.customer@example.org',
+    '证号11010519491231002X',
+    '𠀀'.repeat(36) + '卡号6222123456789012',
+  ]);
+  r.headerLocked = true;
+  expect(
+    prepareImport(schema, r).input.candidates[0].columns.map((c) => c.header),
+  ).toEqual([
+    '收款[号码]',
+    '联络l***@example.org',
+    '证号[号码]',
+    '𠀀'.repeat(36) + '卡号[号',
+  ]);
 });

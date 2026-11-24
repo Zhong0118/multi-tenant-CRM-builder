@@ -1,3 +1,9 @@
+import {
+  maskImportLabel,
+  maskImportNumber,
+  projectImportHeading,
+  restrictedLabel,
+} from "@crm/contracts/import-heading";
 import { businessLabel } from "./record-import-heading";
 import type {
   ImportAssistRequest,
@@ -15,20 +21,17 @@ import {
   splitImportOptions,
 } from "./record-csv";
 import type { ImportFile } from "./record-import-file";
-import {
-  initialMapping,
-  ownerHeader,
-  SKIP,
-  OWNER,
-  APPEND,
-} from "./record-import-mapping";
+import { initialMapping, SKIP, OWNER, APPEND } from "./record-import-mapping";
 
 export const importableField = (f: PublishedFieldView) =>
   !f.isSystem &&
   f.type !== "MEMBER" &&
   (f.access === "EDIT" || f.access === "CREATE_ONLY");
 export const aiImportableField = (f: PublishedFieldView) =>
-  importableField(f) && !f.importManualOnly;
+  importableField(f) &&
+  !f.importManualOnly &&
+  !restrictedLabel(f.fieldKey) &&
+  !restrictedLabel(f.label);
 export type AssistDraft = {
   mapping: string[];
   manual: number[];
@@ -80,34 +83,6 @@ export function draftForImportHeader(
 const enumLabel =
   /^(?:[A-FＳS](?:类|级|档|等)?|(?:重点|普通|潜在|意向|成交|老|新)(?:客户)?|未评级|高|中|低|展会|转介|转介绍|线上|线下|广告|网站|其他|未知|待联系|已联系|进行中|已完成|是|否|true|false|yes|no)$/i;
 const clip = (s: string) => Array.from(s).slice(0, 40).join("");
-function maskDigits(raw: string) {
-  const digits = raw.replace(/\D/g, "");
-  const mobile = /^(?:0086|86)?(1[3-9]\d)\d{4}(\d{4})$/.exec(digits);
-  if (mobile) return mobile[1] + "****" + mobile[2];
-  const landline = /^(0(?:10|2\d|[3-9]\d{2}))\d{3,4}(\d{4})$/.exec(digits);
-  if (landline) return landline[1] + "-****" + landline[2];
-  return "[号码]";
-}
-function maskText(text: string) {
-  return text
-    .normalize("NFKC")
-    .replace(
-      /[\w.%+\-]+@([\w.-]+\.[a-z]{2,})/gi,
-      (full: string, domain: string) => full[0] + "***@" + domain,
-    )
-    .replace(/\+?\d(?:[\s(),.\-–—]*\d){6,}[xX]?/gu, maskDigits);
-}
-function safeLabel(s: string, fields: PublishedFieldView[]) {
-  const key = normalizeHeader(s);
-  const field = fields.find((f) =>
-    [f.fieldKey, f.label].some((v) => normalizeHeader(v) === key),
-  );
-  return field
-    ? clip(maskText(field.label))
-    : s.length <= 80 && businessLabel(s.trim())
-      ? clip(s.trim())
-      : "";
-}
 function safeValue(raw: string): string | undefined {
   const v = raw.trim().normalize("NFKC");
   if (
@@ -115,12 +90,12 @@ function safeValue(raw: string): string | undefined {
     /^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(v)
   )
     return v;
-  if (/^[\w.%+\-]+@[\w.-]+\.[a-z]{2,}$/i.test(v)) return clip(maskText(v));
+  if (/^[\w.%+\-]+@[\w.-]+\.[a-z]{2,}$/i.test(v)) return maskImportLabel(v);
   if (
     /^[+\d(][\d\s()+,.\-–—]{5,}\d[xX]?$/.test(v) &&
     v.replace(/\D/g, "").length >= 7
   )
-    return maskDigits(v);
+    return maskImportNumber(v);
   if (
     /^(?:[+-]?[¥￥]?\d{1,6}(?:[,.]\d{1,6})*(?:[万亿]?元?)?|\d{1,4}[-/]\d{1,2}[-/]\d{2,4})$/.test(
       v,
@@ -224,14 +199,7 @@ export function buildImportPreview({
   const leading = file.headerSelection(sheet, allowed).candidates;
   for (const row of leading)
     row.cells.forEach((s, i) => {
-      if (
-        ownerHeader(s) ||
-        /owner|assignee|salesrep|salesperson|经办人|跟单人/i.test(
-          normalizeHeader(s),
-        ) ||
-        denied.has(normalizeHeader(s))
-      )
-        blocked.add(i);
+      if (restrictedLabel(s) || denied.has(normalizeHeader(s))) blocked.add(i);
     });
   draft.mapping.forEach((key, i) => {
     const targetKey = key.startsWith(APPEND) ? key.slice(APPEND.length) : key;
@@ -243,7 +211,9 @@ export function buildImportPreview({
   });
   const request: ImportAssistRequest = {
     headerEvidence,
-    sheet: safeLabel(sheet, allowed) || "工作表",
+    sheet:
+      (businessLabel(sheet.trim()) && projectImportHeading(sheet, false)) ||
+      "工作表",
     currentHeader: headerRow,
     headerLocked,
     candidates: [],
@@ -257,7 +227,10 @@ export function buildImportPreview({
     const current = candidate.rowNumber === headerRow;
     if (
       !current &&
-      (headerLocked || !candidate.cells.some((s) => safeLabel(s, allowed)))
+      (headerLocked ||
+        !candidate.cells.some(
+          (s, i) => !blocked.has(i) && projectImportHeading(s, false),
+        ))
     )
       continue;
     let parsed;
@@ -297,8 +270,7 @@ export function buildImportPreview({
       else if (key.startsWith(APPEND))
         c.locked = { mode: "append", field: key.slice(APPEND.length) };
       else if (base.manual.includes(i)) c.locked = { mode: "skip" };
-      const header =
-        safeLabel(raw, allowed) || (field ? clip(maskText(field.label)) : "");
+      const header = projectImportHeading(raw, current && headerLocked);
       c.header = header;
       const isEnum = isOptionField(field);
       const isDate = field?.type === "DATE" || field?.type === "DATETIME";

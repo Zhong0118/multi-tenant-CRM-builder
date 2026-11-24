@@ -1,4 +1,10 @@
 import { createHash } from 'node:crypto';
+import {
+  projectImportHeading,
+  headerKey,
+  reservedHeadings,
+  restrictedLabel,
+} from '@crm/contracts/import-heading';
 import type {
   ImportAssistPlan,
   ImportAssistRequest,
@@ -17,12 +23,8 @@ import type {
 } from './import-assist-model';
 import {
   cellShape,
-  reservedHeadings,
   dictionaryLabel,
-  headerKey,
-  restrictedLabel,
   sampleShape,
-  sourceHeader,
 } from './import-assist-privacy';
 
 const optionKey = (s: string) => s.normalize('NFKC').replace(/\s+/gu, '');
@@ -154,7 +156,7 @@ export function prepareImport(
   const input: ImportAssistModelInput = {
     sheet: blockedLabels.has(headerKey(req.sheet))
       ? '工作表'
-      : sourceHeader(req.sheet),
+      : projectImportHeading(req.sheet, false) || '工作表',
     currentHeader: req.currentHeader,
     headerLocked: req.headerLocked,
     fields: targets.map(({ field: f, ref, options }) => ({
@@ -201,10 +203,11 @@ export function prepareImport(
           if (target && mode === 'field') confirmed.add(target.ref);
           const col: ImportModelColumn = {
             col: c.col,
-            header: sourceHeader(
-              c.header,
-              match.length === 1 ? match[0].field.label : undefined,
-            ),
+            header:
+              projectImportHeading(
+                c.header,
+                req.headerLocked && row.headerRow === req.currentHeader,
+              ) || (c.header ? '[文本]' : ''),
             samples: [],
             values: [],
           };

@@ -131,11 +131,11 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
       );
     const generate = jest
       .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
-      .mockImplementation(async (...args) => {
+      .mockImplementation((...args) => {
         const signal = args[2] as AbortSignal;
         deadline.abort();
         signal.throwIfAborted();
-        return {};
+        return Promise.resolve({});
       });
     await post()
       .expect(504)
@@ -145,15 +145,66 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
     expect(timer).toHaveBeenCalledWith(25000);
     expect(generate).toHaveBeenCalledTimes(1);
   });
+  it.each([true, false])(
+    'delivers ordinary source headings to the provider and omits restricted positions (locked %s)',
+    async (locked) => {
+      const labels = [
+        '联系人',
+        '下次跟进日',
+        '合同额',
+        '回款日期',
+        '微信',
+        '职务',
+        '决策人',
+        '成交概率',
+        '客商代码',
+        '签单与否',
+        '采购方',
+        '报价（万元）',
+      ];
+      const headers = [...labels, '负责人', '内部备注', '审核编号', '人工排除'];
+      const columns = headers.map((name, i) => ({
+        ...col('C' + (i + 1), name, '自由样本'),
+        excluded: i === headers.length - 1,
+      }));
+      const send = jest
+        .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
+        .mockResolvedValue({
+          version: 1,
+          headerRow: 3,
+          columns: [],
+          matchFields: [],
+        });
+      await post({
+        ...body,
+        headerLocked: locked,
+        headerEvidence: columns.map(({ col, header }) => ({
+          col,
+          hashes: [createHash('sha256').update(header).digest('hex')],
+        })),
+        candidates: [{ headerRow: 3, columns }],
+      }).expect(200);
+      const input = send.mock.calls[0][0];
+      expect(input.candidates[0].columns.map((c) => c.header)).toEqual(labels);
+      expect(JSON.stringify(input)).not.toMatch(
+        /自由样本|负责人|内部备注|审核编号|人工排除/,
+      );
+    },
+  );
   it('keeps employee-hidden and read-only fields manual even for a tenant admin', async () => {
     const send = jest
       .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
-      .mockImplementation(async (input) => {
+      .mockImplementation((input) => {
         expect(JSON.stringify(input)).not.toMatch(
           /C2|C3|C4|SENTINEL|内部备注|审核编号|reviewCode|secret/,
         );
         expect(input.fields.map((field) => field.name)).toContain('姓名');
-        return { version: 1, headerRow: 3, columns: [], matchFields: [] };
+        return Promise.resolve({
+          version: 1,
+          headerRow: 3,
+          columns: [],
+          matchFields: [],
+        });
       });
     await post(body, f.admin.cookie).expect(200);
     expect(send).toHaveBeenCalledTimes(1);
@@ -165,17 +216,16 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
       .get(url + '/schema')
       .set('Cookie', f.admin.cookie)
       .expect(200);
-    expect(schema.body.fields).toEqual(
-      expect.arrayContaining(
-        ['secret', 'reviewCode'].map((fieldKey) =>
-          expect.objectContaining({
-            fieldKey,
-            access: 'EDIT',
-            importManualOnly: true,
-          }),
-        ),
-      ),
-    );
+    const { fields } = schema.body as { fields: unknown[] };
+    for (const fieldKey of ['secret', 'reviewCode']) {
+      expect(fields).toContainEqual(
+        expect.objectContaining({
+          fieldKey,
+          access: 'EDIT',
+          importManualOnly: true,
+        }),
+      );
+    }
     const send = jest.spyOn(
       MeteredFakeProvider.prototype,
       'generateImportAssist',
@@ -198,9 +248,9 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
         ],
       })
       .expect(201);
-    expect(result.body.items).toMatchObject([
-      { rowNumber: 2, status: 'READY' },
-    ]);
+    expect(result.body as unknown).toMatchObject({
+      items: [{ rowNumber: 2, status: 'READY' }],
+    });
     expect(send).not.toHaveBeenCalled();
   });
   it('skips generation for resolved columns, rejects malformed input and cross-tenant actors', async () => {
