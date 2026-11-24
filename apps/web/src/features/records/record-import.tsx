@@ -583,7 +583,7 @@ export function RecordImportDrawer({
         }}
       >
         {selectedFile ? (
-          <>
+          <span className={importStyles.fileSummary}>
             <strong>{selectedFile.name}</strong>
             {parsed && (
               <span>
@@ -591,7 +591,7 @@ export function RecordImportDrawer({
               </span>
             )}
             <span>重新选择</span>
-          </>
+          </span>
         ) : (
           "选择或拖入 Excel / CSV 文件"
         )}
