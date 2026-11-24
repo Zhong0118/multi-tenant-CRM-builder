@@ -153,7 +153,7 @@ export class VercelOpenAiProvider implements AiProvider {
       feature: Exclude<GenerationFeature, 'assistant'>;
       name: string;
       schema: ZodType<T>;
-      onSend?: () => void;
+      onSend?: () => void | Promise<void>;
       system: string;
     },
   ) {
@@ -167,7 +167,7 @@ export class VercelOpenAiProvider implements AiProvider {
     abortSignal = boundedSignal(abortSignal, config.feature);
     let usage: Usage | undefined;
     try {
-      if (!meter) config.onSend?.();
+      if (!meter) await config.onSend?.();
       const result = await generateText({
         model: this.languageModel(meter?.fetch),
         system: config.system,

@@ -30,7 +30,7 @@ export function getFakeAiProviderCapturedToolResult(): unknown {
 export class FakeAiProvider implements AiProvider {
   async generateSalesDaily(input: SalesDailyInput): Promise<unknown> {
     input.signal?.throwIfAborted();
-    input.onSend?.();
+    await input.onSend?.();
     const data = JSON.parse(input.prompt) as {
       options?: { kind: string };
       records?: { recordRef: string; facts: { ref: string }[] }[];

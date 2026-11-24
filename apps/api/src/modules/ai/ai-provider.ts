@@ -49,7 +49,7 @@ export interface SalesDailyInput {
   prompt: string;
   schema: z.ZodType;
   signal?: AbortSignal;
-  onSend?: () => void;
+  onSend?: () => void | Promise<void>;
 }
 
 export interface AiProvider {
