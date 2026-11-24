@@ -58,6 +58,7 @@ export class ModelMeter {
   };
   // Preserve a governance decision if the SDK wraps it as a transport failure.
   denial?: ApiException;
+  onSend?: () => void | Promise<void>;
   constructor(
     private readonly ledger: MeterLedger,
     private readonly limiter: CallRateLimiter,
@@ -150,6 +151,12 @@ export class ModelMeter {
       throw new Error('Expected JSON model request body');
     const signal = init.signal ?? new AbortController().signal;
     await this.begin(init.body, signal);
+    try {
+      await this.onSend?.();
+    } catch (error) {
+      await this.finish('unsent');
+      throw error;
+    }
     try {
       const response = await modelFetch(url, init);
       if (!response.ok) await this.finish('failed');

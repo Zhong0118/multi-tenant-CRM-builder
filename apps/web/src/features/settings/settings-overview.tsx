@@ -12,6 +12,10 @@ const PAGES: Record<
   string,
   { description: string; effect?: "immediate" | "publish" }
 > = {
+  calendar: {
+    description: "设置个人清单的业务表范围和提醒天数。",
+    effect: "immediate",
+  },
   ai: {
     description: "查看公司 AI 套餐与用量，分配成员额度并查阅操作记录。",
     effect: "immediate",

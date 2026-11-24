@@ -1,0 +1,289 @@
+Checklist preview
+Result  (cost=4036.21..4044.30 rows=1 width=92) (actual time=42.026..44.617 rows=20 loops=1)
+  One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+  Buffers: shared hit=24761
+  CTE due
+    ->  HashAggregate  (cost=287.70..289.67 rows=197 width=24) (actual time=0.314..0.375 rows=1219 loops=1)
+          Group Key: record_follow_ups.record_id
+          Batches: 1  Memory Usage: 209kB
+          Buffers: shared hit=26
+          ->  Result  (cost=0.29..286.72 rows=197 width=24) (actual time=0.016..0.167 rows=1219 loops=1)
+                One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                Buffers: shared hit=26
+                ->  Index Scan using record_follow_ups_tenant_id_assignee_member_id_status_due_at_id on record_follow_ups  (cost=0.29..286.72 rows=197 width=24) (actual time=0.015..0.107 rows=1219 loops=1)
+                      Index Cond: ((tenant_id = '<fixture UUID>'::uuid) AND (assignee_member_id = '<fixture UUID>'::uuid) AND ((status)::text = 'OPEN'::text) AND (due_at < now()))
+                      Buffers: shared hit=26
+  CTE candidates
+    ->  Append  (cost=6.42..3600.30 rows=5272 width=87) (actual time=0.592..15.722 rows=6099 loops=1)
+          Buffers: shared hit=4953
+          ->  Result  (cost=6.42..2045.74 rows=5095 width=87) (actual time=0.592..11.728 rows=5002 loops=1)
+                One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                Buffers: shared hit=1296
+                ->  Hash Left Join  (cost=6.42..2045.74 rows=5095 width=87) (actual time=0.591..11.383 rows=5002 loops=1)
+                      Hash Cond: (r_1.id = d.record_id)
+                      Buffers: shared hit=1296
+                      ->  Seq Scan on records r_1  (cost=0.00..2020.01 rows=5095 width=79) (actual time=0.006..9.964 rows=5002 loops=1)
+                            Filter: ((deleted_at IS NULL) AND (tenant_id = '<fixture UUID>'::uuid) AND (owner_member_id = '<fixture UUID>'::uuid))
+                            Rows Removed by Filter: 44999
+                            Buffers: shared hit=1270
+                      ->  Hash  (cost=3.94..3.94 rows=197 width=24) (actual time=0.580..0.581 rows=1219 loops=1)
+                            Buckets: 2048 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 83kB
+                            Buffers: shared hit=26
+                            ->  CTE Scan on due d  (cost=0.00..3.94 rows=197 width=24) (actual time=0.315..0.498 rows=1219 loops=1)
+                                  Buffers: shared hit=26
+          ->  Result  (cost=0.30..1475.49 rows=177 width=87) (actual time=0.031..3.710 rows=1097 loops=1)
+                One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                Buffers: shared hit=3657
+                ->  Nested Loop  (cost=0.30..1475.49 rows=177 width=87) (actual time=0.023..3.612 rows=1097 loops=1)
+                      Buffers: shared hit=3657
+                      ->  CTE Scan on due d_1  (cost=0.00..3.94 rows=197 width=24) (actual time=0.001..0.133 rows=1219 loops=1)
+                      ->  Index Scan using records_pkey on records r_2  (cost=0.29..7.46 rows=1 width=79) (actual time=0.003..0.003 rows=1 loops=1219)
+                            Index Cond: (id = d_1.record_id)
+                            Filter: ((deleted_at IS NULL) AND (owner_member_id <> '<fixture UUID>'::uuid) AND (tenant_id = '<fixture UUID>'::uuid))
+                            Rows Removed by Filter: 0
+                            Buffers: shared hit=3657
+  CTE eligible
+    ->  Hash Join  (cost=0.08..128.12 rows=4 width=303) (actual time=0.602..19.289 rows=5367 loops=1)
+          Hash Cond: (r_3.object_id = "*VALUES*".column1)
+          Join Filter: ((("*VALUES*".column2 IS NULL) OR (r_3.owner_member_id = ANY ("*VALUES*".column2))) AND ((r_3.status_key IS NULL) OR ((r_3.status_key)::text <> ALL ("*VALUES*".column4))))
+          Rows Removed by Join Filter: 732
+          Buffers: shared hit=4953
+          ->  CTE Scan on candidates r_3  (cost=0.00..105.44 rows=5272 width=301) (actual time=0.593..17.391 rows=6099 loops=1)
+                Buffers: shared hit=4953
+          ->  Hash  (cost=0.04..0.04 rows=3 width=112) (actual time=0.003..0.004 rows=3 loops=1)
+                Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                ->  Values Scan on "*VALUES*"  (cost=0.00..0.04 rows=3 width=112) (actual time=0.001..0.002 rows=3 loops=1)
+  CTE assess_state
+    ->  CTE Scan on eligible e  (cost=0.00..4.39 rows=1 width=311) (actual time=0.038..6.154 rows=4183 loops=1)
+          Filter: ((due_at IS NULL) AND (NOT in_public_pool) AND (reclaim IS NOT TRUE) AND (owner_member_id = '<fixture UUID>'::uuid))
+          Rows Removed by Filter: 1184
+          Buffers: shared hit=5581
+          SubPlan 4
+            ->  Limit  (cost=0.28..4.30 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=2790)
+                  Buffers: shared hit=5581
+                  ->  Result  (cost=0.28..4.30 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=2790)
+                        One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                        Buffers: shared hit=5581
+                        ->  Index Only Scan using brief_current_state on record_transition_histories  (cost=0.28..4.30 rows=1 width=8) (actual time=0.001..0.001 rows=1 loops=2790)
+                              Index Cond: ((tenant_id = '<fixture UUID>'::uuid) AND (record_id = e.id) AND (to_state_key = (e.status_key)::text))
+                              Heap Fetches: 0
+                              Buffers: shared hit=5581
+  CTE assess_contact
+    ->  CTE Scan on assess_state e_1  (cost=0.00..12.77 rows=1 width=24) (actual time=0.049..7.088 rows=2361 loops=1)
+          Filter: ((entered IS NULL) OR (entered >= '2026-11-10 16:00:00+00'::timestamp with time zone))
+          Rows Removed by Filter: 1822
+          Buffers: shared hit=14164
+          SubPlan 6
+            ->  Limit  (cost=0.41..8.44 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=2361)
+                  Buffers: shared hit=9441
+                  ->  Result  (cost=0.41..8.44 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=2361)
+                        One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                        Buffers: shared hit=9441
+                        ->  Index Scan using record_activities_tenant_id_record_id_created_at_idx on record_activities  (cost=0.41..8.44 rows=1 width=8) (actual time=0.001..0.001 rows=1 loops=2361)
+                              Index Cond: ((tenant_id = '<fixture UUID>'::uuid) AND (record_id = e_1.id))
+                              Filter: (activity_type = ANY ('{CALL,MESSAGE,MEETING,NOTE}'::"RecordActivityType"[]))
+                              Buffers: shared hit=9441
+          SubPlan 7
+            ->  Limit  (cost=0.29..4.31 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=2361)
+                  Buffers: shared hit=4723
+                  ->  Result  (cost=0.29..4.31 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=2361)
+                        One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                        Buffers: shared hit=4723
+                        ->  Index Only Scan using brief_completed_contact on record_follow_ups record_follow_ups_1  (cost=0.29..4.31 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=2361)
+                              Index Cond: ((tenant_id = '<fixture UUID>'::uuid) AND (record_id = e_1.id))
+                              Heap Fetches: 0
+                              Buffers: shared hit=4723
+  ->  Nested Loop  (cost=0.96..9.04 rows=1 width=92) (actual time=42.021..44.597 rows=20 loops=1)
+        Buffers: shared hit=24761
+        ->  WindowAgg  (cost=0.66..0.70 rows=1 width=48) (actual time=41.995..44.495 rows=20 loops=1)
+              Filter: ((row_number() OVER (?)) <= 5)
+              Rows Removed by Filter: 4440
+              Buffers: shared hit=24701
+              ->  WindowAgg  (cost=0.66..0.68 rows=1 width=36) (actual time=41.749..43.269 rows=4460 loops=1)
+                    Run Condition: (row_number() OVER (?) <= 5)
+                    Buffers: shared hit=24701
+                    ->  Sort  (cost=0.66..0.66 rows=1 width=28) (actual time=41.742..42.112 rows=4460 loops=1)
+                          Sort Key: first_match.priority, first_match.at, first_match.id
+                          Sort Method: quicksort  Memory: 506kB
+                          Buffers: shared hit=24701
+                          ->  Subquery Scan on first_match  (cost=0.42..0.65 rows=1 width=28) (actual time=38.092..40.046 rows=4460 loops=1)
+                                Filter: (first_match.first = 1)
+                                Buffers: shared hit=24698
+                                ->  WindowAgg  (cost=0.42..0.56 rows=7 width=36) (actual time=38.091..39.376 rows=4460 loops=1)
+                                      Run Condition: (row_number() OVER (?) <= 1)
+                                      Buffers: shared hit=24698
+                                      ->  Sort  (cost=0.42..0.44 rows=7 width=28) (actual time=38.084..38.212 rows=4477 loops=1)
+                                            Sort Key: eligible.id, (1)
+                                            Sort Method: quicksort  Memory: 507kB
+                                            Buffers: shared hit=24698
+                                            ->  Append  (cost=0.00..0.32 rows=7 width=28) (actual time=0.663..37.330 rows=4477 loops=1)
+                                                  Buffers: shared hit=24698
+                                                  ->  CTE Scan on eligible  (cost=0.00..0.08 rows=4 width=28) (actual time=0.663..21.102 rows=487 loops=1)
+                                                        Filter: (due_at IS NOT NULL)
+                                                        Rows Removed by Filter: 4880
+                                                        Buffers: shared hit=4953
+                                                  ->  CTE Scan on eligible eligible_1  (cost=0.00..0.09 rows=1 width=28) (actual time=0.633..0.855 rows=714 loops=1)
+                                                        Filter: ((NOT in_public_pool) AND reclaim AND (owner_member_id = '<fixture UUID>'::uuid))
+                                                        Rows Removed by Filter: 4653
+                                                  ->  CTE Scan on assess_state  (cost=0.00..0.02 rows=1 width=28) (actual time=0.142..7.755 rows=1822 loops=1)
+                                                        Filter: (entered < '2026-11-10 16:00:00+00'::timestamp with time zone)
+                                                        Rows Removed by Filter: 2361
+                                                        Buffers: shared hit=5581
+                                                  ->  CTE Scan on assess_contact  (cost=0.00..0.02 rows=1 width=28) (actual time=0.181..7.372 rows=1454 loops=1)
+                                                        Filter: (contacted < '2026-11-10 16:00:00+00'::timestamp with time zone)
+                                                        Rows Removed by Filter: 907
+                                                        Buffers: shared hit=14164
+        ->  Index Scan using records_pkey on records r  (cost=0.29..8.31 rows=1 width=60) (actual time=0.004..0.004 rows=1 loops=20)
+              Index Cond: (id = first_match.id)
+              Filter: (tenant_id = '<fixture UUID>'::uuid)
+              Buffers: shared hit=60
+Planning:
+  Buffers: shared hit=666
+Planning Time: 1.624 ms
+Execution Time: 44.864 ms
+
+Largest drawer (stagnant)
+Sort  (cost=4044.31..4044.32 rows=1 width=92) (actual time=45.026..45.032 rows=21 loops=1)
+  Sort Key: first_match.priority, first_match.at, r.id
+  Sort Method: quicksort  Memory: 27kB
+  Buffers: shared hit=24761
+  CTE due
+    ->  HashAggregate  (cost=287.70..289.67 rows=197 width=24) (actual time=0.491..0.679 rows=1219 loops=1)
+          Group Key: record_follow_ups.record_id
+          Batches: 1  Memory Usage: 209kB
+          Buffers: shared hit=26
+          ->  Result  (cost=0.29..286.72 rows=197 width=24) (actual time=0.017..0.247 rows=1219 loops=1)
+                One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                Buffers: shared hit=26
+                ->  Index Scan using record_follow_ups_tenant_id_assignee_member_id_status_due_at_id on record_follow_ups  (cost=0.29..286.72 rows=197 width=24) (actual time=0.015..0.138 rows=1219 loops=1)
+                      Index Cond: ((tenant_id = '<fixture UUID>'::uuid) AND (assignee_member_id = '<fixture UUID>'::uuid) AND ((status)::text = 'OPEN'::text) AND (due_at < now()))
+                      Buffers: shared hit=26
+  CTE candidates
+    ->  Append  (cost=6.42..3600.30 rows=5272 width=87) (actual time=1.113..12.757 rows=6099 loops=1)
+          Buffers: shared hit=4953
+          ->  Result  (cost=6.42..2045.74 rows=5095 width=87) (actual time=1.112..9.014 rows=5002 loops=1)
+                One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                Buffers: shared hit=1296
+                ->  Hash Left Join  (cost=6.42..2045.74 rows=5095 width=87) (actual time=1.111..8.652 rows=5002 loops=1)
+                      Hash Cond: (r_1.id = d.record_id)
+                      Buffers: shared hit=1296
+                      ->  Seq Scan on records r_1  (cost=0.00..2020.01 rows=5095 width=79) (actual time=0.007..6.677 rows=5002 loops=1)
+                            Filter: ((deleted_at IS NULL) AND (tenant_id = '<fixture UUID>'::uuid) AND (owner_member_id = '<fixture UUID>'::uuid))
+                            Rows Removed by Filter: 44999
+                            Buffers: shared hit=1270
+                      ->  Hash  (cost=3.94..3.94 rows=197 width=24) (actual time=1.098..1.099 rows=1219 loops=1)
+                            Buckets: 2048 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 83kB
+                            Buffers: shared hit=26
+                            ->  CTE Scan on due d  (cost=0.00..3.94 rows=197 width=24) (actual time=0.494..0.954 rows=1219 loops=1)
+                                  Buffers: shared hit=26
+          ->  Result  (cost=0.30..1475.49 rows=177 width=87) (actual time=0.026..3.465 rows=1097 loops=1)
+                One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                Buffers: shared hit=3657
+                ->  Nested Loop  (cost=0.30..1475.49 rows=177 width=87) (actual time=0.018..3.367 rows=1097 loops=1)
+                      Buffers: shared hit=3657
+                      ->  CTE Scan on due d_1  (cost=0.00..3.94 rows=197 width=24) (actual time=0.001..0.125 rows=1219 loops=1)
+                      ->  Index Scan using records_pkey on records r_2  (cost=0.29..7.46 rows=1 width=79) (actual time=0.002..0.002 rows=1 loops=1219)
+                            Index Cond: (id = d_1.record_id)
+                            Filter: ((deleted_at IS NULL) AND (owner_member_id <> '<fixture UUID>'::uuid) AND (tenant_id = '<fixture UUID>'::uuid))
+                            Rows Removed by Filter: 0
+                            Buffers: shared hit=3657
+  CTE eligible
+    ->  Hash Join  (cost=0.08..128.12 rows=4 width=303) (actual time=1.140..19.921 rows=5367 loops=1)
+          Hash Cond: (r_3.object_id = "*VALUES*".column1)
+          Join Filter: ((("*VALUES*".column2 IS NULL) OR (r_3.owner_member_id = ANY ("*VALUES*".column2))) AND ((r_3.status_key IS NULL) OR ((r_3.status_key)::text <> ALL ("*VALUES*".column4))))
+          Rows Removed by Join Filter: 732
+          Buffers: shared hit=4953
+          ->  CTE Scan on candidates r_3  (cost=0.00..105.44 rows=5272 width=301) (actual time=1.115..16.280 rows=6099 loops=1)
+                Buffers: shared hit=4953
+          ->  Hash  (cost=0.04..0.04 rows=3 width=112) (actual time=0.009..0.009 rows=3 loops=1)
+                Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                ->  Values Scan on "*VALUES*"  (cost=0.00..0.04 rows=3 width=112) (actual time=0.005..0.006 rows=3 loops=1)
+  CTE assess_state
+    ->  CTE Scan on eligible e  (cost=0.00..4.39 rows=1 width=311) (actual time=0.023..6.449 rows=4183 loops=1)
+          Filter: ((due_at IS NULL) AND (NOT in_public_pool) AND (reclaim IS NOT TRUE) AND (owner_member_id = '<fixture UUID>'::uuid))
+          Rows Removed by Filter: 1184
+          Buffers: shared hit=5581
+          SubPlan 4
+            ->  Limit  (cost=0.28..4.30 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=2790)
+                  Buffers: shared hit=5581
+                  ->  Result  (cost=0.28..4.30 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=2790)
+                        One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                        Buffers: shared hit=5581
+                        ->  Index Only Scan using brief_current_state on record_transition_histories  (cost=0.28..4.30 rows=1 width=8) (actual time=0.001..0.001 rows=1 loops=2790)
+                              Index Cond: ((tenant_id = '<fixture UUID>'::uuid) AND (record_id = e.id) AND (to_state_key = (e.status_key)::text))
+                              Heap Fetches: 0
+                              Buffers: shared hit=5581
+  CTE assess_contact
+    ->  CTE Scan on assess_state e_1  (cost=0.00..12.77 rows=1 width=24) (actual time=0.025..9.997 rows=2361 loops=1)
+          Filter: ((entered IS NULL) OR (entered >= '2026-11-10 16:00:00+00'::timestamp with time zone))
+          Rows Removed by Filter: 1822
+          Buffers: shared hit=14164
+          SubPlan 6
+            ->  Limit  (cost=0.41..8.44 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=2361)
+                  Buffers: shared hit=9441
+                  ->  Result  (cost=0.41..8.44 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=2361)
+                        One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                        Buffers: shared hit=9441
+                        ->  Index Scan using record_activities_tenant_id_record_id_created_at_idx on record_activities  (cost=0.41..8.44 rows=1 width=8) (actual time=0.001..0.001 rows=1 loops=2361)
+                              Index Cond: ((tenant_id = '<fixture UUID>'::uuid) AND (record_id = e_1.id))
+                              Filter: (activity_type = ANY ('{CALL,MESSAGE,MEETING,NOTE}'::"RecordActivityType"[]))
+                              Buffers: shared hit=9441
+          SubPlan 7
+            ->  Limit  (cost=0.29..4.31 rows=1 width=8) (actual time=0.002..0.002 rows=0 loops=2361)
+                  Buffers: shared hit=4723
+                  ->  Result  (cost=0.29..4.31 rows=1 width=8) (actual time=0.002..0.002 rows=0 loops=2361)
+                        One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+                        Buffers: shared hit=4723
+                        ->  Index Only Scan using brief_completed_contact on record_follow_ups record_follow_ups_1  (cost=0.29..4.31 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=2361)
+                              Index Cond: ((tenant_id = '<fixture UUID>'::uuid) AND (record_id = e_1.id))
+                              Heap Fetches: 0
+                              Buffers: shared hit=4723
+  ->  Result  (cost=1.00..9.05 rows=1 width=92) (actual time=44.971..45.019 rows=21 loops=1)
+        One-Time Filter: ((NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid = '<fixture UUID>'::uuid)
+        Buffers: shared hit=24761
+        ->  Nested Loop  (cost=1.00..9.05 rows=1 width=92) (actual time=44.964..45.010 rows=21 loops=1)
+              Buffers: shared hit=24761
+              ->  Limit  (cost=0.70..0.71 rows=1 width=48) (actual time=44.954..44.957 rows=21 loops=1)
+                    Buffers: shared hit=24698
+                    ->  Sort  (cost=0.70..0.71 rows=1 width=48) (actual time=44.954..44.955 rows=21 loops=1)
+                          Sort Key: first_match.at, first_match.id
+                          Sort Method: top-N heapsort  Memory: 27kB
+                          Buffers: shared hit=24698
+                          ->  WindowAgg  (cost=0.42..0.68 rows=1 width=48) (actual time=44.717..44.828 rows=1822 loops=1)
+                                Buffers: shared hit=24698
+                                ->  Subquery Scan on first_match  (cost=0.42..0.66 rows=1 width=28) (actual time=43.452..44.575 rows=1822 loops=1)
+                                      Filter: ((first_match.first = 1) AND (first_match.priority = 3))
+                                      Rows Removed by Filter: 2638
+                                      Buffers: shared hit=24698
+                                      ->  WindowAgg  (cost=0.42..0.56 rows=7 width=36) (actual time=43.450..44.406 rows=4460 loops=1)
+                                            Run Condition: (row_number() OVER (?) <= 1)
+                                            Buffers: shared hit=24698
+                                            ->  Sort  (cost=0.42..0.44 rows=7 width=28) (actual time=43.445..43.539 rows=4477 loops=1)
+                                                  Sort Key: eligible.id, (1)
+                                                  Sort Method: quicksort  Memory: 507kB
+                                                  Buffers: shared hit=24698
+                                                  ->  Append  (cost=0.00..0.32 rows=7 width=28) (actual time=1.205..42.672 rows=4477 loops=1)
+                                                        Buffers: shared hit=24698
+                                                        ->  CTE Scan on eligible  (cost=0.00..0.08 rows=4 width=28) (actual time=1.205..21.562 rows=487 loops=1)
+                                                              Filter: (due_at IS NOT NULL)
+                                                              Rows Removed by Filter: 4880
+                                                              Buffers: shared hit=4953
+                                                        ->  CTE Scan on eligible eligible_1  (cost=0.00..0.09 rows=1 width=28) (actual time=0.914..1.169 rows=714 loops=1)
+                                                              Filter: ((NOT in_public_pool) AND reclaim AND (owner_member_id = '<fixture UUID>'::uuid))
+                                                              Rows Removed by Filter: 4653
+                                                        ->  CTE Scan on assess_state  (cost=0.00..0.02 rows=1 width=28) (actual time=0.039..9.159 rows=1822 loops=1)
+                                                              Filter: (entered < '2026-11-10 16:00:00+00'::timestamp with time zone)
+                                                              Rows Removed by Filter: 2361
+                                                              Buffers: shared hit=5581
+                                                        ->  CTE Scan on assess_contact  (cost=0.00..0.02 rows=1 width=28) (actual time=0.051..10.514 rows=1454 loops=1)
+                                                              Filter: (contacted < '2026-11-10 16:00:00+00'::timestamp with time zone)
+                                                              Rows Removed by Filter: 907
+                                                              Buffers: shared hit=14164
+              ->  Index Scan using records_pkey on records r  (cost=0.29..8.31 rows=1 width=60) (actual time=0.002..0.002 rows=1 loops=21)
+                    Index Cond: (id = first_match.id)
+                    Filter: (tenant_id = '<fixture UUID>'::uuid)
+                    Buffers: shared hit=63
+Planning:
+  Buffers: shared hit=3
+Planning Time: 0.958 ms
+Execution Time: 45.274 ms

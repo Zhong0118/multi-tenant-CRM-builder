@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
-import { createServer } from 'node:http';
 import { createAiProvider } from '../../../src/modules/ai/ai-provider';
 import { cases } from './cases';
 import { evaluate } from './run';
@@ -68,7 +67,7 @@ void test('report includes failed input, raw and validated drafts, scores transp
   assert.ok(!report.includes(secret));
 });
 
-void test('the configured SDK uses the structured Responses API and the evaluator scores the server-validated draft', async () => {
+void test('the configured SDK uses the structured Responses API and the evaluator scores the server-validated draft', async (t) => {
   const sample = cases.find((c) => c.id === 'next-week')!;
   const raw = {
     note: '预算待批，下周联系。',
@@ -81,66 +80,53 @@ void test('the configured SDK uses the structured Responses API and the evaluato
   };
   let requestBody = '';
   let path = '';
-  const server = createServer((req, res) => {
-    path = req.url ?? '';
-    req.on('data', (chunk: Buffer) => {
-      requestBody += chunk.toString();
-    });
-    req.on('end', () => {
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          id: 'resp_eval',
-          object: 'response',
-          model: 'transport-fixture',
-          status: 'completed',
-          created_at: 1,
-          output: [
-            {
-              type: 'message',
-              id: 'msg_eval',
-              role: 'assistant',
-              status: 'completed',
-              content: [
-                {
-                  type: 'output_text',
-                  text: JSON.stringify(raw),
-                  annotations: [],
-                },
-              ],
-            },
-          ],
-          usage: { input_tokens: 100, output_tokens: 30, total_tokens: 130 },
-        }),
-      );
-    });
+  t.mock.method(
+    globalThis,
+    'fetch',
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      path = new URL(String(input)).pathname;
+      requestBody = String(init?.body);
+      return Response.json({
+        id: 'resp_eval',
+        object: 'response',
+        model: 'transport-fixture',
+        status: 'completed',
+        created_at: 1,
+        output: [
+          {
+            type: 'message',
+            id: 'msg_eval',
+            role: 'assistant',
+            status: 'completed',
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify(raw),
+                annotations: [],
+              },
+            ],
+          },
+        ],
+        usage: { input_tokens: 100, output_tokens: 30, total_tokens: 130 },
+      });
+    },
+  );
+  const provider = createAiProvider({
+    nodeEnv: 'development',
+    provider: 'openai',
+    apiKey: randomUUID(),
+    model: 'transport-fixture',
+    baseURL: 'https://models.example/v1',
   });
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  try {
-    const address = server.address();
-    assert.ok(address && typeof address !== 'string');
-    const provider = createAiProvider({
-      nodeEnv: 'development',
-      provider: 'openai',
-      apiKey: randomUUID(),
-      model: 'transport-fixture',
-      baseURL: 'http://127.0.0.1:' + address.port + '/v1',
-    });
-    const [row] = await evaluate(provider, [sample]);
-    assert.equal(path, '/v1/responses');
-    assert.match(requestBody, /json_schema/);
-    // DeepSeek rejects the JSON Schema date format before it runs the model.
-    assert.doesNotMatch(requestBody, /"format"\s*:\s*"date"/);
-    assert.ok(requestBody.includes(sample.text));
-    assert.deepEqual(row.failures, []);
-    assert.deepEqual(row.modelOutput, raw);
-    assert.equal(row.draft?.followUp?.suggestedDate, sample.expected.date);
-  } finally {
-    server.closeAllConnections();
-    await new Promise<void>((resolve, reject) =>
-      server.close((err) => (err ? reject(err) : resolve())),
-    );
-  }
+  const [row] = await evaluate(provider, [sample]);
+  assert.equal(path, '/v1/responses');
+  assert.match(requestBody, /json_schema/);
+  // DeepSeek rejects the JSON Schema date format before it runs the model.
+  assert.doesNotMatch(requestBody, /"format"\s*:\s*"date"/);
+  assert.ok(requestBody.includes(sample.text));
+  assert.deepEqual(row.failures, []);
+  assert.deepEqual(row.modelOutput, raw);
+  assert.equal(row.draft?.followUp?.suggestedDate, sample.expected.date);
 });
 
 void test('a fresh report also surfaces passing notes for a repeatable qualitative review', () => {

@@ -5,7 +5,10 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { sourceRecordHref } from "@/features/records/source-navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, Skeleton } from "antd";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { WorkspaceMemberContext, useAiFeature } from "@/features/ai-governance/access";
+import { briefApi } from "@/features/daily-brief/brief-api";
+import { AttentionList, BriefSuggestions } from "@/features/daily-brief/workbench-brief";
 import {
   followUpApi,
   followUpQueryKeys,
@@ -64,6 +67,15 @@ export function PersonalFollowUpWorkbench({
     refetchInterval: 60_000,
   });
   const now = useNow();
+  const memberId = useContext(WorkspaceMemberContext);
+  const allowed = useAiFeature("daily_brief");
+  const rules = useQuery({
+    queryKey: [...followUpQueryKeys.root(tenantCode), "brief", memberId],
+    queryFn: () => briefApi.list(tenantCode),
+    enabled: !!memberId,
+    refetchInterval: 60_000,
+  });
+  const brief = rules.isError ? undefined : rules.data;
 
   const data: FollowUpWorkbench | undefined = query.data;
   const hasItems =
@@ -117,6 +129,16 @@ export function PersonalFollowUpWorkbench({
           <Link href={`/workspace/${tenantCode}/work`}>任务与日报</Link>
         </span>
       </header>
+      {allowed && memberId && brief && (
+        <BriefSuggestions
+          key={tenantCode + memberId + brief.localDate}
+          tenantCode={tenantCode}
+          memberId={memberId}
+          localDate={brief.localDate}
+          timezone={brief.timezone}
+          hasCandidates={brief.groups.some((group) => group.total > 0)}
+        />
+      )}
       {query.isLoading && <Skeleton active paragraph={{ rows: 2 }} />}
       {query.isError && (
         <Alert
@@ -224,10 +246,15 @@ export function PersonalFollowUpWorkbench({
               now={now}
               query={tasks}
             />
+          </div>
+          <div className={styles.agendaColumn}>
             <PendingContacts tenantCode={tenantCode} data={data} />
           </div>
         </div>
       ) : null}
+      {memberId&&rules.isLoading&&<Skeleton active paragraph={{rows:1}}/>}
+      {rules.isError&&<Alert type="error" title="关注清单加载失败" action={<Button onClick={()=>void rules.refetch()}>重试</Button>}/>}
+      {brief&&<AttentionList tenantCode={tenantCode} data={brief}/>}
       {completing ? <FollowUpCompletionDialog tenantCode={tenantCode} task={completing} api={api} onClose={() => setCompleting(undefined)} /> : null}
     </section>
   );

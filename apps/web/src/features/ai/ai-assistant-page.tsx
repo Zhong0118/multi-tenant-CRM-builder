@@ -94,6 +94,7 @@ export function AiAssistantPage({
           : pathname,
       );
   };
+  const [liveWriting,setLiveWriting]=useState<Record<string,Extract<import('@crm/contracts').AssistantAction,{kind:'writing'}>>>({});
   const [cardError, setCardError] = useState("");
   const [cardBusy, setCardBusy] = useState(false);
   const mutationLock = useRef(false);
@@ -163,7 +164,10 @@ export function AiAssistantPage({
     const pages = messages.data?.pages ?? [];
     return [...pages].reverse().flatMap((page) => page.items) as AiMessage[];
   }, [messages.data]);
-  const shown = assistantHistory(fullHistory, retriedRow, state, proposalUpdates);
+  const shown = assistantHistory(fullHistory, retriedRow, state, proposalUpdates).map(item=>{
+    const live=liveWriting[item.turnId];
+    return item.action?.kind==='writing' && live?.recordId===item.action.recordId && live.objectCode===item.action.objectCode ? {...item,action:live}:item;
+  });
 
   async function consume(
     iterable: AsyncIterable<import("./ai-types").AiPublicStreamEvent>,
@@ -182,6 +186,9 @@ export function AiAssistantPage({
           setCardBusy(false);
         }
         received = true;
+        if(event.event==='action.ready' && event.data.action.kind==='writing'){
+          const {turnId,action}=event.data;setLiveWriting(items=>({...items,[turnId]:action as Extract<typeof action,{kind:'writing'}>}));
+        }
         dispatch({ type: "event", event });
         if (event.event === "conversation.ready") {
           liveConversationId = event.data.conversationId;

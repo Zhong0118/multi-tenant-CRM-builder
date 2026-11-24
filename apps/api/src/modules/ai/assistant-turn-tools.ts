@@ -39,6 +39,7 @@ export async function createAssistantTurnTools(
     filterDraft?: FilterRule;
     userText: string;
     filterChoice?: string;
+    chosenRecord?: { objectCode: string; recordId: string };
   },
 ) {
   const { questions, actions, canPropose, page, filterDraft, userText } =
@@ -176,6 +177,30 @@ export async function createAssistantTurnTools(
       },
     });
 
+  if (options.features.includes('writing')) {
+    const tool = actions?.writingTool?.(
+      context,
+      userText,
+      abortSignal,
+      (objectCode, recordId) => {
+        const ref = { objectCode, recordId };
+        return (
+          (page?.objectCode === objectCode && page.recordId === recordId) ||
+          (options.chosenRecord?.objectCode === objectCode &&
+            options.chosenRecord.recordId === recordId) ||
+          search.coverage([ref])?.total === 1
+        );
+      },
+    );
+    if (tool)
+      tools.push({
+        ...tool,
+        execute: (input) =>
+          present(async () => {
+            card.action = await tool.execute(input);
+          }),
+      });
+  }
   if (questions)
     tools.push(
       ...createQuestionTools((input) =>
@@ -240,4 +265,21 @@ export async function createAssistantTurnTools(
     },
   }));
   return { tools: guardedTools, collector, search, card, brief };
+}
+
+/** Saved history can regenerate a draft; the generated text only travels on the live stream. */
+export function persistedAction(action: AssistantAction) {
+  if (action.kind !== 'writing') return action;
+  const { kind, objectCode, recordId, options } = action;
+  return {
+    kind,
+    objectCode,
+    recordId,
+    options: {
+      kind: options.kind,
+      tone: options.tone,
+      purpose: options.purpose,
+      length: options.length,
+    },
+  };
 }

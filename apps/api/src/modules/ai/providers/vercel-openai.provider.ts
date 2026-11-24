@@ -35,6 +35,7 @@ import type {
   AiProvider,
   AiProviderEvent,
   AiProviderMessage,
+  SalesDailyInput,
   AiProviderTool,
 } from '../ai-provider';
 
@@ -77,6 +78,21 @@ export class VercelOpenAiProvider implements AiProvider {
       meterFetch,
     );
     return openai[this.protocol](this.modelKey);
+  }
+
+  generateSalesDaily(input: SalesDailyInput) {
+    return this.generateStructured(
+      JSON.parse(input.prompt) as unknown,
+      input.signal ?? new AbortController().signal,
+      input.actor,
+      {
+        feature: input.feature,
+        name: input.feature,
+        schema: input.schema,
+        system: input.system,
+        onSend: input.onSend,
+      },
+    );
   }
 
   async generateTableBlueprint(
@@ -137,6 +153,7 @@ export class VercelOpenAiProvider implements AiProvider {
       feature: Exclude<GenerationFeature, 'assistant'>;
       name: string;
       schema: ZodType<T>;
+      onSend?: () => void | Promise<void>;
       system: string;
     },
   ) {
@@ -146,9 +163,11 @@ export class VercelOpenAiProvider implements AiProvider {
       this.providerKey,
       this.modelKey,
     );
+    if (meter) meter.onSend = config.onSend;
     abortSignal = boundedSignal(abortSignal, config.feature);
     let usage: Usage | undefined;
     try {
+      if (!meter) await config.onSend?.();
       const result = await generateText({
         model: this.languageModel(meter?.fetch),
         system: config.system,
@@ -160,18 +179,48 @@ export class VercelOpenAiProvider implements AiProvider {
         onStepEnd: (step) => {
           usage = step.usage;
         },
-        providerOptions: { openai: { store: false } },
+        providerOptions: {
+          openai: {
+            store: false,
+            // On long shortlists DeepSeek can spend the entire output budget
+            // on reasoning before returning any suggestions. The SDK needs
+            // forceReasoning to forward the official endpoint's effort setting.
+            ...(config.feature === 'daily_brief' &&
+            this.protocol === 'responses' &&
+            this.modelKey === 'deepseek-flash' &&
+            this.baseURL &&
+            new URL(this.baseURL).hostname === 'api.deepseek.com'
+              ? {
+                  forceReasoning: true,
+                  systemMessageMode: 'system',
+                  reasoningEffort: 'none',
+                }
+              : {}),
+          },
+        },
       });
       usage = result.usage;
       if (result.finishReason && result.finishReason !== 'stop')
-        throw new Error('INCOMPLETE_OUTPUT');
+        throw Object.assign(new Error('INCOMPLETE_OUTPUT'), {
+          finishReason: result.finishReason,
+        });
       const output = result.output;
       await meter?.finish('success', usage);
       return output;
     } catch (error) {
       usage ??= errorUsage(error);
       await meter?.finish(failureStatus(abortSignal), usage);
-      throw meter?.denial ?? error;
+      if (meter?.denial) throw meter.denial;
+      if (
+        error instanceof Error &&
+        error.name === 'AI_NoObjectGeneratedError' &&
+        'finishReason' in error &&
+        error.finishReason === 'length'
+      )
+        throw Object.assign(new Error('INCOMPLETE_OUTPUT'), {
+          finishReason: error.finishReason,
+        });
+      throw error;
     } finally {
       if (usage) this.onUsage?.(usage);
     }

@@ -1,5 +1,7 @@
 "use client";
 
+import { FeatureGate } from "@/features/ai-governance/access";
+import { ReportDraft } from "./report-draft";
 import { WorkBusinessMetrics } from "./work-business-metrics";
 
 import { PlusOutlined } from "@ant-design/icons";
@@ -742,6 +744,7 @@ function ReportForm({
         if (!empty && !readOnly) save.mutate();
       }}
     >
+      {!readOnly && <FeatureGate feature="daily_report"><ReportDraft tenantCode={tenantCode} workDate={loaded.workDate} current={draft} disabled={save.isPending || reloading} onApply={updateDraft}/></FeatureGate>}
       {readOnly ? (
         <Alert
           type="info"

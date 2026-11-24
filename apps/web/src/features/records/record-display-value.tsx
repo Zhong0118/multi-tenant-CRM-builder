@@ -39,6 +39,7 @@ export function displayValue(
   field: Pick<PublishedFieldView, "type" | "config" | "validation">,
   value: unknown,
   members: DynamicFieldMember[],
+  timeZone?: string,
 ): ReactNode {
   if (value === null || value === undefined || value === "") return "—";
   switch (field.type) {
@@ -63,7 +64,7 @@ export function displayValue(
         />
       );
     case "DATETIME":
-      return formatDateTime(String(value));
+      return formatDateTime(String(value), timeZone);
     case "NUMBER":
     case "MONEY": {
       const number = Number(value);
@@ -91,12 +92,16 @@ function optionValue(
   return <OptionBadge key={key} option={option} />;
 }
 
-export function formatDateTime(value: string): string {
+export function formatDateTime(value: string, timeZone?: string): string {
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp)) return value;
-  const date = new Date(timestamp);
-  const pad = (part: number) => String(part).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate(),
-  )} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(timestamp);
 }

@@ -40,42 +40,9 @@ export class PrismaPublishedObjectRepository implements PublishedObjectRepositor
   constructor(private readonly runner: DatabaseContextRunner) {}
 
   list(context: TenantContext): Promise<PublishedObjectRecord[]> {
-    return this.runner.withTenant(context, async (transaction) => {
-      const objects = await transaction.objectDefinition.findMany({
-        where: {
-          tenantId: context.tenantId,
-          status: 'ACTIVE',
-          activePublicationId: { not: null },
-        },
-        include: {
-          activePublication: { select: { configuration: true } },
-          memberFieldPermissions: {
-            where: { memberId: context.memberId },
-            select: { access: true, field: { select: { fieldKey: true } } },
-          },
-          permissions: {
-            where: {
-              subjectType: 'MEMBER',
-              subjectMemberId: context.memberId,
-            },
-            take: 1,
-          },
-        },
-        orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
-      });
-      const groupOwnerMemberIds = objects.some((object) =>
-        object.permissions.some(
-          (permission) => permission.readScope === 'GROUP',
-        ),
-      )
-        ? await resolveGroupOwnerMemberIds(transaction, context)
-        : undefined;
-      return objects.map((object) => ({
-        ...toPublishedRecord(object),
-        groupOwnerMemberIds,
-        memberId: context.memberId,
-      }));
-    });
+    return this.runner.withTenant(context, (tx) =>
+      listPublishedObjectsInTransaction(tx, context),
+    );
   }
 
   findByCode(
@@ -86,6 +53,45 @@ export class PrismaPublishedObjectRepository implements PublishedObjectRepositor
       findPublishedObjectInTransaction(transaction, context, code),
     );
   }
+}
+
+export async function listPublishedObjectsInTransaction(
+  transaction: Prisma.TransactionClient,
+  context: TenantContext,
+) {
+  const objects = await transaction.objectDefinition.findMany({
+    where: {
+      tenantId: context.tenantId,
+      status: 'ACTIVE',
+      deletedAt: null,
+      activePublicationId: { not: null },
+    },
+    include: {
+      activePublication: { select: { configuration: true } },
+      memberFieldPermissions: {
+        where: { memberId: context.memberId },
+        select: { access: true, field: { select: { fieldKey: true } } },
+      },
+      permissions: {
+        where: {
+          subjectType: 'MEMBER',
+          subjectMemberId: context.memberId,
+        },
+        take: 1,
+      },
+    },
+    orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+  });
+  const groupOwnerMemberIds = objects.some((object) =>
+    object.permissions.some((permission) => permission.readScope === 'GROUP'),
+  )
+    ? await resolveGroupOwnerMemberIds(transaction, context)
+    : undefined;
+  return objects.map((object) => ({
+    ...toPublishedRecord(object),
+    groupOwnerMemberIds,
+    memberId: context.memberId,
+  }));
 }
 
 /**

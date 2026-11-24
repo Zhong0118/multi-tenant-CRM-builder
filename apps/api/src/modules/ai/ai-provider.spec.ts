@@ -613,3 +613,31 @@ it('keeps each communication schema union alternative typed for the Responses AP
   };
   check(z.toJSONSchema(communicationWireSchema));
 });
+
+it.each(['length', 'stop'])(
+  'preserves the SDK object failure reason %s',
+  async (finishReason) => {
+    const provider = new VercelOpenAiProvider({
+      apiKey: 'test',
+      modelKey: 'test',
+    });
+    const sdkError = Object.assign(new Error('provider error'), {
+      name: 'AI_NoObjectGeneratedError',
+      finishReason,
+    });
+    jest.mocked(generateText).mockRejectedValueOnce(sdkError);
+    const pending = provider.generateSalesDaily({
+      actor: {} as never,
+      feature: 'daily_report',
+      system: '',
+      prompt: '{}',
+      schema: z.object({}),
+    });
+    if (finishReason === 'length')
+      await expect(pending).rejects.toMatchObject({
+        message: 'INCOMPLETE_OUTPUT',
+        finishReason,
+      });
+    else await expect(pending).rejects.toBe(sdkError);
+  },
+);

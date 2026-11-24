@@ -1,3 +1,7 @@
+import { DailyBriefController } from './daily-brief/daily-brief.controller';
+import { DailyBriefService } from './daily-brief/daily-brief.service';
+import { SalesDraftsController } from './sales-drafts.controller';
+import { SalesDraftsService } from './sales-drafts.service';
 import { TableBuilderController } from './table-builder.controller';
 import { TableBuilderService } from './table-builder.service';
 import { AssistantQuestionsService } from './assistant-questions.service';
@@ -41,6 +45,8 @@ import { AiToolRegistry } from './tool-registry';
     FollowUpsModule,
   ],
   controllers: [
+    DailyBriefController,
+    SalesDraftsController,
     TableBuilderController,
     FilterPreviewController,
     AiController,
@@ -48,6 +54,8 @@ import { AiToolRegistry } from './tool-registry';
     CommunicationDraftsController,
   ],
   providers: [
+    DailyBriefService,
+    SalesDraftsService,
     AiLedgerService,
     TableBuilderService,
     FilterPreviewService,

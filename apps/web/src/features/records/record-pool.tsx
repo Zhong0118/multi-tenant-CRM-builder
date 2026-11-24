@@ -85,11 +85,13 @@ export function RecordPoolStatus({
   record,
   config,
   compact = false,
+  timeZone,
 }: {
   record: RecordSummary;
   config?: RecordPoolConfig;
   /** In a table row: the stage and the countdown; the exact time is on the record. */
   compact?: boolean;
+  timeZone?: string;
 }) {
   const labels = { ...DEFAULT_POOL_LABELS, ...config?.labels };
   return (
@@ -127,7 +129,7 @@ export function RecordPoolStatus({
         <Typography.Text type="secondary">
           回收于{" "}
           <time dateTime={record.ownershipExpiresAt}>
-            {formatDateTime(record.ownershipExpiresAt)}
+            {formatDateTime(record.ownershipExpiresAt, timeZone)}
           </time>
         </Typography.Text>
       ) : null}

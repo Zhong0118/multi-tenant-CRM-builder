@@ -7,7 +7,6 @@ import Link from "next/link";
 import { RecordWorkspace, type RecordWorkspaceProps } from "./record-workspace";
 import type { RecordSummary } from "@/features/objects/object-types";
 import { DEFAULT_RECORD_QUERY } from "./record-query-state";
-import { formatDateTime } from "./record-display-value";
 const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("./record-pool-api", () => ({ recordPoolApi: { getConfig: vi.fn().mockResolvedValue({ enabled: false, ownershipTtlHours: null, version: 1 }), saveConfig: vi.fn() } }));
@@ -207,7 +206,7 @@ describe("record workspace navigation", () => {
     await waitFor(() => expect(client.getQueryData(key)).toBe("seeded"));
     const update = vi.spyOn(recordApi, "update").mockResolvedValue({ ...record, title: "已保存", values: { name: "已保存" }, version: 2, updatedAt: "2026-09-10T02:30:00.000Z" });
     const remove = vi.spyOn(recordApi, "remove").mockResolvedValue({ accepted: true });
-    render(<RecordWorkspace {...props} openRecord={record} initialEditing={action === "save"} returnTo="/workspace/northwind/follow-ups?status=OPEN&page=1" />, client);
+    render(<RecordWorkspace {...props} initialPage={{ ...props.initialPage, timeZone: "America/Los_Angeles" }} openRecord={record} initialEditing={action === "save"} returnTo="/workspace/northwind/follow-ups?status=OPEN&page=1" />, client);
     failed = true;
     if (action === "save") {
       fireEvent.change(screen.getByLabelText("客户名称"), { target: { value: "已保存" } });
@@ -225,7 +224,7 @@ describe("record workspace navigation", () => {
     if (action === "save") {
       expect(update).toHaveBeenCalledTimes(1);
       // The detail page shows the committed record.
-      expect(screen.getAllByText(formatDateTime("2026-09-10T02:30:00.000Z"))[0]).toBeVisible();
+      expect(screen.getAllByText("2026-09-09 19:30")[0]).toBeVisible();
       expect(screen.queryByRole("button", { name: "保存修改" })).not.toBeInTheDocument();
     } else {
       expect(remove).toHaveBeenCalledTimes(1);

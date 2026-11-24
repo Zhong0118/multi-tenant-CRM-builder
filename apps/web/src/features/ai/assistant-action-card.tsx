@@ -1,5 +1,6 @@
 "use client";
 
+import { SalesWriting } from "./sales-writing";
 import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import { useContext, useState } from "react";
 import { Button } from "antd";
@@ -86,8 +87,18 @@ export function AssistantActionCard({
   const commands = useContext(AssistantCommandContext);
   const [selected, setSelected] = useState<string>();
   const [feedback, setFeedback] = useState("");
-  const allowed = useAiFeature(action.kind === "communication" ? "communication" : "filter");
+  const allowed = useAiFeature(action.kind);
   if (!allowed) return <AccessReason />;
+  if (action.kind === "writing")
+    return (
+      <SalesWriting
+        tenantCode={tenantCode}
+        objectCode={action.objectCode}
+        recordId={action.recordId}
+        initialOptions={action.options}
+        initial={action.draft}
+      />
+    );
   if (action.kind === "communication")
     return <CommunicationCard tenantCode={tenantCode} action={action} />;
   const preview = action.preview;

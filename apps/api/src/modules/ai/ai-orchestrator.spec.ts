@@ -1925,3 +1925,31 @@ describe('assistant package changes', () => {
     );
   });
 });
+
+it('keeps direct model prose off writing turns until the scoped writing card validates it', async () => {
+  const conv = conversationMock();
+  conv.beginTurn.mockResolvedValue({
+    ...begun,
+    user: { ...begun.user, content: '给这条记录写一条微信' },
+  });
+  const provider = providerWith([
+    { type: 'TEXT_DELTA', text: 'UNVERIFIED_WRITING_BODY' },
+    { type: 'COMPLETED' },
+  ]);
+  const events = await collect(
+    await new AiOrchestrator(
+      ledger,
+      conv,
+      provider,
+      registryWith([]),
+    ).streamTurn(
+      context,
+      { content: '给这条记录写一条微信' },
+      new AbortController().signal,
+    ),
+  );
+  expect(JSON.stringify(events)).not.toContain('UNVERIFIED_WRITING_BODY');
+  expect(JSON.stringify(conv.finalizeAssistant.mock.calls)).not.toContain(
+    'UNVERIFIED_WRITING_BODY',
+  );
+});

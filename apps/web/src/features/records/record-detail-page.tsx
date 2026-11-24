@@ -53,6 +53,7 @@ import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export interface RecordDetailPageProps {
   tenantCode: string;
+  timeZone?: string;
   schema: RuntimeObjectSchema;
   record: RecordSummary;
   members?: DynamicFieldMember[];
@@ -84,6 +85,7 @@ export interface RecordDetailPageProps {
  */
 export function RecordDetailPage({
   tenantCode,
+  timeZone = "Asia/Shanghai",
   schema,
   record,
   members = [],
@@ -193,13 +195,13 @@ export function RecordDetailPage({
   const poolFacts = record.poolStage
     ? [
         record.poolClaimedAt
-          ? ["领取 / 分配", formatDateTime(record.poolClaimedAt)]
+          ? ["领取 / 分配", formatDateTime(record.poolClaimedAt, timeZone)]
           : null,
         record.poolLastFollowUpAt
-          ? ["最近有效跟进", formatDateTime(record.poolLastFollowUpAt)]
+          ? ["最近有效跟进", formatDateTime(record.poolLastFollowUpAt, timeZone)]
           : null,
         record.poolProtectedAt
-          ? ["保护开始", formatDateTime(record.poolProtectedAt)]
+          ? ["保护开始", formatDateTime(record.poolProtectedAt, timeZone)]
           : null,
         record.poolOrigin ? ["领取来源", poolLabel(record.poolOrigin)] : null,
         record.poolReason ? ["最近流转原因", record.poolReason] : null,
@@ -350,7 +352,7 @@ export function RecordDetailPage({
           <div>
             <dt>归属状态</dt>
             <dd>
-              <RecordPoolStatus record={record} config={poolConfig} />
+              <RecordPoolStatus record={record} config={poolConfig} timeZone={timeZone} />
             </dd>
           </div>
         ) : null}
@@ -431,7 +433,7 @@ export function RecordDetailPage({
           <span className={styles.crumbCurrent}>#{record.recordNo}</span>
         </nav>
         <div className={styles.topActions}>
-          <AssistantPanelButton key={`assistant-${record.id}`} tenantCode={tenantCode} memberId={currentMemberId} objectCode={schema.object.code} objectName={schema.object.name} recordId={record.id} recordTitle={record.title}/>
+          <AssistantPanelButton key={`assistant-${record.id}`} tenantCode={tenantCode} memberId={currentMemberId} objectCode={schema.object.code} objectName={schema.object.name} recordId={record.id} recordTitle={recordFields(schema,record).some(f=>f.fieldKey===schema.object.titleFieldKey)?record.title:'记录 '+record.recordNo}/>
           {activeTab !== "activity" && communicationAction}
           {position && position.total > 1 ? (
             <div className={styles.pager} role="group" aria-label="逐条查看">
@@ -523,7 +525,7 @@ export function RecordDetailPage({
                 <span>
                   更新于{" "}
                   <time dateTime={record.updatedAt}>
-                    {formatDateTime(record.updatedAt)}
+                    {formatDateTime(record.updatedAt, timeZone)}
                   </time>
                 </span>
               </p>
@@ -612,6 +614,7 @@ export function RecordDetailPage({
                           field,
                           record.values[field.fieldKey],
                           members,
+                          timeZone,
                         )}
                       </dd>
                     </div>

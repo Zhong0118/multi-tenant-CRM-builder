@@ -1,0 +1,65 @@
+.editor,
+.result {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.editor {
+  padding: 12px;
+}
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.editor label,
+.result small {
+  display: block;
+}
+.field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.result {
+  padding: 14px;
+  background: #f5f8fc;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+  animation: enter 0.18s ease;
+}
+.result p,
+.result h4 {
+  margin: 0;
+  white-space: pre-line;
+}
+.result small {
+  color: #546173;
+}
+.editor button {
+  transition: transform 0.16s ease;
+}
+.editor button:hover {
+  transform: translateY(-1px);
+}
+.editor button:active {
+  transform: scale(0.98);
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result {
+    animation: none;
+  }
+  .editor button {
+    transition: none;
+  }
+}

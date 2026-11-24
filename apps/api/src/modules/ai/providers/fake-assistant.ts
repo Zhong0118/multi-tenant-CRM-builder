@@ -77,6 +77,54 @@ export async function* simulateAssistant(
       /跟进|待办/.test(text)
     ) {
       output = '助手目前不能修改已有待办的日期，请在跟进待办里调整。';
+    } else if (
+      /写.{0,16}(微信|短信|邮件|电话|拜访)|帮我写/.test(text) &&
+      input.tools.some((t) => t.name === 'draft_writing')
+    ) {
+      let code =
+        typeof answer.objectCode === 'string' ? answer.objectCode : objectCode;
+      if (!code) {
+        const tables = list(await call('list_objects', {}));
+        const chosen =
+          tables.find(
+            (t) => typeof t.name === 'string' && text.includes(t.name),
+          ) ?? tables[0];
+        code = typeof chosen?.code === 'string' ? chosen.code : undefined;
+      }
+      if (!recordId && code) {
+        const query = /(?:给|为)(.+?)(?:写|拟)/.exec(text)?.[1]?.trim();
+        const found = data(
+          await call('search_records', { objectCode: code, query }),
+        );
+        const rows = list(found.items);
+        if (Number(found.total) > 1) {
+          await ask({
+            kind: 'choose_record',
+            objectCode: code,
+            recordIds: rows.slice(0, 10).map((r) => r.id),
+          });
+          return;
+        }
+        recordId = typeof rows[0]?.id === 'string' ? rows[0].id : undefined;
+      }
+      if (!recordId || !code) output = '没有找到可用的记录。';
+      else
+        await call('draft_writing', {
+          objectCode: code,
+          recordId,
+          options: {
+            kind: /邮件/.test(text)
+              ? 'email'
+              : /电话/.test(text)
+                ? 'call'
+                : /拜访/.test(text)
+                  ? 'visit'
+                  : 'message',
+            purpose: /报价/.test(text) ? 'quote' : 'followup',
+            tone: /正式/.test(text) ? 'formal' : 'friendly',
+            length: 'short',
+          },
+        });
     } else if (answer.kind === 'fill_fields' && recordId) {
       await propose({ operationType: 'UPDATE_RECORD', values: answer.values });
     } else if (/简报|什么情况|进展如何|概况/.test(text) && recordId) {

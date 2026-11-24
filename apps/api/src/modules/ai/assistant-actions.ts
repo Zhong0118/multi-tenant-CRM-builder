@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { SalesDraftsService } from './sales-drafts.service';
+import { writingOptions } from './sales-draft-output';
+import { Injectable, Optional } from '@nestjs/common';
 import type {
   AssistantAction,
   AssistantPageHint,
@@ -17,7 +19,44 @@ export class AssistantActionsService {
   constructor(
     private readonly drafts: CommunicationDraftsService,
     private readonly filters: FilterPreviewService,
+    @Optional() private readonly sales?: SalesDraftsService,
   ) {}
+  writingTool(
+    actor: TenantContext,
+    userText: string,
+    signal: AbortSignal,
+    authorized: (code: string, id: string) => boolean,
+  ) {
+    const sales = this.sales;
+    if (!sales) return;
+    const schema = z.strictObject({
+      objectCode: z.string().min(1).max(64),
+      recordId: z.uuid(),
+      options: writingOptions,
+    });
+    return {
+      name: 'draft_writing',
+      description:
+        'Use this tool for outbound message/email/call outline/visit preparation. Use the current verified record or search for the named record. With multiple matches ask_user choose_record before drafting. Include only verbatim user-supplied business details as supplement. Never compose the draft yourself.',
+      inputSchema: schema,
+      execute: async (raw: unknown): Promise<AssistantAction> => {
+        const { objectCode, recordId, options } = schema.parse(raw);
+        if (
+          !authorized(objectCode, recordId) ||
+          (options.supplement && !userText.includes(options.supplement))
+        )
+          throw new ApiException('VALIDATION_FAILED', 400);
+        const draft = await sales.write(
+          actor,
+          objectCode,
+          recordId,
+          options,
+          signal,
+        );
+        return { kind: 'writing', objectCode, recordId, options, draft };
+      },
+    };
+  }
   forPage(
     actor: TenantContext,
     page: AssistantPageHint | undefined,

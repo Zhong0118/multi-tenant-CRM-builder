@@ -1,8 +1,9 @@
 "use client";
 
-import { FeatureGate } from "@/features/ai-governance/access";
-import { RobotOutlined } from "@ant-design/icons";
-import { Button, Drawer } from "antd";
+import { SalesWriting } from "./sales-writing";
+import { useAiFeature } from "@/features/ai-governance/access";
+import { ArrowLeftOutlined, RobotOutlined } from "@ant-design/icons";
+import { Button, Drawer, Space } from "antd";
 import { useEffect, useRef, useState } from "react";
 import type { FilterRule } from "@crm/contracts";
 import type { AssistantPageContext } from "./assistant-commands";
@@ -33,10 +34,21 @@ interface PanelProps {
 }
 
 export function AssistantPanelButton(props: PanelProps) {
-  return <FeatureGate feature="assistant"><AvailableAssistantPanel {...props} /></FeatureGate>;
+  const assistant = useAiFeature("assistant");
+  const writing = useAiFeature("writing") && Boolean(props.recordId);
+  return assistant || writing ? (
+    <AvailableAssistantPanel
+      key={`${assistant}-${writing}`}
+      {...props}
+      assistant={assistant}
+      writing={writing}
+    />
+  ) : null;
 }
 
-function AvailableAssistantPanel(props: PanelProps) {
+function AvailableAssistantPanel(
+  props: PanelProps & { assistant: boolean; writing: boolean },
+) {
   const {
     tenantCode,
     memberId,
@@ -51,6 +63,17 @@ function AvailableAssistantPanel(props: PanelProps) {
     describeRule,
   } = props;
   const [open, setOpen] = useState(false);
+  const [compose, setCompose] = useState(!props.assistant);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!props.writing || url.searchParams.get("writing") !== "1") return;
+    url.searchParams.delete("writing");
+    window.history.replaceState(window.history.state, "", url);
+    // Consume the one-shot record link after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCompose(true);
+    setOpen(true);
+  }, [props.writing, recordId]);
   const editorDraft = useEditorDraft();
   const capture = useRef<FilterRule | undefined>(undefined);
   const [snapshot, setSnapshot] = useState<FilterRule>();
@@ -67,6 +90,7 @@ function AvailableAssistantPanel(props: PanelProps) {
     capture.current = editorDraft?.current;
   };
   const openPanel = () => {
+    setCompose(!props.assistant);
     setSnapshot(capture.current ?? editorDraft?.current);
     capture.current = undefined;
     setOpen(true);
@@ -98,16 +122,30 @@ function AvailableAssistantPanel(props: PanelProps) {
     <>
       <Button
         icon={<RobotOutlined aria-hidden />}
-        aria-label="打开助手"
+        aria-label={props.assistant ? "打开助手" : "打开帮我写"}
         onPointerDown={captureDraft}
         onKeyDown={captureDraft}
         onClick={openPanel}
       >
-        助手
+        {props.assistant ? "助手" : "帮我写"}
       </Button>
       <Drawer
-        title={null}
-        closable={false}
+        title={
+          compose ? (
+            <Space>
+              {props.assistant && (
+                <Button
+                  type="text"
+                  aria-label="返回助手"
+                  icon={<ArrowLeftOutlined />}
+                  onClick={() => setCompose(false)}
+                />
+              )}
+              {[recordTitle, "帮我写"].filter(Boolean).join(" · ")}
+            </Space>
+          ) : null
+        }
+        closable={compose && { placement: "end" }}
         placement="right"
         open={open}
         onClose={() => setOpen(false)}
@@ -124,18 +162,31 @@ function AvailableAssistantPanel(props: PanelProps) {
           section: { maxHeight: keyboardHeight ?? "100dvh" },
         }}
       >
-        <AiAssistantPage
-          key={objectCode + ":" + (recordId ?? "")}
-          tenantCode={tenantCode}
-          memberId={memberId}
-          businessObjects={[]}
-          panel={{
-            page,
-            conversationId,
-            select: (id) => writeAssistantSession(activeKey, id),
-            close: () => setOpen(false),
-          }}
-        />
+        {props.writing &&
+          recordId &&
+          (compose ? (
+            <SalesWriting
+              tenantCode={tenantCode}
+              objectCode={objectCode}
+              recordId={recordId}
+            />
+          ) : (
+            <Button onClick={() => setCompose(true)}>帮我写</Button>
+          ))}
+        {!compose && props.assistant && (
+          <AiAssistantPage
+            key={objectCode + ":" + (recordId ?? "")}
+            tenantCode={tenantCode}
+            memberId={memberId}
+            businessObjects={[]}
+            panel={{
+              page,
+              conversationId,
+              select: (id) => writeAssistantSession(activeKey, id),
+              close: () => setOpen(false),
+            }}
+          />
+        )}
       </Drawer>
     </>
   );

@@ -1,0 +1,47 @@
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.compare th,
+.compare td {
+  text-align: start;
+  vertical-align: top;
+  border-bottom: 1px solid #e2e6ec;
+  padding: 10px 6px;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.compare th:first-child {
+  width: 22%;
+}
+.compare th:last-child {
+  width: 16%;
+}
+.compare th label {
+  display: flex;
+  gap: 4px;
+}
+.compare thead {
+  background: #f5f7fa;
+}
+.compare select {
+  max-width: 100%;
+  font: inherit;
+}
+.compare tbody tr {
+  animation: enter 0.15s ease;
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .compare tbody tr {
+    animation: none;
+  }
+}

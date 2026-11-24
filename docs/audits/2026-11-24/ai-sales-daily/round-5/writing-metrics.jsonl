@@ -1,0 +1,40 @@
+{"dataset": "development", "sample": 1, "durationMs": 5520, "failures": ["EVAL_RUN_ERROR"], "diagnostic": "AI_APICallError", "quality": null}
+{"dataset": "development", "sample": 2, "durationMs": 12199, "failures": ["OUTPUT_MISMATCH"], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": false, "lengthOk": true}}
+{"dataset": "development", "sample": 3, "durationMs": 3653, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 4, "durationMs": 1534, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 5, "durationMs": 3068, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 6, "durationMs": 6712, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 7, "durationMs": 3215, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 8, "durationMs": 13205, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 9, "durationMs": 4223, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 10, "durationMs": 3604, "failures": ["OUTPUT_MISMATCH"], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": false, "lengthOk": false}}
+{"dataset": "development", "sample": 11, "durationMs": 5294, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 12, "durationMs": 7926, "failures": ["OUTPUT_MISMATCH"], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": false, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 13, "durationMs": 3381, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 14, "durationMs": 6897, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 15, "durationMs": 3516, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 16, "durationMs": 4140, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 17, "durationMs": 2102, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 18, "durationMs": 4521, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 19, "durationMs": 5054, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 20, "durationMs": 4057, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 21, "durationMs": 3139, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 22, "durationMs": 9248, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 23, "durationMs": 10565, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 24, "durationMs": 5593, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 25, "durationMs": 3809, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 26, "durationMs": 5782, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 27, "durationMs": 7568, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 28, "durationMs": 6575, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 29, "durationMs": 4864, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "development", "sample": 30, "durationMs": 15269, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "holdout", "sample": 1, "durationMs": 5524, "failures": ["EVAL_RUN_ERROR"], "diagnostic": "AI_APICallError", "quality": null}
+{"dataset": "holdout", "sample": 2, "durationMs": 19424, "failures": ["EVAL_RUN_ERROR"], "diagnostic": "INCOMPLETE_OUTPUT/length", "quality": null}
+{"dataset": "holdout", "sample": 3, "durationMs": 3387, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "holdout", "sample": 4, "durationMs": 3138, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "holdout", "sample": 5, "durationMs": 3483, "failures": ["OUTPUT_MISMATCH"], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": false, "lengthOk": true}}
+{"dataset": "holdout", "sample": 6, "durationMs": 2142, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "holdout", "sample": 7, "durationMs": 3941, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "holdout", "sample": 8, "durationMs": 3659, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "holdout", "sample": 9, "durationMs": 6891, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}
+{"dataset": "holdout", "sample": 10, "durationMs": 1551, "failures": [], "diagnostic": null, "quality": {"visitInternal": true, "visitGrounded": true, "neutralAttribution": true, "lengthOk": true}}

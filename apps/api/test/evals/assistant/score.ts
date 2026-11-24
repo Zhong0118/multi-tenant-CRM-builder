@@ -15,6 +15,7 @@ export type CardKind =
   | 'fill_fields'
   | 'batch'
   | 'filter'
+  | 'writing'
   | 'communication'
   | 'brief'
   | 'failure';
