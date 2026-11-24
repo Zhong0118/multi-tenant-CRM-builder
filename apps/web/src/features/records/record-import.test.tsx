@@ -12,6 +12,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { RuntimeObjectSchema } from "@/features/objects/object-types";
 
 import type { RecordApi } from "./record-api";
+import { importBatchId } from "./record-import-file";
 import * as assistApi from "./record-import-assist-api";
 import { RecordImportDrawer } from "./record-import";
 
@@ -280,6 +281,20 @@ describe("RecordImportDrawer", () => {
       }),
     );
     call.mockRestore();
+  });
+  it("honors a file attempt from before this tab was reloaded", async () => {
+    const csv = "姓名,客户状态\n回到导入页,待联系";
+    const identity = await importBatchId(new TextEncoder().encode(csv), "");
+    sessionStorage.setItem(
+      "crm.importAssist." + JSON.stringify(["northwind", null, identity]),
+      "1",
+    );
+    setup(recordApi(), schema, false, undefined, true);
+    chooseFile(csv);
+    await screen.findByText("1 行 · 2 列");
+    expect(
+      screen.queryByRole("button", { name: "AI 帮我对列" }),
+    ).not.toBeInTheDocument();
   });
   it("calls once per file after cancellation and ignores the late plan", async () => {
     let finish!: (

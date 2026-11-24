@@ -492,7 +492,14 @@ export function RecordImportDrawer({
     if (request !== readRequest.current || stopped.current) return;
     setSheetName(name);
     setBatchId(id);
-    setFileKey(JSON.stringify([tenantCode, memberKey, identity]));
+    const attemptKey = JSON.stringify([tenantCode, memberKey, identity]);
+    try {
+      if (sessionStorage.getItem("crm.importAssist." + attemptKey))
+        attemptedFiles.add(attemptKey);
+    } catch {
+      /* Storage can be disabled in an embedded browser. */
+    }
+    setFileKey(attemptKey);
     setEvidence(proof);
     setHeaderLocked(selection.detected);
     setHeaders(selection.candidates);
@@ -644,6 +651,11 @@ export function RecordImportDrawer({
     )
       return;
     attemptedFiles.add(fileKey);
+    try {
+      sessionStorage.setItem("crm.importAssist." + fileKey, "1");
+    } catch {
+      /* The in-memory reservation still covers this page. */
+    }
     const abort = new AbortController();
     controller.current = abort;
     const before = {
