@@ -174,7 +174,13 @@ export async function testModel(
             inputSchema: schema,
           }),
         },
-        toolChoice: { type: 'tool', toolName: 'confirm_code' },
+        // DeepSeek Responses accepts the assistant's automatic tool selection.
+        // The result below must still call confirm_code with the fixture value.
+        toolChoice:
+          config.protocol === 'responses' &&
+          new URL(config.baseURL).hostname === 'api.deepseek.com'
+            ? 'auto'
+            : { type: 'tool', toolName: 'confirm_code' },
       });
       count(r.usage);
       return (

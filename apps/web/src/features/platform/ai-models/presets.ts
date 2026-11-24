@@ -25,7 +25,7 @@ export const presets: Connection[] = [
     preset: "deepseek",
     name: "DeepSeek 官方",
     baseURL: "https://api.deepseek.com",
-    protocol: "chat",
+    protocol: "responses",
     embeddings: false,
     models: [multimodal("deepseek-flash", 1000000, 384000)],
   },

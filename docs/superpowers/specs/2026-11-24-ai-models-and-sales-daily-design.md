@@ -58,7 +58,7 @@ A 从合入 ai-closeout 后的最新 origin/main 开始。B 开始前 fetch，A 
 
 | 预设 | 基址、默认格式 | 可预填的模型能力与官方依据 |
 | --- | --- | --- |
-| DeepSeek 官方 | https://api.deepseek.com · Chat | deepseek-flash，文本及图片输入，官方表列 1M 上下文、最高 384K 输出。文字分配须过三项测试。[模型与能力](https://api-docs.deepseek.com/quick_start/pricing/) |
+| DeepSeek 官方 | https://api.deepseek.com · 默认 Responses，高级设置可选 Chat | deepseek-flash，文本及图片输入，官方表列 1M 上下文、最高 384K 输出。文字分配须过三项测试。[模型与能力](https://api-docs.deepseek.com/quick_start/pricing/) |
 | 阿里云百炼 | 北京公共兼容地址 https://dashscope.aliyuncs.com/compatible-mode/v1 · Chat、Embeddings；专属工作空间按控制台改基址 | qwen3-vl-plus 文图输入，示例上下文 262144、最大输出 32768；text-embedding-v4 是文本向量，维度随配置实测。地域与 Key 必须对应。[地址](https://help.aliyun.com/zh/model-studio/base-url) · [视觉模型](https://help.aliyun.com/zh/model-studio/qwen3-vl-plus) · [向量接口](https://www.alibabacloud.com/help/en/model-studio/embedding-interfaces-compatible-with-openai) |
 | 火山方舟 | https://ark.cn-beijing.volces.com/api/v3 · Chat | doubao-seed-2-1-pro-260915，文图、工具，1024K 上下文、256K 最大回答。部署端点别名手填能力。[兼容接口](https://docs.volcengine.com/docs/ark/compatible-with-openai-sdk?lang=zh) · [模型表](https://console.volcengine.com/ark/region%3Acn-beijing/docs/model-list) |
 | 智谱 | https://open.bigmodel.cn/api/paas/v4 · Chat | glm-4.6v 文图、工具、128K 上下文。所查模型页未给出可用于分配的最大输出，须补齐再分配文字。[模型说明](https://docs.bigmodel.cn/cn/guide/models/vlm/glm-4.6v) |

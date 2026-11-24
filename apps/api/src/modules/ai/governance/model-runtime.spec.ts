@@ -54,6 +54,7 @@ function readBody(init: RequestInit | undefined) {
     stream?: boolean;
     tools?: unknown;
     thinking?: { type: string };
+    tool_choice?: unknown;
     response_format?: {
       type: string;
       json_schema?: { schema: { properties: unknown } };
@@ -225,6 +226,37 @@ it('uses DeepSeek Chat JSON mode with the production schema and non-thinking too
       })
     ).errorCode,
   ).toBeNull();
+});
+
+it('requires an actual named tool call in DeepSeek Responses auto mode', async () => {
+  mockUpstream((_, init) => {
+    const body = readBody(init);
+    if (!body.tools || body.tool_choice !== 'auto')
+      return new Response(null, { status: 400 });
+    return Response.json({
+      id: 'r1',
+      created_at: 1,
+      model: 'trial',
+      output: [
+        {
+          type: 'function_call',
+          id: 'f1',
+          call_id: 'c1',
+          name: 'confirm_code',
+          arguments: '{"code":"CRM-42"}',
+        },
+      ],
+      usage: { input_tokens: 8, output_tokens: 4 },
+    });
+  });
+  const report = await testModel({
+    ...snapshot,
+    protocol: 'responses',
+    baseURL: 'https://api.deepseek.com',
+  });
+  expect(report.steps.find((s) => s.name === 'tool')).toMatchObject({
+    ok: true,
+  });
 });
 
 it.each(['chat', 'responses'] as const)(

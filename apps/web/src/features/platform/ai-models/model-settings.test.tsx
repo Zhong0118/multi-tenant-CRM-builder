@@ -387,7 +387,7 @@ describe("平台模型设置", () => {
     );
   });
   it("在发现模型后修改连接地址需要再次输入目标地址的 Key", async () => {
-    show((url) =>
+    const send = show((url) =>
       url.endsWith("/discover")
         ? { models: ["discovered"] }
         : { id: "new-id", version: 2, revisionId: "r2" },
@@ -401,6 +401,11 @@ describe("平台模型设置", () => {
     fireEvent.click(modal.getByRole("button", { name: "下一步" }));
     fireEvent.click(modal.getByRole("button", { name: /获取模型列表/ }));
     await modal.findByRole("combobox", { name: "发现的模型" });
+    const created = send.mock.calls.find(([url]) => url.endsWith("/providers"));
+    expect(JSON.parse(String(created?.[1]?.body))).toMatchObject({
+      preset: "deepseek",
+      protocol: "responses",
+    });
     await choose("发现的模型", "discovered");
     expect(modal.getByLabelText("模型 ID")).toHaveValue("discovered");
     await choose("编辑模型", "deepseek-flash");
