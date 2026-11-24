@@ -153,6 +153,7 @@ function coerceDecimal(
   type: "NUMBER" | "MONEY",
   bareUnit?: "yuan" | "wan",
 ) {
+  value = value.normalize("NFKC").replace(/(\d) +(?=[万亿元])/, "$1");
   // Excel may stringify small or large numeric cells in scientific notation.
   let exponent = "";
   if (type === "NUMBER") {

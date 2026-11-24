@@ -292,6 +292,9 @@ describe("calendar dates and company wall-clock times", () => {
 describe("decimal imports", () => {
   it.each([
     ["12万", "120000"],
+    ["12 万", "120000"],
+    ["１２万", "120000"],
+    ["1.2 万元", "12000"],
     ["1.2万", "12000"],
     ["3亿", "300000000"],
     ["¥1,200元", "1200"],
@@ -351,6 +354,9 @@ describe("decimal imports", () => {
     "--1",
     "1.3.4",
     "2万元元",
+    "1 2 万",
+    "十二万",
+    "1.2 万 元",
     "9".repeat(310),
   ])("rejects invalid or nonfinite %s", (raw) => {
     for (const type of ["MONEY", "NUMBER"])
