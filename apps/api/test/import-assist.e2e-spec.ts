@@ -121,6 +121,30 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
       await h.adminDatabase.record.count({ where: { tenantId: f.tenantA.id } }),
     ).toBe(records);
   });
+  it('aborts the provider after the 25-second import deadline', async () => {
+    const deadline = new AbortController();
+    const native = AbortSignal.timeout.bind(AbortSignal);
+    const timer = jest
+      .spyOn(AbortSignal, 'timeout')
+      .mockImplementation((ms) =>
+        ms === 25000 ? deadline.signal : native(ms),
+      );
+    const generate = jest
+      .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
+      .mockImplementation(async (...args) => {
+        const signal = args[2] as AbortSignal;
+        deadline.abort();
+        signal.throwIfAborted();
+        return {};
+      });
+    await post()
+      .expect(504)
+      .expect((res) =>
+        expect(JSON.stringify(res.body)).toContain('AI_PROVIDER_TIMEOUT'),
+      );
+    expect(timer).toHaveBeenCalledWith(25000);
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
   it('keeps employee-hidden and read-only fields manual even for a tenant admin', async () => {
     const send = jest
       .spyOn(FakeAiProvider.prototype, 'generateImportAssist')

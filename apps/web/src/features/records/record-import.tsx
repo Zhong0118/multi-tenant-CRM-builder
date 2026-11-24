@@ -716,8 +716,23 @@ export function RecordImportDrawer({
           ),
         );
     } catch (e) {
-      if (abort.signal.aborted || stopped.current) return;
+      if (
+        abort.signal.aborted ||
+        controller.current !== abort ||
+        stopped.current
+      )
+        return;
       const error = toApiError(e);
+      if (error.code === "AI_PROVIDER_TIMEOUT") {
+        attemptedFiles.delete(fileKey);
+        try {
+          sessionStorage.removeItem("crm.importAssist." + fileKey);
+        } catch {
+          /* In-memory tracking still allows a manual retry. */
+        }
+        setAiNotice("AI 这次没来得及给出建议，可以手动对照或再试一次");
+        return;
+      }
       if (error.status === 403) {
         if (
           ["OBJECT_ACTION_FORBIDDEN", "WORKSPACE_FORBIDDEN"].includes(

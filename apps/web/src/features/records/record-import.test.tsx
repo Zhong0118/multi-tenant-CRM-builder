@@ -282,6 +282,34 @@ describe("RecordImportDrawer", () => {
     );
     call.mockRestore();
   });
+  it("preserves a manual choice after a timeout and retries only on click", async () => {
+    const call = vi
+      .spyOn(assistApi, "requestImportAssist")
+      .mockRejectedValueOnce({
+        status: 504,
+        code: "AI_PROVIDER_TIMEOUT",
+        message: "超时",
+        requestId: "test",
+      })
+      .mockResolvedValueOnce({
+        version: 1,
+        headerRow: 1,
+        generatedAt: "",
+        columns: [],
+        matchFields: [],
+      });
+    setup(recordApi(), schema, false, undefined, true);
+    chooseFile("姓名,客户状态,企业名称\n时限测试,待联系,一家企业");
+    fireEvent.mouseDown(await screen.findByLabelText("映射 客户状态"));
+    fireEvent.click(await screen.findByText("线索状态 · 单选"));
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    await screen.findByText("AI 这次没来得及给出建议，可以手动对照或再试一次");
+    expect(call).toHaveBeenCalledTimes(1);
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    await waitFor(() => expect(call).toHaveBeenCalledTimes(2));
+    expect(call.mock.calls[1][2]).toEqual(call.mock.calls[0][2]);
+    call.mockRestore();
+  });
   it("honors a file attempt from before this tab was reloaded", async () => {
     const csv = "姓名,客户状态\n回到导入页,待联系";
     const identity = await importBatchId(new TextEncoder().encode(csv), "");

@@ -63,7 +63,7 @@ export class ImportAssistService {
     const state = prepareImport(initial, req);
     let output: unknown;
     if (state.needed) {
-      const signal = AbortSignal.any([disconnect, AbortSignal.timeout(45000)]);
+      const signal = AbortSignal.any([disconnect, AbortSignal.timeout(25000)]);
       try {
         const provider = await (this.provider.resolveText?.(actor) ??
           this.provider);
