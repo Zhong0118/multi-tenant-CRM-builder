@@ -52,7 +52,7 @@ export function decodeRecordCsv(bytes: Uint8Array, encoding: CsvEncoding) {
   };
 }
 
-function normalizeHeader(value: string) {
+export function normalizeHeader(value: string) {
   return value
     .normalize("NFKC")
     .replace(/\s+/gu, "")
@@ -79,6 +79,7 @@ type ImportOption = { key: string; label: string };
 export interface ImportValueContext {
   timeZone?: string;
   dateOrder?: ImportDateOrder;
+  valueChoices?: ReadonlyMap<string, string | null>;
   bareAmountUnit?: "yuan" | "wan";
 }
 
@@ -134,10 +135,15 @@ export function coerceImportValue(
       const parts =
         type === "SINGLE_SELECT" ? [value] : splitImportOptions(value);
       const keys = parts.map((part) => {
-        const key = matchImportOption(part, options);
-        if (key === undefined) throw new Error("取值未对应唯一选项");
-        return key;
+        const exact = matchImportOption(part, options);
+        if (exact !== undefined) return exact;
+        const choice = context.valueChoices?.get(part);
+        return choice === null || options.some((option) => option.key === choice)
+          ? choice
+          : undefined;
       });
+      if (keys.includes(null)) return null;
+      if (keys.includes(undefined)) throw new Error("取值未对应唯一选项");
       return type === "SINGLE_SELECT" ? keys[0] : [...new Set(keys)];
     }
     case "DATE":

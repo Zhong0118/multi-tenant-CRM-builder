@@ -40,6 +40,8 @@ export function buildImportRows(input: {
   fields: PublishedFieldView[];
   timeZone?: string;
   dateOrders: Record<number, "DMY" | "MDY" | undefined>;
+  amountUnits?: Record<number, "wan" | "yuan">;
+  valueChoices?: Record<number, ReadonlyMap<string, string | null>>;
   destination: (row: string[]) => ImportDestination;
 }): PlannedImportRow[] {
   const { parsed, mapping, timeZone, dateOrders, destination } = input;
@@ -60,7 +62,7 @@ export function buildImportRows(input: {
           field.type,
           row[column] ?? "",
           selectOptions(field).filter((option) => option.status === "ACTIVE"),
-          { timeZone, dateOrder: dateOrders[column] },
+          { timeZone, dateOrder: dateOrders[column], bareAmountUnit: input.amountUnits?.[column], valueChoices: input.valueChoices?.[column] },
         );
       } catch (e) {
         errors.push(
