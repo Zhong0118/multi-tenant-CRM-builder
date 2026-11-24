@@ -121,6 +121,20 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
       await h.adminDatabase.record.count({ where: { tenantId: f.tenantA.id } }),
     ).toBe(records);
   });
+  it('keeps employee-hidden and read-only fields manual even for a tenant admin', async () => {
+    const send = jest
+      .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
+      .mockImplementation(async (input) => {
+        expect(JSON.stringify(input)).not.toMatch(
+          /C2|C3|C4|SENTINEL|内部备注|审核编号|reviewCode|secret/,
+        );
+        expect(input.fields.map((field) => field.name)).toContain('姓名');
+        return { version: 1, headerRow: 3, columns: [], matchFields: [] };
+      });
+    await post(body, f.admin.cookie).expect(200);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
   it('skips generation for resolved columns, rejects malformed input and cross-tenant actors', async () => {
     const generate = jest.spyOn(
       MeteredFakeProvider.prototype,

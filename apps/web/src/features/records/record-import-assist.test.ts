@@ -57,6 +57,50 @@ async function preview(csv: string, excluded: number[] = []) {
   };
 }
 describe("browser import assistance", () => {
+  it("leaves restricted admin fields for manual import and excludes aliases after manual mapping", async () => {
+    const privateField = {
+      ...field("audit", "审核编号"),
+      importManualOnly: true,
+    };
+    const all = [...fields, privateField];
+    const file = await readImportFile(
+      new File(["单位名称,审核编号,历史列\n甲,A1,A2"], "private.csv"),
+      "auto",
+    );
+    const parsed = file.sheet("", 1);
+    const draft = emptyAssistDraft(parsed.headers, all, true);
+    expect(draft.mapping[1]).toBe(SKIP);
+    draft.mapping[2] = "audit";
+    draft.manual.push(2);
+    const p = buildImportPreview({
+      file,
+      sheet: "",
+      headerEvidence: await buildImportHeaderEvidence(file, ""),
+      headerRow: 1,
+      headerLocked: true,
+      fields: all,
+      draft,
+      admin: true,
+    });
+    expect(p.request.candidates[0].columns.slice(1)).toEqual(
+      [2, 3].map((n) => ({
+        col: "C" + n,
+        header: "",
+        samples: [],
+        excluded: true,
+      })),
+    );
+    expect(JSON.stringify(p.request.candidates)).not.toContain("A2");
+    expect(
+      buildImportRows({
+        parsed,
+        fields: all,
+        ...draft,
+        timeZone: "Asia/Shanghai",
+        destination: () => ({ kind: "default" }),
+      })[0].values?.audit,
+    ).toBe("A2");
+  });
   it("retains normalized evidence from every leading physical row for locked headers", async () => {
     const { preview: p } = await preview(
       "业务标题,机 密：\n名称,评级\n某客户,A类",

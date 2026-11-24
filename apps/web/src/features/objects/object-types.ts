@@ -62,6 +62,7 @@ export const PUBLISHED_FIELD_TYPES = [
  * at the boundary, so no page has to re-interpret the runtime schema.
  */
 export interface PublishedFieldView {
+  importManualOnly?: boolean;
   id: string;
   fieldKey: string;
   label: string;

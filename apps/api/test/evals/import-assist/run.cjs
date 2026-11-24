@@ -10,7 +10,7 @@ const {
   buildImportHeaderEvidence,
   buildImportPreview,
   applyImportAdvice,
-  importableField,
+  aiImportableField,
 } = web('record-import-assist');
 const { OWNER } = web('record-import-mapping');
 const { targetKey, score, business } = require('./score.cjs');
@@ -133,7 +133,10 @@ async function run(h, entry) {
     'auto',
   );
   const sheet = answer.sheetName ?? '';
-  const selection = file.headerSelection(sheet, fields.filter(importableField));
+  const selection = file.headerSelection(
+    sheet,
+    fields.filter(aiImportableField),
+  );
   const header = selection.headerRow;
   const parsed = parse(file, sheet, header);
   const draft = initial(parsed, fields, admin, answer.columns);

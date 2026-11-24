@@ -68,6 +68,7 @@ import {
   applyImportAdvice,
   draftForImportHeader,
   importableField,
+  aiImportableField,
   isOptionField,
   type AssistDraft,
   type ImportPreview,
@@ -122,6 +123,10 @@ export function RecordImportDrawer({
   const importable = useMemo(
     () => schema.fields.filter(importableField),
     [schema.fields],
+  );
+  const autoFields = useMemo(
+    () => (assistEnabled ? importable.filter(aiImportableField) : importable),
+    [assistEnabled, importable],
   );
   const [evidence, setEvidence] = useState<
     Awaited<ReturnType<typeof buildImportHeaderEvidence>>
@@ -482,7 +487,7 @@ export function RecordImportDrawer({
     name: string,
     request: number,
   ) {
-    const selection = nextSource.headerSelection(name, importable);
+    const selection = nextSource.headerSelection(name, autoFields);
     const [id, identity, proof] = await Promise.all([
       importBatchId(nextSource.bytes, name),
       importBatchId(nextSource.bytes, ""),
@@ -527,7 +532,7 @@ export function RecordImportDrawer({
     try {
       const next = file.sheet(name, row);
       setParsed(next);
-      setMapping(initialMapping(next.headers, importable, canChooseOwner));
+      setMapping(initialMapping(next.headers, autoFields, canChooseOwner));
     } catch (err) {
       showFileError(err);
     }
@@ -1392,7 +1397,7 @@ export function RecordImportDrawer({
                           : []),
                         ...importable.map((field) => ({
                           value: field.fieldKey,
-                          label: `${field.label} · ${FIELD_TYPE_LABELS[field.type]}${importable.some((other) => other.fieldKey !== field.fieldKey && other.label === field.label) ? `（${field.fieldKey}）` : ""}${field.required ? "（必填）" : ""}`,
+                          label: `${field.label}${assistEnabled && field.importManualOnly ? "（仅手动对照）" : ""} · ${FIELD_TYPE_LABELS[field.type]}${importable.some((other) => other.fieldKey !== field.fieldKey && other.label === field.label) ? `（${field.fieldKey}）` : ""}${field.required ? "（必填）" : ""}`,
                         })),
                         ...importable
                           .filter((f) => f.type === "TEXTAREA")

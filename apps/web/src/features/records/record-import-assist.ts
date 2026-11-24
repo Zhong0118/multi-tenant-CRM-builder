@@ -27,6 +27,8 @@ export const importableField = (f: PublishedFieldView) =>
   !f.isSystem &&
   f.type !== "MEMBER" &&
   (f.access === "EDIT" || f.access === "CREATE_ONLY");
+export const aiImportableField = (f: PublishedFieldView) =>
+  importableField(f) && !f.importManualOnly;
 export type AssistDraft = {
   mapping: string[];
   manual: number[];
@@ -42,7 +44,7 @@ export function emptyAssistDraft(
   admin: boolean,
 ): AssistDraft {
   return {
-    mapping: initialMapping(headers, fields.filter(importableField), admin),
+    mapping: initialMapping(headers, fields.filter(aiImportableField), admin),
     manual: [],
     matchFields: [],
     dateOrders: {},
@@ -212,11 +214,11 @@ export function buildImportPreview({
   excluded = [],
   admin = false,
 }: PreviewInput) {
-  const allowed = fields.filter(importableField),
+  const allowed = fields.filter(aiImportableField),
     blocked = new Set(excluded);
   const denied = new Set(
     fields
-      .filter((f) => !importableField(f))
+      .filter((f) => !aiImportableField(f))
       .flatMap((f) => [normalizeHeader(f.label), normalizeHeader(f.fieldKey)]),
   );
   const leading = file.headerSelection(sheet, allowed).candidates;
@@ -232,7 +234,12 @@ export function buildImportPreview({
         blocked.add(i);
     });
   draft.mapping.forEach((key, i) => {
-    if (key === OWNER) blocked.add(i);
+    const targetKey = key.startsWith(APPEND) ? key.slice(APPEND.length) : key;
+    if (
+      key === OWNER ||
+      fields.some((f) => f.fieldKey === targetKey && !aiImportableField(f))
+    )
+      blocked.add(i);
   });
   const request: ImportAssistRequest = {
     headerEvidence,
@@ -435,7 +442,7 @@ export function applyImportAdvice(
     amountUnits: { ...draft.amountUnits },
     valueChoices: { ...draft.valueChoices },
   };
-  const allowed = fields.filter(importableField);
+  const allowed = fields.filter(aiImportableField);
   for (const a of plan.columns) {
     const i = candidate.columns.findIndex((c) => c.col === a.col),
       source = candidate.columns[i];

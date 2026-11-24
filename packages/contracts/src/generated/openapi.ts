@@ -4738,6 +4738,7 @@ export interface components {
         | null;
       fieldKey: string;
       id: string;
+      importManualOnly?: boolean;
       isSystem: boolean;
       label: string;
       required: boolean;

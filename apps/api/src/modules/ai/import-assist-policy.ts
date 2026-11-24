@@ -6,6 +6,7 @@ import type {
 } from '@crm/contracts';
 import { z } from 'zod';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
+import { manualImportField } from '../objects/object-schema';
 import { queryFields } from '../records/record-filter';
 import { selectOptions } from '../records/record-value-engine';
 import { allowsProposalFieldKey } from './ai-proposal.schema';
@@ -70,6 +71,7 @@ export function prepareImport(
     .filter((f) => {
       const ok =
         ['EDIT', 'CREATE_ONLY'].includes(resolved.access.fields[f.fieldKey]) &&
+        !manualImportField(resolved.schema, f.fieldKey) &&
         !f.isSystem &&
         f.type !== 'MEMBER' &&
         allowsProposalFieldKey(f.fieldKey) &&
