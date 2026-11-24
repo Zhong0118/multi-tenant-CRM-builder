@@ -45,7 +45,7 @@ export async function loadCases(name: 'development' | 'holdout') {
   return {
     daily_brief: data.daily_brief.map((_, i, rows) =>
       Array.from({ length: Math.min(6, rows.length) }, (_, j) => {
-        const [topic, title, text, group] = rows[(i + j) % rows.length];
+        const [, title, text, group] = rows[(i + j) % rows.length];
         const ref = 'R' + (j + 1);
         return {
           recordRef: ref,
@@ -55,7 +55,7 @@ export async function loadCases(name: 'development' | 'holdout') {
           objectName: '业务记录',
           facts: [
             { ref: ref + 'F1', text: descriptions[group] },
-            { ref: ref + 'F2', text: topic + '：' + text },
+            { ref: ref + 'F2', text },
           ],
         };
       }),

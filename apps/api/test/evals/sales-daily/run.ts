@@ -9,6 +9,7 @@ import type { AiProvider } from '../../../src/modules/ai/ai-provider';
 import type { TenantContext } from '../../../src/common/tenancy/tenant-context';
 import {
   briefSystem,
+  briefPromptRecords,
   suggestionSchema,
   validateSuggestions,
 } from '../../../src/modules/ai/daily-brief/brief-suggestions';
@@ -92,14 +93,7 @@ async function main() {
           const raw = await call(
             {
               localDate: date,
-              records: candidates.map(
-                ({ recordRef, title, objectName, facts }) => ({
-                  recordRef,
-                  title,
-                  objectName,
-                  facts,
-                }),
-              ),
+              records: briefPromptRecords(candidates),
             },
             briefSystem,
             suggestionSchema,

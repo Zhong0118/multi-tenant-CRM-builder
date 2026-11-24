@@ -1,4 +1,4 @@
-import { validateSuggestions } from './brief-suggestions';
+import { briefPromptRecords, validateSuggestions } from './brief-suggestions';
 
 it('only trusts a candidate’s own facts and renders them as the reason', () => {
   const candidates = [
@@ -227,4 +227,57 @@ it('can suggest an open question when the only visible business field is a name'
     suggestedTitle: item.suggestedTitle,
     explanation: item.explanation,
   });
+});
+
+it('sends priority references in sorted order and only authorized business facts as writing material', () => {
+  const rows = [
+    {
+      ...candidates[0],
+      facts: [
+        { ref: 'R1F1', text: 'CRM内部回收到期日 2026-12-02' },
+        { ref: 'R1F2', text: '待跟进：确认远山科技交期' },
+        { ref: 'R1F3', text: '阶段：正在准备演示' },
+      ],
+    },
+    {
+      ...candidates[0],
+      recordRef: 'R2',
+      facts: [{ ref: 'R2F1', text: '阶段停留15天' }],
+    },
+  ];
+  expect(briefPromptRecords(rows)).toEqual([
+    { recordRef: 'R1', priorityRef: 'R1F1', facts: rows[0].facts.slice(1) },
+    { recordRef: 'R2', priorityRef: 'R2F1', facts: [] },
+  ]);
+});
+
+it('recognizes a cited organization after a contact verb and treats assistance as conversational wording', () => {
+  const rows = [
+    {
+      ...candidates[0],
+      facts: [{ ref: 'R1F2', text: '待跟进：确认远山科技交期' }],
+    },
+    {
+      ...candidates[0],
+      recordRef: 'R2',
+      recordId: 'two',
+      facts: [{ ref: 'R2F2', text: '待跟进：协助采购轴承' }],
+    },
+  ];
+  const run = (suggestedTitle: string, explanation: string) =>
+    validateSuggestions(
+      { items: [{ ...grounded, suggestedTitle, explanation }] },
+      rows,
+      '2026-11-24',
+    )[0];
+  expect(
+    run('核对远山科技交期', '联系远山科技确认交期，询问是否需要协助。')
+      .usedFallback,
+  ).toBe(false);
+  expect(run('核对南方远山科技交期', '确认远山科技交期。').usedFallback).toBe(
+    true,
+  );
+  expect(
+    run('核对远山科技交期', '联系远山科技协助采购轴承。').usedFallback,
+  ).toBe(true);
 });

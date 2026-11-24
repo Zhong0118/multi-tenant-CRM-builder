@@ -263,12 +263,17 @@ export function checkedSentence(text: string, evidence: string) {
     rest.match(/[\p{Script=Han}]{2,12}(?:科技|集团|银行|有限公司|研究院)/gu) ??
     [];
   if (
-    names.some(
-      (name) =>
-        !sources.some(
-          (f) => f.includes(name) || (f.length >= 2 && name.endsWith(f)),
-        ),
-    )
+    names.some((name) => {
+      // Han words have no spaces: the match can include the contact verb
+      // immediately before a name. Keep the complete remaining name intact.
+      const bare = name.replace(
+        /^(?:建议|请|联系|致电|回访|跟进|核对|询问|向|与)+/u,
+        '',
+      );
+      return !sources.some(
+        (f) => f.includes(name) || (bare.length >= 4 && f.includes(bare)),
+      );
+    })
   )
     return '';
   const factual =

@@ -18,6 +18,7 @@ import {
   briefCandidates,
   briefRecord,
   briefSystem,
+  briefPromptRecords,
   fallbackWording,
   wordingScope,
   suggestionSchema,
@@ -240,14 +241,7 @@ export class DailyBriefService {
           system: briefSystem,
           prompt: JSON.stringify({
             localDate: claim.date,
-            records: claim.candidates.map(
-              ({ recordRef, title, objectName, facts }) => ({
-                recordRef,
-                title,
-                objectName,
-                facts,
-              }),
-            ),
+            records: briefPromptRecords(claim.candidates),
           }),
           onSend: async () => {
             const changed = await this.db.withTenant(

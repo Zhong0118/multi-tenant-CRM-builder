@@ -33,14 +33,18 @@ export class FakeAiProvider implements AiProvider {
     await input.onSend?.();
     const data = JSON.parse(input.prompt) as {
       options?: { kind: string };
-      records?: { recordRef: string; facts: { ref: string }[] }[];
+      records?: {
+        recordRef: string;
+        priorityRef: string;
+        facts: { ref: string }[];
+      }[];
       facts?: { id: string; text: string; section: string }[];
     };
     if (input.feature === 'daily_brief') {
       return {
         items: (data.records ?? []).slice(0, 5).map((r) => ({
           recordRef: r.recordRef,
-          reasonFactRefs: [r.facts[0].ref],
+          reasonFactRefs: [r.facts[0]?.ref ?? r.priorityRef],
           action: 'call',
           explanation: '建议致电确认近况',
           suggestedTitle: null,
