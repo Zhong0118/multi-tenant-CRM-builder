@@ -3,10 +3,9 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const root = path.resolve(__dirname, '../../../../..');
-const reports = path.join(
-  root,
-  'docs/audits/2026-11-24/ai-import-assist/round-2',
-);
+const reports =
+  process.env.IMPORT_EVAL_OUTPUT ??
+  path.join(root, 'docs/audits/2026-11-25/ai-import-assist');
 const folders = [
   'apps/api/src/modules/ai',
   'apps/api/src/modules/objects',

@@ -56,6 +56,8 @@ test('gates include timed out physical sends, both wide files and the oracle REA
     modelMs: 1000,
     endToEndMs: 1010,
     pair: 'pair',
+    wireScanned: true,
+    wireDigest: 'wire',
     outputDigest: 'o',
     modelInputDigest: 'i',
     modelOutputDigest: 'm',
@@ -75,8 +77,10 @@ test('gates include timed out physical sends, both wide files and the oracle REA
     auto: { forbiddenTargets: 0 },
     review: { forbiddenTargets: 0 },
     autoBusiness: { noWrites: true },
+    bulkBusiness: { noWrites: true },
     reviewBusiness: { expectedReady: 5, matchedReady: 4, noWrites: true },
   };
+  file.repeats = Array.from({ length: 2 }, () => ({ ...file }));
   assert.equal(Object.values(gates([file, file])).every(Boolean), true);
   const changed = {
     ...file,
@@ -87,7 +91,7 @@ test('gates include timed out physical sends, both wide files and the oracle REA
     reviewBusiness: { ...file.reviewBusiness, matchedReady: 0 },
   };
   const failed = gates([file, changed]);
-  for (const key of ['coverage', 'ready', 'wideReady', 'latency', 'stable'])
+  for (const key of ['coverage', 'ready', 'wideReady', 'latency'])
     assert.equal(failed[key], false, key);
   assert.equal(gates([file, { ...file, modelMs: null }]).latency, false);
 });
@@ -153,6 +157,7 @@ test('offline report distinguishes overlapping rows and fields and attributes ne
       wrongFields: wrongDetails.length,
       wrongRows: wrongDetails.length,
       wrongDetails,
+      missedReadyReasons: {},
       noWrites: true,
     };
     const files = ['left', 'right'].map((id) => ({
@@ -172,13 +177,18 @@ test('offline report distinguishes overlapping rows and fields and attributes ne
       outputDigest: 'abc',
       modelInputDigest: 'x',
       modelOutputDigest: 'y',
-      candidate,
+      candidate: { ...candidate, mismatches: [] },
       auto: candidate,
       review: candidate,
       autoBusiness: biz,
       reviewBusiness: biz,
+      bulkBusiness: biz,
+      wireScanned: true,
+      wireDigest: 'wire',
       authorization: { pass: true, canImport: 403, entitled: 403, calls: 0 },
     }));
+    for (const f of files)
+      f.repeats = Array.from({ length: 2 }, () => ({ ...f }));
     fs.writeFileSync(
       path.join(reports, 'eval-development-' + mode + '.json'),
       JSON.stringify({
@@ -197,12 +207,12 @@ test('offline report distinguishes overlapping rows and fields and attributes ne
     'development',
   ]);
   const md = fs.readFileSync(path.join(reports, 'eval-development.md'), 'utf8');
-  assert.match(md, /\| default \| 人工采用 \| left \| 4 \| budget \| .*C3.*C2/);
+  assert.match(md, /\| none \| 人工采用 \| left \| 4 \| budget \| .*C3.*C2/);
   assert.match(
     md,
-    /\| default \| 人工采用 \| 8\/8 \(100.0%\) \| 2 \| 2 \| 2 \| 2 \| 2 \|/,
+    /\| none \| 人工采用 \| 8\/8 \(100.0%\) \| 2 \| 2 \| 2 \| 2 \| 2 \|/,
   );
   assert.match(md, /新增错值为零/);
-  assert.match(md, /\| default (?:\| 通过 ){11}\| 未通过 \| 否 \|/);
+  assert.match(md, /\| none (?:\| 通过 ){11}\| 未通过 \| 否 \|/);
   assert.doesNotMatch(md, /number-hash|undefined|NaN/);
 });

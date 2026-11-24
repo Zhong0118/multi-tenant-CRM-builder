@@ -13,7 +13,7 @@ require('ts-node').register({
     moduleResolution: 'node',
     resolvePackageJsonExports: false,
   },
-  moduleTypes: { '../web/**/*': 'cjs' },
+  moduleTypes: { [webRoot + '/**/*']: 'cjs' },
 });
 require('tsconfig-paths').register({
   baseUrl: webRoot,
@@ -109,8 +109,28 @@ async function runtime() {
       memberId: member.id,
     };
   }
-  async function object(overrides) {
-    const code = 'eval' + (overrides.length ? '_' + overrides.join('_') : '');
+  async function object(overrides, final = false) {
+    // 45 total field definitions. Keep all seven overlay fields and all tested
+    // quotas on one 40-field published object shared by every final file.
+    const fieldsForObject = final
+      ? [
+          ...tenant.fields.filter(
+            (f) =>
+              ![
+                'quota_16',
+                'quota_21',
+                'quota_22',
+                'quota_23',
+                'quota_24',
+              ].includes(f.fieldKey),
+          ),
+          ...require('./fixtures/final/tenant-overlay.json').fields,
+        ]
+      : tenant.fields;
+    assert(fieldsForObject.length <= 40);
+    const code =
+      (final ? 'eval_final_v1' : 'eval') +
+      (overrides.length ? '_' + overrides.join('_') : '');
     const found = await db.objectDefinition.findFirst({
       where: { tenantId: workspace.id, code },
     });
@@ -130,7 +150,7 @@ async function runtime() {
             poolLifecycleEnabled: true,
           },
         });
-      const fields = tenant.fields.map((f, i) => ({
+      const fields = fieldsForObject.map((f, i) => ({
         id: randomUUID(),
         fieldKey: f.fieldKey,
         label: f.label,
@@ -151,7 +171,7 @@ async function runtime() {
         readScope: 'ALL',
         updateScope: 'OWN',
         fields: Object.fromEntries(
-          tenant.fields.map((f) => [
+          fieldsForObject.map((f) => [
             f.fieldKey,
             f.access === 'SYSTEM' ? 'READ_ONLY' : f.access,
           ]),

@@ -2,8 +2,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { revision, reports } = require('./revision.cjs');
-const { gates, total, quantile, addedWrongValues } = require('./metrics.cjs');
-const modes = ['rules', 'default', 'none'];
+const {
+  gates,
+  total,
+  quantile,
+  addedWrongValues,
+  attempts,
+  pairEvidence,
+} = require('./metrics.cjs');
+const modes = ['rules', 'none'];
 const load = (split, mode) =>
   JSON.parse(
     fs.readFileSync(path.join(reports, 'eval-' + split + '-' + mode + '.json')),
@@ -42,6 +49,7 @@ if (split === 'freeze') {
       {
         fingerprint,
         developmentFixtureCommit: 'f808ea8',
+        finalFixtureCommit: 'a4f8d9a',
         freshFixtureCommit: '49217f9a5dcbcd01b99f83593a138c274a5cf17d',
         at: new Date().toISOString(),
       },
@@ -53,7 +61,9 @@ if (split === 'freeze') {
   return;
 }
 const supplemental = split === 'employee-supplement-development';
-assert(supplemental || ['development', 'holdout', 'fresh'].includes(split));
+assert(
+  supplemental || ['development', 'holdout', 'fresh', 'final'].includes(split),
+);
 const records = (supplemental ? modes.slice(1) : modes).map((mode) =>
   load(split, mode),
 );
@@ -77,6 +87,11 @@ const lines = [
   '所有原始列、值标注和物理行进入各自分母。人工仅采用模型实际提出且与标注一致的复核建议。',
   '',
 ];
+if (split === 'final')
+  lines.push(
+    '最终集复用原隔离租户、成员及种子记录，单独使用一张 40 字段已发布对象。合并七项新增字段后，投影去掉本集未考核的 quota_16、quota_21、quota_22、quota_23、quota_24。十份原件共用相同对象，运行时校验每一列标注的目标都存在。',
+    '',
+  );
 function table(headers) {
   lines.push(row(headers), row(headers.map(() => '---')));
 }
@@ -208,7 +223,7 @@ lines.push(
 );
 table([
   '推理',
-  '实呼 / 文件',
+  '实呼 / 独立请求',
   '未调',
   '隐私阻断',
   '异常 / 超时 / 截断 / 取消',
@@ -218,17 +233,18 @@ table([
   '输出 token 均值 / p95',
 ]);
 for (const { mode, files } of records) {
-  const calls = files.filter((f) => f.calls);
+  const all = files.flatMap(attempts);
+  const calls = all.filter((f) => f.calls);
   lines.push(
     row([
       mode,
-      total(files, 'calls') + ' / ' + files.length,
-      files.length - calls.length,
-      files.filter((f) => f.privacy.length).length,
+      total(all, 'calls') + ' / ' + all.length,
+      all.length - calls.length,
+      all.filter((f) => f.privacy.length).length,
       [
-        files.filter((f) => f.error).length,
+        all.filter((f) => f.error).length,
         ...['timeout', 'truncated', 'cancelled'].map(
-          (k) => files.filter((f) => f.error === k).length,
+          (k) => all.filter((f) => f.error === k).length,
         ),
       ].join(' / '),
       percentiles(calls.map((f) => f.modelMs)),
@@ -250,7 +266,7 @@ const checks = {
   callLimit: '调用上限和零调样本',
   access: '权限',
   noWrites: '干运行无写入',
-  stable: '注入对照',
+  stable: '三次配对出站内容相同及原文扫描',
   ...(supplemental ? {} : { noAddedWrong: '预选和采用均新增错值为零' }),
 };
 table(['推理', ...Object.values(checks), '全部通过']);
@@ -258,7 +274,7 @@ for (const { mode, files } of records.filter((r) => r.mode !== 'rules')) {
   const result = gates(files);
   if (!supplemental)
     result.noAddedWrong = files.every((f, i) =>
-      ['autoBusiness', 'reviewBusiness'].every(
+      ['autoBusiness', 'reviewBusiness', 'bulkBusiness'].every(
         (key) =>
           !addedWrongValues(
             first.files[i].autoBusiness.wrongDetails,
@@ -337,29 +353,53 @@ for (let i = 0; i < first.files.length; i++)
       ]),
     );
   }
-lines.push('', '## 注入对照', '');
+lines.push(
+  '',
+  '## 三次注入对照',
+  '',
+  '四组冻结原件分别从源文件逐格比较，取得每对唯一变动的注入单元格。每个物理请求在发送前扫描完整 Responses 请求体与嵌套消息，并检查受限字段及位置。重复只进入隐私、稳定性和调用统计，业务分母只取主评测。',
+  '',
+);
 table([
-  '推理',
-  '文件',
+  '模式',
+  '原件',
+  '次序',
   '实呼',
-  '模型输入摘要',
-  '模型目标和选项摘要',
-  '本地采用摘要',
-  '人工采用后 READY / 原始行',
+  '原文与权限扫描',
+  '完整请求 SHA-256',
+  '模型目标/选项 SHA-256',
+  '本地采用 SHA-256',
 ]);
-for (const { mode, files } of records)
-  for (const f of files.filter((f) => f.pair))
-    lines.push(
-      row([
-        mode,
-        f.id,
-        f.calls,
-        f.modelInputDigest ?? '—',
-        f.modelOutputDigest ?? '—',
-        f.outputDigest ?? '—',
-        rate(f.reviewBusiness.ready, f.rowCount),
-      ]),
-    );
+for (const { mode, files } of records.filter((r) => r.mode !== 'rules')) {
+  const paired = files.filter((f) => f.pair);
+  for (const f of paired)
+    for (const [i, attempt] of attempts(f).entries()) {
+      lines.push(
+        row([
+          mode,
+          f.id,
+          i + 1,
+          attempt.calls,
+          attempt.wireScanned && !attempt.privacy.length ? '通过' : '未通过',
+          attempt.wireDigest ?? '—',
+          attempt.modelOutputDigest ?? '—',
+          attempt.outputDigest ?? '—',
+        ]),
+      );
+    }
+  const evidence = pairEvidence(paired);
+  lines.push(
+    '',
+    '配对输入主判据' +
+      (evidence.pass ? '通过' : '未通过') +
+      '。三次成对比较中，模型目标和选项一致 ' +
+      rate(evidence.modelEqual, evidence.rounds) +
+      '，本地采用结果一致 ' +
+      rate(evidence.localEqual, evidence.rounds) +
+      '。输出一致率仅衡量稳定性。',
+    '',
+  );
+}
 if (!supplemental) {
   lines.push(
     '',
@@ -375,6 +415,7 @@ if (!supplemental) {
       for (const [key, title] of [
         ['autoBusiness', '预选'],
         ['reviewBusiness', '人工采用'],
+        ['bulkBusiness', '复核和批量留空'],
       ]) {
         const extra = addedWrongValues(
           first.files[i].autoBusiness.wrongDetails,
@@ -408,8 +449,123 @@ if (!supplemental) {
       }
   if (!count)
     lines.push(
-      row(['—', '—', '—', '—', '—', '两种推理与采用阶段均无新增错值']),
+      row(['—', '—', '—', '—', '—', '预选、复核和复核加批量留空均无新增错值']),
     );
+}
+if (!supplemental) {
+  const [rules, ai] = records;
+  const paths = [
+    ['纯规则', rules, 'autoBusiness'],
+    ['规则＋批量留空', rules, 'bulkBusiness'],
+    ['AI 复核', ai, 'reviewBusiness'],
+    ['AI 复核＋批量留空', ai, 'bulkBusiness'],
+  ];
+  lines.push(
+    '',
+    '## READY 归因',
+    '',
+    '四种方案均使用真实分组 dryRun。规则和复核结果未改变时复用同一份已验证响应。批量留空只在实际 UI 列内的所有剩余值均有明确空标注时点击。规则与 AI 分别列出批量操作的增益，同一原件只进入分母一次。',
+    '',
+  );
+  table([
+    '业务方案',
+    '标注 READY 命中（行加权）',
+    '逐文件平均（等权）',
+    '实际 READY 总数',
+    '相对规则多命中',
+    '相对规则新增错值',
+  ]);
+  const baseline = total(
+    rules.files.map((f) => f.autoBusiness),
+    'matchedReady',
+  );
+  for (const [title, record, key] of paths) {
+    const stats = record.files.map((f) => f[key]);
+    const applicable = stats.filter((f) => f.expectedReady > 0);
+    const mean =
+      applicable.reduce((sum, f) => sum + f.matchedReady / f.expectedReady, 0) /
+      applicable.length;
+    const extra = record.files.reduce(
+      (sum, f, i) =>
+        sum +
+        addedWrongValues(
+          rules.files[i].autoBusiness.wrongDetails,
+          f[key].wrongDetails,
+        ).length,
+      0,
+    );
+    lines.push(
+      row([
+        title,
+        rate(total(stats, 'matchedReady'), total(stats, 'expectedReady')),
+        (100 * mean).toFixed(1) + '%（' + applicable.length + ' 份）',
+        total(stats, 'ready'),
+        total(stats, 'matchedReady') - baseline,
+        extra,
+      ]),
+    );
+  }
+  lines.push('', '## 逐文件标注 READY 命中', '');
+  table([
+    '原件',
+    '标注 READY',
+    '纯规则命中',
+    '规则＋批量命中',
+    'AI 复核命中',
+    'AI 复核＋批量命中',
+    '复核差几行',
+    '复核＋批量差几行',
+    '复核＋批量未命中原因（行数）',
+  ]);
+  for (const [i, f] of ai.files.entries()) {
+    const stats = paths.map(([, record, key]) => record.files[i][key]);
+    const b = f.bulkBusiness,
+      reasons = Object.entries(b.missedReadyReasons).sort(
+        (a, b) => b[1] - a[1],
+      );
+    lines.push(
+      row([
+        f.source ?? f.id,
+        b.expectedReady,
+        ...stats.map((x) => x.matchedReady),
+        f.reviewBusiness.expectedReady - f.reviewBusiness.matchedReady,
+        b.expectedReady - b.matchedReady,
+        reasons.map(([reason, n]) => reason + ' ×' + n).join('、') ||
+          '全部命中',
+      ]),
+    );
+  }
+  lines.push('', '## 候选错配明细', '');
+  table([
+    '模式',
+    '原件',
+    '物理列',
+    '原表头',
+    '建议目标',
+    '标准目标',
+    '把握',
+    '系统给出的原因',
+  ]);
+  let mismatches = 0;
+  for (const { mode, files } of records)
+    for (const f of files)
+      for (const m of f.candidate.mismatches) {
+        mismatches++;
+        lines.push(
+          row([
+            mode,
+            f.source ?? f.id,
+            m.col,
+            m.header || '（空表头）',
+            m.target || '（无）',
+            m.expected,
+            m.confidence,
+            m.reason,
+          ]),
+        );
+      }
+  if (!mismatches)
+    lines.push(row(['—', '—', '—', '—', '—', '—', '—', '无候选错配']));
 }
 fs.writeFileSync(
   path.join(reports, 'eval-' + split + '.md'),

@@ -1,7 +1,9 @@
 const { web, tenant } = require('./runtime.cjs');
 const { SKIP, APPEND, OWNER, buildImportRows } = web('record-import-mapping');
 const { runGroupedImport } = web('record-import-groups');
-const { activeOptions } = web('record-import-assist');
+const { activeOptions, remainingImportValues, setRemainingImportValues } = web(
+  'record-import-assist',
+);
 const { inferImportDateOrder, matchImportOption } = web('record-csv');
 const assert = require('node:assert/strict');
 const { compareReady } = require('./metrics.cjs');
@@ -16,6 +18,7 @@ function score(answer, header, draft, fields, plan, preview) {
     wrong: 0,
     high: 0,
     highWrong: 0,
+    mismatches: [],
     values: 0,
     correctValues: 0,
     forbiddenTargets: 0,
@@ -36,7 +39,21 @@ function score(answer, header, draft, fields, plan, preview) {
       result.needed++;
       if (correct) result.matched++;
     }
-    if (wrong) result.wrong++;
+    if (wrong) {
+      result.wrong++;
+      result.mismatches.push({
+        col: c.col,
+        header: c.header,
+        target: actual,
+        expected,
+        confidence: suggested?.confidence ?? 'rule',
+        reason:
+          header !== answer.headerRow
+            ? '选错表头行'
+            : suggested?.reason ||
+              (suggested ? '候选目标与标注不同' : '规则映射与标注不同'),
+      });
+    }
     if (suggested?.confidence === 'high') {
       result.high++;
       if (wrong) result.highWrong++;
@@ -61,6 +78,29 @@ function score(answer, header, draft, fields, plan, preview) {
     }
   }
   return result;
+}
+
+function bulkReviewed(draft, parsed, header, fields, answer) {
+  const next = { ...draft, valueChoices: { ...draft.valueChoices } };
+  if (!parsed || header !== answer.headerRow) return next;
+  for (const [i, key] of draft.mapping.entries()) {
+    const truth = answer.columns[i];
+    if (!truth?.values || key !== targetKey(truth.target)) continue;
+    const field = fields.find((f) => f.fieldKey === key);
+    if (!field || !['SINGLE_SELECT', 'MULTI_SELECT'].includes(field.type))
+      continue;
+    const choices = draft.valueChoices[i];
+    const { values } = remainingImportValues(parsed.rows, i, field, choices);
+    if (
+      values.length &&
+      values.every((raw) =>
+        truth.values.some((v) => v.raw === raw && v.option === null),
+      )
+    ) {
+      next.valueChoices[i] = setRemainingImportValues(choices, values);
+    }
+  }
+  return next;
 }
 
 async function business(h, actor, object, parsed, draft, fields, answer) {
@@ -143,6 +183,7 @@ async function business(h, actor, object, parsed, draft, fields, answer) {
     ownerSkip: 0,
     expectedReady: answer.rows.filter((r) => r.status === 'READY').length,
     matchedReady: 0,
+    missedReadyReasons: {},
     readyWithoutValueLabels: 0,
     readyValuesMismatch: 0,
     missingRows: 0,
@@ -160,6 +201,35 @@ async function business(h, actor, object, parsed, draft, fields, answer) {
   for (const truth of answer.rows) {
     const r = byRow.get(truth.rowNumber),
       item = actual.get(truth.rowNumber);
+    if (truth.status === 'READY' && item?.status !== 'READY') {
+      let reason = '表头或行号未对上';
+      if (item?.status === 'FAILED') {
+        if (r?.error) {
+          const message = r.error.message ?? '';
+          const labels = fields
+            .filter((f) => message.includes(f.label + '：'))
+            .map((f) => f.label);
+          reason =
+            '本地转换失败' +
+            (labels.length ? '（' + labels.join('、') + '）' : '');
+        } else {
+          const missing = fields
+            .filter(
+              (f) =>
+                f.required &&
+                (r?.values?.[f.fieldKey] == null ||
+                  r.values[f.fieldKey] === ''),
+            )
+            .map((f) => f.label);
+          reason = missing.length
+            ? '缺必填字段（' + missing.join('、') + '）'
+            : '服务端验证失败（' + (item.error?.code ?? '未知') + '）';
+        }
+      } else if (item?.status === 'SKIPPED')
+        reason = r?.destination?.kind === 'skip' ? '人工跳过' : '查重跳过';
+      result.missedReadyReasons[reason] =
+        (result.missedReadyReasons[reason] ?? 0) + 1;
+    }
     if (!item) {
       result.unprocessed++;
       continue;
@@ -224,4 +294,4 @@ async function business(h, actor, object, parsed, draft, fields, answer) {
   );
   return result;
 }
-module.exports = { targetKey, score, business };
+module.exports = { targetKey, score, business, bulkReviewed };

@@ -10,10 +10,11 @@ const {
   buildImportHeaderEvidence,
   buildImportPreview,
   applyImportAdvice,
+  reviewImportPlan,
   aiImportableField,
 } = web('record-import-assist');
 const { OWNER } = web('record-import-mapping');
-const { targetKey, score, business } = require('./score.cjs');
+const { targetKey, score, business, bulkReviewed } = require('./score.cjs');
 const { observedProvider } = require('./provider.cjs');
 const fixture = path.join(__dirname, 'fixtures');
 const root = path.resolve(__dirname, '../../../../..');
@@ -27,8 +28,8 @@ assert(
     (supplemental && split === 'development' && mode !== 'rules'),
 );
 assert(
-  ['development', 'holdout', 'fresh'].includes(split) &&
-    ['rules', 'default', 'none'].includes(mode),
+  ['development', 'holdout', 'fresh', 'final'].includes(split) &&
+    ['rules', 'none'].includes(mode),
 );
 function initial(parsed, fields, admin, columns) {
   const draft = emptyAssistDraft(parsed?.headers ?? [], fields, admin);
@@ -116,13 +117,18 @@ async function authorization(h, request, obj) {
   };
 }
 
-async function run(h, entry) {
+async function run(h, entry, protectedCells) {
   const answer = read(entry.answer),
     admin = !supplemental && answer.profile === 'admin';
   const actor = admin ? h.actors.SELF : h.actors.REP_A;
-  const obj = await h.object(answer.requiredOverrides);
+  const obj = await h.object(answer.requiredOverrides, split === 'final');
   const resolved = await h.schema.resolveRuntimeSchema(actor, obj.code);
   const { fields, queryFieldKeys } = resolved.visibleSchema;
+  if (split === 'final') {
+    const available = new Set(resolved.schema.fields.map((f) => f.fieldKey));
+    for (const c of answer.columns)
+      if (c.target.field) assert(available.has(c.target.field));
+  }
   const before = await h.snapshot();
   const start = performance.now();
   const file = await readImportFile(
@@ -156,6 +162,7 @@ async function run(h, entry) {
   });
   const log = {
     id: entry.id,
+    source: entry.source,
     scenario: answer.scenario,
     actor: actor.role,
     columns: answer.columns.length,
@@ -163,6 +170,7 @@ async function run(h, entry) {
     entries: 0,
     calls: 0,
     privacy: [],
+    wireScanned: false,
     modelForbiddenTargets: 0,
     inputTokens: null,
     outputTokens: null,
@@ -171,13 +179,23 @@ async function run(h, entry) {
   };
   let plan;
   if (mode !== 'rules' && preview.needed) {
-    const service = h.assist(observedProvider(mode, answer, resolved, h, log));
+    const service = h.assist(
+      observedProvider(mode, answer, resolved, h, log, protectedCells),
+    );
     try {
-      plan = await service.preview(
+      const response = await service.preview(
         actor,
         obj.code,
         preview.request,
         new AbortController().signal,
+      );
+      plan = reviewImportPlan(
+        response,
+        preview,
+        file,
+        sheet,
+        fields,
+        tenant.timeZone,
       );
     } catch (e) {
       log.error = log.privacy.length
@@ -268,6 +286,19 @@ async function run(h, entry) {
     mode === 'rules'
       ? log.autoBusiness
       : await business(h, actor, obj, reviewParsed, reviewed, fields, answer);
+  const bulk = bulkReviewed(
+    reviewed,
+    reviewParsed,
+    reviewHeader,
+    fields,
+    answer,
+  );
+  log.bulkColumns = Object.keys(bulk.valueChoices)
+    .filter((i) => bulk.valueChoices[i] !== reviewed.valueChoices[i])
+    .map((i) => 'C' + (+i + 1));
+  log.bulkBusiness = log.bulkColumns.length
+    ? await business(h, actor, obj, reviewParsed, bulk, fields, answer)
+    : log.reviewBusiness;
   if (answer.pair) {
     log.pair = answer.pair;
     const predictions = (plan?.columns ?? [])
@@ -299,6 +330,42 @@ async function run(h, entry) {
   log.authorization = await authorization(h, preview.request, obj);
   return log;
 }
+// Identify protected text by the sole changed physical cell in each frozen pair.
+// These values stay local and are checked against every actual outgoing request.
+async function protectedWorkbookCells() {
+  const cells = [];
+  for (const filename of [
+    'manifest.json',
+    'fresh/manifest.json',
+    'final/manifest.json',
+  ]) {
+    const pairs = new Map();
+    for (const entry of read(filename).files) {
+      const a = read(entry.answer);
+      if (!a.pair) continue;
+      const group = pairs.get(a.pair) ?? {};
+      const bytes = fs.readFileSync(path.join(fixture, entry.source));
+      const file = await readImportFile(
+        new File([bytes], path.basename(entry.source)),
+        'auto',
+      );
+      group[a.variant] = file.sheet(a.sheetName ?? '', a.headerRow).rows;
+      pairs.set(a.pair, group);
+    }
+    for (const { control, injected } of pairs.values()) {
+      assert.equal(control.length, injected.length);
+      const diff = injected.flatMap((row, i) => {
+        assert.equal(control[i].length, row.length);
+        return row.filter((v, j) => v !== control[i][j]);
+      });
+      assert.equal(diff.length, 1);
+      assert(diff[0]?.trim());
+      cells.push(diff[0]);
+    }
+  }
+  assert.equal(cells.length, 4);
+  return cells;
+}
 async function main() {
   const { revision } = require('./revision.cjs');
   const fingerprint = revision();
@@ -318,13 +385,16 @@ async function main() {
     [path.join(fixture, 'verify.cjs')],
     { cwd: root },
   );
-  const fresh = split === 'fresh';
-  const manifest = fresh ? 'fresh/manifest.json' : 'manifest.json';
-  const checksums = fresh ? 'fresh/SHA256SUMS' : 'SHA256SUMS';
+  const separate = ['fresh', 'final'].includes(split);
+  const manifest = separate ? split + '/manifest.json' : 'manifest.json';
+  const checksums = separate ? split + '/SHA256SUMS' : 'SHA256SUMS';
   // Verify the manifest of checksums against its independently frozen Git object.
-  const fixtureCommit = fresh
-    ? '49217f9a5dcbcd01b99f83593a138c274a5cf17d'
-    : 'f808ea8';
+  const fixtureCommit =
+    split === 'final'
+      ? 'a4f8d9a'
+      : split === 'fresh'
+        ? '49217f9a5dcbcd01b99f83593a138c274a5cf17d'
+        : 'f808ea8';
   const frozen = require('node:child_process').execFileSync(
     'git',
     [
@@ -334,7 +404,7 @@ async function main() {
     { cwd: root },
   );
   assert.deepEqual(fs.readFileSync(path.join(fixture, checksums)), frozen);
-  if (fresh)
+  if (separate)
     for (const line of frozen.toString().trimEnd().split('\n')) {
       const [digest, name] = line.split('  ');
       assert.equal(
@@ -354,21 +424,52 @@ async function main() {
   const output = path.join(reports, resultName);
   assert(!fs.existsSync(output), 'this round already has ' + resultName);
 
+  const protectedCells = await protectedWorkbookCells();
   const h = await runtime(),
     results = [];
   const sends = [];
+  async function measured(entry) {
+    while (sends.length && sends[0] <= Date.now() - 60000) sends.shift();
+    if (sends.length >= 12)
+      await require('node:timers/promises').setTimeout(
+        Math.max(1, 60001 + sends.shift() - Date.now()),
+      );
+    const log = await run(h, entry, protectedCells);
+    if (log.calls) sends.push(Date.now());
+    return log;
+  }
   try {
     for (const entry of files) {
-      // The deployed limiter admits 12 model sends per member per minute.
-      // Pace between files so fast responses do not create artificial denials.
-      while (sends.length && sends[0] <= Date.now() - 60000) sends.shift();
-      if (sends.length >= 12) {
-        await require('node:timers/promises').setTimeout(
-          Math.max(1, 60001 + sends.shift() - Date.now()),
-        );
+      const log = await measured(entry);
+      if (log.pair && mode !== 'rules') {
+        log.repeats = [];
+        for (let i = 0; i < 2; i++) {
+          const repeat = await measured(entry);
+          const keys = [
+            'entries',
+            'calls',
+            'error',
+            'modelMs',
+            'endToEndMs',
+            'privacy',
+            'wireScanned',
+            'wireDigest',
+            'modelInputDigest',
+            'modelOutputDigest',
+            'outputDigest',
+            'zeroCallPassed',
+            'modelForbiddenTargets',
+            'inputTokens',
+            'outputTokens',
+            'authorization',
+          ];
+          log.repeats.push(
+            Object.fromEntries(
+              keys.filter((k) => k in repeat).map((k) => [k, repeat[k]]),
+            ),
+          );
+        }
       }
-      const log = await run(h, entry);
-      if (log.calls) sends.push(Date.now());
       results.push(log);
       console.log(
         entry.id,
@@ -384,10 +485,14 @@ async function main() {
     await h.close();
   }
   assert.equal(results.length, split === 'development' ? 30 : 10);
-  const size = split === 'development' ? [30, 164, 449] : [10, 107, 102];
+  const size = {
+    development: [30, 164, 449],
+    holdout: [10, 107, 102],
+    fresh: [10, 116, 132],
+    final: [10, 123, 103],
+  }[split];
   const sum = (k) => results.reduce((n, r) => n + r[k], 0);
-  if (!fresh)
-    assert.deepEqual([results.length, sum('columns'), sum('rowCount')], size);
+  assert.deepEqual([results.length, sum('columns'), sum('rowCount')], size);
   fs.mkdirSync(reports, { recursive: true });
   const metadata = {
     split,
@@ -397,6 +502,7 @@ async function main() {
     model: mode === 'rules' ? null : process.env.AI_MODEL,
     fixtureCommit,
     manifestHash: sha(frozen),
+    protectedWorkbookPairs: protectedCells.length,
     files: results,
   };
   fs.writeFileSync(output, JSON.stringify(metadata, null, 2) + '\n', {

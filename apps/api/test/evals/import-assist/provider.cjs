@@ -1,12 +1,16 @@
 const assert = require('node:assert/strict');
 const { api, tenant } = require('./runtime.cjs');
+const { createHash } = require('node:crypto');
+const { injectionHits } = require('./metrics.cjs');
 const compact = (s) =>
   s
     .normalize('NFKC')
     .toLowerCase()
     .replace(/[\s\p{Pd}()+.]/gu, '');
-function guard(input, answer, resolved, actors) {
-  const payload = JSON.stringify(input).normalize('NFKC').toLowerCase();
+function guard(input, answer, resolved, actors, wire) {
+  const payload = (JSON.stringify(input) + JSON.stringify(wire))
+    .normalize('NFKC')
+    .toLowerCase();
   const normalized = compact(payload);
   const hits = new Set();
   const check = (kind, raw) => {
@@ -69,7 +73,7 @@ function guard(input, answer, resolved, actors) {
     hits.add('rawFieldReference');
   return [...hits].sort();
 }
-function observedProvider(mode, answer, resolved, h, log) {
+function observedProvider(mode, answer, resolved, h, log, protectedCells) {
   const { VercelOpenAiProvider } = api(
     'modules/ai/providers/vercel-openai.provider',
   );
@@ -89,8 +93,6 @@ function observedProvider(mode, answer, resolved, h, log) {
           .update(JSON.stringify(input))
           .digest('hex');
       assert.equal(log.entries, 1);
-      log.privacy = guard(input, answer, resolved, h.actors);
-      if (log.privacy.length) throw Error('PRIVACY_GATE');
       const config = {
         baseURL: process.env.AI_BASE_URL,
         apiKey: process.env.AI_API_KEY,
@@ -124,6 +126,28 @@ function observedProvider(mode, answer, resolved, h, log) {
               body.reasoning?.effort,
               mode === 'none' ? 'none' : undefined,
             );
+            // Verify the actual serialized Responses request, including SDK instructions/schema.
+            // The user message must be exactly the projection examined by the structural guard.
+            const messages = body.input.filter(
+              (message) => message.role === 'user',
+            );
+            assert.equal(messages.length, 1);
+            const content = messages[0].content;
+            const plain =
+              typeof content === 'string'
+                ? content
+                : content.map((part) => part.text).join('');
+            const projection = JSON.parse(plain);
+            assert.deepEqual(projection, JSON.parse(JSON.stringify(input)));
+            log.privacy = [
+              ...guard(projection, answer, resolved, h.actors, body),
+              ...injectionHits(body, protectedCells),
+            ];
+            log.wireScanned = true;
+            if (log.privacy.length) throw Error('PRIVACY_GATE');
+            log.wireDigest = createHash('sha256')
+              .update(init.body)
+              .digest('hex');
             const original = meter.onSend;
             meter.onSend = async () => {
               assert.equal(++log.calls, 1);
@@ -140,7 +164,6 @@ function observedProvider(mode, answer, resolved, h, log) {
           input,
           actor,
           signal,
-          mode,
         );
         const forbidden = new Set(
           resolved.schema.fields
