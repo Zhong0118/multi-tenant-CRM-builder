@@ -489,4 +489,94 @@ describe('platform model configuration over HTTP', () => {
       revisionId: head.revisionId,
     });
   });
+
+  it('switches a purpose between two tested providers and back without rewriting the other connection', async () => {
+    const platform = f.tenantBAdmin;
+    const model = 'fixture-vision';
+    const purpose = 'vision';
+    jest.mocked(testModel).mockResolvedValue({
+      steps: [{ name: 'vision', durationMs: 2, ok: true }],
+      durationMs: 2,
+      inputTokens: 5,
+      outputTokens: 2,
+      errorCode: null,
+      dimensions: null,
+    });
+    async function connection() {
+      const created = outputs.saved.parse(
+        (
+          await api(platform, 'post', '/providers', {
+            name: 'switch-' + randomUUID(),
+            preset: 'custom',
+            baseURL: 'https://example.com/v1',
+            protocol: 'chat',
+            embeddings: false,
+            models: [
+              {
+                name: model,
+                capabilities: [purpose],
+                contextTokens: 48000,
+                maxOutputTokens: 16000,
+                inputPrice: null,
+                outputPrice: null,
+                currency: null,
+              },
+            ],
+          }).expect(200)
+        ).body,
+      );
+      createdIds.push(created.id);
+      return outputs.saved.parse(
+        (
+          await api(platform, 'post', '/providers/' + created.id + '/key', {
+            version: created.version,
+            apiKey: randomBytes(24).toString('base64'),
+          }).expect(200)
+        ).body,
+      );
+    }
+    const a = await connection(),
+      b = await connection();
+    let version = 0;
+    for (const expected of [a, b, a]) {
+      const load = async () =>
+        outputs.state.parse((await api(platform, 'get', '').expect(200)).body);
+      const current = (await load()).providers.find(
+        (p) => p.id === expected.id,
+      )!;
+      const proposal = {
+        model,
+        purpose,
+        revisionId: expected.revisionId,
+        version: current.version,
+      };
+      const result = outputs.result.parse(
+        (
+          await api(
+            platform,
+            'post',
+            '/providers/' + expected.id + '/test',
+            proposal,
+          ).expect(200)
+        ).body,
+      );
+      await api(platform, 'post', '/assignments/vision', {
+        model,
+        revisionId: proposal.revisionId,
+        version: current.version,
+        providerId: expected.id,
+        testId: result.id,
+        assignmentVersion: version,
+      }).expect(200);
+      version++;
+      expect(
+        (await load()).assignments.find((item) => item.purpose === purpose),
+      ).toMatchObject({
+        providerId: expected.id,
+        revisionId: expected.revisionId,
+        model,
+        version,
+      });
+    }
+  });
 });
