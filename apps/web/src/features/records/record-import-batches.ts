@@ -66,18 +66,25 @@ export async function runImportBatches({
       result.items.some((i) => !rows.some((r) => r.rowNumber === i.rowNumber))
     )
       throw new Error("导入结果不完整，请重新检查后继续。");
-    const items = result.items.map((item): RecordImportResultItem => {
-      if (!input.dryRun || item.status !== "READY" || !item.matchKey)
+    const items = [...result.items]
+      .sort((a, b) => a.rowNumber - b.rowNumber)
+      .map((item): RecordImportResultItem => {
+        if (
+          !input.dryRun ||
+          !input.matchFields?.length ||
+          item.status !== "READY" ||
+          !item.matchKey
+        )
+          return item;
+        if (seen.has(item.matchKey))
+          return {
+            rowNumber: item.rowNumber,
+            status: "SKIPPED",
+            reason: "文件内查重字段重复",
+          };
+        seen.add(item.matchKey);
         return item;
-      if (seen.has(item.matchKey))
-        return {
-          rowNumber: item.rowNumber,
-          status: "SKIPPED",
-          reason: "文件内查重字段重复",
-        };
-      seen.add(item.matchKey);
-      return item;
-    });
+      });
     onBatch(summarizeImport(items));
   }
 }

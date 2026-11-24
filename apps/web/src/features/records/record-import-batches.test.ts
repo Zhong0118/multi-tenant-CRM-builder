@@ -19,7 +19,7 @@ it("automatically batches 601 rows and detects duplicate keys across check batch
   const request = vi.fn(async (input: RecordImportInput) => reply(input));
   const onBatch = vi.fn();
   await runImportBatches({
-    input: { batchId: "stable", rows, dryRun: true },
+    input: { batchId: "stable", rows, dryRun: true, matchFields: ["name"] },
     request,
     onBatch,
     shouldStop: () => false,
