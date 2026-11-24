@@ -280,7 +280,10 @@ export class RecordBatchUpdateResponseDto {
 }
 
 export class ImportRecordRowDto {
-  @ApiProperty({ minimum: 2, description: '源文件中的原始数据行号，切换表头和按负责人分组时保持不变。' })
+  @ApiProperty({
+    minimum: 2,
+    description: '源文件中的原始数据行号，切换表头和按负责人分组时保持不变。',
+  })
   @IsInt()
   @Min(2)
   rowNumber!: number;
