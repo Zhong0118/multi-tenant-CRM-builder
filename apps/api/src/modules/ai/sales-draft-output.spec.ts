@@ -164,3 +164,19 @@ it('checks quoted prices even when the currency suffix is omitted in casual writ
   expect(draft.blocks.map((b) => b.text).join('')).toContain('报价为三万');
   expect(draft.blocks.map((b) => b.text).join('')).not.toContain('三十万');
 });
+
+it('keeps ungrounded weekday and month-end delivery dates out of the message', () => {
+  const draft = validateWriting(
+    writing(
+      block('本周三发货。', 'F1'),
+      block('月底交付。', 'F1'),
+      block('周五发货。', 'F1'),
+    ),
+    options,
+    [{ id: 'F1', text: '物流安排：周五发货' }],
+  );
+  const text = draft.blocks.map((b) => b.text).join('');
+  expect(text).not.toMatch(/本周三|月底/);
+  expect(text).toContain('【交付日期】');
+  expect(text).toContain('周五发货');
+});
