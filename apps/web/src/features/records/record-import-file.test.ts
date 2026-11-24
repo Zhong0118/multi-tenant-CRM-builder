@@ -146,6 +146,20 @@ describe("record file import", () => {
       detected: true,
     });
   });
+  it("keeps consecutive rows of business headings open for one header-and-column preview", async () => {
+    const source = await readImportFile(
+      file(
+        new TextEncoder().encode(
+          "部门清单\n公司,日期\n单位名称,签约时间\n示例公司,2026-10-01\n乙,2026-10-02",
+        ),
+        "headers.csv",
+      ),
+      "auto",
+    );
+    const choice = source.headerSelection("", []);
+    expect(choice.detected).toBe(false);
+    expect(choice.headerRow).toBe(3);
+  });
   it("chooses the earliest plausible row when shape is the only evidence", async () => {
     const input = "旧表\n客户,金额\n甲,零元\n乙,30";
     const source = await readImportFile(

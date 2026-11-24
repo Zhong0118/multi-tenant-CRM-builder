@@ -1,3 +1,4 @@
+import { businessLabel } from "./record-import-heading";
 import type {
   ImportAssistRequest,
   ImportAssistPlan,
@@ -74,14 +75,6 @@ export function draftForImportHeader(
   return next;
 }
 
-// Unknown text (including plausible personal names and workbook titles) stays local.
-const labelWords =
-  /(?:客户|单位|企业|公司|联系|意向|业务|成交|预计|合同|订单|销售|线索|来源|跟进|联系|创建|签约|项目|渠道|客户名|全称|简称|名称|电话|手机|号码|编号|编码|代码|评级|级别|等级|分级|分类|类型|状态|阶段|日期|时间|金额|预算|单价|数额|万元|万|元|地区|省份|城市|行业|标签|备注|描述|评价|地址|邮箱|邮件|网址|是否|有效|启用|重点|优先级|company|account|customer|contact|business|client|full|name|phone|mobile|email|id|code|amount|budget|date|time|stage|status|level|tier|grade|tag|type|source|channel|notes?|remark|value|region|industry|priority|rmb|cny|[()（）_ /-])/iy;
-function businessLabel(s: string) {
-  labelWords.lastIndex = 0;
-  while (labelWords.lastIndex < s.length) if (!labelWords.test(s)) return false;
-  return s.length > 0;
-}
 const enumLabel =
   /^(?:[A-FＳS](?:类|级|档|等)?|(?:重点|普通|潜在|意向|成交|老|新)(?:客户)?|未评级|高|中|低|展会|转介|转介绍|线上|线下|广告|网站|其他|未知|待联系|已联系|进行中|已完成|是|否|true|false|yes|no)$/i;
 const clip = (s: string) => Array.from(s).slice(0, 40).join("");

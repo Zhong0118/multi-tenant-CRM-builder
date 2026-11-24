@@ -1,3 +1,4 @@
+import { businessLabel } from "./record-import-heading";
 import type { ParsingOptions } from "xlsx";
 import { parseCsvRows, type SourceRow } from "@/lib/csv";
 import type { RecordImportResultItem } from "./record-api";
@@ -76,6 +77,23 @@ function selectHeader(rows: SourceRow[], fields: MatchFields): HeaderSelection {
   const mostMatches = Math.max(...scores.map((candidate) => candidate.matches));
   const best = scores.filter((candidate) => candidate.matches === mostMatches);
   const shaped = best.filter((candidate) => candidate.shaped);
+  // A grouped heading followed by actual column headings can match the same
+  // later data rows. Keep that choice editable and offer both rows to preview.
+  const adjacent = shaped[1];
+  if (
+    mostMatches === 0 &&
+    adjacent &&
+    adjacent.index === shaped[0].index + 1 &&
+    [shaped[0], adjacent].every(({ index }) =>
+      candidates[index].cells.some((value) => businessLabel(value.trim())),
+    )
+  ) {
+    return {
+      candidates,
+      headerRow: candidates[adjacent.index].rowNumber,
+      detected: false,
+    };
+  }
   const found =
     mostMatches > 0 && best.length === 1
       ? best[0]
