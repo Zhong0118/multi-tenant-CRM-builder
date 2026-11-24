@@ -292,6 +292,182 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/ai-models": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ModelAdminController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/assignments/{purpose}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelAdminController_assign"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/import-environment": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelAdminController_migrate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/providers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelAdminController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/providers/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["ModelAdminController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["ModelAdminController_edit"];
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/providers/{id}/activate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelAdminController_activate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/providers/{id}/discover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelAdminController_discover"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/providers/{id}/key": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelAdminController_key"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/providers/{id}/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelAdminController_status"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/providers/{id}/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelAdminController_test"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/ai-models/rotate-master-key": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelAdminController_rotate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/ai-plans": {
     parameters: {
       query?: never;
@@ -6256,6 +6432,494 @@ export interface operations {
       };
     };
   };
+  ModelAdminController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            assignments: {
+              dimensions: number | null;
+              model: string;
+              /** Format: uuid */
+              providerId: string;
+              /** @enum {string} */
+              purpose: "text" | "vision" | "embedding";
+              /** Format: uuid */
+              revisionId: string;
+              version: number;
+            }[];
+            environment: {
+              configured: boolean;
+              missing: string[];
+              model: string | null;
+              provider: string | null;
+            };
+            providers: {
+              /** Format: uuid */
+              activeRevisionId: string | null;
+              /** Format: uuid */
+              draftRevisionId: string | null;
+              enabled: boolean;
+              /** Format: uuid */
+              id: string;
+              name: string;
+              preset: string;
+              revisions: {
+                baseURL: string;
+                embeddings: boolean;
+                /** Format: uuid */
+                id: string;
+                keyLast4: string | null;
+                models: {
+                  capabilities: ("text" | "vision" | "embedding")[];
+                  contextTokens: number | null;
+                  currency: string | null;
+                  inputPrice: string | null;
+                  maxOutputTokens: number | null;
+                  name: string;
+                  outputPrice: string | null;
+                }[];
+                /** @enum {string} */
+                protocol: "responses" | "chat";
+                tests: {
+                  dimensions: number | null;
+                  durationMs: number | null;
+                  errorCode: string | null;
+                  finishedAt: string | null;
+                  /** Format: uuid */
+                  id: string;
+                  inputTokens: number;
+                  model: string;
+                  outputTokens: number;
+                  /** @enum {string} */
+                  purpose: "text" | "vision" | "embedding";
+                  sequence: number;
+                  startedAt: string;
+                  /** @enum {string} */
+                  status: "running" | "success" | "failed";
+                  steps: {
+                    durationMs: number;
+                    errorCode?: string;
+                    httpStatus?: number;
+                    name: string;
+                    ok: boolean;
+                  }[];
+                }[];
+              }[];
+              version: number;
+            }[];
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_assign: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        purpose: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          assignmentVersion: number;
+          confirmReindex?: boolean;
+          model: string;
+          /** Format: uuid */
+          providerId: string;
+          /** Format: uuid */
+          revisionId: string;
+          /** Format: uuid */
+          testId: string;
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            ok: boolean;
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_migrate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            revisionId: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          baseURL: string;
+          embeddings: boolean;
+          models: {
+            capabilities: ("text" | "vision" | "embedding")[];
+            contextTokens: number | null;
+            currency: string | null;
+            inputPrice: string | null;
+            maxOutputTokens: number | null;
+            name: string;
+            outputPrice: string | null;
+          }[];
+          name: string;
+          preset: string;
+          /** @enum {string} */
+          protocol: "responses" | "chat";
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            revisionId: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            ok: boolean;
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_edit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          baseURL: string;
+          embeddings: boolean;
+          models: {
+            capabilities: ("text" | "vision" | "embedding")[];
+            contextTokens: number | null;
+            currency: string | null;
+            inputPrice: string | null;
+            maxOutputTokens: number | null;
+            name: string;
+            outputPrice: string | null;
+          }[];
+          name: string;
+          preset: string;
+          /** @enum {string} */
+          protocol: "responses" | "chat";
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            revisionId: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_activate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          confirmReindex?: boolean;
+          /** Format: uuid */
+          revisionId: string;
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            ok: boolean;
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_discover: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          revisionId: string;
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            models: string[];
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_key: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          apiKey: string;
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            revisionId: string;
+            version: number;
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_status: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          enabled: boolean;
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            ok: boolean;
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_test: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          model: string;
+          /** @enum {string} */
+          purpose: "text" | "vision" | "embedding";
+          /** Format: uuid */
+          revisionId: string;
+          version: number;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            dimensions: number | null;
+            durationMs: number | null;
+            errorCode: string | null;
+            finishedAt: string | null;
+            /** Format: uuid */
+            id: string;
+            inputTokens: number;
+            model: string;
+            outputTokens: number;
+            /** @enum {string} */
+            purpose: "text" | "vision" | "embedding";
+            sequence: number;
+            startedAt: string;
+            /** @enum {string} */
+            status: "running" | "success" | "failed";
+            steps: {
+              durationMs: number;
+              errorCode?: string;
+              httpStatus?: number;
+              name: string;
+              ok: boolean;
+            }[];
+          };
+        };
+      };
+    };
+  };
+  ModelAdminController_rotate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            remaining: number;
+            rotated: number;
+          };
+        };
+      };
+    };
+  };
   PlatformAiAdminController_plans: {
     parameters: {
       query?: never;
@@ -6273,6 +6937,12 @@ export interface operations {
           "application/json": {
             assignable: boolean;
             companies: number;
+            costEstimate: {
+              currency: string;
+              high: string;
+              low: string;
+              weighted: boolean;
+            } | null;
             description: string;
             features: (
               | "assistant"
@@ -7047,6 +7717,14 @@ export interface operations {
                 | null;
             }[];
             code: string;
+            costs: {
+              cost: string;
+              currency: string | null;
+              /** @description Exact token count in decimal notation */
+              pricedTokens: string;
+              /** @description Exact token count in decimal notation */
+              unpricedTokens: string;
+            }[];
             /** @description Exact token count in decimal notation */
             extraTokens: string;
             features: (
