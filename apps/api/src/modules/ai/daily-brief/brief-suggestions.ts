@@ -8,6 +8,8 @@ import {
   recordOwnerFilter,
   recordOwnerMatches,
 } from '../../objects/record-read-scope';
+import { activeSelectLabel } from '../../records/record-value-engine';
+import { reportCommunication } from '../report-communication';
 import { AiSanitizer } from '../ai-sanitizer';
 import { checkedSentence } from '../sales-draft-output';
 import { readBriefRows, type BriefRow, type BriefScope } from './brief-query';
@@ -107,6 +109,7 @@ export async function briefCandidates(
       activity: string[];
       followups: string[];
       openCount: number;
+      overdueFollowUpId: string | null;
     }>
   >`
  SELECT r.id,r.data, ARRAY(SELECT left(content,200) FROM record_activities a WHERE a.tenant_id=r.tenant_id AND a.record_id=r.id
@@ -114,7 +117,9 @@ export async function briefCandidates(
  ARRAY(SELECT left(title,100)||' · '||to_char(due_at AT TIME ZONE ${scope.timezone},'YYYY-MM-DD HH24:MI') FROM record_follow_ups f
  WHERE f.tenant_id=r.tenant_id AND f.record_id=r.id AND status='OPEN' AND (${actor.role === 'TENANT_ADMIN'} OR f.assignee_member_id=${actor.memberId}::uuid) ORDER BY due_at,id LIMIT 12) AS followups,
  (SELECT count(*)::int FROM record_follow_ups f WHERE f.tenant_id=r.tenant_id AND f.record_id=r.id AND status='OPEN'
- AND (${actor.role === 'TENANT_ADMIN'} OR f.assignee_member_id=${actor.memberId}::uuid)) AS "openCount"
+ AND (${actor.role === 'TENANT_ADMIN'} OR f.assignee_member_id=${actor.memberId}::uuid)) AS "openCount",
+ (SELECT f.id FROM record_follow_ups f WHERE f.tenant_id=r.tenant_id AND f.record_id=r.id AND f.status='OPEN'
+ AND f.due_at<now() AND (${actor.role === 'TENANT_ADMIN'} OR f.assignee_member_id=${actor.memberId}::uuid) ORDER BY f.due_at,f.id LIMIT 1) AS "overdueFollowUpId"
  FROM records r WHERE r.tenant_id=${actor.tenantId}::uuid AND r.id=ANY(${ids}::uuid[]) AND r.deleted_at IS NULL`;
   const formatter = new Intl.DateTimeFormat('sv-SE', {
     timeZone: scope.timezone,
@@ -144,7 +149,10 @@ export async function briefCandidates(
           ['MULTI_SELECT', 'MEMBER'].includes(f.type)
         )
           return [];
-        const value = detail.data[key];
+        const value =
+          f.type === 'SINGLE_SELECT'
+            ? activeSelectLabel(f, detail.data[key])
+            : detail.data[key];
         return ['string', 'number', 'boolean'].includes(typeof value)
           ? [f.label + '：' + String(value).slice(0, 80)]
           : [];
@@ -186,6 +194,7 @@ export async function briefCandidates(
     return [
       {
         ...record,
+        overdueFollowUpId: record.canFollowUp ? detail.overdueFollowUpId : null,
         recordRef,
         fingerprint,
         facts: texts.map((text, j) => ({
@@ -253,6 +262,34 @@ function safeWording(
     !terms.some((t) => all.has(t) && !cited.has(t))
   );
 }
+export function displayBriefWording(item: {
+  suggestedTitle: string;
+  explanation: string;
+}) {
+  const concise = (text: string) =>
+    text.replace(/^联系联系人[，,、]?(?=确认|核对|询问|了解)/u, '');
+  const title = concise(item.suggestedTitle);
+  const detail = concise(item.explanation);
+  const core = (text: string) =>
+    text
+      .replace(/^(?:建议|请|联系经办人|联系对方|联系客户)+/u, '')
+      .replace(/(?:的)?(?:进度|情况|安排)?[。！？!?\s]*$/u, '');
+  return {
+    suggestedTitle: title,
+    explanation: core(title) === core(detail) ? '' : detail,
+  };
+}
+
+export function displayBriefReason(title: string, facts: string[]) {
+  return facts
+    .map((text) =>
+      text.startsWith('沟通：')
+        ? reportCommunication(title, '记录沟通', text.slice(3))
+        : text,
+    )
+    .join('；');
+}
+
 export function validateSuggestions(
   raw: unknown,
   candidates: Candidate[],
@@ -309,7 +346,7 @@ export function validateSuggestions(
           recordId: c.recordId,
           fingerprint: c.fingerprint,
           reasonFactRefs: i.reasonFactRefs,
-          reason: sources.join('；'),
+          reason: displayBriefReason(c.title, sources),
           action: i.action,
           ...(usedFallback
             ? fallbackWording(i.action)

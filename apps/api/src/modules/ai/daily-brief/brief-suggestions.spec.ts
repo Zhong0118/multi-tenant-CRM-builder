@@ -1,4 +1,8 @@
-import { briefPromptRecords, validateSuggestions } from './brief-suggestions';
+import {
+  briefPromptRecords,
+  displayBriefWording,
+  validateSuggestions,
+} from './brief-suggestions';
 
 it('only trusts a candidate’s own facts and renders them as the reason', () => {
   const candidates = [
@@ -280,4 +284,29 @@ it('recognizes a cited organization after a contact verb and treats assistance a
   expect(
     run('核对远山科技交期', '联系远山科技协助采购轴承。').usedFallback,
   ).toBe(true);
+});
+
+it('removes a repeated contact prefix and hides only a redundant explanation', () => {
+  expect(
+    displayBriefWording({
+      suggestedTitle: '联系联系人确认收件地址',
+      explanation: '请确认收件地址。',
+    }),
+  ).toEqual({ suggestedTitle: '确认收件地址', explanation: '' });
+  expect(
+    displayBriefWording({
+      suggestedTitle: '确认交期',
+      explanation: '电话确认交期，顺便问样品是否收到。',
+    }).explanation,
+  ).toContain('电话');
+});
+
+it('summarizes a multiline communication only for the visible reason', () => {
+  const text =
+    '沟通：您好！\n沟通：已核对收件地址。\n报价金额为【报价金额】，请确认。\n结果：样品尚未收到。\n谢谢！';
+  const rows = [{ ...candidates[0], facts: [{ ref: 'R1F2', text }] }];
+  expect(briefPromptRecords(rows)[0].facts[0].text).toBe(text);
+  expect(
+    validateSuggestions({ items: [grounded] }, rows, '2026-11-24')[0].reason,
+  ).toBe('示例客户：记录沟通，已核对收件地址；样品尚未收到。');
 });

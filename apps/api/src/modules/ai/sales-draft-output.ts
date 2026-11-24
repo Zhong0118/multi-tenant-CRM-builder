@@ -12,7 +12,7 @@ import {
 } from '../follow-ups/follow-up-workbench-time';
 import {
   projectVisibleValues,
-  selectOptions,
+  activeSelectLabel,
 } from '../records/record-value-engine';
 import type { readTarget } from './assistant-question-data';
 import { AiSanitizer } from './ai-sanitizer';
@@ -120,10 +120,7 @@ export function writingFields(
     )
       continue;
     let value = values[key];
-    if (field.type === 'SINGLE_SELECT')
-      value = selectOptions(field).find(
-        (o) => o.key === value && o.status === 'ACTIVE',
-      )?.label;
+    if (field.type === 'SINGLE_SELECT') value = activeSelectLabel(field, value);
     if (
       field.type === 'DATETIME' &&
       typeof value === 'string' &&

@@ -4,6 +4,7 @@ import {
   closeCriticalHarness,
   createCriticalHarness,
   provisionCriticalFixture,
+  publishObject,
   type CriticalFixture,
   type CriticalHarness,
 } from './helpers/critical-fixture';
@@ -49,7 +50,7 @@ describe('personal daily brief over HTTP', () => {
       where: { id: f.rollbackRecord.id },
       data: { statusKey: 'won' },
     });
-    await h.adminDatabase.recordFollowUp.create({
+    return h.adminDatabase.recordFollowUp.create({
       data: {
         tenantId: f.tenantA.id,
         recordId: f.workflowRecord.id,
@@ -58,6 +59,14 @@ describe('personal daily brief over HTTP', () => {
         dueAt: new Date('2020-03-01T00:00:00Z'),
       },
     });
+  }
+  async function enableBrief() {
+    const db = h.adminDatabase;
+    const [plan] = await db.$queryRaw<
+      { id: string }[]
+    >`INSERT INTO ai_plans(name,features,monthly_tokens) VALUES('brief fixture',ARRAY['daily_brief'],2000000) ON CONFLICT(name) DO UPDATE SET monthly_tokens=2000000 RETURNING id`;
+    await db.$executeRaw`UPDATE tenant_ai_configs SET plan_id=${plan.id}::uuid WHERE tenant_id=${f.tenantA.id}::uuid`;
+    return plan;
   }
   afterAll(async () => {
     if (h) await closeCriticalHarness(h);
@@ -97,13 +106,142 @@ describe('personal daily brief over HTTP', () => {
     );
   });
 
-  it('coalesces generation, binds facts to permission, charges only sends and enforces owner RLS', async () => {
-    await seedOverdue();
+  it('shows the visible option label to the model and in the reason, and withholds the overdue action on a read-only record', async () => {
     const db = h.adminDatabase;
-    const [plan] = await db.$queryRaw<
-      { id: string }[]
-    >`INSERT INTO ai_plans(name,features,monthly_tokens) VALUES('brief fixture',ARRAY['daily_brief'],2000000) ON CONFLICT(name) DO UPDATE SET monthly_tokens=2000000 RETURNING id`;
-    await db.$executeRaw`UPDATE tenant_ai_configs SET plan_id=${plan.id}::uuid WHERE tenant_id=${f.tenantA.id}::uuid`;
+    const option = (key: string, label: string, status: string) => ({
+      key,
+      label,
+      status,
+    });
+    const fields = ['stage', 'retired', 'hidden'].map((key) => ({
+      key,
+      label: '商机阶段',
+      type: 'SINGLE_SELECT',
+      required: false,
+      access: key === 'hidden' ? ('HIDDEN' as const) : ('READ_ONLY' as const),
+      config: {
+        options: [
+          option('proposal', '方案报价', 'ACTIVE'),
+          option('obsolete', '已停用', 'INACTIVE'),
+        ],
+      },
+    }));
+    const object = await publishObject(db, {
+      tenantId: f.tenantA.id,
+      publisherMemberId: f.admin.memberId,
+      code: 'brief_test_stage',
+      name: '测试商机',
+      now: new Date(),
+      fields: [
+        {
+          key: 'name',
+          label: '名称',
+          type: 'TEXT',
+          required: true,
+          access: 'READ_ONLY',
+        },
+        ...fields,
+      ],
+      access: {
+        canRead: true,
+        canUpdate: false,
+        canCreate: false,
+        readScope: 'OWN',
+        updateScope: 'NONE',
+      },
+    });
+    const r = await db.record.create({
+      data: {
+        tenantId: f.tenantA.id,
+        objectId: object.id,
+        ownerMemberId: f.employee.memberId,
+        recordNo: 1,
+        title: '试用商机',
+        data: {
+          name: '试用商机',
+          stage: 'proposal',
+          retired: 'obsolete',
+          hidden: 'proposal',
+        },
+      },
+    });
+    await db.recordFollowUp.create({
+      data: {
+        tenantId: f.tenantA.id,
+        recordId: r.id,
+        assigneeMemberId: f.employee.memberId,
+        title: '跟进',
+        dueAt: new Date('2020-03-01'),
+      },
+    });
+    await enableBrief();
+    const model = jest
+      .spyOn(FakeAiProvider.prototype, 'generateSalesDaily')
+      .mockImplementationOnce(async (input) => {
+        await input.onSend?.();
+        const records = (
+          JSON.parse(input.prompt) as {
+            records: {
+              recordRef: string;
+              facts: { ref: string; text: string }[];
+            }[];
+          }
+        ).records;
+        const rec = records.find((row) =>
+          row.facts.some((fact) => fact.text === '名称：试用商机'),
+        )!;
+        expect(
+          rec.facts
+            .filter((fact) => fact.text.startsWith('商机阶段：'))
+            .map((fact) => fact.text),
+        ).toEqual(['商机阶段：方案报价']);
+        expect(input.prompt).not.toMatch(/proposal|obsolete|已停用/);
+        return {
+          items: [
+            {
+              recordRef: rec.recordRef,
+              reasonFactRefs: [
+                rec.facts.find((fact) => fact.text === '商机阶段：方案报价')!
+                  .ref,
+              ],
+              action: 'call',
+              suggestedTitle: '核对方案报价',
+              explanation: '联系经办人核对方案报价。',
+              suggestedDue: null,
+            },
+          ],
+        };
+      });
+    try {
+      const result = read<'generate'>(
+        await post('/generate').send({ previous: null }).expect(201),
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]).toMatchObject({
+        recordId: r.id,
+        reason: '商机阶段：方案报价',
+        canFollowUp: false,
+        overdueFollowUpId: null,
+        explanation: '',
+      });
+    } finally {
+      model.mockRestore();
+    }
+  });
+
+  it('coalesces generation, binds facts to permission, charges only sends and enforces owner RLS', async () => {
+    const earliest = await seedOverdue();
+    const db = h.adminDatabase;
+    const otherTask = await db.recordFollowUp.create({
+      data: {
+        tenantId: f.tenantA.id,
+        recordId: f.workflowRecord.id,
+        assigneeMemberId: f.otherEmployee.memberId,
+        title: '另一成员的事项',
+        dueAt: new Date('2020-01-01'),
+      },
+    });
+    const plan = await enableBrief();
     const capture = jest.spyOn(FakeAiProvider.prototype, 'generateSalesDaily');
     capture.mockImplementationOnce(async (input) => {
       await input.onSend?.();
@@ -139,6 +277,16 @@ describe('personal daily brief over HTTP', () => {
       let cached = read<'suggestions'>(await get('/suggestions').expect(200));
       expect(cached.items).toHaveLength(2);
       expect(
+        cached.items.find((i) => i.recordId === f.workflowRecord.id)
+          ?.overdueFollowUpId,
+      ).toBe(earliest.id);
+      expect(
+        cached.items.find((i) => i.recordId === f.ownedRecord.id)
+          ?.overdueFollowUpId,
+      ).toBeNull();
+      expect(JSON.stringify(cached)).not.toContain(otherTask.id);
+      expect(capture.mock.calls[0][0].prompt).not.toContain(earliest.id);
+      expect(
         cached.items.find((i) => i.recordId === f.ownedRecord.id),
       ).toMatchObject({
         suggestedTitle: '核对审核编号',
@@ -156,7 +304,7 @@ describe('personal daily brief over HTTP', () => {
       ]);
       expect(afterTransfer.items[0]).toMatchObject({
         suggestedTitle: '致电确认近况',
-        explanation: '建议致电确认近况',
+        explanation: '',
       });
       expect(JSON.stringify(afterTransfer)).not.toContain(
         'initial-review-code',

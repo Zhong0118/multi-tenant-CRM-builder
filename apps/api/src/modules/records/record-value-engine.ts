@@ -525,6 +525,15 @@ export function selectOptions(
   });
 }
 
+export function activeSelectLabel(
+  field: Pick<PublishedField, 'config'>,
+  value: unknown,
+) {
+  return selectOptions(field).find(
+    (option) => option.key === value && option.status === 'ACTIVE',
+  )?.label;
+}
+
 function isJsonObject(value: JsonValue): value is Record<string, JsonValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

@@ -177,7 +177,8 @@ export function BriefSuggestions({
                       <article key={i.recordId} className={styles.item}>
                         <div>
                           <strong>{i.suggestedTitle}</strong> · {i.title}（
-                          {i.objectName}）<p>{i.explanation}</p>
+                          {i.objectName}）
+                          {i.explanation && <p>{i.explanation}</p>}
                           <p>依据 · {i.reason}</p>
                         </div>
                         <div className={styles.actions}>
@@ -187,9 +188,21 @@ export function BriefSuggestions({
                           )}
                           {i.canFollowUp && (
                             <Link
-                              href={href + "?section=followups&briefFollowup=1"}
+                              href={
+                                i.overdueFollowUpId
+                                  ? sourceRecordHref(
+                                      tenantCode,
+                                      i.objectCode,
+                                      i.recordId,
+                                      undefined,
+                                      i.overdueFollowUpId,
+                                    )
+                                  : href + "?section=followups&briefFollowup=1"
+                              }
                             >
-                              加跟进
+                              {i.overdueFollowUpId
+                                ? "去处理这条跟进"
+                                : "加跟进"}
                             </Link>
                           )}
                         </div>

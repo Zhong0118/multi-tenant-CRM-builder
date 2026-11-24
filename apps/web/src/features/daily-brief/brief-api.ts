@@ -33,6 +33,7 @@ export interface Suggestions {
   busy: boolean;
   items: Array<
     Omit<BriefRecord, "keyDate"> & {
+      overdueFollowUpId: string | null;
       reason: string;
       explanation: string;
       suggestedTitle: string;

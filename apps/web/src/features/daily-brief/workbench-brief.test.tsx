@@ -73,3 +73,52 @@ it.each([
     ).toBeVisible();
   },
 );
+
+it("opens the manageable overdue task and only offers creation when the record has no such task", async () => {
+  const task = {
+    recordId: "record",
+    objectCode: "deals",
+    title: "远山",
+    objectName: "商机",
+    suggestedTitle: "确认交期",
+    explanation: "",
+    reason: "商机阶段：方案报价",
+    canFollowUp: true,
+  };
+  suggestions.mockResolvedValueOnce({
+    generatedAt: "2026-11-24T08:00:00Z",
+    remaining: 2,
+    items: [
+      { ...task, overdueFollowUpId: "task-42" },
+      { ...task, recordId: "new", overdueFollowUpId: null },
+      {
+        ...task,
+        recordId: "readOnly",
+        canFollowUp: false,
+        overdueFollowUpId: null,
+      },
+    ],
+  });
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <BriefSuggestions
+        tenantCode="local"
+        memberId="actor"
+        localDate="2026-11-24"
+        timezone="UTC"
+        hasCandidates
+      />
+    </QueryClientProvider>,
+  );
+  const manage = await screen.findByRole("link", { name: "去处理这条跟进" });
+  expect(manage).toHaveAttribute(
+    "href",
+    expect.stringContaining("/objects/deals/record?followUp=task-42"),
+  );
+  expect(screen.getAllByRole("link", { name: "加跟进" })).toHaveLength(1);
+  expect(screen.getByRole("link", { name: "加跟进" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("/deals/new?section=followups"),
+  );
+  expect(screen.queryByText("确认交期。")).toBeNull();
+});

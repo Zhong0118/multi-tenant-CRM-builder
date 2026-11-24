@@ -18,6 +18,8 @@ import {
   briefCandidates,
   briefRecord,
   briefSystem,
+  displayBriefReason,
+  displayBriefWording,
   briefPromptRecords,
   fallbackWording,
   wordingScope,
@@ -167,6 +169,15 @@ export class DailyBriefService {
             (c) => c.recordId === i.recordId && c.fingerprint === i.fingerprint,
           );
           if (!c) return [];
+          // The same record can move within the shortlist. Its fingerprint
+          // covers the ordered facts, while the temporary R prefix can change.
+          const refs = [...new Set(i.reasonFactRefs)];
+          const cited = refs.flatMap((ref) => {
+            const currentRef = ref.replace(/^R\d+/u, c.recordRef);
+            const fact = c.facts.find((f) => f.ref === currentRef);
+            return fact ? [fact.text] : [];
+          });
+          if (cited.length !== refs.length) return [];
           return [
             {
               recordId: c.recordId,
@@ -174,13 +185,16 @@ export class DailyBriefService {
               objectName: c.objectName,
               objectCode: c.objectCode,
               canFollowUp: c.canFollowUp,
-              reason: i.reason,
-              ...(i.wordingScope === currentWordingScope
-                ? {
-                    explanation: i.explanation,
-                    suggestedTitle: i.suggestedTitle,
-                  }
-                : fallbackWording(i.action)),
+              overdueFollowUpId: c.overdueFollowUpId,
+              reason: displayBriefReason(c.title, cited),
+              ...displayBriefWording(
+                i.wordingScope === currentWordingScope
+                  ? {
+                      explanation: i.explanation,
+                      suggestedTitle: i.suggestedTitle,
+                    }
+                  : fallbackWording(i.action),
+              ),
               suggestedDue: i.suggestedDue,
             },
           ];
