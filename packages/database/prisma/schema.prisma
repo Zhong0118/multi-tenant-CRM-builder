@@ -182,6 +182,7 @@ enum AiMessageStatus {
 }
 
 model User {
+  modelTests AiModelTest[]
   id                  String                        @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   displayName         String                        @map("display_name") @db.VarChar(100)
   email               String?                       @unique @db.VarChar(320)
@@ -1336,4 +1337,112 @@ model AiPrivateAuditRequest {
   config TenantAiConfig @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
   @@id([tenantId, requestId])
   @@map("ai_private_audit_requests")
+}
+
+model AiModelProvider {
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  name String
+  preset String
+  enabled Boolean @default(true)
+  version Int @default(1)
+  activeRevisionId String? @map("active_revision_id") @db.Uuid
+  draftRevisionId String? @map("draft_revision_id") @db.Uuid
+  environmentImport Boolean @default(false) @map("environment_import")
+  credentials AiModelCredential[]
+  activeRevision AiModelRevision? @relation("ActiveModelRevision", fields: [id, activeRevisionId], references: [providerId, id], onDelete: NoAction, onUpdate: NoAction)
+  draftRevision AiModelRevision? @relation("DraftModelRevision", fields: [id, draftRevisionId], references: [providerId, id], onDelete: NoAction, onUpdate: NoAction)
+  revisions AiModelRevision[] @relation("ModelRevisions")
+  @@map("ai_model_providers")
+}
+
+model AiModelCredential {
+  id String @id @db.Uuid
+  providerId String @map("provider_id") @db.Uuid
+  version Int
+  lastFour String @map("last_four")
+  keyId String @map("key_id")
+  nonce String
+  ciphertext String
+  tag String
+  verifier String
+  provider AiModelProvider @relation(fields: [providerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  revisions AiModelRevision[]
+  @@unique([providerId, id])
+  @@unique([providerId, version])
+  @@map("ai_model_credentials")
+}
+
+model AiModelRevision {
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  providerId String @map("provider_id") @db.Uuid
+  preset String
+  baseUrl String @map("base_url")
+  protocol String
+  embeddings Boolean
+  credentialId String? @map("credential_id") @db.Uuid
+  keyLast4 String? @map("key_last4")
+  provider AiModelProvider @relation("ModelRevisions", fields: [providerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  activeFor AiModelProvider[] @relation("ActiveModelRevision")
+  draftFor AiModelProvider[] @relation("DraftModelRevision")
+  credential AiModelCredential? @relation(fields: [providerId, credentialId], references: [providerId, id], onDelete: NoAction, onUpdate: NoAction)
+  models AiConfigModel[]
+  assignments AiModelAssignment[]
+  tests AiModelTest[]
+  @@unique([id, credentialId])
+  @@unique([providerId, id])
+  @@map("ai_model_revisions")
+}
+
+model AiConfigModel {
+  revisionId String @map("revision_id") @db.Uuid
+  name String
+  capabilities String[]
+  contextTokens Int? @map("context_tokens")
+  maxOutputTokens Int? @map("max_output_tokens")
+  inputPrice Decimal? @map("input_price") @db.Decimal(20,8)
+  outputPrice Decimal? @map("output_price") @db.Decimal(20,8)
+  currency String?
+  revision AiModelRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  assignments AiModelAssignment[]
+  tests AiModelTest[]
+  @@id([revisionId, name])
+  @@map("ai_config_models")
+}
+
+model AiModelTest {
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  sequence Int @unique @default(autoincrement())
+  revisionId String @map("revision_id") @db.Uuid
+  credentialId String @map("credential_id") @db.Uuid
+  modelName String @map("model_name")
+  purpose String
+  suite String
+  actorId String @map("actor_id") @db.Uuid
+  startedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("started_at") @db.Timestamptz(6)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(6)
+  status String @default("running")
+  steps Json @default("[]")
+  durationMs Int? @map("duration_ms")
+  errorCode String? @map("error_code")
+  dimensions Int?
+  inputTokens BigInt @default(0) @map("input_tokens")
+  outputTokens BigInt @default(0) @map("output_tokens")
+  actor User @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  revision AiModelRevision @relation(fields: [revisionId, credentialId], references: [id, credentialId], onDelete: Cascade, onUpdate: NoAction)
+  model AiConfigModel @relation(fields: [revisionId, modelName], references: [revisionId, name], onDelete: Cascade, onUpdate: NoAction)
+  @@map("ai_model_tests")
+}
+
+model AiModelAssignment {
+  purpose String @id
+  scope String @default("platform")
+  planId String? @map("plan_id") @db.Uuid
+  providerId String @map("provider_id") @db.Uuid
+  revisionId String @map("revision_id") @db.Uuid
+  modelName String @map("model_name")
+  version Int
+  dimensions Int?
+  revision AiModelRevision @relation(fields: [providerId, revisionId], references: [providerId, id], onDelete: NoAction, onUpdate: NoAction)
+  model AiConfigModel @relation(fields: [revisionId, modelName], references: [revisionId, name], onDelete: NoAction, onUpdate: NoAction)
+  @@map("ai_model_assignments")
 }
