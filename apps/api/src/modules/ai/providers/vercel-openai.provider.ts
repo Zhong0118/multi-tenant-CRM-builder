@@ -1,3 +1,5 @@
+import { TABLE_BUILDER_GENERATION_TIMEOUT_MS } from '../table-builder-payload';
+import { modelClient } from './model-client';
 import type { ZodType } from 'zod';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import {
@@ -28,7 +30,6 @@ import {
   communicationWireSchema,
   type CommunicationProviderInput,
 } from '../communication-output';
-import { createOpenAI } from '@ai-sdk/openai';
 
 import type {
   AiProvider,
@@ -38,23 +39,44 @@ import type {
 } from '../ai-provider';
 
 export class VercelOpenAiProvider implements AiProvider {
-  readonly providerKey: 'openai' | 'openai-compatible';
+  readonly providerKey: string;
   readonly modelKey: string;
   private readonly apiKey: string;
   private readonly baseURL?: string;
 
+  private readonly protocol: 'responses' | 'chat';
+  private readonly onUsage?: (usage: Usage) => void;
   private readonly meter?: ModelMeterFactory;
   constructor(input: {
     apiKey: string;
     modelKey: string;
     baseURL?: string;
     meter?: ModelMeterFactory;
+    providerKey?: string;
+    protocol?: 'responses' | 'chat';
+    onUsage?: (usage: Usage) => void;
   }) {
+    this.protocol = input.protocol ?? 'responses';
+    this.onUsage = input.onUsage;
     this.meter = input.meter;
     this.apiKey = input.apiKey;
     this.modelKey = input.modelKey;
     this.baseURL = input.baseURL?.trim() || undefined;
-    this.providerKey = this.baseURL ? 'openai-compatible' : 'openai';
+    this.providerKey =
+      input.providerKey ?? (this.baseURL ? 'openai-compatible' : 'openai');
+  }
+
+  private languageModel(meterFetch?: typeof fetch) {
+    const openai = modelClient(
+      {
+        apiKey: this.apiKey,
+        baseURL: this.baseURL,
+        provider: this.providerKey,
+        protocol: this.protocol,
+      },
+      meterFetch,
+    );
+    return openai[this.protocol](this.modelKey);
   }
 
   async generateTableBlueprint(
@@ -124,15 +146,11 @@ export class VercelOpenAiProvider implements AiProvider {
       this.providerKey,
       this.modelKey,
     );
-    const openai = createOpenAI({
-      apiKey: this.apiKey,
-      baseURL: this.baseURL,
-      fetch: meter?.fetch,
-    });
+    abortSignal = boundedSignal(abortSignal, config.feature);
     let usage: Usage | undefined;
     try {
       const result = await generateText({
-        model: openai(this.modelKey),
+        model: this.languageModel(meter?.fetch),
         system: config.system,
         prompt: JSON.stringify(input),
         output: Output.object({ name: config.name, schema: config.schema }),
@@ -145,15 +163,17 @@ export class VercelOpenAiProvider implements AiProvider {
         providerOptions: { openai: { store: false } },
       });
       usage = result.usage;
+      if (result.finishReason && result.finishReason !== 'stop')
+        throw new Error('INCOMPLETE_OUTPUT');
       const output = result.output;
       await meter?.finish('success', usage);
       return output;
     } catch (error) {
-      await meter?.finish(
-        failureStatus(abortSignal),
-        usage ?? errorUsage(error),
-      );
+      usage ??= errorUsage(error);
+      await meter?.finish(failureStatus(abortSignal), usage);
       throw meter?.denial ?? error;
+    } finally {
+      if (usage) this.onUsage?.(usage);
     }
   }
 
@@ -170,14 +190,10 @@ export class VercelOpenAiProvider implements AiProvider {
       this.providerKey,
       this.modelKey,
     );
+    const signal = boundedSignal(input.abortSignal, 'assistant');
     try {
-      const openai = createOpenAI({
-        fetch: meter?.fetch,
-        apiKey: this.apiKey,
-        ...(this.baseURL ? { baseURL: this.baseURL } : {}),
-      });
       const result = streamText({
-        model: openai(this.modelKey),
+        model: this.languageModel(meter?.fetch),
         system: input.system,
         messages: input.messages,
         tools: Object.fromEntries(
@@ -195,13 +211,14 @@ export class VercelOpenAiProvider implements AiProvider {
         stopWhen: [],
         maxRetries: 0,
         maxOutputTokens: outputLimit.assistant,
+        onError: () => undefined,
         onStepEnd: async (step) => {
           await meter?.finish(
             step.finishReason === 'error' ? 'failed' : 'success',
             step.usage,
           );
         },
-        abortSignal: input.abortSignal,
+        abortSignal: signal,
         providerOptions: {
           openai: { store: false },
         },
@@ -211,7 +228,7 @@ export class VercelOpenAiProvider implements AiProvider {
       let stepStarted = false;
       let finalStepHasText = false;
       for await (const part of result.fullStream) {
-        if (input.abortSignal.aborted) return;
+        signal.throwIfAborted();
         switch (part.type) {
           case 'start-step':
             if (stepStarted) yield { type: 'TEXT_RESET' };
@@ -299,6 +316,7 @@ export class VercelOpenAiProvider implements AiProvider {
             break;
         }
       }
+      signal.throwIfAborted();
     } catch (error) {
       if (input.abortSignal.aborted) return;
       yield meter?.denial
@@ -307,11 +325,27 @@ export class VercelOpenAiProvider implements AiProvider {
             code: meter.denial.code,
             message: meter.denial.message,
           }
-        : { type: 'FAILED', code: normalizeProviderFailure(error) };
+        : {
+            type: 'FAILED',
+            code: signal.aborted
+              ? 'AI_PROVIDER_TIMEOUT'
+              : normalizeProviderFailure(error),
+          };
     } finally {
-      await meter?.finish(failureStatus(input.abortSignal));
+      await meter?.finish(failureStatus(signal));
     }
   }
+}
+
+function boundedSignal(signal: AbortSignal, feature: GenerationFeature) {
+  const configured = Number(process.env.AI_TIMEOUT_MS);
+  const standard =
+    Number.isSafeInteger(configured) && configured > 0 ? configured : 45_000;
+  const ms =
+    feature === 'table_builder'
+      ? TABLE_BUILDER_GENERATION_TIMEOUT_MS
+      : standard;
+  return AbortSignal.any([signal, AbortSignal.timeout(ms)]);
 }
 
 function textFromDelta(part: { text?: unknown; delta?: unknown }): string {
