@@ -271,7 +271,9 @@ export function buildImportPreview({
             col: "C" + (i + 1),
             header: "",
             samples: [],
-            locked: { mode: "skip" },
+            ...(blocked.has(i)
+              ? { excluded: true }
+              : { locked: { mode: "skip" as const } }),
           })),
         });
       continue;
