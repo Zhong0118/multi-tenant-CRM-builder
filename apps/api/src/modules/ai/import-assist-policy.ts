@@ -222,7 +222,8 @@ export function prepareImport(
           ];
           if (!target && (!col.header || col.header === '[文本]')) {
             col.samples = [...new Set(col.samples.map(cellShape))];
-            columns.push(col);
+            if (col.samples.some((sample) => sample && sample !== '[文本]'))
+              columns.push(col);
             continue;
           }
           for (const v of c.values ?? []) {

@@ -254,3 +254,11 @@ it('keeps raw previews out of unknown title rows and treats system and owner hea
     values: [],
   });
 });
+
+it('keeps unlabeled text-only columns local when another column needs advice', () => {
+  const r = req(['表外代号', '单位名称']);
+  r.candidates[0].columns[0].samples = ['[文本]', '[文本]'];
+  const { input, needed } = prepareImport(schema, r);
+  expect(needed).toBe(true);
+  expect(input.candidates[0].columns.map((c) => c.col)).toEqual(['C2']);
+});
