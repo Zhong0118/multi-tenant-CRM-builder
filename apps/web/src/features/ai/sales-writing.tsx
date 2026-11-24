@@ -229,26 +229,30 @@ export function SalesWriting({
             >
               重新生成
             </Button>
-            <Button
-              disabled={busy}
-              onClick={() =>
-                generate({ ...draftOptions, length: "short" }, "shorter")
-              }
-            >
-              更短一些
-            </Button>
-            <Button
-              disabled={busy}
-              onClick={() =>
-                generate({ ...draftOptions, tone: "formal" }, "formal")
-              }
-            >
-              更正式一些
-            </Button>
-            {draft.canLog && (
-              <Button disabled={busy} onClick={openLog}>
-                已发送，记一笔沟通
-              </Button>
+            {draft.kind !== "visit" && (
+              <>
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    generate({ ...draftOptions, length: "short" }, "shorter")
+                  }
+                >
+                  更短一些
+                </Button>
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    generate({ ...draftOptions, tone: "formal" }, "formal")
+                  }
+                >
+                  更正式一些
+                </Button>
+                {draft.canLog && (
+                  <Button disabled={busy} onClick={openLog}>
+                    已发送，记一笔沟通
+                  </Button>
+                )}
+              </>
             )}
           </Space>
         </div>
@@ -273,12 +277,7 @@ export function SalesWriting({
             canCreate
             initialActivity={{
               content: body,
-              activityType:
-                draft.kind === "call"
-                  ? "CALL"
-                  : draft.kind === "visit"
-                    ? "MEETING"
-                    : "MESSAGE",
+              activityType: draft.kind === "call" ? "CALL" : "MESSAGE",
             }}
             onDraftStateChange={({ saving }) => setSaving(saving)}
             onCreated={() => setLog(false)}

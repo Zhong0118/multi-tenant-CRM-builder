@@ -84,6 +84,7 @@ export function RecordActivityTimeline({
   const [activityType, setActivityType] = useState<MemberActivityType>(initialActivity?.activityType ?? "NOTE");
   const [outcome, setOutcome] = useState<ActivityOutcome>();
   const [content, setContent] = useState(initialActivity?.content ?? "");
+  const missingValues = initialActivity ? (content.match(/【[^【】]*】/gu)?.length ?? 0) : 0;
   const [error, setError] = useState<string>();
   const queryKey = [
     "workspace",
@@ -244,7 +245,12 @@ export function RecordActivityTimeline({
           <Typography.Text type="secondary" className={styles.timelineHint}>
             结果记为已接通、已沟通、新加上微信或已见面，才算联系成功：等待联系的记录会进入下一阶段。未接通、未回复和备注不会。
           </Typography.Text>
-          <Form.Item label="内容" htmlFor="activity-content">
+          <Form.Item
+            label="内容"
+            htmlFor="activity-content"
+            validateStatus={missingValues ? "warning" : undefined}
+            help={missingValues ? <span role="status">还有 {missingValues} 处待补充</span> : undefined}
+          >
             <Input.TextArea
               autoFocus
               id="activity-content"
@@ -257,7 +263,7 @@ export function RecordActivityTimeline({
           <Button
             type="primary"
             loading={create.isPending}
-            disabled={content.trim() === ""}
+            disabled={content.trim() === "" || missingValues > 0}
             onClick={() => create.mutate()}
           >
             保存活动

@@ -1,5 +1,16 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { expect, it, vi } from "vitest";
+import { recordApi } from "@/features/records/record-api";
+import * as draftApi from "./sales-draft-api";
+import { AssistantActionCard } from "./assistant-action-card";
 import { SalesWriting } from "./sales-writing";
 it("keeps generated text in the opened card and regenerates with the chosen style", async () => {
   const load = vi.fn(async (_t, _c, _id, opts, _s, publish) => {
@@ -77,3 +88,110 @@ it("shows the estimate after ten seconds of generation and removes it on cancel"
     vi.useRealTimers();
   }
 });
+
+const record = { tenantCode: "demo", objectCode: "customers", recordId: "r" };
+const messageOptions = {
+  kind: "email",
+  tone: "formal",
+  length: "short",
+  purpose: "quote",
+} as const;
+const email = {
+  kind: "email" as const,
+  title: "远山科技",
+  generatedAt: "2026-11-24T08:00:00Z",
+  canLog: true,
+  subject: "确认【交付日期】",
+  blocks: [{ text: "报价为【报价金额】，请确认。", factRefs: [] }],
+};
+
+it("shows only copy and regenerate below a visit outline", async () => {
+  const visit = { ...email, kind: "visit" as const, subject: undefined };
+  render(
+    <SalesWriting
+      {...record}
+      initial={visit}
+      initialOptions={{ ...messageOptions, kind: "visit" }}
+    />,
+  );
+  const result = screen.getByText("拜访准备 · 远山科技").parentElement!;
+  const actions = within(result).getAllByRole("button");
+  expect(actions).toHaveLength(2);
+  expect(within(result).getByRole("button", { name: "复制" })).toBeEnabled();
+  expect(
+    within(result).getByRole("button", { name: "重新生成" }),
+  ).toBeEnabled();
+});
+
+it.each(["record", "chat"])(
+  "requires all placeholders to be completed before logging the %s draft",
+  async (entry) => {
+    vi.spyOn(draftApi, "checkWritingActivity").mockResolvedValue();
+    vi.spyOn(recordApi, "listActivities").mockResolvedValue({
+      items: [],
+      total: 0,
+      limit: 20,
+      page: 1,
+    });
+    const create = vi
+      .spyOn(recordApi, "createActivity")
+      .mockResolvedValue(
+        {} as Awaited<ReturnType<typeof recordApi.createActivity>>,
+      );
+    try {
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          {entry === "chat" ? (
+            <AssistantActionCard
+              tenantCode={record.tenantCode}
+              action={{
+                kind: "writing",
+                objectCode: record.objectCode,
+                recordId: record.recordId,
+                options: messageOptions,
+                draft: email,
+              }}
+            />
+          ) : (
+            <SalesWriting
+              {...record}
+              initial={email}
+              initialOptions={messageOptions}
+            />
+          )}
+        </QueryClientProvider>,
+      );
+      fireEvent.click(
+        screen.getByRole("button", { name: "已发送，记一笔沟通" }),
+      );
+      const content = await screen.findByRole("textbox", { name: "内容" });
+      const save = screen.getByRole("button", { name: "保存活动" });
+      await waitFor(() =>
+        expect(screen.getByText("还有 2 处待补充")).toBeVisible(),
+      );
+      expect(save).toBeDisabled();
+      fireEvent.click(save);
+      expect(create).not.toHaveBeenCalled();
+      fireEvent.change(content, {
+        target: { value: "确认交期。报价为【报价金额】。" },
+      });
+      await waitFor(() =>
+        expect(screen.getByText("还有 1 处待补充")).toBeVisible(),
+      );
+      expect(save).toBeDisabled();
+      fireEvent.change(content, {
+        target: { value: "确认交期。报价已另发。" },
+      });
+      await waitFor(() => expect(screen.queryByText(/处待补充/)).toBeNull());
+      fireEvent.click(save);
+      await waitFor(() =>
+        expect(create).toHaveBeenCalledWith("demo", "customers", "r", {
+          activityType: "MESSAGE",
+          content: "确认交期。报价已另发。",
+        }),
+      );
+    } finally {
+      vi.restoreAllMocks();
+    }
+  },
+);
