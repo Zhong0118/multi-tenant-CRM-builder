@@ -59,10 +59,11 @@ if (split === 'totals') {
       '有 token 读数 / 实呼',
       '输入 token 总计',
       '输出 token 总计',
-      '出站隐私检查',
+      '发送前隐私阻断',
+      '实际发送已扫描且无命中 / 实呼',
       '通过的权限探针 / 探针数',
     ]),
-    row(Array(12).fill('---')),
+    row(Array(13).fill('---')),
   ];
   const all = groups.flatMap((g) => g.files.flatMap(attempts));
   for (const [label, requests] of [
@@ -85,6 +86,7 @@ if (split === 'totals') {
         measured.length + ' / ' + sent.length,
         total(measured, 'inputTokens'),
         total(measured, 'outputTokens'),
+        requests.filter((a) => a.privacy.length).length,
         sent.filter((a) => a.wireScanned && !a.privacy.length).length +
           ' / ' +
           sent.length,
