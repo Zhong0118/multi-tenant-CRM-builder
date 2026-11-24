@@ -5,6 +5,7 @@ import {
 import {
   coerceImportValue,
   suggestFieldKey,
+  inferImportDateOrder,
   type ParsedCsv,
 } from "./record-csv";
 import type {
@@ -46,6 +47,13 @@ export function buildImportRows(input: {
 }): PlannedImportRow[] {
   const { parsed, mapping, timeZone, dateOrders, destination } = input;
   const fields = new Map(input.fields.map((field) => [field.fieldKey, field]));
+  const orders = mapping.map((key, i) => {
+    if (dateOrders[i]) return dateOrders[i];
+    const field = fields.get(key);
+    if (field?.type !== "DATE" && field?.type !== "DATETIME") return;
+    const inferred = inferImportDateOrder(parsed.rows.map((r) => r[i] ?? ""));
+    if (inferred === "DMY" || inferred === "MDY") return inferred;
+  });
   return parsed.rows.map((row, i) => {
     const planned: PlannedImportRow = {
       rowNumber: parsed.rowNumbers?.[i] ?? i + 2,
@@ -62,7 +70,12 @@ export function buildImportRows(input: {
           field.type,
           row[column] ?? "",
           selectOptions(field).filter((option) => option.status === "ACTIVE"),
-          { timeZone, dateOrder: dateOrders[column], bareAmountUnit: input.amountUnits?.[column], valueChoices: input.valueChoices?.[column] },
+          {
+            timeZone,
+            dateOrder: orders[column],
+            bareAmountUnit: input.amountUnits?.[column],
+            valueChoices: input.valueChoices?.[column],
+          },
         );
       } catch (e) {
         errors.push(

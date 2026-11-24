@@ -138,7 +138,8 @@ export function coerceImportValue(
         const exact = matchImportOption(part, options);
         if (exact !== undefined) return exact;
         const choice = context.valueChoices?.get(part);
-        return choice === null || options.some((option) => option.key === choice)
+        return choice === null ||
+          options.some((option) => option.key === choice)
           ? choice
           : undefined;
       });
