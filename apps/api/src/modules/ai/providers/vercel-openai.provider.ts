@@ -23,6 +23,8 @@ import {
 } from '../filter-generation';
 import {
   generateText,
+  jsonSchema,
+  zodSchema,
   Output,
   streamText,
   tool,
@@ -88,7 +90,9 @@ export class VercelOpenAiProvider implements AiProvider {
     signal: AbortSignal = new AbortController().signal,
     reasoning: 'default' | 'none' = 'default',
   ) {
-    const importWireSchema = importMappingSchema(input);
+    const importWireSchema = jsonSchema(
+      zodSchema(importMappingSchema(input)).jsonSchema,
+    );
     const bytes = Buffer.byteLength(
       JSON.stringify({
         system: importSystem,

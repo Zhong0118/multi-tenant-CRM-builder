@@ -1127,7 +1127,7 @@ export function RecordImportDrawer({
               ? `还有 ${preview.unresolvedColumns} 列、${preview.unresolvedValues} 个取值没对上`
               : preview.needed
                 ? "表头或日期格式待确认"
-                : "已用规则对齐"}
+                : "已完成对照"}
           </Typography.Paragraph>
           {started !== undefined ? (
             <>
