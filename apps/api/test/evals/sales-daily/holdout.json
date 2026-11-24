@@ -1,0 +1,33 @@
+{
+  "daily_brief": [
+    ["过期待回签", "澄雨机电", "合同副本尚未取回", "reclaim"],
+    ["合规证书复查", "镜蓝材料", "报价材料已送交采购审核", "stagnant"],
+    ["巡检计划确认", "丰原养护", "对方提到需要检修泵组", "overdue"],
+    ["试样交接", "岚桥塑胶", "联系人尚未确认收件地址", "silent"],
+    ["续租洽谈", "槐里租赁", "对方正在比较续租方案", "reclaim"],
+    ["招标登记", "枫叶印务", "需要确认标书接收人", "overdue"],
+    ["门店补货", "朝禾商超", "上次沟通提到包装改版", "silent"],
+    ["售后对账", "青浦仪表", "财务已收到对账单", "stagnant"],
+    ["园区访客安排", "鸣松安防", "会议的参会人尚待确认", "overdue"],
+    ["经销协议", "清栩纺织", "续约条款仍在内部审核", "stagnant"]
+  ],
+  "writing": [
+    ["中洲景观", "message", "invite", "friendly", "short", "希望先讨论养护范围"],
+    ["垂虹包装", "email", "quote", "formal", "medium", "需要两种纸板样品的对照说明"],
+    ["浦林机电", "call", "payment", "formal", "short", "财务还在核对交接清单"],
+    ["花港剧社", "visit", "followup", "friendly", "medium", "现场照明需要重新确认"],
+    ["麓北食材", "email", "thanks", "friendly", "short", "对方昨日安排了参观冷库"],
+    ["绮云装备", "message", "quote", "formal", "short", "需要一份分项报价，目前没有价格"],
+    ["泉山五金", "visit", "invite", "formal", "medium", "需要了解两处仓库的发货方式"],
+    ["繁锦商行", "call", "followup", "friendly", "medium", "对方提过春节前换货，具体日期待定"],
+    ["澜庭装饰", "email", "payment", "formal", "short", "财务希望收到结算明细再复核"],
+    ["明韵声学", "message", "thanks", "friendly", "short", "负责人抽空试听了样机"]
+  ],
+  "daily_report": [
+    {"completed":["与知竹文创核对展台的尺寸","完成会场照明的电话回访"],"nextSteps":["与对方确认会场平面图"]},
+    {"completed":["新建云栖木业的渠道记录"],"nextSteps":[]},
+    {"completed":["将溪桥设备的方案提交审核"],"nextSteps":["回访采购代表"]},
+    {"completed":["确认过磅单接收人","完成宁泽建材的验收清单"],"nextSteps":[]},
+    {"completed":["与对方讨论备件回收流程"],"nextSteps":["确认返程物流安排"]}
+  ]
+}
