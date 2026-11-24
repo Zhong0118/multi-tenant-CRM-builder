@@ -15221,7 +15221,16 @@
     "/api/v1/workspaces/{tenantCode}/ai/daily-report": {
       "post": {
         "operationId": "SalesDraftsController_report",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -17334,6 +17343,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -17415,6 +17432,14 @@
           {
             "in": "path",
             "name": "recordId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
             "required": true,
             "schema": {
               "type": "string"
@@ -17564,6 +17589,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -17582,7 +17615,16 @@
     "/api/v1/workspaces/{tenantCode}/daily-brief/generate": {
       "post": {
         "operationId": "DailyBriefController_generate",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""
@@ -17599,7 +17641,16 @@
     "/api/v1/workspaces/{tenantCode}/daily-brief/settings": {
       "get": {
         "operationId": "DailyBriefController_settings",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -17614,7 +17665,16 @@
       },
       "put": {
         "operationId": "DailyBriefController_save",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -17631,7 +17691,16 @@
     "/api/v1/workspaces/{tenantCode}/daily-brief/suggestions": {
       "get": {
         "operationId": "DailyBriefController_suggestions",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""

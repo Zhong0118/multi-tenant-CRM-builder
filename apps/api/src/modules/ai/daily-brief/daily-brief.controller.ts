@@ -9,7 +9,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { z } from 'zod';
 import { ApiException } from '../../../common/errors/api.exception';
@@ -21,6 +21,7 @@ import { DailyBriefService } from './daily-brief.service';
 @Controller('workspaces/:tenantCode/daily-brief')
 @ApiTags('daily-brief')
 @ApiCookieAuth('crm_session')
+@ApiParam({ name: 'tenantCode', type: String })
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
 export class DailyBriefController {
   constructor(private readonly service: DailyBriefService) {}

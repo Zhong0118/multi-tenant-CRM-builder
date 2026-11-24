@@ -8393,7 +8393,9 @@ export interface operations {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        tenantCode: string;
+      };
       cookie?: never;
     };
     requestBody: {
@@ -9217,6 +9219,7 @@ export interface operations {
       path: {
         objectCode: string;
         recordId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -9255,6 +9258,7 @@ export interface operations {
       path: {
         objectCode: string;
         recordId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -9308,7 +9312,9 @@ export interface operations {
         group: string;
       };
       header?: never;
-      path?: never;
+      path: {
+        tenantCode: string;
+      };
       cookie?: never;
     };
     requestBody?: never;
@@ -9325,7 +9331,9 @@ export interface operations {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        tenantCode: string;
+      };
       cookie?: never;
     };
     requestBody?: never;
@@ -9342,7 +9350,9 @@ export interface operations {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        tenantCode: string;
+      };
       cookie?: never;
     };
     requestBody?: never;
@@ -9359,7 +9369,9 @@ export interface operations {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        tenantCode: string;
+      };
       cookie?: never;
     };
     requestBody?: never;
@@ -9376,7 +9388,9 @@ export interface operations {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        tenantCode: string;
+      };
       cookie?: never;
     };
     requestBody?: never;

@@ -14,6 +14,7 @@ import {
   ApiBody,
   ApiCookieAuth,
   ApiOkResponse,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -34,6 +35,7 @@ function disconnect(res: Response) {
 @Controller('workspaces/:tenantCode/ai')
 @ApiTags('sales-drafts')
 @ApiCookieAuth('crm_session')
+@ApiParam({ name: 'tenantCode', type: String })
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
 export class SalesDraftsController {
   constructor(private readonly drafts: SalesDraftsService) {}
