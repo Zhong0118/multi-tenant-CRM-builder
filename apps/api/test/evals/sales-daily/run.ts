@@ -72,6 +72,7 @@ async function main() {
       prompt: JSON.stringify(payload),
     });
   let diagnostic: string | undefined;
+  const durations = new Map<number, number>();
   const indices = Array.from(
     { length: samples[feature].length },
     (_, i) => i,
@@ -81,6 +82,7 @@ async function main() {
   const rows = await runDataset(
     indices,
     async (i) => {
+      const start = performance.now();
       usage = {};
       diagnostic = undefined;
       try {
@@ -172,6 +174,8 @@ async function main() {
           'AI_TypeValidationError',
           'AI_JSONParseError',
           'TimeoutError',
+          'AbortError',
+          'AI_RetryError',
           'ZodError',
         ];
         diagnostic = [
@@ -187,6 +191,8 @@ async function main() {
           .filter(Boolean)
           .join('/');
         throw error;
+      } finally {
+        durations.set(i, Math.round(performance.now() - start));
       }
     },
     (_, draft) => (draft.valid ? [] : ['OUTPUT_MISMATCH']),
@@ -196,6 +202,7 @@ async function main() {
   const retained = rows.map(({ sample, draft, failures, modelOutput }) => ({
     diagnostic: modelOutput,
     sample: sample + 1,
+    durationMs: durations.get(sample),
     draft,
     failures,
   }));

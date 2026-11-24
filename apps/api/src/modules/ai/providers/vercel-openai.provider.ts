@@ -183,14 +183,26 @@ export class VercelOpenAiProvider implements AiProvider {
       });
       usage = result.usage;
       if (result.finishReason && result.finishReason !== 'stop')
-        throw new Error('INCOMPLETE_OUTPUT');
+        throw Object.assign(new Error('INCOMPLETE_OUTPUT'), {
+          finishReason: result.finishReason,
+        });
       const output = result.output;
       await meter?.finish('success', usage);
       return output;
     } catch (error) {
       usage ??= errorUsage(error);
       await meter?.finish(failureStatus(abortSignal), usage);
-      throw meter?.denial ?? error;
+      if (meter?.denial) throw meter.denial;
+      if (
+        error instanceof Error &&
+        error.name === 'AI_NoObjectGeneratedError' &&
+        'finishReason' in error &&
+        error.finishReason === 'length'
+      )
+        throw Object.assign(new Error('INCOMPLETE_OUTPUT'), {
+          finishReason: error.finishReason,
+        });
+      throw error;
     } finally {
       if (usage) this.onUsage?.(usage);
     }
