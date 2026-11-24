@@ -139,6 +139,46 @@ describe('sales draft permissions, privacy and metering over HTTP', () => {
       spy.mockRestore();
     }
   });
+  it('uses the existing record chooser before writing when a name matches twice', async () => {
+    await h.adminDatabase
+      .$executeRaw`UPDATE ai_plans SET features=ARRAY['assistant','writing','daily_report'] WHERE id=${plan}::uuid`;
+    await h.adminDatabase.record.update({
+      where: { id: f.otherRecord.id },
+      data: {
+        ownerMemberId: f.employee.memberId,
+        title: '员工自己的线索',
+        data: { name: '员工自己的线索', secret: 'other-private' },
+      },
+    });
+    const before = await count('writing');
+    const ask = await post('/ai/turns', {
+      content: '给员工自己的线索写条微信',
+      context: { objectCode: 'leads' },
+    }).expect(200);
+    expect(ask.text).toContain('event: question.ready');
+    expect(await count('writing')).toBe(before);
+    const data = (event: string): unknown =>
+      JSON.parse(
+        ask.text.split('event: ' + event + '\ndata: ')[1].split('\n')[0],
+      );
+    const { conversationId } = data('conversation.ready') as {
+      conversationId: string;
+    };
+    const { question } = data('question.ready') as {
+      question: { questionId: string; kind: string; options: { id: string }[] };
+    };
+    expect(question.kind).toBe('choose_record');
+    expect(question.options).toHaveLength(2);
+    const answer = await post('/ai/turns', {
+      conversationId,
+      answer: {
+        questionId: question.questionId,
+        value: { kind: 'choose_record', optionId: question.options[0].id },
+      },
+    }).expect(200);
+    expect(answer.text).toContain('event: action.ready');
+    expect(await count('writing')).toBe(before + 1);
+  });
   it('meters nested writing separately and keeps the draft outside saved chat history', async () => {
     await h.adminDatabase
       .$executeRaw`UPDATE ai_plans SET features=ARRAY['assistant','writing','daily_report'] WHERE id=${plan}::uuid`;
