@@ -251,3 +251,84 @@ it('removes an invented owner of a neutral fact but keeps an explicitly supporte
     '贵司采购需要样品。',
   ]);
 });
+
+describe('visit materials and point of view', () => {
+  const visit = { ...options, kind: 'visit', purpose: 'followup' } as const;
+  const outline = (fact: string, ...extra: ReturnType<typeof block>[]) =>
+    validateWriting(
+      {
+        kind: 'visit',
+        subject: null,
+        blocks: [
+          block('情况：' + fact, 'F2'),
+          block('问题：审计报告需要覆盖哪些项目？', 'F2'),
+          ...extra,
+        ],
+      },
+      visit,
+      [
+        { id: 'F1', text: '海川' },
+        { id: 'F2', text: fact },
+      ],
+    );
+  it.each([
+    ['客户正在准备审计报告', false],
+    ['客户将在拜访时携带审计报告', false],
+    ['供应商负责准备审计报告', false],
+    ['客户询问销售能否带审计报告', false],
+    ['销售已要求客户准备审计报告', false],
+    ['客户请销售在拜访时携带审计报告', true],
+    ['拜访时带上审计报告', true],
+  ])('uses the responsible party and instruction in %s', (fact, supported) => {
+    const draft = outline(fact, block('材料：审计报告', 'F2'));
+    expect(draft.blocks.some((b) => b.text === '审计报告')).toBe(supported);
+  });
+  it('rejects a first person visit question', () => {
+    const d = outline(
+      '审计报告正在核对',
+      block('问题：我想了解审计报告进度，可以吗？', 'F2'),
+    );
+    expect(d.blocks.map((b) => b.text).join('')).not.toContain('我想');
+  });
+  it.each([
+    '财务同事正在替我司核对交接清单。',
+    '财务正在帮贵公司核对交接清单。',
+    '财务正代表供应商核对交接清单。',
+  ])('rejects an unsupported beneficiary in %s', (text) => {
+    const d = validateWriting(
+      writing(block(text, 'F2')),
+      { ...options, purpose: 'followup' },
+      [{ id: 'F2', text: '财务正在核对交接清单' }],
+    );
+    expect(d.blocks.map((b) => b.text)).not.toContain(text);
+  });
+});
+it('retains an explicit beneficiary without transferring a third-party or negated assignment', () => {
+  const source = '财务同事正在替供应商核对交接清单。';
+  const reversed = '财务同事正在替我司核对交接清单。';
+  const draft = validateWriting(
+    writing(block(source, 'F2'), block(reversed, 'F2'), block(reversed, 'F3')),
+    { ...options, purpose: 'followup' },
+    [
+      { id: 'F2', text: source },
+      { id: 'F3', text: '财务同事没有替我司核对交接清单。' },
+    ],
+  );
+  expect(draft.blocks).toEqual([block(source, 'F2')]);
+});
+it('anchors the delivered fallback for a fact-bearing visit in an actual source and a concrete task', () => {
+  const draft = validateWriting(
+    { kind: 'visit', subject: null, blocks: [] },
+    { ...options, kind: 'visit' },
+    [
+      { id: 'F1', text: '清池' },
+      { id: 'F2', text: '物流交接清单仍在核对', source: '沟通记录' },
+    ],
+  );
+  expect(draft.blocks).toContainEqual(
+    block('物流交接清单仍在核对（来源：沟通记录）', 'F2'),
+  );
+  expect(draft.blocks).toContainEqual(
+    block('记录提到「物流交接清单仍在核对」，下一步由谁负责跟进？', 'F2'),
+  );
+});

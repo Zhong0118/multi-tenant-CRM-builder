@@ -6,8 +6,8 @@ export const writingSentences = (text: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-export const customerDirected = (text: string) =>
-  /(?:^|[：:。！？])(?:[\p{Script=Han}]{1,5}(?:总|经理|先生|女士|老师))[，,：:！!]|您好|你好|您|你(?:们)?|贵(?:司|方|公司|单位|团队|部门|校|院|行)|敬启|烦请|劳烦|麻烦(?:确认|安排|提供|查收|告知|看)|请(?:问|予|帮忙|确认|查阅|查收|安排|提供|告知|回复|协助|审阅|过目|核实|核对)|(?:能否|可否)(?:帮忙|告知|提供)|方便(?:安排|告知|透露|回复).*吗/u.test(
+export const nonInternalVoice = (text: string) =>
+  /(?<!自)我|咱|本人|本公司|(?:^|[：:。！？])(?:[\p{Script=Han}]{1,5}(?:总|经理|先生|女士|老师))[，,：:！!]|您好|你好|您|你(?:们)?|贵(?:司|方|公司|单位|团队|部门|校|院|行)|敬启|烦请|劳烦|麻烦(?:确认|安排|提供|查收|告知|看)|请(?:问|予|帮忙|确认|查阅|查收|安排|提供|告知|回复|协助|审阅|过目|核实|核对)|(?:能否|可否)(?:帮忙|告知|提供)|方便(?:安排|告知|透露|回复).*吗/u.test(
     text,
   );
 
@@ -15,6 +15,9 @@ export const customerDirected = (text: string) =>
 const parties = [
   '我方|我司|我公司|我们(?:公司|这边)?|本公司',
   '对方|客户(?:方)?|贵司|贵方|贵公司|你们(?:公司)?|您(?:方|公司|这边)?',
+  '供应商',
+  '第三方',
+  '合作方',
 ];
 const owned =
   '(?:的|这边的?)?(财务|采购|技术|法务|销售|仓库|负责人|团队|内部|(?:已经|正在|仍在|还在|已|尚未|仍未|希望|需要|要求)(?:收到|核对|审批|签字|签署|付款|准备|提供|确认|比较|安排))';
@@ -22,9 +25,21 @@ export function unsupportedAttribution(text: string, evidence: string) {
   return parties.some((party) => {
     const mentions = new RegExp('(?:' + party + ')' + owned, 'gu');
     const sourceClaims = [...evidence.matchAll(mentions)].map((m) => m[1]);
-    return [...text.matchAll(mentions)].some(
-      (m) => !sourceClaims.includes(m[1]),
+    if ([...text.matchAll(mentions)].some((m) => !sourceClaims.includes(m[1])))
+      return true;
+    // Preserve who the work is being performed for, even when the department
+    // precedes the party ('财务替我司核对', '采购代表客户签收').
+    const beneficiary = new RegExp(
+      '(?:替|帮(?:助|忙)?|为|代表|代|协助|受)(?:' + party + ')',
+      'gu',
     );
+    const claims = (line: string) =>
+      line.split(/[，,。！？；;：:\n]/u).flatMap((clause) => {
+        const normalized = clause.trim().replace(beneficiary, '〔归属〕');
+        return normalized.includes('〔归属〕') ? [normalized] : [];
+      });
+    const cited = claims(evidence);
+    return claims(text).some((claim) => !cited.includes(claim));
   });
 }
 
@@ -37,6 +52,72 @@ const purposeLabels: Record<WritingOptions['purpose'], string> = {
   other: '明确本次沟通需要确认的事项',
 };
 
+// A material becomes a packing item only when the note assigns that action
+// to sales, or records an unqualified packing instruction for the visit.
+function assignedMaterial(fact: string, item: string) {
+  return fact.split(/[。！？；;\n]/u).some((line) => {
+    const index = line.indexOf(item);
+    if (
+      index < 0 ||
+      /不要|不必|无需|不用|不需要|不负责|尚未|暂缓|取消|能否|是否|待确认/u.test(
+        line,
+      )
+    )
+      return false;
+    const before = line
+      .slice(0, index)
+      .replace(/^.*?(?:沟通|跟进|补充)[：:]\s*/u, '');
+    const action =
+      /(?:带上|携带|带来|带去|备好|准备好?|带)(?:一份|一套|一件)?\s*$/u.exec(
+        before,
+      );
+    if (!action) return false;
+    const prefix = before.slice(0, action.index);
+    const modifiers =
+      /(?:届时|到时|在?(?:本次|下次)?(?:拜访|会面|到场|见面)(?:时|前)|提前|务必|记得|负责|需要|应当|需|要|将|会|请|应|在现场|\s)+$/u;
+    const assignee = prefix.replace(modifiers, '');
+    if (!assignee)
+      return (
+        /带上|携带|带来|带去|备好/u.test(action[0]) ||
+        /拜访|会面|到场|见面/u.test(prefix)
+      );
+    return /(?:^|要求|请|通知|安排|希望|交由|由)(?:销售(?:人员|代表|方)?|我司|我方|我们)$/u.test(
+      assignee,
+    );
+  });
+}
+
+export function specificVisitQuestion(
+  text: string,
+  facts: SalesFact[],
+  purpose: WritingOptions['purpose'],
+) {
+  if (!/[？?]$/u.test(text) || nonInternalVoice(text)) return false;
+  const purposeTopic = {
+    followup: '',
+    invite: '邀请',
+    quote: '报价',
+    payment: '付款',
+    thanks: '致谢',
+    other: '',
+  }[purpose];
+  if (purposeTopic && text.includes(purposeTopic)) return true;
+  const subjects = facts
+    .filter((f) => f.id !== 'F1')
+    .map((f) => f.text)
+    .join('\n');
+  const words = new Intl.Segmenter('zh', { granularity: 'word' }).segment(text);
+  const generic =
+    /^(?:什么|怎么|如何|是否|能否|哪些|哪个|这次|本次|目前|当前|现在|还有|需要|希望|确认|了解|具体|情况|事项|进展|进度|安排|问题|相关|沟通|优先|本身|客户|对方|可以|已经|正在|后续|跟进|下一步|信息|细节)$/u;
+  return [...words].some(
+    ({ segment, isWordLike }) =>
+      isWordLike &&
+      segment.length >= 2 &&
+      !generic.test(segment) &&
+      subjects.includes(segment),
+  );
+}
+
 export function visitOutline(
   blocks: WritingDraft['blocks'],
   options: WritingOptions,
@@ -46,6 +127,13 @@ export function visitOutline(
   const target = facts.find((f) => f.id === 'F1');
   const name = target?.text.replace(/^名称[：:]\s*/u, '');
   const sources = new Map(facts.map((f) => [f.id, f]));
+  const usableFacts = facts.filter(
+    (f) =>
+      f.id !== 'F1' &&
+      f.text !== name &&
+      f.text !== target?.text &&
+      !nonInternalVoice(f.text),
+  );
   const known = new Map<string, SalesFact>();
   const questions: WritingDraft['blocks'] = [];
   const materials: WritingDraft['blocks'] = [];
@@ -61,50 +149,36 @@ export function visitOutline(
     const refs = [...new Set(block.factRefs)];
     const cited = refs.map((id) => sources.get(id)!);
     const evidence = cited.map((f) => f.text).join('\n');
-    if (customerDirected(text) || unsupportedAttribution(text, evidence))
+    if (nonInternalVoice(text) || unsupportedAttribution(text, evidence))
       continue;
     if (section === '情况') {
       for (const fact of cited) {
-        if (
-          fact.id !== 'F1' &&
-          !customerDirected(fact.text) &&
-          fact.text !== name &&
-          fact.text !== target?.text
-        )
-          known.set(fact.id, fact);
+        if (usableFacts.includes(fact)) known.set(fact.id, fact);
       }
     } else if (section === '材料') {
       const item = text.replace(/[。.]$/u, '').trim();
-      const source = cited.find((f) =>
-        f.text.split(/[，,。；;！？\n]/u).some((part) => {
-          const index = part.indexOf(item);
-          if (
-            index < 0 ||
-            /不用|不必|不要|无需|未(?:要求|准备)|尚未|取消/u.test(part)
-          )
-            return false;
-          const before = part.slice(0, index);
-          return (
-            /带上|带来|携带|备好|准备|索要|希望(?:拿到|提供)|要求(?:提供|带)/u.test(
-              before,
-            ) ||
-            (/需要/u.test(before) &&
-              /单|书|册|表|图|方案|合同|协议|样品|材料|资料|报告|说明/u.test(
-                item,
-              ))
-          );
-        }),
-      );
+      const source = cited.find((f) => assignedMaterial(f.text, item));
       if (source) materials.push({ text: item, factRefs: [source.id] });
     } else if (
       writingSentences(text).length === 1 &&
       check(text, evidence) === text
     ) {
       if (section === '目的') purpose = { text, factRefs: refs };
-      if (section === '问题' && /[？?]$/u.test(text))
+      if (
+        section === '问题' &&
+        specificVisitQuestion(text, usableFacts, options.purpose)
+      )
         questions.push({ text, factRefs: refs });
     }
   }
+  if (!known.size && usableFacts.length)
+    known.set(usableFacts[0].id, usableFacts[0]);
+  const [firstFact] = known.values();
+  if (!questions.length && firstFact)
+    questions.push({
+      text: '记录提到「' + firstFact.text + '」，下一步由谁负责跟进？',
+      factRefs: [firstFact.id],
+    });
   const line = (text: string) => ({ text, factRefs: [] as string[] });
   return {
     kind: 'visit',

@@ -59,9 +59,13 @@ export class FakeAiProvider implements AiProvider {
         subject: data.options?.kind === 'email' ? '跟进沟通' : null,
         blocks:
           data.options?.kind === 'visit'
-            ? facts
-                .slice(1, 3)
-                .map((f) => ({ text: '情况：' + f.text, factRefs: [f.id] }))
+            ? facts.slice(1, 3).flatMap((f) => [
+                { text: '情况：' + f.text, factRefs: [f.id] },
+                {
+                  text: '问题：关于「' + f.text + '」，下一步由谁负责跟进？',
+                  factRefs: [f.id],
+                },
+              ])
             : facts.slice(0, 2).map(block),
       };
     return Object.fromEntries(
