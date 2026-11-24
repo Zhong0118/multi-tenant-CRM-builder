@@ -4,17 +4,16 @@ export interface ParsedCsv {
   rowNumbers?: number[];
 }
 
-export function parseCsv(
+export interface SourceRow {
+  rowNumber: number;
+  cells: string[];
+}
+
+export function* parseCsvRows(
   text: string,
-  options: {
-    delimiter?: "," | "\t";
-    strictColumnCount?: boolean;
-    trackRowNumbers?: boolean;
-  } = {},
-): ParsedCsv {
+  delimiter: "," | "\t" = ",",
+): Generator<SourceRow> {
   const source = text.replace(/^\uFEFF/, "");
-  const rows: string[][] = [];
-  const rowNumbers: number[] = [];
   let line = 1;
   let rowLine = 1;
   let row: string[] = [];
@@ -40,7 +39,7 @@ export function parseCsv(
       quoted = true;
       continue;
     }
-    if (char === (options.delimiter ?? ",")) {
+    if (char === delimiter) {
       row.push(cell);
       cell = "";
       continue;
@@ -49,8 +48,7 @@ export function parseCsv(
       if (cell.endsWith("\r")) cell = cell.slice(0, -1);
       row.push(cell);
       if (row.some((value) => value.trim() !== "")) {
-        rows.push(row);
-        rowNumbers.push(rowLine);
+        yield { cells: row, rowNumber: rowLine };
       }
       rowLine = line;
       row = [];
@@ -63,16 +61,28 @@ export function parseCsv(
   if (cell.length > 0 || row.length > 0) {
     row.push(cell);
     if (row.some((value) => value.trim() !== "")) {
-      rows.push(row);
-      rowNumbers.push(rowLine);
+      yield { cells: row, rowNumber: rowLine };
     }
   }
+}
+
+export function parseCsv(
+  text: string,
+  options: {
+    delimiter?: "," | "\t";
+    strictColumnCount?: boolean;
+    trackRowNumbers?: boolean;
+  } = {},
+): ParsedCsv {
+  const rows = Array.from(parseCsvRows(text, options.delimiter));
   if (rows.length === 0) return { headers: [], rows: [] };
-  const headers = rows[0].map((header) => header.trim());
+  const headers = rows[0].cells.map((header) => header.trim());
   return {
     headers,
-    ...(options.trackRowNumbers ? { rowNumbers: rowNumbers.slice(1) } : {}),
-    rows: rows.slice(1).map((values) => {
+    ...(options.trackRowNumbers
+      ? { rowNumbers: rows.slice(1).map((row) => row.rowNumber) }
+      : {}),
+    rows: rows.slice(1).map(({ cells: values }) => {
       if (options.strictColumnCount && values.length > headers.length)
         throw new Error("名单列数与表头不一致");
       const padded = [...values];

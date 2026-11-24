@@ -1,37 +1,124 @@
-import type { WorkBook } from "xlsx";
+import type { ParsingOptions } from "xlsx";
+import { parseCsvRows, type SourceRow } from "@/lib/csv";
 import type { RecordImportResultItem } from "./record-api";
 import {
   decodeRecordCsv,
-  parseCsv,
+  suggestFieldKey,
   RECORD_IMPORT_MAX_COLUMNS,
   RECORD_IMPORT_MAX_ROWS,
   type CsvEncoding,
   type ParsedCsv,
 } from "./record-csv";
 
+const HEADER_ROW_LIMIT = 10;
+const ROW_LIMIT_ERROR = `单个工作表最多 ${RECORD_IMPORT_MAX_ROWS} 行，请拆分工作表。`;
+type MatchFields = Parameters<typeof suggestFieldKey>[1];
+
+export interface HeaderSelection {
+  headerRow: number;
+  detected: boolean;
+  candidates: SourceRow[];
+}
 export interface ImportFile {
   bytes: Uint8Array;
   encoding?: string;
   sheetNames: string[];
-  sheet: (name: string) => ParsedCsv;
+  headerSelection: (name: string, fields: MatchFields) => HeaderSelection;
+  sheet: (name: string, headerRow?: number) => ParsedCsv;
 }
 
-function checkSheet(sheet: ParsedCsv): ParsedCsv {
-  if (!sheet.headers.length || !sheet.rows.length)
-    throw new Error("文件没有数据行。");
-  if (sheet.headers.length > RECORD_IMPORT_MAX_COLUMNS)
-    throw new Error(`最多 ${RECORD_IMPORT_MAX_COLUMNS} 列。`);
-  if (sheet.rows.length > RECORD_IMPORT_MAX_ROWS)
-    throw new Error(
-      `单个工作表最多 ${RECORD_IMPORT_MAX_ROWS} 行，请拆分工作表。`,
-    );
-  if (
-    [...sheet.headers, ...sheet.rows.flat()].some((cell) =>
-      cell.includes("\uFFFD"),
+function looksLikeLabel(value: string) {
+  return (
+    value.length <= 40 &&
+    /\p{L}/u.test(value) &&
+    !/[\n\r@]/.test(value) &&
+    !/^[-+]?\d/.test(value)
+  );
+}
+
+function selectHeader(rows: SourceRow[], fields: MatchFields): HeaderSelection {
+  const leadingRows = rows
+    .slice(0, HEADER_ROW_LIMIT)
+    .filter((row) => row.rowNumber <= HEADER_ROW_LIMIT);
+  if (!leadingRows.length) throw new Error("文件前 10 行没有可选的非空表头。");
+  const candidates = leadingRows.map(({ rowNumber, cells }) => ({
+    rowNumber,
+    cells: Array.from(
+      cells.slice(0, RECORD_IMPORT_MAX_COLUMNS),
+      (value) => value ?? "",
+    ),
+  }));
+  const scores = candidates.map(({ cells }, index) => {
+    if (
+      !rows[index + 1] ||
+      leadingRows[index].cells.length > RECORD_IMPORT_MAX_COLUMNS
     )
-  )
-    throw new Error("文件含有乱码替代字符（�），请使用未损坏的原表。");
-  return sheet;
+      return { index, matches: 0, shaped: false };
+    const keys = cells
+      .map((cell) => suggestFieldKey(cell, fields))
+      .filter(Boolean);
+    const labels = cells.map((cell) => cell.trim()).filter(Boolean);
+    const shortLabels = labels.filter(looksLikeLabel).length;
+    const shaped =
+      shortLabels >= 2 &&
+      shortLabels > labels.length / 2 &&
+      rows.slice(index + 1, index + 4).some((row) => {
+        const belowLabels = cells
+          .map((label, i) => label.trim() && row.cells[i]?.trim())
+          .filter(Boolean);
+        return (
+          belowLabels.length >= 2 &&
+          belowLabels.some((value) => !looksLikeLabel(value))
+        );
+      });
+    return { index, matches: new Set(keys).size, shaped };
+  });
+  const mostMatches = Math.max(...scores.map((candidate) => candidate.matches));
+  const best = scores.filter((candidate) => candidate.matches === mostMatches);
+  const shaped = best.filter((candidate) => candidate.shaped);
+  const found =
+    mostMatches > 0 && best.length === 1
+      ? best[0]
+      : mostMatches === 0 || shaped.length === 1
+        ? shaped[0]
+        : undefined;
+  return {
+    candidates,
+    headerRow: candidates[found?.index ?? 0].rowNumber,
+    detected: !!found,
+  };
+}
+
+function readTable(
+  rows: SourceRow[],
+  headerRow: number | undefined,
+  isCsv: boolean,
+): ParsedCsv {
+  const index =
+    headerRow === undefined
+      ? 0
+      : rows.findIndex((row) => row.rowNumber === headerRow);
+  const header = rows[index];
+  if (!header || (headerRow !== undefined && headerRow > HEADER_ROW_LIMIT))
+    throw new Error("请选择文件前 10 行中的非空表头。");
+  const body = rows.slice(index + 1);
+  if (!body.length) throw new Error("文件没有数据行。");
+  if (body.length > RECORD_IMPORT_MAX_ROWS) throw new Error(ROW_LIMIT_ERROR);
+  const width = body.reduce(
+    (width, row) => Math.max(width, row.cells.length),
+    header.cells.length,
+  );
+  if (width > RECORD_IMPORT_MAX_COLUMNS)
+    throw new Error(`最多 ${RECORD_IMPORT_MAX_COLUMNS} 列。`);
+  if (isCsv && width > header.cells.length)
+    throw new Error("名单列数与表头不一致");
+  const pad = (cells: string[]) =>
+    Array.from({ length: width }, (_, i) => cells[i] ?? "");
+  return {
+    headers: pad(header.cells).map((label) => label.trim()),
+    rows: body.map((row) => pad(row.cells)),
+    rowNumbers: body.map((row) => row.rowNumber),
+  };
 }
 
 export async function readImportFile(
@@ -46,17 +133,18 @@ export async function readImportFile(
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (extension === "csv") {
     const decoded = decodeRecordCsv(bytes, encoding);
-    const parsed = checkSheet(
-      parseCsv(decoded.text, {
-        strictColumnCount: true,
-        trackRowNumbers: true,
-      }),
-    );
+    const rows: SourceRow[] = [];
+    for (const record of parseCsvRows(decoded.text)) {
+      if (rows.length === RECORD_IMPORT_MAX_ROWS + HEADER_ROW_LIMIT)
+        throw new Error(ROW_LIMIT_ERROR);
+      rows.push(record);
+    }
     return {
       bytes,
       encoding: decoded.encoding,
       sheetNames: [],
-      sheet: () => parsed,
+      headerSelection: (_, fields) => selectHeader(rows, fields),
+      sheet: (_, headerRow) => readTable(rows, headerRow, true),
     };
   }
   const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
@@ -75,80 +163,85 @@ export async function readImportFile(
   // Legacy XLS codepages are an optional module in SheetJS's ESM build.
   const codepages = await import("xlsx/dist/cpexcel.full.mjs");
   XLSX.set_cptable(codepages);
-  let workbook: WorkBook;
-  try {
-    workbook = XLSX.read(bytes, {
-      type: "array",
+  function readWorkbook(options: ParsingOptions) {
+    try {
+      return XLSX.read(bytes, { type: "array", ...options });
+    } catch {
+      throw new Error(
+        "无法读取 Excel 文件，请检查文件是否损坏或加密，然后另存为 XLSX 重试。",
+      );
+    }
+  }
+  const sheetNames = readWorkbook({ bookSheets: true }).SheetNames;
+  if (!sheetNames.length) throw new Error("Excel 文件没有工作表。");
+  let cachedName: string | undefined;
+  let cachedRows: SourceRow[] = [];
+  function excelRows(name: string): SourceRow[] {
+    if (name === cachedName) return cachedRows;
+    if (!sheetNames.includes(name)) throw new Error("请选择有效的工作表。");
+    // A sparse sheet can contain a valid data row far past row 10,010.
+    // sheetRows can silently discard it when the file omits dimension metadata.
+    const workbook = readWorkbook({
+      sheets: name,
       cellNF: true,
       cellFormula: true,
-      sheetRows: RECORD_IMPORT_MAX_ROWS + 2,
+      sheetStubs: true,
     });
-  } catch {
-    throw new Error(
-      "无法读取 Excel 文件，请检查文件是否损坏或加密，然后另存为 XLSX 重试。",
-    );
+    const ws = workbook.Sheets[name];
+    if (!ws) throw new Error("无法读取工作表，请在 Excel 中另存为 XLSX 重试。");
+    const byNumber = new Map<number, string[]>();
+    for (const address of Object.keys(ws)) {
+      if (address.startsWith("!")) continue;
+      const { r, c } = XLSX.utils.decode_cell(address);
+      const cell = ws[address];
+      if (cell.t === "e" || (cell.f && (cell.t === "z" || cell.v == null)))
+        throw new Error(
+          `第 ${r + 1} 行存在错误或未计算的公式，请在 Excel 中重新计算并保存。`,
+        );
+      if (cell.t === "z" || cell.v == null) continue;
+      let value = String(cell.v);
+      if (cell.t === "n") {
+        if (cell.z && XLSX.SSF.is_date(cell.z)) {
+          const date = XLSX.SSF.parse_date_code(cell.v as number, {
+            date1904: workbook.Workbook?.WBProps?.date1904,
+          });
+          if (
+            !date ||
+            date.m < 1 ||
+            date.d < 1 ||
+            (date.y === 1900 && date.m === 2 && date.d === 29)
+          )
+            throw new Error(`第 ${r + 1} 行日期无效。`);
+          const pad = (n: number) => String(n).padStart(2, "0");
+          value = `${date.y}-${pad(date.m)}-${pad(date.d)}`;
+          if (date.H || date.M || date.S)
+            value += ` ${pad(date.H)}:${pad(date.M)}:${pad(date.S)}`;
+        } else if (typeof cell.z === "string" && /^0+$/.test(cell.z)) {
+          value = XLSX.utils.format_cell(cell);
+        }
+      }
+
+      if (value.includes("\uFFFD"))
+        throw new Error("文件含有乱码替代字符（�），请使用未损坏的原表。");
+      const number = r + 1;
+      const cells = byNumber.get(number) ?? [];
+      cells[c] = value;
+      byNumber.set(number, cells);
+    }
+    cachedRows = Array.from(byNumber, ([rowNumber, cells]) => ({
+      rowNumber,
+      cells,
+    }))
+      .filter((row) => row.cells.some((value) => value.trim()))
+      .sort((a, b) => a.rowNumber - b.rowNumber);
+    cachedName = name;
+    return cachedRows;
   }
-  const sheetNames = workbook.SheetNames;
-  if (!sheetNames.length) throw new Error("Excel 文件没有工作表。");
   return {
     bytes,
     sheetNames,
-    sheet: (name) => {
-      const ws = workbook.Sheets[name];
-      if (!ws) throw new Error("请选择有效的工作表。");
-      const range = XLSX.utils.decode_range(
-        ws["!fullref"] ?? ws["!ref"] ?? "A1",
-      );
-      if (range.e.r > RECORD_IMPORT_MAX_ROWS)
-        throw new Error(
-          `单个工作表最多 ${RECORD_IMPORT_MAX_ROWS} 行，请拆分工作表。`,
-        );
-      if (range.e.c >= RECORD_IMPORT_MAX_COLUMNS)
-        throw new Error(`最多 ${RECORD_IMPORT_MAX_COLUMNS} 列。`);
-      const matrix: string[][] = [];
-      const rowNumbers: number[] = [];
-      for (let r = range.s.r; r <= range.e.r; r++) {
-        const row: string[] = [];
-        for (let c = range.s.c; c <= range.e.c; c++) {
-          const cell = ws[XLSX.utils.encode_cell({ r, c })];
-          if (cell?.t === "e" || (cell?.f && cell.v == null))
-            throw new Error(
-              `第 ${r + 1} 行存在错误或未计算的公式，请在 Excel 中重新计算并保存。`,
-            );
-          let value = cell?.v == null ? "" : String(cell.v);
-          if (cell?.t === "n") {
-            if (cell.z && XLSX.SSF.is_date(cell.z)) {
-              const date = XLSX.SSF.parse_date_code(cell.v as number, {
-                date1904: workbook.Workbook?.WBProps?.date1904,
-              });
-              if (
-                !date ||
-                date.m < 1 ||
-                date.d < 1 ||
-                (date.y === 1900 && date.m === 2 && date.d === 29)
-              )
-                throw new Error(`第 ${r + 1} 行日期无效。`);
-              const pad = (n: number) => String(n).padStart(2, "0");
-              value = `${date.y}-${pad(date.m)}-${pad(date.d)}`;
-              if (date.H || date.M || date.S)
-                value += ` ${pad(date.H)}:${pad(date.M)}:${pad(date.S)}`;
-            } else if (typeof cell.z === "string" && /^0+$/.test(cell.z)) {
-              value = XLSX.utils.format_cell(cell);
-            }
-          }
-          row.push(value);
-        }
-        if (row.some((v) => v.trim())) {
-          matrix.push(row);
-          rowNumbers.push(r + 1);
-        }
-      }
-      return checkSheet({
-        headers: (matrix[0] ?? []).map((v) => v.trim()),
-        rows: matrix.slice(1),
-        rowNumbers: rowNumbers.slice(1),
-      });
-    },
+    headerSelection: (name, fields) => selectHeader(excelRows(name), fields),
+    sheet: (name, headerRow) => readTable(excelRows(name), headerRow, false),
   };
 }
 
