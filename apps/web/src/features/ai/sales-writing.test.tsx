@@ -10,6 +10,7 @@ import {
 import { expect, it, vi } from "vitest";
 import { recordApi } from "@/features/records/record-api";
 import * as draftApi from "./sales-draft-api";
+import { actionSchema } from "./assistant-card-schema";
 import { AssistantActionCard } from "./assistant-action-card";
 import { SalesWriting } from "./sales-writing";
 it("keeps generated text in the opened card and regenerates with the chosen style", async () => {
@@ -123,9 +124,48 @@ it("shows only copy and regenerate below a visit outline", async () => {
   ).toBeEnabled();
 });
 
+it("clears the missing-topic note when regeneration covers both topics", async () => {
+  const initial = { ...email, missingTopics: ["交期", "样品"] };
+  const load = vi.fn().mockResolvedValue({ ...email, missingTopics: [] });
+  render(
+    <SalesWriting
+      {...record}
+      initial={initial}
+      initialOptions={messageOptions}
+      load={load}
+    />,
+  );
+  expect(
+    screen.getByText("补充里提到的『交期』、『样品』可能没写进去"),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
+  await waitFor(() => expect(screen.queryByText(/可能没写进去/)).toBeNull());
+  expect(load).toHaveBeenCalledOnce();
+});
+
 it.each(["record", "chat"])(
-  "requires all placeholders to be completed before logging the %s draft",
+  "keeps missing topics out of the %s draft and requires edits to log its placeholders",
   async (entry) => {
+    const draft = { ...email, missingTopics: ["交期"] };
+    const copy = vi.fn().mockResolvedValue(undefined);
+    const events = [
+      { ...draft, type: "meta" },
+      ...draft.blocks.map((block) => ({ type: "block", block })),
+      { type: "done" },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(
+          events.map((event) => JSON.stringify(event) + "\n").join(""),
+        ),
+    );
+    vi.stubGlobal(
+      "navigator",
+      Object.create(navigator, {
+        clipboard: { value: { writeText: copy } },
+      }),
+    );
     vi.spyOn(draftApi, "checkWritingActivity").mockResolvedValue();
     vi.spyOn(recordApi, "listActivities").mockResolvedValue({
       items: [],
@@ -144,27 +184,35 @@ it.each(["record", "chat"])(
           {entry === "chat" ? (
             <AssistantActionCard
               tenantCode={record.tenantCode}
-              action={{
+              action={actionSchema.parse({
                 kind: "writing",
                 objectCode: record.objectCode,
                 recordId: record.recordId,
                 options: messageOptions,
-                draft: email,
-              }}
+                draft,
+              })}
             />
           ) : (
-            <SalesWriting
-              {...record}
-              initial={email}
-              initialOptions={messageOptions}
-            />
+            <SalesWriting {...record} initialOptions={messageOptions} />
           )}
         </QueryClientProvider>,
       );
+      if (entry === "record")
+        fireEvent.click(screen.getByRole("button", { name: "生成" }));
+      expect(
+        await screen.findByText("补充里提到的『交期』可能没写进去"),
+      ).toBeVisible();
+      expect(screen.getAllByRole("button", { name: "重新生成" })).toHaveLength(
+        1,
+      );
+      const draftText = [email.subject, email.blocks[0].text].join("\n\n");
+      fireEvent.click(screen.getByRole("button", { name: "复制" }));
+      expect(copy).toHaveBeenCalledWith(draftText);
       fireEvent.click(
         screen.getByRole("button", { name: "已发送，记一笔沟通" }),
       );
       const content = await screen.findByRole("textbox", { name: "内容" });
+      expect(content).toHaveValue(draftText);
       const save = screen.getByRole("button", { name: "保存活动" });
       await waitFor(() =>
         expect(screen.getByText("还有 2 处待补充")).toBeVisible(),
@@ -192,6 +240,7 @@ it.each(["record", "chat"])(
       );
     } finally {
       vi.restoreAllMocks();
+      vi.unstubAllGlobals();
     }
   },
 );

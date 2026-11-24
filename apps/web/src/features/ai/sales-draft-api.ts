@@ -25,6 +25,7 @@ const meta = z.object({
   kind: writingOptionsSchema.shape.kind,
   title: z.string(),
   subject: z.string().optional(),
+  missingTopics: z.array(z.string()).optional(),
   generatedAt: z.string(),
   canLog: z.boolean(),
   timeZone: z.string().optional(),

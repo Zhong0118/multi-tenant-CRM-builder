@@ -138,6 +138,18 @@ export function SalesWriting({
         .filter(Boolean)
         .join("\n\n")
     : "";
+  const missingTopics =
+    draft?.kind !== "visit"
+      ? draft?.missingTopics?.map((topic) => "『" + topic + "』").join("、")
+      : undefined;
+  const regenerate = (
+    <Button
+      disabled={busy}
+      onClick={() => generate(draftOptions, "regenerate")}
+    >
+      重新生成
+    </Button>
+  );
   return (
     <section className={styles.editor} aria-label="帮我写">
       <div className={styles.options}>
@@ -208,6 +220,12 @@ export function SalesWriting({
               <p key={index}>{block.text}</p>
             ),
           )}
+          {missingTopics && (
+            <Space wrap>
+              <small>补充里提到的{missingTopics}可能没写进去</small>
+              {regenerate}
+            </Space>
+          )}
           <Space wrap>
             <Button
               icon={<CopyOutlined aria-hidden />}
@@ -223,12 +241,7 @@ export function SalesWriting({
             >
               {copied ? "已复制" : "复制"}
             </Button>
-            <Button
-              disabled={busy}
-              onClick={() => generate(draftOptions, "regenerate")}
-            >
-              重新生成
-            </Button>
+            {!missingTopics && regenerate}
             {draft.kind !== "visit" && (
               <>
                 <Button
