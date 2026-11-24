@@ -55,7 +55,9 @@ export function ProviderEditor({
   const [draft, setDraft] = useState(initial),
     [step, setStep] = useState(startStep ?? (provider ? 1 : 0));
   const [key, setKey] = useState(""),
-    [keyStored, setKeyStored] = useState(!!revision?.keyLast4);
+    [keyAddress, setKeyAddress] = useState(
+      revision?.keyLast4 ? revision.baseURL : null,
+    );
   const saved = useRef<Saved | null>(
     provider && revision
       ? { id: provider.id, version: provider.version, revisionId: revision.id }
@@ -95,6 +97,7 @@ export function ProviderEditor({
     measured?.dimensions != null &&
     measured.dimensions !== embedding.dimensions;
   function change(next: Connection) {
+    if (next.baseURL !== draft.baseURL) setKey("");
     setDraft(next);
     setChecks([]);
     setError("");
@@ -121,7 +124,7 @@ export function ProviderEditor({
         { version: prev.version, apiKey: key.trim() },
       );
       setKey("");
-      setKeyStored(true);
+      setKeyAddress(draft.baseURL);
     }
     return saved.current!;
   }
@@ -219,18 +222,9 @@ export function ProviderEditor({
   const close = () => {
     if (!busy) onClose();
   };
-  const changedHost =
-    !!revision &&
-    (() => {
-      try {
-        return (
-          new URL(revision.baseURL).href.replace(/\/$/, "") !==
-          new URL(draft.baseURL).href.replace(/\/$/, "")
-        );
-      } catch {
-        return true;
-      }
-    })();
+  const keyStored =
+    keyAddress !== null &&
+    keyAddress.replace(/\/$/, "") === draft.baseURL.replace(/\/$/, "");
   const baseValid = (() => {
     try {
       const url = new URL(draft.baseURL);
@@ -245,11 +239,7 @@ export function ProviderEditor({
       return false;
     }
   })();
-  const connectReady =
-    baseValid &&
-    (!!key.trim() ||
-      (keyStored &&
-        (!changedHost || storedDraft.current?.baseURL === draft.baseURL)));
+  const connectReady = baseValid && (!!key.trim() || keyStored);
   return (
     <Drawer
       open
@@ -434,7 +424,9 @@ export function ProviderEditor({
                 </Checkbox>
               </div>
             </details>
-            {changedHost && !key && <p>更换服务地址后，请输入该服务的 Key</p>}
+            {keyAddress && !keyStored && !key && (
+              <p>更换服务地址后，请输入该服务的 Key</p>
+            )}
           </>
         )}
         {step === 2 && (

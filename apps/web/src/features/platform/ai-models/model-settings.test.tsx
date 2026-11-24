@@ -309,4 +309,27 @@ describe("平台模型设置", () => {
       ).toBe(true),
     );
   });
+  it("在发现模型后修改连接地址需要再次输入目标地址的 Key", async () => {
+    show((url) =>
+      url.endsWith("/discover")
+        ? { models: ["discovered"] }
+        : { id: "new-id", version: 2, revisionId: "r2" },
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "添加供应商" }));
+    const modal = within(screen.getByRole("dialog"));
+    fireEvent.click(modal.getByRole("button", { name: "下一步" }));
+    fireEvent.change(modal.getByLabelText("API Key"), {
+      target: { value: "fixture-only" },
+    });
+    fireEvent.click(modal.getByRole("button", { name: "下一步" }));
+    fireEvent.click(modal.getByRole("button", { name: /获取模型列表/ }));
+    await modal.findByLabelText("发现的模型");
+    fireEvent.click(modal.getByRole("button", { name: "上一步" }));
+    expect(modal.getByLabelText("API Key")).toHaveValue("");
+    fireEvent.click(modal.getByText("高级设置"));
+    fireEvent.change(modal.getByLabelText("API 地址"), {
+      target: { value: "https://example.org/v1" },
+    });
+    expect(modal.getByRole("button", { name: "下一步" })).toBeDisabled();
+  });
 });
