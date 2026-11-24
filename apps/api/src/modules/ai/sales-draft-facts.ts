@@ -45,21 +45,22 @@ export async function writingFacts(
   const zone = await timezone(db);
   const values = writingFields(current, 100, zone);
   const rows = [
-    current.title.slice(0, 300),
-    ...(supplement ? [supplement] : []),
-    ...values,
+    { text: current.title.slice(0, 300), source: '记录名称' },
+    ...(supplement ? [{ text: supplement, source: '本次补充' }] : []),
+    ...values.map((text) => ({ text, source: '记录字段' })),
   ];
   const { items, total } = await db.store.listActivities(recordId, {
     page: 1,
     limit: 10,
   });
   rows.push(
-    ...items.map(
-      (a) =>
+    ...items.map((a) => ({
+      text:
         localDateAt(new Date(a.createdAt), zone) +
         ' 沟通：' +
         a.content.slice(0, 300),
-    ),
+      source: '沟通记录',
+    })),
   );
   const open = await db.tx.recordFollowUp.findMany({
     where: {
@@ -73,9 +74,10 @@ export async function writingFacts(
     select: { title: true, dueAt: true },
   });
   rows.push(
-    ...open
-      .slice(0, 20)
-      .map((f) => '跟进：' + f.title + '；到期 ' + localDateAt(f.dueAt, zone)),
+    ...open.slice(0, 20).map((f) => ({
+      text: '跟进：' + f.title + '；到期 ' + localDateAt(f.dueAt, zone),
+      source: '待办跟进',
+    })),
   );
   const relations = await db.tx.$queryRaw<
     { recordId: string; objectCode: string }[]
@@ -93,15 +95,17 @@ export async function writingFacts(
       (target.record.inPublicPool && actor.role !== 'TENANT_ADMIN')
     )
       continue;
-    rows.push(
-      '关联：' +
+    rows.push({
+      text:
+        '关联：' +
         [target.title, ...writingFields(target, 3, zone)]
           .join('；')
           .slice(0, 500),
-    );
+      source: '关联记录',
+    });
     if (++count === 5) break;
   }
-  const limited = boundedFacts(rows.map((text) => ({ text })));
+  const limited = boundedFacts(rows);
   const canLog = Boolean(
     await visible(() =>
       requireVisibleRecord(

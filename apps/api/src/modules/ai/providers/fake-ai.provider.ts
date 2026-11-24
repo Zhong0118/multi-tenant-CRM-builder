@@ -57,7 +57,12 @@ export class FakeAiProvider implements AiProvider {
       return {
         kind: data.options?.kind,
         subject: data.options?.kind === 'email' ? '跟进沟通' : null,
-        blocks: facts.slice(0, 2).map(block),
+        blocks:
+          data.options?.kind === 'visit'
+            ? facts
+                .slice(1, 3)
+                .map((f) => ({ text: '情况：' + f.text, factRefs: [f.id] }))
+            : facts.slice(0, 2).map(block),
       };
     return Object.fromEntries(
       ['plans', 'completed', 'problems', 'nextSteps'].map((section) => [

@@ -180,3 +180,74 @@ it('keeps ungrounded weekday and month-end delivery dates out of the message', (
   expect(text).toContain('【交付日期】');
   expect(text).toContain('周五发货');
 });
+
+it('renders an internal visit outline, attaches sources to facts and keeps unsupported materials empty', () => {
+  const facts = [
+    { id: 'F1', text: '名称：海川测绘' },
+    { id: 'F2', text: '合同只剩财务签字', source: '沟通记录' },
+  ];
+  const visit = { ...options, kind: 'visit', purpose: 'payment' } as const;
+  const draft = validateWriting(
+    {
+      kind: 'visit',
+      subject: null,
+      blocks: [
+        block('目的：了解合同签字进度', 'F2'),
+        block('情况：合同只剩财务签字', 'F2'),
+        block('问题：签字流程还有哪些待办？', 'F2'),
+        block('问题：烦请确认哪一天方便安排？'),
+        block('材料：合同副本', 'F2'),
+      ],
+    },
+    visit,
+    facts,
+  );
+  const body = draft.blocks.map((b) => b.text).join('\n');
+  expect(body).toContain('海川测绘');
+  expect(body).toContain('了解合同签字进度');
+  expect(draft.blocks.find((b) => b.text.includes('合同只剩财务签字'))).toEqual(
+    { text: '合同只剩财务签字（来源：沟通记录）', factRefs: ['F2'] },
+  );
+  expect(body).toContain('签字流程还有哪些待办');
+  expect(body.trimEnd()).toMatch(/要带的材料[：:]?$/);
+  expect(body).not.toMatch(/烦请|概况：名称|合同副本/);
+});
+it('keeps explicitly requested materials with their cited source and skips customer-directed requests in the fallback', () => {
+  const facts = [
+    { id: 'F1', text: '森湖' },
+    { id: 'F2', text: '拜访时带上产品样册' },
+  ];
+  const visit = { ...options, kind: 'visit' } as const;
+  const draft = validateWriting(
+    {
+      kind: 'visit',
+      subject: null,
+      blocks: [block('问题：请予确认。'), block('材料：产品样册', 'F2')],
+    },
+    visit,
+    facts,
+  );
+  expect(draft.blocks.at(-1)).toEqual(block('产品样册', 'F2'));
+  expect(draft.blocks.map((b) => b.text).join('')).not.toMatch(
+    /请予确认|贵司|您/,
+  );
+});
+it('removes an invented owner of a neutral fact but keeps an explicitly supported role', () => {
+  const facts = [
+    { id: 'F1', text: '财务还在核对交接清单' },
+    { id: 'F2', text: '对方采购需要样品' },
+  ];
+  const draft = validateWriting(
+    writing(
+      block('我方财务还在核对交接清单。', 'F1'),
+      block('财务还在核对交接清单。', 'F1'),
+      block('贵司采购需要样品。', 'F2'),
+    ),
+    { ...options, purpose: 'followup' },
+    facts,
+  );
+  expect(draft.blocks.map((b) => b.text)).toEqual([
+    '财务还在核对交接清单。',
+    '贵司采购需要样品。',
+  ]);
+});
