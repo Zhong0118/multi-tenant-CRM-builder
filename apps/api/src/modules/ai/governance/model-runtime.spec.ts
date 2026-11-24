@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { VercelOpenAiProvider } from '../providers/vercel-openai.provider';
 import {
   discoverModels,
@@ -433,3 +434,38 @@ it('retains safe status and codes for invalid credentials and hides upstream mes
   });
   expect(mock).toHaveBeenCalledTimes(4);
 });
+
+it.each([
+  ['daily_brief', 'https://api.deepseek.com', true],
+  ['writing', 'https://api.deepseek.com', false],
+  ['daily_brief', 'https://other.example', false],
+] as const)(
+  'sends the configured reasoning mode for %s to %s',
+  async (feature, baseURL, disableThinking) => {
+    const fetchSpy = mockUpstream(() => new Response(null, { status: 400 }));
+    const provider = new VercelOpenAiProvider({
+      apiKey: 'test',
+      modelKey: 'deepseek-flash',
+      baseURL,
+      protocol: 'responses',
+    });
+    await expect(
+      provider.generateSalesDaily({
+        actor: {} as never,
+        feature,
+        system: 'Fixture',
+        prompt: '{}',
+        schema: z.object({}),
+      }),
+    ).rejects.toBeDefined();
+    const [, init] = fetchSpy.mock.calls[0];
+    const body = JSON.parse(String(init?.body)) as {
+      reasoning?: unknown;
+      input: { role: string }[];
+    };
+    expect(body.reasoning).toEqual(
+      disableThinking ? { effort: 'none' } : undefined,
+    );
+    expect(body.input[0].role).toBe('system');
+  },
+);

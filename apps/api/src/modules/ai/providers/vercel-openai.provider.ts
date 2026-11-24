@@ -179,7 +179,25 @@ export class VercelOpenAiProvider implements AiProvider {
         onStepEnd: (step) => {
           usage = step.usage;
         },
-        providerOptions: { openai: { store: false } },
+        providerOptions: {
+          openai: {
+            store: false,
+            // On long shortlists DeepSeek can spend the entire output budget
+            // on reasoning before returning any suggestions. The SDK needs
+            // forceReasoning to forward the official endpoint's effort setting.
+            ...(config.feature === 'daily_brief' &&
+            this.protocol === 'responses' &&
+            this.modelKey === 'deepseek-flash' &&
+            this.baseURL &&
+            new URL(this.baseURL).hostname === 'api.deepseek.com'
+              ? {
+                  forceReasoning: true,
+                  systemMessageMode: 'system',
+                  reasoningEffort: 'none',
+                }
+              : {}),
+          },
+        },
       });
       usage = result.usage;
       if (result.finishReason && result.finishReason !== 'stop')
