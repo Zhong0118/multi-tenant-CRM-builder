@@ -172,7 +172,9 @@ function toView(
           code === 'FIELD_OPTION_INACTIVE')
       ) {
         fieldErrors[fieldKey] = [
-          field.label + '：' + API_ERROR_MESSAGES[code as keyof typeof API_ERROR_MESSAGES],
+          field.label +
+            '：' +
+            API_ERROR_MESSAGES[code as keyof typeof API_ERROR_MESSAGES],
         ];
       }
     }
