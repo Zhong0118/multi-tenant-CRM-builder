@@ -251,10 +251,22 @@ const checks = {
   access: '权限',
   noWrites: '干运行无写入',
   stable: '注入对照',
+  ...(supplemental ? {} : { noAddedWrong: '预选和采用均新增错值为零' }),
 };
 table(['推理', ...Object.values(checks), '全部通过']);
 for (const { mode, files } of records.filter((r) => r.mode !== 'rules')) {
   const result = gates(files);
+  if (!supplemental)
+    result.noAddedWrong = files.every((f, i) =>
+      ['autoBusiness', 'reviewBusiness'].every(
+        (key) =>
+          !addedWrongValues(
+            first.files[i].autoBusiness.wrongDetails,
+            f[key].wrongDetails,
+          ).length,
+      ),
+    );
+
   lines.push(
     row([
       mode,
