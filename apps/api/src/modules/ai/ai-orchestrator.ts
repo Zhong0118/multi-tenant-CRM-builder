@@ -230,6 +230,11 @@ export class AiOrchestrator {
     try {
       await this.ledger.assertFeature(context, 'assistant');
       const features = await this.ledger.features(context);
+      const requestedWriting =
+        /(?:写|拟|起草|润色|编写|撰写|准备|生成).{0,24}(?:微信|短信|邮件|电话提纲|拜访准备|拜访提纲|邀约消息|催款消息|对外文案)|(?:微信|短信|邮件).{0,12}(?:怎么写|帮我写|拟一|起草)|帮我写[。！？!?\s]*$|(?:write|draft|compose|redraft).{0,24}(?:message|email|call outline|visit plan)/iu.test(
+          begun.user.content,
+        );
+      if (requestedWriting) await this.ledger.assertFeature(context, 'writing');
       const timeout = AbortSignal.timeout(timeoutMs());
       const stop = new AbortController();
       const abortSignal = AbortSignal.any([clientAbort, timeout, stop.signal]);
@@ -306,7 +311,48 @@ export class AiOrchestrator {
                 JSON.stringify(timeContext),
                 'Interpret today, tomorrow and other relative dates in this company timezone using currentDate. Display timestamps in this timezone unless the user explicitly requests another. Follow-up dueAtLocal includes the company-local offset, except historical offsets with second precision retain the original UTC timestamp ending in Z. Explicitly label those fallback values UTC, not company-local time. dueAt is always the same instant in UTC. Use the timezone offset for the target date, which may differ across daylight saving transitions. Preserve date-only field values as calendar dates.',
               ].join('\n'),
-              tools,
+              tools: requestedWriting
+                ? tools
+                    .filter((tool) =>
+                      [
+                        'list_objects',
+                        'describe_object',
+                        'search_records',
+                        'ask_user',
+                        'draft_writing',
+                      ].includes(tool.name),
+                    )
+                    .map((tool) =>
+                      tool.name === 'search_records'
+                        ? {
+                            ...tool,
+                            execute: async (input, id) => {
+                              const result = await tool.execute(input, id);
+                              if (
+                                !result ||
+                                typeof result !== 'object' ||
+                                !('items' in result) ||
+                                !Array.isArray(result.items)
+                              )
+                                return result;
+                              // The chooser reprojects display labels itself; no record body is
+                              // needed by the routing model to identify a unique search result.
+                              return {
+                                ...result,
+                                items: result.items.flatMap((row: unknown) =>
+                                  row &&
+                                  typeof row === 'object' &&
+                                  'id' in row &&
+                                  typeof row.id === 'string'
+                                    ? [{ id: row.id }]
+                                    : [],
+                                ),
+                              };
+                            },
+                          }
+                        : tool,
+                    )
+                : tools,
               abortSignal,
             }),
             publicEvents,
@@ -326,6 +372,7 @@ export class AiOrchestrator {
               case 'TEXT_DELTA':
                 // A provider may announce a proposal before the batch is persisted.
                 if (
+                  requestedWriting ||
                   collector.failureCode === 'PROPOSAL_LIMIT' ||
                   isTruncatedBatch(search.coverage(collector.candidates))
                 )
@@ -561,6 +608,10 @@ export class AiOrchestrator {
           },
         } as AiPublicStreamEvent;
         return;
+      }
+      if (requestedWriting) {
+        buffer = '未生成文案，请确认要写给哪条记录后重试。';
+        yield { event: 'assistant.delta', data: { text: buffer } };
       }
       const outcome = {
         providerAttempt: providerAttemptsOf(begun.assistant.providerUsage),
