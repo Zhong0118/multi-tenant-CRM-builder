@@ -486,7 +486,15 @@ it.each(['default', 'none'] as const)(
           sheet: '商机',
           currentHeader: 1,
           headerLocked: true,
-          fields: [],
+          fields: [
+            {
+              ref: 'F17',
+              name: '合同名称',
+              type: 'TEXT',
+              required: true,
+              options: [],
+            },
+          ],
           candidates: [],
         },
         {} as never,
@@ -498,10 +506,14 @@ it.each(['default', 'none'] as const)(
     const body = JSON.parse(send.mock.calls[0][1]?.body as string) as {
       reasoning?: unknown;
       max_output_tokens: number;
+      text: { format: { schema: { properties: { matchFields: unknown } } } };
     };
     expect(body.reasoning).toEqual(
       mode === 'none' ? { effort: 'none' } : undefined,
     );
     expect(body.max_output_tokens).toBe(4000);
+    expect(body.text.format.schema.properties.matchFields).toMatchObject({
+      items: { enum: ['F17'] },
+    });
   },
 );
