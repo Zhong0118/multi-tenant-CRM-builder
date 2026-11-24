@@ -1,5 +1,6 @@
 import type { WritingDraft, WritingOptions } from '@crm/contracts';
 import type { SalesFact } from './sales-draft-output';
+import { coversTopic, supplementRequests } from './writing-topics';
 
 export const writingSentences = (text: string) =>
   (text.match(/[^。！？!?\n]+[。！？!?]?/gu) ?? [])
@@ -134,7 +135,13 @@ export function visitOutline(
       f.text !== target?.text &&
       !nonInternalVoice(f.text),
   );
-  const known = new Map<string, SalesFact>();
+  const externalFacts = usableFacts.filter(
+    (f) => f.source !== '待办跟进' && !/^跟进[：:]/u.test(f.text),
+  );
+  const requests = supplementRequests(facts);
+  const known = new Map<string, SalesFact>(
+    usableFacts.filter((f) => f.source === '本次补充').map((f) => [f.id, f]),
+  );
   const questions: WritingDraft['blocks'] = [];
   const materials: WritingDraft['blocks'] = [];
   let purpose = {
@@ -163,17 +170,57 @@ export function visitOutline(
       writingSentences(text).length === 1 &&
       check(text, evidence) === text
     ) {
-      if (section === '目的') purpose = { text, factRefs: refs };
+      if (section === '目的' && !/[【】]/u.test(text))
+        purpose = { text, factRefs: refs };
       if (
         section === '问题' &&
-        specificVisitQuestion(text, usableFacts, options.purpose)
+        (!refs.length || cited.some((f) => externalFacts.includes(f))) &&
+        !/(?:谁|哪位).{0,8}负责跟进|待办跟进|跟进(?:任务|待办)|到期.{0,12}跟进/u.test(
+          text,
+        ) &&
+        specificVisitQuestion(text, externalFacts, options.purpose)
       )
         questions.push({ text, factRefs: refs });
     }
   }
   if (!known.size && usableFacts.length)
     known.set(usableFacts[0].id, usableFacts[0]);
-  const [firstFact] = known.values();
+  const requested = requests.filter(
+    (r) =>
+      !nonInternalVoice(r.question) &&
+      check(r.question, sources.get(r.factRef)!.text) === r.question,
+  );
+  if (requested.length) {
+    for (const r of requested) {
+      if (!known.has(r.factRef))
+        known.set(r.factRef, {
+          id: r.factRef,
+          source: '本次补充',
+          text:
+            '待确认：' +
+            requested
+              .filter((item) => item.factRef === r.factRef)
+              .map((item) => item.topic)
+              .join('、'),
+        });
+    }
+    if (!requested.every((r) => coversTopic(purpose.text, r.topic)))
+      purpose = {
+        text: '确认' + requested.map((r) => r.topic).join('、'),
+        factRefs: [...new Set(requested.map((r) => r.factRef))],
+      };
+    const priority = requested.map((r) => {
+      const i = questions.findIndex((q) => coversTopic(q.text, r.topic));
+      const q =
+        i < 0 ? { text: r.question, factRefs: [] } : questions.splice(i, 1)[0];
+      return {
+        text: q.text,
+        factRefs: [...new Set([...q.factRefs, r.factRef])],
+      };
+    });
+    questions.unshift(...priority);
+  }
+  const firstFact = [...known.values()].find((f) => externalFacts.includes(f));
   if (!questions.length && firstFact)
     questions.push({
       text: '记录提到「' + firstFact.text + '」，下一步由谁负责跟进？',
@@ -199,7 +246,7 @@ export function visitOutline(
         ? questions
         : [line('本次沟通有哪些事项需要优先确认？')]),
       line('要带的材料'),
-      ...materials,
+      ...(materials.length ? materials : [line('暂无，按需补充')]),
     ],
   };
 }

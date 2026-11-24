@@ -209,7 +209,7 @@ it('renders an internal visit outline, attaches sources to facts and keeps unsup
     { text: '合同只剩财务签字（来源：沟通记录）', factRefs: ['F2'] },
   );
   expect(body).toContain('签字流程还有哪些待办');
-  expect(body.trimEnd()).toMatch(/要带的材料[：:]?$/);
+  expect(body.trimEnd()).toMatch(/要带的材料\n暂无，按需补充$/);
   expect(body).not.toMatch(/烦请|概况：名称|合同副本/);
 });
 it('keeps explicitly requested materials with their cited source and skips customer-directed requests in the fallback', () => {
@@ -331,4 +331,100 @@ it('anchors the delivered fallback for a fact-bearing visit in an actual source 
   expect(draft.blocks).toContainEqual(
     block('记录提到「物流交接清单仍在核对」，下一步由谁负责跟进？', 'F2'),
   );
+});
+
+describe('writing from this request’s supplement', () => {
+  const supplement = '确认一下交期，顺便问样品收到没有';
+  const facts = [
+    { id: 'F1', text: '远山科技', source: '记录名称' },
+    { id: 'F2', text: supplement, source: '本次补充' },
+    {
+      id: 'F3',
+      text: '跟进：确认远山科技交期；到期 2026-11-22',
+      source: '待办跟进',
+    },
+  ];
+  it('keeps a sourced receipt question, restores a missing explicit request and aligns the email subject with the delivered body', () => {
+    const email = {
+      ...options,
+      purpose: 'followup',
+      kind: 'email',
+      supplement,
+    } as const;
+    for (const blocks of [
+      [block('交期方便确定吗？', 'F2')],
+      [block('交期方便确定吗？', 'F2'), block('样品是否已经收到？', 'F2')],
+    ]) {
+      const d = validateWriting(
+        { kind: 'email', subject: '确认交期与样品接收情况', blocks },
+        email,
+        facts,
+      );
+      expect(
+        d.blocks.some(
+          (b) => b.text.includes('样品') && b.factRefs.includes('F2'),
+        ),
+      ).toBe(true);
+      expect(d.subject).toContain('样品');
+    }
+    const d = validateWriting(
+      {
+        kind: 'email',
+        subject: '交期与合同续约',
+        blocks: [block('目前的交期如何安排？', 'F2')],
+      },
+      email,
+      facts,
+    );
+    expect(d.subject).not.toMatch(/续约/);
+  });
+  it('uses both requested matters for the visit purpose and questions, and keeps internal follow-ups out of questions', () => {
+    const visit = {
+      ...options,
+      purpose: 'followup',
+      kind: 'visit',
+      supplement,
+    } as const;
+    const d = validateWriting(
+      {
+        kind: 'visit',
+        subject: null,
+        blocks: [
+          block('目的：了解当前进展和后续安排'),
+          block('问题：下一步由谁负责跟进交期？', 'F3'),
+        ],
+      },
+      visit,
+      facts,
+    );
+    expect(d.blocks[0].text).toMatch(/交期.*样品/);
+    const questions = d.blocks.slice(
+      d.blocks.findIndex((b) => b.text === '要问的问题') + 1,
+      d.blocks.findIndex((b) => b.text === '要带的材料'),
+    );
+    expect(questions.map((b) => b.text).join('')).toMatch(/交期.*样品/);
+    expect(questions.map((b) => b.text).join('')).not.toMatch(/负责跟进|到期/);
+    expect(d.blocks.map((b) => b.text).join('')).toContain('来源：本次补充');
+    expect(d.blocks.at(-1)?.text).toBe('暂无，按需补充');
+  });
+  it('keeps placeholders out of a visit purpose and never repackages an internal task as a question', () => {
+    const d = validateWriting(
+      {
+        kind: 'visit',
+        subject: null,
+        blocks: [
+          block('目的：了解【报价金额】'),
+          block('问题：跟进该由谁负责？', 'F3'),
+        ],
+      },
+      { ...options, kind: 'visit' },
+      [facts[0], facts[2]],
+    );
+    expect(d.blocks[0].text).not.toContain('【');
+    const questions = d.blocks.slice(
+      d.blocks.findIndex((b) => b.text === '要问的问题') + 1,
+      d.blocks.findIndex((b) => b.text === '要带的材料'),
+    );
+    expect(questions.map((b) => b.text).join('')).not.toMatch(/跟进|到期|负责/);
+  });
 });
