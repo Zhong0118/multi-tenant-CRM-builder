@@ -140,6 +140,14 @@ function parsed<T>(schema: z.ZodType<T>, raw: unknown): T {
 }
 const amount =
   /[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?[千万亿]?元|[零〇一二三四五六七八九十百千万亿两壹贰叁肆伍陆柒捌玖拾佰仟萬億点]+元/gu;
+// Spoken quotes often omit 元. Normalize only the amount following a pricing
+// label so a communication count or a date cannot become monetary evidence.
+function explicitPrices(text: string) {
+  return text.replace(
+    /((?:报价|金额|价格|单价|总价|预算)(?:为|是|约|：|:)?\s*)([+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?[千万亿]?|[零〇一二三四五六七八九十百千万亿两壹贰叁肆伍陆柒捌玖拾佰仟萬億点]+)元?/gu,
+    '$1$2元',
+  );
+}
 function amountValue(token: string) {
   if (!/\d/.test(token)) return parseChineseAmount(token);
   const m = /^([+-]?[\d,]+(?:\.\d+)?)([千万亿]?)元$/.exec(token);
@@ -201,19 +209,13 @@ function checkedSentence(text: string, evidence: string) {
   // Whole fact comparisons preserve negation ("不能保证" is not "保证").
   if (sources.some((f) => clean(f) === clean(literal))) return literal;
   const source = normalizeDates(evidence);
-  let rest = normalizeDates(literal).replace(
+  let rest = explicitPrices(normalizeDates(literal)).replace(
     /【(?:报价金额|交付日期|确认事项|付款日期)】/gu,
     '',
   );
-  const moneyFacts = sources.flatMap((f) => {
-    const values = [...f.matchAll(amount)].map((m) => amountValue(m[0]));
-    const field =
-      /(?:报价|金额|价格|单价|总价|预算)[：:]\s*([+-]?[\d,]+(?:\.\d+)?)\s*$/.exec(
-        f,
-      );
-    if (field) values.push(amountValue(field[1] + '元'));
-    return values;
-  });
+  const moneyFacts = sources.flatMap((f) =>
+    [...explicitPrices(f).matchAll(amount)].map((m) => amountValue(m[0])),
+  );
   let badMoney = false;
   rest = rest.replace(amount, (token) => {
     const n = amountValue(token);

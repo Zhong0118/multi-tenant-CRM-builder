@@ -155,3 +155,12 @@ it('derives next-day instants in company time and rejects invalid dates and date
   for (const day of ['2026-11-04', '2026-10-26', '2026-02-30'])
     expect(() => reportRange(day, 'America/New_York', now)).toThrow();
 });
+it('checks quoted prices even when the currency suffix is omitted in casual writing', () => {
+  const draft = validateWriting(
+    writing(block('报价三十万。', 'F1'), block('报价为三万。', 'F1')),
+    options,
+    [{ id: 'F1', text: '报价：30000.00' }],
+  );
+  expect(draft.blocks.map((b) => b.text).join('')).toContain('报价为三万');
+  expect(draft.blocks.map((b) => b.text).join('')).not.toContain('三十万');
+});
