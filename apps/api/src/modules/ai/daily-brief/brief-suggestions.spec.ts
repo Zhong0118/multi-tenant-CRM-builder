@@ -80,10 +80,10 @@ it('preserves specific model wording and uses only cited facts in the reason', (
       explanation: '核对2份报价单，确认十二月五日交付安排。',
     }),
   ).toMatchObject({ usedFallback: false });
-  // A model may independently choose the same wording as the template.
+  // Generic template wording has no verifiable link to the cited subject.
   expect(
     check({ suggestedTitle: '致电确认近况', explanation: '建议致电确认近况' }),
-  ).toMatchObject({ usedFallback: false });
+  ).toMatchObject({ usedFallback: true });
 });
 
 it('preserves the proposed future action date when wording falls back', () => {
@@ -119,3 +119,36 @@ it.each([
     });
   },
 );
+
+it('requires each field to match a cited subject and rejects even mixed-in subjects from uncited facts', () => {
+  const rows = [
+    {
+      ...candidates[0],
+      facts: [
+        { ref: 'R1F1', text: '联系经办人确认，需补发产品目录' },
+        { ref: 'R1F2', text: '展台灯具待验收' },
+      ],
+    },
+    {
+      ...candidates[0],
+      recordRef: 'R2',
+      recordId: 'two',
+      facts: [
+        { ref: 'R2F1', text: '联系经办人安排股权收购' },
+        { ref: 'R2F2', text: '请核对产品目录' },
+      ],
+    },
+  ];
+  const run = (suggestedTitle: string, explanation: string) =>
+    validateSuggestions(
+      { items: [{ ...grounded, suggestedTitle, explanation }] },
+      rows,
+      '2026-11-24',
+    )[0].usedFallback;
+  expect(run('确认股权收购', '联系经办人安排股权收购。')).toBe(true);
+  expect(run('确认产品目录', '联系经办人安排产品目录及股权收购。')).toBe(true);
+  expect(run('核对展台灯具和产品目录', '确认产品目录。')).toBe(true);
+  expect(run('联系经办人确认', '请联系经办人确认产品目录。')).toBe(true);
+  expect(run('补发产品目录', '联系经办人确认新的温度计。')).toBe(true);
+  expect(run('补发产品目录', '请联系经办人核对产品目录。')).toBe(false);
+});

@@ -195,13 +195,45 @@ export function fallbackWording(action: keyof typeof actions) {
     suggestedTitle: actions[action],
   };
 }
+// Removing conversational scaffolding before taking adjacent Han character
+// pairs avoids treating “联系经办人确认” as evidence of a business subject.
+const genericWording =
+  /经办人|对接人|联系人|负责人|工作人员|各位|麻烦|劳烦|辛苦|感谢|谢谢|后续|下一步|进一步|请问|建议|客户|对方|贵司|我们|你们|您|请|需要|希望|是否|已经|已有|正在|相关|具体|事宜|事项|情况|近况|进度|进展|安排|沟通|致电|联系|确认|核对|了解|跟进|推进|处理|协商|询问|商议|商讨|核实|商量|补发|提供|发送|落实|追踪|跟踪|一下|尽快|的|并|及|与|和/gu;
+function subjectTerms(text: string) {
+  const terms = new Set<string>();
+  const runs =
+    text
+      .replace(genericWording, ' ')
+      .match(/[\p{Script=Han}]{2,}|[A-Za-z][\w-]+/gu) ?? [];
+  for (const run of runs) {
+    if (/^[A-Za-z]/u.test(run)) {
+      terms.add(run);
+      continue;
+    }
+    const chars = [...run];
+    for (let i = 1; i < chars.length; i++) terms.add(chars[i - 1] + chars[i]);
+  }
+  return terms;
+}
 // Writing can replace an unsupported claim with a placeholder. A brief keeps
 // model wording only when both complete fields pass unchanged.
-function safeWording(text: string, limit: number, evidence: string) {
+function safeWording(
+  text: string,
+  limit: number,
+  evidence: string,
+  cited: Set<string>,
+  all: Set<string>,
+) {
+  if (
+    [...text].length > limit ||
+    !/^[^。！？!?\r\n]+[。！？!?]?$/u.test(text) ||
+    checkedSentence(text, evidence) !== text
+  )
+    return false;
+  const terms = [...subjectTerms(text)];
   return (
-    [...text].length <= limit &&
-    /^[^。！？!?\r\n]+[。！？!?]?$/u.test(text) &&
-    checkedSentence(text, evidence) === text
+    terms.some((t) => cited.has(t)) &&
+    !terms.some((t) => all.has(t) && !cited.has(t))
   );
 }
 export function validateSuggestions(
@@ -218,6 +250,11 @@ export function validateSuggestions(
     throw new ApiException('AI_TURN_FAILED', 502);
   const seen = new Set<string>();
   const scope = wordingScope(candidates);
+  const allTerms = subjectTerms(
+    candidates
+      .flatMap((c) => [c.title, ...c.facts.map((f) => f.text)])
+      .join('\n'),
+  );
   return raw.items
     .flatMap((value: unknown) => {
       const parsed = proposedItem.safeParse(value);
@@ -238,11 +275,12 @@ export function validateSuggestions(
       }
       const sources = facts.map((f) => f!.text);
       const evidence = sources.join('\n');
+      const cited = subjectTerms(evidence);
       const title = i.suggestedTitle?.trim() ?? '';
       const explanation = i.explanation.trim();
       const usedFallback =
-        !safeWording(title, 20, evidence) ||
-        !safeWording(explanation, 40, evidence);
+        !safeWording(title, 20, evidence, cited, allTerms) ||
+        !safeWording(explanation, 40, evidence, cited, allTerms);
       seen.add(c.recordId);
       return [
         {
