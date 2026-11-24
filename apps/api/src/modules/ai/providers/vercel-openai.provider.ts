@@ -92,7 +92,6 @@ export class VercelOpenAiProvider implements AiProvider {
     input: ImportAssistModelInput,
     actor: TenantContext,
     signal: AbortSignal = new AbortController().signal,
-    reasoning: 'default' | 'none' = 'default',
   ) {
     const importWireSchema = jsonSchema(
       zodSchema(importMappingSchema(input)).jsonSchema,
@@ -110,7 +109,7 @@ export class VercelOpenAiProvider implements AiProvider {
       name: 'import_plan',
       schema: importWireSchema,
       system: importSystem,
-      disableReasoning: reasoning === 'none',
+      disableReasoning: true,
     }).then(expandImportMapping);
   }
 
