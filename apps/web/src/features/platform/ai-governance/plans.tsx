@@ -22,7 +22,6 @@ import {
   type Feature,
   type Plan,
   list,
-  names,
   ReadState,
   result,
   tokenAmount,
@@ -31,6 +30,10 @@ import {
   useSettings,
   quotaInputValue,
 } from "./common";
+import {
+  catalogGroups,
+  catalogLabels,
+} from "../../ai-governance/workspace-api";
 import styles from "./platform-ai.module.css";
 type Edit = {
   name: string;
@@ -44,6 +47,8 @@ export function PlatformPlans() {
   const plans = usePlans(),
     settings = useSettings(),
     action = useAction();
+  const catalog = settings.data?.catalog ?? [];
+  const names = catalogLabels(catalog);
   const [editor, setEditor] = useState<Plan | "new" | null>(null),
     [target, setTarget] = useState<Plan | null>(null);
   const [impact, setImpact] = useState<{
@@ -251,21 +256,51 @@ export function PlatformPlans() {
             name="features"
             rules={[
               {
-                validator: (_, v: Feature[]) =>
-                  v?.includes("write_proposal") && !v.includes("assistant")
+                validator: (_, v: Feature[]) => {
+                  const missing = catalog.find(
+                    (f) =>
+                      v?.includes(f.key) &&
+                      f.requires &&
+                      !v.includes(f.requires),
+                  );
+                  return missing?.requires
                     ? Promise.reject(
-                        new Error("AI 写入提议需要同时开通对话助手"),
+                        new Error(
+                          missing.label +
+                            "需要同时开通" +
+                            names[missing.requires],
+                        ),
                       )
-                    : Promise.resolve(),
+                    : Promise.resolve();
+                },
               },
             ]}
           >
-            <Checkbox.Group
-              options={Object.entries(names).map(([value, label]) => ({
-                value,
-                label,
-              }))}
-            />
+            <Checkbox.Group style={{ display: "grid", gap: 12 }}>
+              {catalogGroups(catalog).map((group) => (
+                <section key={group} aria-label={group}>
+                  <strong>{group}</strong>
+                  <div>
+                    {catalog
+                      .filter((f) => f.group === group)
+                      .map((f) => (
+                        <Checkbox
+                          key={f.key}
+                          value={f.key}
+                          disabled={!f.released}
+                        >
+                          {f.label}
+                          {!f.released
+                            ? " · 即将上线"
+                            : !settings.data?.configured
+                              ? " · 平台未配置文字模型，开通后公司暂时用不了"
+                              : ""}
+                        </Checkbox>
+                      ))}
+                  </div>
+                </section>
+              ))}
+            </Checkbox.Group>
           </Form.Item>
           <Form.Item
             label="每月额度（万 token）"
@@ -330,7 +365,7 @@ export function PlatformPlans() {
         <p>将影响 {impact?.companies} 家公司，保存后立即生效。</p>
         {!!impact?.removedFeatures.length && (
           <p>
-            移除{list(impact.removedFeatures)}
+            移除{list(impact.removedFeatures, names)}
             。依赖这些功能的待确认操作将无法确认。
           </p>
         )}

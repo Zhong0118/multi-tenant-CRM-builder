@@ -1,9 +1,11 @@
 "use client";
 import { formatTokens, formatPercent } from "@/features/ai-governance/format";
 import { Column } from "@ant-design/charts";
-import { names, type Summary, type Feature } from "./common";
+import { catalogLabels } from "../../ai-governance/workspace-api";
+import { type Summary, type Feature } from "./common";
 import styles from "./platform-ai.module.css";
 export function UsageCharts({ summary }: { summary: Summary }) {
+  const names = catalogLabels(summary.catalog);
   const totals = new Map<Feature, bigint>();
   let proposals = BigInt(0),
     confirmations = BigInt(0);

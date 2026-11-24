@@ -5,12 +5,8 @@ import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import type { CallRateLimiter } from '../../../infrastructure/rate-limit/rate-limiter';
 import type { AiLedgerService } from './ai-ledger.service';
 
-export const outputLimit = {
-  assistant: 4096,
-  communication: 4000,
-  filter: 3500,
-  table_builder: 16000,
-} as const;
+import { generationLimits } from './feature-catalog';
+export const outputLimit = generationLimits;
 export type GenerationFeature = keyof typeof outputLimit;
 export type ModelMeterFactory = (
   actor: TenantContext | undefined,

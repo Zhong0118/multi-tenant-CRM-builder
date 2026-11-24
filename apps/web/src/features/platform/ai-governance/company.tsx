@@ -27,6 +27,7 @@ import {
   usePlans,
   type Feature,
 } from "./common";
+import { catalogLabels } from "../../ai-governance/workspace-api";
 import styles from "./platform-ai.module.css";
 const UsageCharts = dynamic(
   () => import("./usage-charts").then((m) => m.UsageCharts),
@@ -248,8 +249,10 @@ export function CompanyAi({
             {impact && (
               <>
                 <p>
-                  新增功能：{list(impact.addedFeatures)}。移除功能：
-                  {list(impact.removedFeatures)}。
+                  新增功能：
+                  {list(impact.addedFeatures, catalogLabels(c.catalog))}
+                  。移除功能：
+                  {list(impact.removedFeatures, catalogLabels(c.catalog))}。
                 </p>
                 <p>
                   本月额度将为 {formatTokens(impact.totalTokens)}

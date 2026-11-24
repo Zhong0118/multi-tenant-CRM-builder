@@ -18,6 +18,7 @@ import {
 import { listOperations, operationDetail } from './admin-operations';
 import type { AuditMeta } from './admin-platform.service';
 
+import { readCatalog } from './feature-catalog';
 async function workspaceSettings(tx: Tx, id: string) {
   const state = await company(tx, id);
   const [{ disabled }] = await tx.$queryRaw<
@@ -25,6 +26,7 @@ async function workspaceSettings(tx: Tx, id: string) {
   >`SELECT disabled FROM ai_platform_settings WHERE id`;
   return {
     ...state,
+    catalog: await readCatalog(tx),
     disabled,
     preview: previewAllocation(state, await members(tx, id, state.month)),
   };

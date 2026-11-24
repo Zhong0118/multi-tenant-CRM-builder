@@ -1,3 +1,4 @@
+import { readCatalog } from './feature-catalog';
 import { Prisma } from '@crm/database';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -92,7 +93,12 @@ export async function platformUsage(tx: Tx, id: string) {
   >`SELECT d::date::text AS month,(coalesce(m.input_tokens,0)::numeric+coalesce(m.output_tokens,0))::text AS "usedTokens"
  FROM generate_series(${current.month}::date-interval '5 months',${current.month}::date::timestamp,interval '1 month') d
  LEFT JOIN ai_tenant_months m ON m.month=d::date AND m.tenant_id=${id}::uuid ORDER BY d`;
-  return { ...current, trend, usage: await daily(tx, id, current.month) };
+  return {
+    ...current,
+    catalog: await readCatalog(tx),
+    trend,
+    usage: await daily(tx, id, current.month),
+  };
 }
 export async function members(tx: Tx, id: string, month: string) {
   return tx.$queryRaw<

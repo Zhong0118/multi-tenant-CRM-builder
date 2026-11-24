@@ -17,12 +17,7 @@ import { Page, PageSection } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
 import { useToast } from "@/components/feedback/use-toast";
 import { LoadError, quotaColor } from "./view-feedback";
-import {
-  workspaceAi,
-  featureNames,
-  type Settings,
-  type AiFeature,
-} from "./workspace-api";
+import { workspaceAi, catalogGroups, type Settings } from "./workspace-api";
 import { UsagePanel } from "./usage-panel";
 import { OperationsPanel } from "./operations-panel";
 import styles from "./settings.module.css";
@@ -115,21 +110,32 @@ export function WorkspaceAiSettings({
           )}
           <div className={styles.grid}>
             <PageSection title="套餐包含的功能">
-              <ul className={styles.features}>
-                {(Object.keys(featureNames) as AiFeature[]).map((f) => (
-                  <li key={f}>
-                    {state.features.includes(f) ? (
-                      <CheckCircleOutlined className={styles.check} />
-                    ) : (
-                      <MinusCircleOutlined />
-                    )}
-                    <span>{featureNames[f]}</span>
-                    {!state.features.includes(f) && (
-                      <small>当前套餐不含，如需开通请联系平台</small>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              {catalogGroups(state.catalog).map((group) => (
+                <section key={group} aria-label={group}>
+                  <h4>{group}</h4>
+                  <ul className={styles.features}>
+                    {state.catalog
+                      .filter((f) => f.group === group)
+                      .map((f) => (
+                        <li key={f.key}>
+                          {f.released && state.features.includes(f.key) ? (
+                            <CheckCircleOutlined className={styles.check} />
+                          ) : (
+                            <MinusCircleOutlined />
+                          )}
+                          <span>{f.label}</span>
+                          {!f.released ? (
+                            <small>即将上线</small>
+                          ) : (
+                            !state.features.includes(f.key) && (
+                              <small>当前套餐不含，如需开通请联系平台</small>
+                            )
+                          )}
+                        </li>
+                      ))}
+                  </ul>
+                </section>
+              ))}
             </PageSection>
             <PageSection title="额度分配">
               <Radio.Group
@@ -197,6 +203,7 @@ export function WorkspaceAiSettings({
                 label: "操作记录",
                 children: (
                   <OperationsPanel
+                    catalog={state.catalog}
                     memberId={memberId}
                     tenantCode={tenantCode}
                     members={usage.data?.members ?? []}

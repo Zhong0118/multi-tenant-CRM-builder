@@ -720,3 +720,31 @@ test("effective quota can add a top-up to the maximum bigint plan", async () => 
   await settle(staff, call, "success", 1, 1);
   assert.equal((await month()).input_tokens, 1n);
 });
+
+test("the feature catalog keeps existing plans and rejects unreleased, duplicate, unknown or dependent-only grants", async () => {
+  const rows = await q(
+    admin,
+    "SELECT key,released FROM ai_feature_catalog ORDER BY position",
+  );
+  assert.equal(rows.length, 8);
+  assert.deepEqual(
+    rows.filter((r) => !r.released).map((r) => r.key),
+    ["daily_brief", "writing", "daily_report"],
+  );
+  for (const keys of [
+    "ARRAY['writing']",
+    "ARRAY['assistant','assistant']",
+    "ARRAY['unknown']",
+    "ARRAY['write_proposal']",
+    "ARRAY[NULL]::text[]",
+  ]) {
+    await assert.rejects(
+      asPlatform((tx) =>
+        tx.$executeRawUnsafe(
+          "UPDATE ai_plans SET features=" + keys + " WHERE id=$1::uuid",
+          planId,
+        ),
+      ),
+    );
+  }
+});

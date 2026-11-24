@@ -1,3 +1,4 @@
+import { catalogFixture } from "./catalog.fixture";
 import {
   fireEvent,
   render,
@@ -28,6 +29,7 @@ function show() {
       }
     >
       <OperationsPanel
+        catalog={catalogFixture}
         tenantCode="example"
         memberId="manager"
         members={[
@@ -50,18 +52,16 @@ describe("operation records", () => {
       items: [row],
       nextCursor: null,
     });
-    const get = vi
-      .spyOn(workspaceAi, "detail")
-      .mockResolvedValue({
-        ...row,
-        requestText: null,
-        recordId: null,
-        objectId: null,
-        objectCode: null,
-        items: [],
-        auditId: null,
-        requestId: null,
-      });
+    const get = vi.spyOn(workspaceAi, "detail").mockResolvedValue({
+      ...row,
+      requestText: null,
+      recordId: null,
+      objectId: null,
+      objectCode: null,
+      items: [],
+      auditId: null,
+      requestId: null,
+    });
     show();
     const target = await screen.findByRole("button", { name: "写入提议" });
     expect(get).not.toHaveBeenCalled();

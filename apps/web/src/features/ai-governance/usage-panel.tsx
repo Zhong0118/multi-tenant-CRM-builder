@@ -5,7 +5,7 @@ import { Empty, Progress } from "antd";
 import { PageSection } from "@/components/layout/page";
 import { MemberIdentity } from "@/components/identity/member-identity";
 import {
-  featureNames,
+  catalogLabels,
   type Settings,
   type Usage,
   type AiFeature,
@@ -25,6 +25,7 @@ export function UsagePanel({
   state: Settings;
   usage: Usage;
 }) {
+  const featureNames = catalogLabels(state.catalog);
   const byDay = new Map<string, number>(),
     byFeature = new Map<AiFeature, number>();
   let proposals = 0,

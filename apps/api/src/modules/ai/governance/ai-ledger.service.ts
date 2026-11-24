@@ -5,9 +5,9 @@ import { API_ERROR_MESSAGES } from '../../../common/errors/api-error-code';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../../infrastructure/database/context-runner';
 
-export type AiFeature =
-  'assistant' | 'write_proposal' | 'communication' | 'filter' | 'table_builder';
-export type AiMeteredFeature = Exclude<AiFeature, 'write_proposal'>;
+import type { FeatureKey, MeteredKey } from './feature-catalog';
+export type AiFeature = FeatureKey;
+export type AiMeteredFeature = MeteredKey;
 export interface AiReservation {
   callId: string;
   requestId: string;

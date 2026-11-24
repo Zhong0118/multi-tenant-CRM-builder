@@ -6223,6 +6223,9 @@ export interface operations {
                 | "communication"
                 | "filter"
                 | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report"
               )[];
               month: string & string;
               name: string;
@@ -6277,6 +6280,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             /** Format: uuid */
             id: string;
@@ -6307,6 +6313,9 @@ export interface operations {
             | "communication"
             | "filter"
             | "table_builder"
+            | "daily_brief"
+            | "writing"
+            | "daily_report"
           )[];
           /** @description Exact token count in decimal notation */
           monthlyTokens: string;
@@ -6330,6 +6339,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             /** Format: uuid */
             id: string;
@@ -6368,6 +6380,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             /** Format: uuid */
             id: string;
@@ -6430,6 +6445,9 @@ export interface operations {
             | "communication"
             | "filter"
             | "table_builder"
+            | "daily_brief"
+            | "writing"
+            | "daily_report"
           )[];
           /** @description Exact token count in decimal notation */
           monthlyTokens: string;
@@ -6455,6 +6473,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             /** Format: uuid */
             id: string;
@@ -6487,6 +6508,9 @@ export interface operations {
             | "communication"
             | "filter"
             | "table_builder"
+            | "daily_brief"
+            | "writing"
+            | "daily_report"
           )[];
           /** @description Exact token count in decimal notation */
           monthlyTokens: string;
@@ -6511,6 +6535,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             version: number;
           };
@@ -6540,6 +6567,34 @@ export interface operations {
               /** @description Exact token count in decimal notation */
               excessTokens: string;
               model: string;
+            }[];
+            catalog: {
+              group: string;
+              /** @enum {string} */
+              key:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report";
+              label: string;
+              outputLimit: number | null;
+              purpose: string;
+              released: boolean;
+              /** @enum {string|null} */
+              requires:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report"
+                | null;
             }[];
             configured: boolean;
             /** Format: uuid */
@@ -6963,6 +7018,34 @@ export interface operations {
             allocation: "shared" | "equal";
             /** @description Exact token count in decimal notation */
             baseTokens: string;
+            catalog: {
+              group: string;
+              /** @enum {string} */
+              key:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report";
+              label: string;
+              outputLimit: number | null;
+              purpose: string;
+              released: boolean;
+              /** @enum {string|null} */
+              requires:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report"
+                | null;
+            }[];
             code: string;
             /** @description Exact token count in decimal notation */
             extraTokens: string;
@@ -6972,6 +7055,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             month: string & string;
             name: string;
@@ -7008,7 +7094,10 @@ export interface operations {
                 | "write_proposal"
                 | "communication"
                 | "filter"
-                | "table_builder";
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report";
               /** @description Exact token count in decimal notation */
               inputTokens: string;
               /** @description Exact token count in decimal notation */
@@ -7062,6 +7151,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             month: string & string;
             name: string;
@@ -7118,6 +7210,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             confirmation: string;
             name: string;
@@ -7129,6 +7224,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             /** @description Exact token count in decimal notation */
             totalTokens: string;
@@ -7370,6 +7468,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             /** @enum {string|null} */
             notice: "company_warning" | "company_exhausted" | "personal" | null;
@@ -7507,7 +7608,10 @@ export interface operations {
           | "write_proposal"
           | "communication"
           | "filter"
-          | "table_builder";
+          | "table_builder"
+          | "daily_brief"
+          | "writing"
+          | "daily_report";
         from?: string;
         limit?: number;
         memberId?: string;
@@ -7541,7 +7645,10 @@ export interface operations {
                 | "write_proposal"
                 | "communication"
                 | "filter"
-                | "table_builder";
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report";
               /** Format: uuid */
               id: string;
               /** Format: uuid */
@@ -7585,7 +7692,10 @@ export interface operations {
               | "write_proposal"
               | "communication"
               | "filter"
-              | "table_builder";
+              | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report";
             /** Format: uuid */
             id: string;
             items: {
@@ -7705,6 +7815,34 @@ export interface operations {
             allocation: "shared" | "equal";
             /** @description Exact token count in decimal notation */
             baseTokens: string;
+            catalog: {
+              group: string;
+              /** @enum {string} */
+              key:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report";
+              label: string;
+              outputLimit: number | null;
+              purpose: string;
+              released: boolean;
+              /** @enum {string|null} */
+              requires:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report"
+                | null;
+            }[];
             code: string;
             disabled: boolean;
             /** @description Exact token count in decimal notation */
@@ -7715,6 +7853,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             month: string & string;
             name: string;
@@ -7777,6 +7918,34 @@ export interface operations {
             allocation: "shared" | "equal";
             /** @description Exact token count in decimal notation */
             baseTokens: string;
+            catalog: {
+              group: string;
+              /** @enum {string} */
+              key:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report";
+              label: string;
+              outputLimit: number | null;
+              purpose: string;
+              released: boolean;
+              /** @enum {string|null} */
+              requires:
+                | "assistant"
+                | "write_proposal"
+                | "communication"
+                | "filter"
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report"
+                | null;
+            }[];
             code: string;
             disabled: boolean;
             /** @description Exact token count in decimal notation */
@@ -7787,6 +7956,9 @@ export interface operations {
               | "communication"
               | "filter"
               | "table_builder"
+              | "daily_brief"
+              | "writing"
+              | "daily_report"
             )[];
             month: string & string;
             name: string;
@@ -8197,7 +8369,10 @@ export interface operations {
                 | "write_proposal"
                 | "communication"
                 | "filter"
-                | "table_builder";
+                | "table_builder"
+                | "daily_brief"
+                | "writing"
+                | "daily_report";
               /** @description Exact token count in decimal notation */
               inputTokens: string;
               /** @description Exact token count in decimal notation */

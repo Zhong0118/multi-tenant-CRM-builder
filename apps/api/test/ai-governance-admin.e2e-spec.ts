@@ -8,6 +8,7 @@ import {
   type CriticalFixture,
   type CriticalHarness,
 } from './helpers/critical-fixture';
+import { featureCatalog } from '../src/modules/ai/governance/feature-catalog';
 import { outputs } from '../src/modules/ai/governance/admin.contract';
 
 jest.setTimeout(120_000);
@@ -44,6 +45,28 @@ describe('AI governance administration over HTTP with restricted PostgreSQL role
         .$executeRaw`DELETE FROM ai_plans WHERE id=${planId}::uuid`;
     }
     await closeCriticalHarness(h);
+  });
+  it('serves the migrated catalog and refuses upcoming features over HTTP', async () => {
+    const expected = featureCatalog.map((row) => ({ ...row, purpose: 'text' }));
+    const platform = await http(
+      f.tenantBAdmin,
+      'get',
+      '/platform/ai-settings',
+    ).expect(200);
+    const workspace = await http(
+      f.admin,
+      'get',
+      '/workspaces/' + f.tenantA.code + '/ai/settings',
+    ).expect(200);
+    expect(platform.body.catalog).toEqual(expected);
+    expect(workspace.body.catalog).toEqual(expected);
+    await http(f.tenantBAdmin, 'post', '/platform/ai-plans', {
+      name: 'Unreleased',
+      description: '',
+      features: ['writing'],
+      assignable: true,
+      monthlyTokens: '100',
+    }).expect(400);
   });
   it('enforces session roles, stale previews, exact quota replays, audit and zero-content platform aggregates', async () => {
     const workspace = '/workspaces/' + f.tenantA.code + '/ai';

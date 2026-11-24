@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceAiSettings } from "./settings-panel";
 import { workspaceAi, type Settings } from "./workspace-api";
 vi.mock("./usage-panel", () => ({ UsagePanel: () => <p>当月用量视图</p> }));
+import { catalogFixture } from "./catalog.fixture";
 const state: Settings = {
+  catalog: catalogFixture,
   tenantId: "a",
   name: "甲",
   code: "a",
@@ -54,6 +56,7 @@ describe("company AI settings", () => {
   it("lists all five capabilities with contact instructions for excluded features", async () => {
     show();
     await screen.findByText("基础版");
+    expect(screen.getAllByText("即将上线")).toHaveLength(3);
     for (const name of [
       "对话助手",
       "AI 写入提议",
@@ -72,7 +75,9 @@ describe("company AI settings", () => {
       .mockResolvedValue({ ...state, allocation: "equal" });
     show();
     fireEvent.click(await screen.findByText("按人均分"));
-    expect(screen.getByText("每人约 4.0 万 token · 已超份额 1 人")).toBeVisible();
+    expect(
+      screen.getByText("每人约 4.0 万 token · 已超份额 1 人"),
+    ).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: /保\s*存/ }));
     expect(save).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole("button", { name: "确认切换" }));
