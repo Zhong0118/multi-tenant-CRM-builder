@@ -1,6 +1,7 @@
 import {
-  maskImportLabel,
-  maskImportNumber,
+  candidateEnumField,
+  importEnumAlias,
+  importScalarSample,
   projectImportHeading,
   restrictedLabel,
 } from "@crm/contracts/import-heading";
@@ -31,10 +32,7 @@ export const importableField = (f: PublishedFieldView) =>
   f.type !== "MEMBER" &&
   (f.access === "EDIT" || f.access === "CREATE_ONLY");
 export const aiImportableField = (f: PublishedFieldView) =>
-  importableField(f) &&
-  !f.importManualOnly &&
-  !restrictedLabel(f.fieldKey) &&
-  !restrictedLabel(f.label);
+  importableField(f) && !f.importManualOnly;
 export type AssistDraft = {
   mapping: string[];
   manual: number[];
@@ -83,34 +81,10 @@ export function draftForImportHeader(
   return next;
 }
 
-const enumLabel =
-  /^(?:[A-FＳS](?:类|级|档|等)?|(?:重点|普通|潜在|意向|成交|老|新)(?:客户)?|未评级|高|中|低|展会|转介|转介绍|线上|线下|广告|网站|其他|未知|待联系|已联系|进行中|已完成|是|否|true|false|yes|no)$/i;
-const clip = (s: string) => Array.from(s).slice(0, 40).join("");
-function safeValue(raw: string): string | undefined {
-  const v = raw.trim().normalize("NFKC");
-  if (
-    /^\d{4}[-/]\d\d?[-/]\d\d?$/.test(v) ||
-    /^\d{1,2}[-/]\d{1,2}[-/]\d{4}$/.test(v)
-  )
-    return v;
-  if (/^[\w.%+\-]+@[\w.-]+\.[a-z]{2,}$/i.test(v)) return maskImportLabel(v);
-  if (
-    /^[+\d(][\d\s()+,.\-–—]{5,}\d[xX]?$/.test(v) &&
-    v.replace(/\D/g, "").length >= 7
-  )
-    return maskImportNumber(v);
-  if (
-    /^(?:[+-]?[¥￥]?\d{1,6}(?:[,.]\d{1,6})*(?:[万亿]?元?)?|\d{1,4}[-/]\d{1,2}[-/]\d{2,4})$/.test(
-      v,
-    ) ||
-    enumLabel.test(v)
-  )
-    return clip(v);
-}
 function valueShape(raw: string) {
-  const safe = safeValue(raw);
+  const safe = importScalarSample(raw);
   if (!safe) return "[文本]";
-  if (safe.includes("@")) return "[邮箱]";
+  if (safe.includes("@") || safe === "[邮箱]") return "[邮箱]";
   if (safe.includes("****") || safe === "[号码]") return "[号码]";
   if (/^\d+[-/]\d+[-/]\d+$/.test(safe)) return "[日期]";
   if (/^[¥￥+\d-]/.test(safe)) return "[数值]";
@@ -126,10 +100,6 @@ export function importValueCounts(
     const raw = (row[index] ?? "").trim();
     let parts = [raw];
     if (field?.type === "MULTI_SELECT") parts = splitImportOptions(raw);
-    else if (!field && /[;；,，]/.test(raw)) {
-      const tokens = splitImportOptions(raw);
-      if (tokens.every((token) => enumLabel.test(token))) parts = tokens;
-    }
     for (const part of new Set(parts))
       if (part) counts.set(part, (counts.get(part) ?? 0) + 1);
   }
@@ -143,21 +113,22 @@ export async function buildImportHeaderEvidence(
   file: ImportFile,
   sheet: string,
 ) {
-  const columns = new Map<number, Set<string>>();
+  const columns = new Map<number, Map<number, string>>();
   for (const row of file.headerSelection(sheet, []).candidates) {
     row.cells.forEach((raw, i) => {
-      const key = normalizeHeader(raw);
+      const key = restrictedLabel(raw) ? "负责人" : normalizeHeader(raw);
       if (!key) return;
-      const values = columns.get(i) ?? new Set<string>();
-      values.add(key);
+      const values = columns.get(i) ?? new Map<number, string>();
+      values.set(row.rowNumber, key);
       columns.set(i, values);
     });
   }
   return Promise.all(
     [...columns].map(async ([i, values]) => ({
       col: "C" + (i + 1),
+      rows: [...values.keys()],
       hashes: await Promise.all(
-        [...values].map(async (key) => {
+        [...values.values()].map(async (key) => {
           const digest = await crypto.subtle.digest(
             "SHA-256",
             new TextEncoder().encode(key),
@@ -171,7 +142,7 @@ export async function buildImportHeaderEvidence(
   );
 }
 type PreviewInput = {
-  headerEvidence: { col: string; hashes: string[] }[];
+  headerEvidence: ImportAssistRequest["headerEvidence"];
   file: ImportFile;
   sheet: string;
   headerRow: number;
@@ -192,23 +163,35 @@ export function buildImportPreview({
   excluded = [],
   admin = false,
 }: PreviewInput) {
-  const allowed = fields.filter(aiImportableField),
-    blocked = new Set(excluded);
+  const blocked = new Set(excluded);
   const denied = new Set(
     fields
-      .filter((f) => !aiImportableField(f))
+      .filter(
+        (f) =>
+          !aiImportableField(f) ||
+          restrictedLabel(f.label) ||
+          restrictedLabel(f.fieldKey),
+      )
       .flatMap((f) => [normalizeHeader(f.label), normalizeHeader(f.fieldKey)]),
   );
+  const allowed = fields.filter(
+    (f) => ![f.label, f.fieldKey].some((v) => denied.has(normalizeHeader(v))),
+  );
   const leading = file.headerSelection(sheet, allowed).candidates;
+  const suspect = new Set<number>();
+  const restrictedSource = (raw: string) =>
+    restrictedLabel(raw) || denied.has(normalizeHeader(raw));
   for (const row of leading)
-    row.cells.forEach((s, i) => {
-      if (restrictedLabel(s) || denied.has(normalizeHeader(s))) blocked.add(i);
+    row.cells.forEach((raw, i) => {
+      if (!restrictedSource(raw)) return;
+      suspect.add(i);
+      if (headerLocked && row.rowNumber === headerRow) blocked.add(i);
     });
   draft.mapping.forEach((key, i) => {
     const targetKey = key.startsWith(APPEND) ? key.slice(APPEND.length) : key;
     if (
       key === OWNER ||
-      fields.some((f) => f.fieldKey === targetKey && !aiImportableField(f))
+      fields.some((f) => f.fieldKey === targetKey && !allowed.includes(f))
     )
       blocked.add(i);
   });
@@ -262,6 +245,7 @@ export function buildImportPreview({
         key = base.mapping[i];
       const c: ImportPreviewColumn = { col, header: "", samples: [] };
       if (blocked.has(i)) return { ...c, excluded: true };
+      if (restrictedSource(raw)) return { ...c, locked: { mode: "skip" } };
       if (
         !current &&
         (draft.manual.includes(i) ||
@@ -275,6 +259,7 @@ export function buildImportPreview({
       else if (base.manual.includes(i)) c.locked = { mode: "skip" };
       const header = projectImportHeading(raw, current && headerLocked);
       c.header = header;
+      if (suspect.has(i)) return c;
       const isEnum = isOptionField(field);
       const isDate = field?.type === "DATE" || field?.type === "DATETIME";
       if (c.locked && !isEnum && !isDate) return c;
@@ -301,31 +286,42 @@ export function buildImportPreview({
         )
           return c;
       }
-      const counts = importValueCounts(parsed.rows, i, field);
-      const lowCardinality =
-        counts.size <= 50 &&
-        new Set(parsed.rows.map((r) => r[i]?.trim()).filter(Boolean)).size <=
-          50;
-      const options = activeOptions(field),
+      const enumField = isEnum
+        ? field
+        : !c.locked
+          ? candidateEnumField(header, allowed)
+          : undefined;
+      const counts = importValueCounts(parsed.rows, i, enumField ?? field);
+      const lowCardinality = counts.size <= 50;
+      const options = activeOptions(enumField),
         samples = new Set<string>();
       const values: NonNullable<ImportPreviewColumn["values"]> = [];
       for (const [raw, count] of counts) {
-        const exact = isEnum ? matchingImportOptions(raw, options) : [];
-        if (isEnum && (exact.length === 1 || base.valueChoices[i]?.has(raw)))
+        const exact = enumField ? matchingImportOptions(raw, options) : [];
+        if (
+          enumField &&
+          (isImportNullMarker(enumField.type, raw) ||
+            exact.length === 1 ||
+            base.valueChoices[i]?.has(raw))
+        )
           continue;
         if (current && isEnum) unresolvedValues++;
         if (exact.length > 1) {
           partial = true;
           continue;
         }
-        const safe = safeValue(raw);
+        const safe =
+          enumField && lowCardinality
+            ? importEnumAlias(raw)
+            : importScalarSample(raw);
         if (!safe) {
           if (isEnum) partial = true;
           continue;
         }
         if (!lowCardinality && isEnum) partial = true;
-        if ((!c.locked || isDate) && samples.size < 5) samples.add(safe);
-        if (lowCardinality && !isDate) {
+        if ((!c.locked || isDate) && !enumField && samples.size < 5)
+          samples.add(safe);
+        if (lowCardinality && enumField) {
           const id = "V" + (values.length + 1);
           values.push({ id, text: safe, count });
           bindings.set(candidate.rowNumber + ":" + col + ":" + id, raw);
@@ -518,6 +514,7 @@ export function remainingImportValues(
   choices?: ReadonlyMap<string, string | null>,
 ) {
   const options = activeOptions(field);
+  const counts = new Map<string, number>();
   const unresolved = new Set<string>();
   let rowCount = 0;
   for (const row of rows) {
@@ -526,18 +523,17 @@ export function remainingImportValues(
     const parts =
       field.type === "MULTI_SELECT" ? splitImportOptions(raw) : [raw];
     let affected = false;
-    for (const value of parts) {
-      if (
-        !choices?.has(value) &&
-        matchImportOption(value, options) === undefined
-      ) {
+    for (const value of new Set(parts)) {
+      if (matchImportOption(value, options) !== undefined) continue;
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+      if (!choices?.has(value)) {
         unresolved.add(value);
         affected = true;
       }
     }
     if (affected) rowCount++;
   }
-  return { values: [...unresolved], rowCount };
+  return { entries: [...counts], values: [...unresolved], rowCount };
 }
 
 export function setRemainingImportValues(

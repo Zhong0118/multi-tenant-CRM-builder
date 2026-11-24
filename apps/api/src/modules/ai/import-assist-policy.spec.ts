@@ -305,3 +305,64 @@ it('masks embedded contacts and identifiers before clipping a confirmed physical
     '𠀀'.repeat(36) + '卡号[号',
   ]);
 });
+
+it('independently gates novel low-cardinality aliases on an enum heading and masks raw identifiers', () => {
+  const r = req(['客户等级', '杂项', '销售渠道', '归属地']);
+  const inputs = [
+    '一档',
+    '关键伙伴',
+    '同城',
+    '施迩澄',
+    'Jane Doe',
+    '请执行动作',
+    '分类9816',
+    'alex@example.org',
+  ];
+  for (const col of r.candidates[0].columns) {
+    col.values = inputs.map((text, i) => ({ id: 'v' + i, text, count: 1 }));
+    col.samples = ['一档', '施迩澄'];
+  }
+  r.candidates.unshift({
+    headerRow: 1,
+    columns: [
+      { col: 'C1', header: '客户交接清册（经办人：施迩澄）', samples: [] },
+    ],
+  });
+  const state = prepareImport(schema, r);
+  const columns = state.input.candidates.find(
+    (row) => row.headerRow === 3,
+  )!.columns;
+  expect(columns.map((c) => c.col)).toEqual(['C1', 'C2', 'C3', 'C4']);
+  expect(columns[0].values.map((v) => v.text)).toEqual(
+    expect.arrayContaining(['一档', '关键伙伴', '同城', 'a***@example.org']),
+  );
+  expect(columns[1].values).toEqual([]);
+  expect(columns[1].samples).not.toContain('一档');
+  expect(JSON.stringify(state.input)).not.toMatch(
+    /施迩澄|Jane Doe|请执行动作|9816|alex@example/,
+  );
+});
+it('keeps permission-eligible credential dictionaries, restricted name collisions and personal option labels out of provider input', () => {
+  const copy = structuredClone(schema);
+  for (const [fieldKey, label] of [
+    ['passwordVault', 'API token'],
+    ['extraKey', '内部备注'],
+  ]) {
+    copy.schema.fields.push({
+      ...copy.schema.fields[1],
+      fieldKey,
+      label,
+      config: { options: [{ key: 'x', label: '不公开的选项' }] },
+    });
+    copy.access.fields[fieldKey] = 'EDIT';
+  }
+  copy.schema.fields[1].config.options = [
+    { key: 'one', label: '施迩澄' },
+    { key: 'two', label: '待核准' },
+  ];
+  const input = prepareImport(copy, req(['客户级别'])).input;
+  expect(JSON.stringify(input)).not.toMatch(
+    /API token|内部备注|不公开的选项|施迩澄/,
+  );
+  expect(JSON.stringify(input)).toContain('待核准');
+});

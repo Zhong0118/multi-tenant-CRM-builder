@@ -21414,6 +21414,15 @@
                           },
                           "maxItems": 10,
                           "type": "array"
+                        },
+                        "rows": {
+                          "items": {
+                            "maximum": 10,
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "maxItems": 10,
+                          "type": "array"
                         }
                       },
                       "required": ["col", "hashes"],

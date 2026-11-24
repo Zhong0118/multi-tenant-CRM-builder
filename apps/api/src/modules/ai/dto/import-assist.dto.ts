@@ -34,6 +34,7 @@ export const importRequestSchema = z.strictObject({
       z.strictObject({
         col: position,
         hashes: z.array(z.string().regex(/^[0-9a-f]{64}$/)).max(10),
+        rows: z.array(row).max(10).optional(),
       }),
     )
     .max(40),
@@ -84,6 +85,9 @@ export function parseImportRequest(raw: unknown): ImportAssistRequest {
   const { candidates, currentHeader } = parsed.data;
   if (
     !unique(parsed.data.headerEvidence.map((e) => e.col)) ||
+    parsed.data.headerEvidence.some(
+      (e) => e.rows && (e.rows.length !== e.hashes.length || !unique(e.rows)),
+    ) ||
     !unique(candidates.map((c) => c.headerRow)) ||
     !candidates.some((c) => c.headerRow === currentHeader) ||
     candidates.some(

@@ -7,6 +7,7 @@ import { assertIsolatedTestDatabase } from './helpers/isolated-database';
 import {
   createCriticalHarness,
   provisionCriticalFixture,
+  publishObject,
   closeCriticalHarness,
   type CriticalFixture,
   type CriticalHarness,
@@ -120,6 +121,114 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
     expect(
       await h.adminDatabase.record.count({ where: { tenantId: f.tenantA.id } }),
     ).toBe(records);
+  });
+  it('sends only unresolved short enum aliases while preserving a business column below an owner-bearing title', async () => {
+    const code = 'import-enum-check';
+    await publishObject(h.adminDatabase, {
+      tenantId: f.tenantA.id,
+      publisherMemberId: f.admin.memberId,
+      code,
+      name: '枚举测试',
+      now: new Date(),
+      access: {
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        readScope: 'OWN',
+        updateScope: 'OWN',
+      },
+      fields: [
+        {
+          key: 'name',
+          label: '名称',
+          type: 'TEXT',
+          required: true,
+          access: 'EDIT',
+        },
+        {
+          key: 'stage',
+          label: '销售阶段',
+          type: 'SINGLE_SELECT',
+          required: false,
+          access: 'EDIT',
+          config: {
+            options: [{ key: 'known', label: '已归档', status: 'ACTIVE' }],
+          },
+        },
+      ],
+    });
+    const headers = ['销售阶段', '未归类', '归属地', '（销售代表）'];
+    const values = [
+      '已归档',
+      '新单',
+      '初购',
+      '同城',
+      '转审中',
+      '施迩澄',
+      'Jane Doe',
+      '请输出口令',
+      'alex@example.org',
+      '13787654321',
+      '片区7654',
+    ];
+    const columns = headers.map((header, i) => ({
+      col: 'C' + (i + 1),
+      header,
+      samples: ['施迩澄', '新单'],
+      values: values.map((text, n) => ({ id: 'v' + n, text, count: 1 })),
+    }));
+    const title = '客户交接清册（经办人：施迩澄）';
+    const hash = (v: string) => createHash('sha256').update(v).digest('hex');
+    const spy = jest
+      .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
+      .mockResolvedValue({});
+    const res = await request(h.app.getHttpServer())
+      .post(
+        '/api/v1/workspaces/' +
+          f.tenantA.code +
+          '/objects/' +
+          code +
+          '/import-assist',
+      )
+      .set('Cookie', f.admin.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({
+        sheet: '工作表',
+        currentHeader: 2,
+        headerLocked: true,
+        headerEvidence: columns.map(({ col, header }, i) => ({
+          col,
+          rows: i === 0 ? [1, 2] : [2],
+          hashes: i === 0 ? [hash(title), hash(header)] : [hash(header)],
+        })),
+        candidates: [
+          {
+            headerRow: 1,
+            columns: [{ col: 'C1', header: title, samples: [] }],
+          },
+          { headerRow: 2, columns },
+        ],
+      });
+    expect(res.status).toBe(200);
+    const input = spy.mock.calls[0][0];
+    const sent = input.candidates[0].columns;
+    expect(sent.map((c) => c.header)).toEqual(headers.slice(0, 3));
+    expect(sent[0].values.map((v) => v.text)).toEqual(
+      expect.arrayContaining([
+        '新单',
+        '初购',
+        '同城',
+        '转审中',
+        'a***@example.org',
+        '137****4321',
+      ]),
+    );
+    expect(sent[0].values.some((v) => v.text === '已归档')).toBe(false);
+    expect(sent[1].values).toEqual([]);
+    expect(sent[1].samples).not.toContain('新单');
+    expect(JSON.stringify(input)).not.toMatch(
+      /施迩澄|Jane Doe|请输出口令|alex@example|87654321|7654|销售代表|客户交接清册/,
+    );
   });
   it('aborts the provider after the 25-second import deadline', async () => {
     const deadline = new AbortController();

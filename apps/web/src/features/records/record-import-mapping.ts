@@ -1,3 +1,4 @@
+import { ownerHeading } from "@crm/contracts/import-heading";
 import {
   selectOptions,
   type PublishedFieldView,
@@ -17,10 +18,7 @@ import type {
 export const SKIP = ":skip";
 export const OWNER = ":owner";
 export const APPEND = ":append:";
-export const ownerHeader = (header: string) =>
-  /负责人|跟进人|销售|业务员|归属/.test(
-    header.normalize("NFKC").replace(/\s/g, ""),
-  );
+export const ownerHeader = ownerHeading;
 export function initialMapping(
   headers: string[],
   fields: PublishedFieldView[],

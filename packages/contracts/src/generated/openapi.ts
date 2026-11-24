@@ -11264,6 +11264,7 @@ export interface operations {
           headerEvidence: {
             col: string;
             hashes: string[];
+            rows?: number[];
           }[];
           headerLocked: boolean;
           sheet: string;
