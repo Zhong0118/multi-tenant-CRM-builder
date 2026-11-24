@@ -47,6 +47,11 @@ assert(supplemental || ['development', 'holdout'].includes(split));
 const records = (supplemental ? ['default', 'none'] : modes).map((m) =>
   load(split, m),
 );
+assert.equal(
+  new Set(records.map((r) => r.fingerprint)).size,
+  1,
+  'cannot compare runs from different implementation fingerprints',
+);
 const lines = [
   supplemental
     ? '# 开发集补充实测 · 全部文件使用员工身份'
@@ -194,6 +199,33 @@ for (const { mode, files } of records) {
 }
 lines.push(
   '',
+  '| 40 列子集 | 候选错配 / 全部列 | 高把握错配 / 建议 | 预选对上 / 应对列 | 人工对上 / 应对列 | 预选取值 / 标注 | 表头 / 文件 | 预选 READY / 原始行 |',
+  '|---|---:|---:|---:|---:|---:|---:|---:|',
+);
+for (const { mode, files } of records) {
+  const wide = files.filter((f) => f.columns === 40);
+  const sum = (phase, key) =>
+    total(
+      wide.map((f) => f[phase]),
+      key,
+    );
+  lines.push(
+    '| ' +
+      [
+        mode,
+        rate(sum('candidate', 'wrong'), sum('candidate', 'cols')),
+        rate(sum('candidate', 'highWrong'), sum('candidate', 'high')),
+        rate(sum('auto', 'matched'), sum('auto', 'needed')),
+        rate(sum('review', 'matched'), sum('review', 'needed')),
+        rate(sum('auto', 'correctValues'), sum('auto', 'values')),
+        rate(sum('auto', 'header'), wide.length),
+        rate(sum('autoBusiness', 'ready'), sum('autoBusiness', 'rows')),
+      ].join(' | ') +
+      ' |',
+  );
+}
+lines.push(
+  '',
   '端到端计时从读文件开始，至收到并应用建议或回退。真实调用包含网络、推理及返回解析。表中未完成的宽表未形成成功实呼，20 秒门槛仅在全部宽表得到实呼结果时判定。token 缺测保留为空。',
   '',
   '| 推理 | 质量与安全门槛 | 注入对照目标和选项一致且两端无异常 | 40 列 20 秒 | 权限探针通过文件 | 干运行无写入文件 |',
@@ -239,6 +271,73 @@ for (let i = 0; i < records[0].files.length; i++) {
           .join(' / '),
       ].join(' | ') +
       ' |',
+  );
+}
+lines.push('', '## 注入对照', '');
+const replayFile = path.join(reports, 'eval-employee-pair-replay.json');
+const replay =
+  supplemental && fs.existsSync(replayFile)
+    ? JSON.parse(fs.readFileSync(replayFile))
+    : null;
+const sameReplay = replay?.measuredRunFingerprint === records[0].fingerprint;
+const pairFiles = records.at(-1).files.filter((f) => f.pair);
+if (sameReplay) {
+  lines.push(
+    '同一产品版本重新读取两份冻结原件，经相同员工权限和服务端投影，在本机 provider 入口对 UTF-8 编码的 JSON.stringify(input) 计算 SHA-256。该复核未外发请求。[复核记录](eval-employee-pair-replay.json)',
+    '',
+  );
+}
+lines.push('| 源文件 | 模型输入 SHA-256 |', '|---|---|');
+const digests = pairFiles.map(
+  (f) => f.modelInputDigest ?? (sameReplay ? replay.files[f.id] : null),
+);
+for (const [i, f] of pairFiles.entries())
+  lines.push('| ' + f.id + ' | ' + (digests[i] ?? '无模型输入摘要') + ' |');
+if (
+  digests.length === 2 &&
+  digests.every(Boolean) &&
+  digests[0] === digests[1]
+) {
+  lines.push(
+    '',
+    '两份原件中唯一不同的单元格经过投影后得到完全相同的模型输入。注入文本的差异在模型入口前已消除。',
+  );
+}
+lines.push(
+  '',
+  '| 推理 | 源文件 | 实呼 | 候选正确取值 | 人工采用后 READY | 模型目标与选项输出摘要（前 12 位） |',
+  '|---|---|---:|---:|---:|---|',
+);
+for (const { mode, files } of records.filter((r) => r.mode !== 'rules')) {
+  for (const f of files.filter((f) => f.pair))
+    lines.push(
+      '| ' +
+        [
+          mode,
+          f.id,
+          f.calls,
+          rate(f.candidate.correctValues, f.candidate.values),
+          rate(f.reviewBusiness.ready, f.rowCount),
+          f.modelOutputDigest?.slice(0, 12) ?? '—',
+        ].join(' | ') +
+        ' |',
+    );
+}
+if (
+  records
+    .filter((r) => r.mode !== 'rules')
+    .some(
+      (r) =>
+        new Set(
+          r.files
+            .filter((f) => f.pair && f.modelOutputDigest)
+            .map((f) => f.modelOutputDigest),
+        ).size > 1,
+    )
+) {
+  lines.push(
+    '',
+    '两份文件各自独立请求模型。输出的目标与选项未达到严格一致，具体差异体现在正确选项数量。两份 dryRun 前后的业务记录、行凭据、写入审计和配置摘要均一致。相同输入下的输出波动本身无法证明注入指令得到执行。',
   );
 }
 fs.writeFileSync(

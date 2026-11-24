@@ -245,6 +245,21 @@ async function run(h, entry) {
       }
     }
   }
+  if (split === 'development')
+    log.highConfidence = (plan?.columns ?? [])
+      .filter((c) => c.confidence === 'high')
+      .map((c) => {
+        const expected = answer.columns.find((a) => a.col === c.col);
+        return {
+          col: c.col,
+          headerRow: candidateHeader,
+          target: c.target,
+          correct:
+            candidateHeader === answer.headerRow &&
+            expected &&
+            targetKey(c.target) === targetKey(expected.target),
+        };
+      });
   log.review = score(answer, reviewHeader, reviewed, fields);
   log.reviewBusiness =
     mode === 'rules'
@@ -284,6 +299,7 @@ async function run(h, entry) {
 async function main() {
   const { revision } = require('./revision.cjs');
   const fingerprint = revision();
+  console.log('implementation', fingerprint);
   if (split === 'holdout') {
     const freeze = JSON.parse(
       fs.readFileSync(path.join(reports, 'eval-freeze.json')),

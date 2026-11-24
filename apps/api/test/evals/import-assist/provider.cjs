@@ -83,6 +83,11 @@ function observedProvider(mode, answer, resolved, h, log) {
   return {
     async generateImportAssist(input, actor, signal) {
       log.entries++;
+      if (answer.pair)
+        log.modelInputDigest = require('node:crypto')
+          .createHash('sha256')
+          .update(JSON.stringify(input))
+          .digest('hex');
       assert.equal(log.entries, 1);
       log.privacy = guard(input, answer, resolved, h.actors);
       if (log.privacy.length) throw Error('PRIVACY_GATE');

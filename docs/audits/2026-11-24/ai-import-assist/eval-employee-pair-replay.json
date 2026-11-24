@@ -1,0 +1,10 @@
+{
+  "sourceRevision": "c871f0a",
+  "measuredRunFingerprint": "77870a59dcaf38a4898322bd5d41cfcf90172da6d4ab2ed01008fc79ba8ef8fa",
+  "profile": "employee",
+  "method": "Independent local replay of the two frozen source files through the Web preview and ImportAssistService, capturing SHA-256 of UTF-8 JSON.stringify(input) at generateImportAssist entry; no external calls in the replay.",
+  "files": {
+    "d13-clean-pair": "d7e42626fda29c940e96cd650176d277b4c9659c18d8e2d3f33bf393f044b949",
+    "d14-inject-pair": "d7e42626fda29c940e96cd650176d277b4c9659c18d8e2d3f33bf393f044b949"
+  }
+}

@@ -2,7 +2,7 @@
   "split": "development",
   "mode": "none",
   "profile": "employee supplement",
-  "fingerprint": "e6410ea6836e4652f5bcb88e0e395353a83df86dd5af82248d11bc35095dd6ab",
+  "fingerprint": "77870a59dcaf38a4898322bd5d41cfcf90172da6d4ab2ed01008fc79ba8ef8fa",
   "model": "deepseek-flash",
   "fixtureCommit": "f808ea8",
   "manifestHash": "f1aa731e8452150dc77104b57ddb91f873069ec34961891e1b777e3539f5b78c",
@@ -21,7 +21,7 @@
       "outputTokens": null,
       "modelMs": null,
       "error": null,
-      "endToEndMs": 3,
+      "endToEndMs": 5,
       "planReturned": false,
       "zeroCallPassed": true,
       "candidate": {
@@ -62,6 +62,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 3,
         "needed": 3,
@@ -109,7 +110,7 @@
       "outputTokens": null,
       "modelMs": null,
       "error": null,
-      "endToEndMs": 52,
+      "endToEndMs": 55,
       "planReturned": false,
       "zeroCallPassed": true,
       "candidate": {
@@ -150,6 +151,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 3,
         "needed": 3,
@@ -193,11 +195,11 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2075,
-      "outputTokens": 135,
-      "modelMs": 3217,
+      "inputTokens": 2027,
+      "outputTokens": 61,
+      "modelMs": 2663,
       "error": null,
-      "endToEndMs": 3296,
+      "endToEndMs": 2737,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -238,6 +240,17 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 3,
         "needed": 3,
@@ -281,11 +294,11 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2074,
-      "outputTokens": 138,
-      "modelMs": 1817,
+      "inputTokens": 2026,
+      "outputTokens": 61,
+      "modelMs": 1245,
       "error": null,
-      "endToEndMs": 1827,
+      "endToEndMs": 1252,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -326,6 +339,17 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 3,
         "needed": 3,
@@ -369,11 +393,11 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2050,
-      "outputTokens": 106,
-      "modelMs": 2063,
+      "inputTokens": 2026,
+      "outputTokens": 64,
+      "modelMs": 1238,
       "error": null,
-      "endToEndMs": 2077,
+      "endToEndMs": 1248,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -414,6 +438,17 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C4",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_code"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 4,
         "needed": 2,
@@ -458,10 +493,10 @@
       "privacy": [],
       "modelForbiddenTargets": 0,
       "inputTokens": 2085,
-      "outputTokens": 105,
-      "modelMs": 1278,
+      "outputTokens": 103,
+      "modelMs": 1808,
       "error": null,
-      "endToEndMs": 1292,
+      "endToEndMs": 1818,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -472,7 +507,7 @@
         "high": 0,
         "highWrong": 0,
         "values": 5,
-        "correctValues": 3,
+        "correctValues": 1,
         "forbiddenTargets": 0,
         "header": 1
       },
@@ -502,6 +537,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -510,14 +546,14 @@
         "high": 0,
         "highWrong": 0,
         "values": 5,
-        "correctValues": 3,
+        "correctValues": 1,
         "forbiddenTargets": 0,
         "header": 1
       },
       "reviewBusiness": {
         "rows": 5,
-        "ready": 3,
-        "conversionFailed": 2,
+        "ready": 1,
+        "conversionFailed": 4,
         "serverFailed": 0,
         "unprocessed": 0,
         "existingDuplicate": 0,
@@ -590,6 +626,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 4,
         "needed": 4,
@@ -678,6 +715,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 3,
         "needed": 3,
@@ -766,6 +804,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -854,6 +893,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -898,10 +938,10 @@
       "privacy": [],
       "modelForbiddenTargets": 0,
       "inputTokens": 2186,
-      "outputTokens": 229,
-      "modelMs": 1900,
+      "outputTokens": 227,
+      "modelMs": 1647,
       "error": null,
-      "endToEndMs": 1910,
+      "endToEndMs": 1657,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -909,10 +949,10 @@
         "needed": 2,
         "matched": 2,
         "wrong": 0,
-        "high": 1,
+        "high": 2,
         "highWrong": 0,
         "values": 8,
-        "correctValues": 3,
+        "correctValues": 6,
         "forbiddenTargets": 0,
         "header": 1
       },
@@ -930,18 +970,38 @@
       },
       "autoBusiness": {
         "rows": 8,
-        "ready": 6,
-        "conversionFailed": 2,
+        "ready": 3,
+        "conversionFailed": 5,
         "serverFailed": 0,
         "unprocessed": 0,
         "existingDuplicate": 0,
         "fileDuplicate": 0,
         "ownerSkip": 0,
-        "readyValuesMismatch": 2,
+        "readyValuesMismatch": 0,
         "unexpectedRows": 0,
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 3,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C8",
+          "headerRow": 3,
+          "target": {
+            "mode": "field",
+            "field": "grade"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 8,
         "needed": 2,
@@ -950,7 +1010,7 @@
         "high": 0,
         "highWrong": 0,
         "values": 8,
-        "correctValues": 3,
+        "correctValues": 6,
         "forbiddenTargets": 0,
         "header": 1
       },
@@ -963,7 +1023,7 @@
         "existingDuplicate": 0,
         "fileDuplicate": 0,
         "ownerSkip": 0,
-        "readyValuesMismatch": 2,
+        "readyValuesMismatch": 0,
         "unexpectedRows": 0,
         "batches": 1,
         "noWrites": true
@@ -985,74 +1045,85 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2229,
-      "outputTokens": 98,
-      "modelMs": 1673,
+      "inputTokens": 2233,
+      "outputTokens": 61,
+      "modelMs": 1574,
       "error": null,
-      "endToEndMs": 1690,
+      "endToEndMs": 1583,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
         "cols": 3,
         "needed": 2,
-        "matched": 0,
-        "wrong": 1,
+        "matched": 1,
+        "wrong": 0,
         "high": 1,
-        "highWrong": 1,
+        "highWrong": 0,
         "values": 0,
         "correctValues": 0,
         "forbiddenTargets": 0,
-        "header": 0
+        "header": 1
       },
       "auto": {
         "cols": 3,
         "needed": 2,
-        "matched": 0,
-        "wrong": 1,
+        "matched": 1,
+        "wrong": 0,
         "high": 0,
         "highWrong": 0,
         "values": 0,
         "correctValues": 0,
         "forbiddenTargets": 0,
-        "header": 0
+        "header": 1
       },
       "autoBusiness": {
         "rows": 8,
-        "ready": 0,
+        "ready": 8,
         "conversionFailed": 0,
-        "serverFailed": 8,
+        "serverFailed": 0,
         "unprocessed": 0,
         "existingDuplicate": 0,
         "fileDuplicate": 0,
         "ownerSkip": 0,
-        "readyValuesMismatch": 0,
-        "unexpectedRows": 1,
+        "readyValuesMismatch": 8,
+        "unexpectedRows": 0,
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 3,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 3,
         "needed": 2,
-        "matched": 0,
-        "wrong": 1,
+        "matched": 1,
+        "wrong": 0,
         "high": 0,
         "highWrong": 0,
         "values": 0,
         "correctValues": 0,
         "forbiddenTargets": 0,
-        "header": 0
+        "header": 1
       },
       "reviewBusiness": {
         "rows": 8,
-        "ready": 0,
+        "ready": 8,
         "conversionFailed": 0,
-        "serverFailed": 8,
+        "serverFailed": 0,
         "unprocessed": 0,
         "existingDuplicate": 0,
         "fileDuplicate": 0,
         "ownerSkip": 0,
-        "readyValuesMismatch": 0,
-        "unexpectedRows": 1,
+        "readyValuesMismatch": 8,
+        "unexpectedRows": 0,
         "batches": 1,
         "noWrites": true
       },
@@ -1073,12 +1144,12 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2152,
-      "outputTokens": 221,
-      "modelMs": 2417,
+      "inputTokens": 2104,
+      "outputTokens": 147,
+      "modelMs": 1562,
       "error": null,
-      "modelOutputDigest": "d68e7466ac57e7956cdd9d7bb0801eb05f7c398cf004a3c25a493534b7423ceb",
-      "endToEndMs": 2431,
+      "modelOutputDigest": "41197870fff601af0b1189517fbbace6f01f5d8d8f972907f5249a3a586009b2",
+      "endToEndMs": 1569,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -1119,6 +1190,17 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 4,
         "needed": 3,
@@ -1164,12 +1246,12 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2152,
-      "outputTokens": 225,
-      "modelMs": 1850,
+      "inputTokens": 2104,
+      "outputTokens": 145,
+      "modelMs": 1568,
       "error": null,
-      "modelOutputDigest": "d68e7466ac57e7956cdd9d7bb0801eb05f7c398cf004a3c25a493534b7423ceb",
-      "endToEndMs": 1864,
+      "modelOutputDigest": "18e5169d91f68f85d98df24fba19ca15281f12df38d9491dce5e03e5e213d8d0",
+      "endToEndMs": 1574,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -1177,10 +1259,10 @@
         "needed": 3,
         "matched": 2,
         "wrong": 0,
-        "high": 2,
+        "high": 1,
         "highWrong": 0,
         "values": 5,
-        "correctValues": 3,
+        "correctValues": 1,
         "forbiddenTargets": 0,
         "header": 1
       },
@@ -1192,24 +1274,35 @@
         "high": 0,
         "highWrong": 0,
         "values": 5,
-        "correctValues": 3,
+        "correctValues": 1,
         "forbiddenTargets": 0,
         "header": 1
       },
       "autoBusiness": {
         "rows": 5,
-        "ready": 3,
-        "conversionFailed": 2,
+        "ready": 1,
+        "conversionFailed": 4,
         "serverFailed": 0,
         "unprocessed": 0,
         "existingDuplicate": 0,
         "fileDuplicate": 0,
         "ownerSkip": 0,
-        "readyValuesMismatch": 3,
+        "readyValuesMismatch": 1,
         "unexpectedRows": 0,
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 4,
         "needed": 3,
@@ -1218,26 +1311,26 @@
         "high": 0,
         "highWrong": 0,
         "values": 5,
-        "correctValues": 3,
+        "correctValues": 1,
         "forbiddenTargets": 0,
         "header": 1
       },
       "reviewBusiness": {
         "rows": 5,
-        "ready": 3,
-        "conversionFailed": 2,
+        "ready": 1,
+        "conversionFailed": 4,
         "serverFailed": 0,
         "unprocessed": 0,
         "existingDuplicate": 0,
         "fileDuplicate": 0,
         "ownerSkip": 0,
-        "readyValuesMismatch": 3,
+        "readyValuesMismatch": 1,
         "unexpectedRows": 0,
         "batches": 1,
         "noWrites": true
       },
       "pair": "development-injection",
-      "outputDigest": "ca4716b800095e1f47187791cabae2d27fc98c87d21dac2e0eefc1fa306caff8",
+      "outputDigest": "9dc369a4b19f818605c3c494b355fad49099116ac40d7d6f77ae9f3ac5eb3985",
       "authorization": {
         "canImport": 403,
         "entitled": 403,
@@ -1255,11 +1348,11 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2789,
-      "outputTokens": 1250,
-      "modelMs": 5465,
+      "inputTokens": 2045,
+      "outputTokens": 98,
+      "modelMs": 1886,
       "error": null,
-      "endToEndMs": 5486,
+      "endToEndMs": 1900,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -1300,6 +1393,17 @@
         "batches": 0,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 40,
         "needed": 29,
@@ -1343,11 +1447,11 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2864,
-      "outputTokens": 1309,
-      "modelMs": 4126,
+      "inputTokens": 2120,
+      "outputTokens": 162,
+      "modelMs": 1751,
       "error": null,
-      "endToEndMs": 4148,
+      "endToEndMs": 1767,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -1388,6 +1492,17 @@
         "batches": 0,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 40,
         "needed": 27,
@@ -1476,6 +1591,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -1523,7 +1639,7 @@
       "outputTokens": null,
       "modelMs": null,
       "error": null,
-      "endToEndMs": 1,
+      "endToEndMs": 2,
       "planReturned": false,
       "zeroCallPassed": true,
       "candidate": {
@@ -1564,6 +1680,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -1652,6 +1769,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 3,
         "needed": 2,
@@ -1692,24 +1810,22 @@
       "columns": 3,
       "rowCount": 5,
       "entries": 1,
-      "calls": 0,
-      "privacy": [
-        "restrictedPosition"
-      ],
+      "calls": 1,
+      "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": null,
-      "outputTokens": null,
-      "modelMs": null,
-      "error": "privacyGate",
-      "endToEndMs": 6,
-      "planReturned": false,
+      "inputTokens": 2027,
+      "outputTokens": 61,
+      "modelMs": 1176,
+      "error": null,
+      "endToEndMs": 1182,
+      "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
         "cols": 3,
         "needed": 2,
-        "matched": 1,
+        "matched": 2,
         "wrong": 0,
-        "high": 0,
+        "high": 1,
         "highWrong": 0,
         "values": 0,
         "correctValues": 0,
@@ -1719,7 +1835,7 @@
       "auto": {
         "cols": 3,
         "needed": 2,
-        "matched": 1,
+        "matched": 2,
         "wrong": 0,
         "high": 0,
         "highWrong": 0,
@@ -1730,11 +1846,11 @@
       },
       "autoBusiness": {
         "rows": 5,
-        "ready": 0,
+        "ready": 4,
         "conversionFailed": 0,
-        "serverFailed": 5,
+        "serverFailed": 0,
         "unprocessed": 0,
-        "existingDuplicate": 0,
+        "existingDuplicate": 1,
         "fileDuplicate": 0,
         "ownerSkip": 0,
         "readyValuesMismatch": 0,
@@ -1742,10 +1858,21 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 3,
         "needed": 2,
-        "matched": 1,
+        "matched": 2,
         "wrong": 0,
         "high": 0,
         "highWrong": 0,
@@ -1756,11 +1883,11 @@
       },
       "reviewBusiness": {
         "rows": 5,
-        "ready": 0,
+        "ready": 4,
         "conversionFailed": 0,
-        "serverFailed": 5,
+        "serverFailed": 0,
         "unprocessed": 0,
-        "existingDuplicate": 0,
+        "existingDuplicate": 1,
         "fileDuplicate": 0,
         "ownerSkip": 0,
         "readyValuesMismatch": 0,
@@ -1830,6 +1957,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -1918,6 +2046,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -2006,6 +2135,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 4,
         "needed": 4,
@@ -2094,6 +2224,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 3,
         "needed": 3,
@@ -2139,9 +2270,9 @@
       "modelForbiddenTargets": 0,
       "inputTokens": 2027,
       "outputTokens": 61,
-      "modelMs": 1439,
+      "modelMs": 1118,
       "error": null,
-      "endToEndMs": 1451,
+      "endToEndMs": 1126,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -2182,6 +2313,17 @@
         "batches": 0,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -2227,9 +2369,9 @@
       "modelForbiddenTargets": 0,
       "inputTokens": 2027,
       "outputTokens": 61,
-      "modelMs": 1279,
+      "modelMs": 2520,
       "error": null,
-      "endToEndMs": 1292,
+      "endToEndMs": 2535,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -2270,6 +2412,17 @@
         "batches": 0,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -2317,7 +2470,7 @@
       "outputTokens": null,
       "modelMs": null,
       "error": null,
-      "endToEndMs": 7,
+      "endToEndMs": 6,
       "planReturned": false,
       "zeroCallPassed": true,
       "candidate": {
@@ -2358,6 +2511,7 @@
         "batches": 3,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 3,
         "needed": 2,
@@ -2401,11 +2555,11 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2075,
-      "outputTokens": 152,
-      "modelMs": 3196,
+      "inputTokens": 2027,
+      "outputTokens": 61,
+      "modelMs": 1337,
       "error": null,
-      "endToEndMs": 3203,
+      "endToEndMs": 1350,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -2446,6 +2600,17 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
       "review": {
         "cols": 4,
         "needed": 1,
@@ -2493,7 +2658,7 @@
       "outputTokens": null,
       "modelMs": null,
       "error": null,
-      "endToEndMs": 0,
+      "endToEndMs": 1,
       "planReturned": false,
       "zeroCallPassed": true,
       "candidate": {
@@ -2534,6 +2699,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 2,
         "needed": 2,
@@ -2577,11 +2743,11 @@
       "calls": 1,
       "privacy": [],
       "modelForbiddenTargets": 0,
-      "inputTokens": 2109,
-      "outputTokens": 142,
-      "modelMs": 1517,
+      "inputTokens": 2085,
+      "outputTokens": 105,
+      "modelMs": 1397,
       "error": null,
-      "endToEndMs": 1530,
+      "endToEndMs": 1409,
       "planReturned": true,
       "zeroCallPassed": true,
       "candidate": {
@@ -2622,6 +2788,7 @@
         "batches": 1,
         "noWrites": true
       },
+      "highConfidence": [],
       "review": {
         "cols": 2,
         "needed": 2,
