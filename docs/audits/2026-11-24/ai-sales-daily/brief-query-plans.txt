@@ -287,4 +287,3 @@ Planning:
   Buffers: shared hit=3
 Planning Time: 0.958 ms
 Execution Time: 45.274 ms
-
