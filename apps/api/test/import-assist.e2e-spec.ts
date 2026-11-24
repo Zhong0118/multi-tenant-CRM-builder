@@ -135,6 +135,50 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it('lets the admin explicitly import both manual-only fields through the ordinary import path', async () => {
+    const url = '/api/v1/workspaces/' + f.tenantA.code + '/objects/leads';
+    const schema = await request(h.app.getHttpServer())
+      .get(url + '/schema')
+      .set('Cookie', f.admin.cookie)
+      .expect(200);
+    expect(schema.body.fields).toEqual(
+      expect.arrayContaining(
+        ['secret', 'reviewCode'].map((fieldKey) =>
+          expect.objectContaining({
+            fieldKey,
+            access: 'EDIT',
+            importManualOnly: true,
+          }),
+        ),
+      ),
+    );
+    const send = jest.spyOn(
+      MeteredFakeProvider.prototype,
+      'generateImportAssist',
+    );
+    const result = await request(h.app.getHttpServer())
+      .post(url + '/records/import')
+      .set('Cookie', f.admin.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({
+        dryRun: true,
+        rows: [
+          {
+            rowNumber: 2,
+            values: {
+              name: '验收-仅限手动',
+              secret: '本地备注',
+              reviewCode: '手动编号',
+            },
+          },
+        ],
+      })
+      .expect(201);
+    expect(result.body.items).toMatchObject([
+      { rowNumber: 2, status: 'READY' },
+    ]);
+    expect(send).not.toHaveBeenCalled();
+  });
   it('skips generation for resolved columns, rejects malformed input and cross-tenant actors', async () => {
     const generate = jest.spyOn(
       MeteredFakeProvider.prototype,
