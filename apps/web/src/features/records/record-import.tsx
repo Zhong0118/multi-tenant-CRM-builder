@@ -32,6 +32,7 @@ import {
   readImportFile,
   importBatchId,
   importFailureCsv,
+  importRowError,
   type ImportFile,
 } from "./record-import-file";
 import { summarizeImport } from "./record-import-batches";
@@ -115,6 +116,26 @@ export function RecordImportDrawer({
   }, []);
   const fileInput = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<ParsedCsv>();
+  const sheetSummary = useMemo(() => {
+    if (!parsed) return;
+    const occurrences = new Map<string, number>();
+    const samples = parsed.headers.map(() => new Set<string>());
+    for (const row of parsed.rows) {
+      const key = JSON.stringify(row);
+      occurrences.set(key, (occurrences.get(key) ?? 0) + 1);
+      row.forEach((value, column) => {
+        if (value && samples[column].size < 3) samples[column].add(value);
+      });
+    }
+    let duplicateRows = 0;
+    for (const count of occurrences.values()) {
+      if (count > 1) duplicateRows += count;
+    }
+    return {
+      duplicateRows,
+      samples: samples.map((values) => [...values].join(" · ")),
+    };
+  }, [parsed]);
   const [mapping, setMapping] = useState<string[]>([]);
   const [parseError, setParseError] = useState<string>();
   const [summary, setSummary] = useState<string>();
@@ -204,6 +225,9 @@ export function RecordImportDrawer({
     matchableFields.some(({ field }) => field.fieldKey === key),
   );
 
+  const recommendedMatch = matchableFields.find(
+    ({ field }) => field.type === "PHONE" || /编号|编码/.test(field.label),
+  )?.field;
   const duplicateFields = mappedFields.filter(
     (item, index) =>
       mappedFields.findIndex(
@@ -451,9 +475,12 @@ export function RecordImportDrawer({
   function downloadFailures() {
     if (!parsed || !displayedResult) return;
     const url = URL.createObjectURL(
-      new Blob([importFailureCsv(parsed, displayedResult.items)], {
-        type: "text/csv;charset=utf-8",
-      }),
+      new Blob(
+        [importFailureCsv(parsed, displayedResult.items, schema.fields)],
+        {
+          type: "text/csv;charset=utf-8",
+        },
+      ),
     );
     const link = document.createElement("a");
     link.href = url;
@@ -739,11 +766,7 @@ export function RecordImportDrawer({
                   <div>
                     <strong>{label}</strong>
                     <div className={importStyles.example}>
-                      {parsed.rows
-                        .slice(0, 3)
-                        .map((row) => row[index])
-                        .filter(Boolean)
-                        .join(" · ")}
+                      {sheetSummary?.samples[index]}
                     </div>
                   </div>
                   <div>
@@ -875,6 +898,13 @@ export function RecordImportDrawer({
               }}
             />
           </label>
+          {!!sheetSummary?.duplicateRows && (
+            <Alert
+              type="warning"
+              showIcon
+              title={`文件中有 ${sheetSummary.duplicateRows} 行与其他行完全相同${recommendedMatch ? "，建议使用「" + recommendedMatch.label + "」查重" : ""}`}
+            />
+          )}
           <Typography.Paragraph type="secondary">
             {matchFields.length
               ? "所选字段全部相同时跳过。查重字段不能为空；按当前账号可见的数据查重，文件内重复也会跳过。"
@@ -890,18 +920,7 @@ export function RecordImportDrawer({
             .slice(0, 50)
             .map((item) => (
               <li key={item.rowNumber}>
-                第 {item.rowNumber} 行：
-                {item.error?.fields?.length
-                  ? `${item.error.fields
-                      .map(
-                        (fieldKey) =>
-                          schema.fields.find(
-                            (field) => field.fieldKey === fieldKey,
-                          )?.label ?? fieldKey,
-                      )
-                      .join("、")}：`
-                  : ""}
-                {item.error?.message ?? "导入失败"}
+                {importRowError(item, schema.fields)}
               </li>
             ))}
         </ul>

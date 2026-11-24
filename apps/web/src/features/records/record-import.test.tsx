@@ -143,6 +143,72 @@ async function checkAndImport() {
   fireEvent.click(await screen.findByRole("button", { name: /确认导入/ }));
 }
 describe("RecordImportDrawer", () => {
+  it("lists every conversion error on the physical source row", async () => {
+    const { api } = setup(recordApi(), {
+      ...schema,
+      fields: [
+        ...schema.fields,
+        {
+          ...schema.fields[0],
+          label: "预计金额",
+          fieldKey: "amount",
+          type: "MONEY",
+        },
+        {
+          ...schema.fields[0],
+          label: "预计成交日",
+          fieldKey: "close",
+          type: "DATE",
+        },
+      ],
+    });
+    chooseFile(
+      "名单\n\n姓名,预计金额,线索状态,预计成交日\n\n\n张三,十二万,未知阶段,2024-02-30",
+    );
+    await screen.findByText("1 行 · 4 列");
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    await screen.findByText(
+      "第 6 行：预计金额：数值格式无效，请检查符号、千分位和单位；线索状态：取值未对应唯一选项；预计成交日：日期无效",
+    );
+    expect(api.importRows).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["PHONE", "联系电话"],
+    ["TEXT", "客户编号"],
+  ] as const)(
+    "warns about whole-row duplicates and suggests the mapped %s without selecting it",
+    async (type, label) => {
+      const { api } = setup(recordApi(), {
+        ...schema,
+        fields: [
+          ...schema.fields,
+          { ...schema.fields[0], type, label, fieldKey: "identifier" },
+        ],
+      });
+      chooseFile(`姓名,${label},来源\n甲,001,展会\n甲,001,展会\n甲,001,转介`);
+      await screen.findByText(/文件中有 2 行与其他行完全相同/);
+      expect(
+        screen.getByText(new RegExp("建议使用「" + label + "」查重")),
+      ).toBeVisible();
+      fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+      await waitFor(() => expect(api.importRows).toHaveBeenCalled());
+      expect(
+        vi.mocked(api.importRows).mock.calls[0][2].matchFields ?? [],
+      ).toEqual([]);
+      expect(vi.mocked(api.importRows).mock.calls[0][2].rows).toHaveLength(3);
+      chooseFile("姓名\n甲\n乙");
+      await screen.findByText("2 行 · 1 列");
+      expect(screen.queryByText(/与其他行完全相同/)).toBeNull();
+    },
+  );
+
+  it("shows the first three distinct nonempty samples even after repeated or blank cells", async () => {
+    setup();
+    chooseFile("姓名,等级\n一,\n二,A级\n三,B级\n四,A级\n五,C级\n六,D级");
+    expect(await screen.findByText("A级 · B级 · C级")).toBeVisible();
+  });
+
   it("keeps a visible filename on cancel and reads a reselected file with the same name", async () => {
     const { api } = setup();
     expect(

@@ -344,9 +344,10 @@ describe("record file import", () => {
           },
         },
       ],
+      [{ fieldKey: "name", label: "姓名" }],
     );
     expect(csv).toContain("\uFEFF");
-    expect(csv).toContain("格式不正确");
+    expect(csv).toContain("第 2 行：姓名：格式不正确");
     expect(csv).toContain("'=CMD()");
     expect(csv).not.toContain("正常");
   });

@@ -264,9 +264,20 @@ export async function importBatchId(
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+export function importRowError(
+  item: RecordImportResultItem,
+  fields: MatchFields,
+): string {
+  const labels = item.error?.fields?.map(
+    (key) => fields.find((field) => field.fieldKey === key)?.label ?? key,
+  );
+  return `第 ${item.rowNumber} 行：${labels?.length ? labels.join("、") + "：" : ""}${item.error?.message ?? "导入失败"}`;
+}
+
 export function importFailureCsv(
   sheet: ParsedCsv,
   items: RecordImportResultItem[],
+  fields: MatchFields,
 ): string {
   const byNumber = new Map(
     sheet.rows.map((row, i) => [sheet.rowNumbers?.[i] ?? i + 2, row]),
@@ -277,7 +288,7 @@ export function importFailureCsv(
       .filter((item) => item.status === "FAILED")
       .map((item) => [
         String(item.rowNumber),
-        item.error?.message ?? "导入失败",
+        importRowError(item, fields),
         ...(byNumber.get(item.rowNumber) ?? []),
       ]),
   ];

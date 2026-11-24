@@ -51,6 +51,7 @@ export function buildImportRows(input: {
       destination: destination(row),
     };
     if (planned.destination.kind === "skip") return planned;
+    const errors: string[] = [];
     for (const [column, key] of mapping.entries()) {
       const field = fields.get(key);
       if (!field) continue;
@@ -62,13 +63,17 @@ export function buildImportRows(input: {
           { timeZone, dateOrder: dateOrders[column] },
         );
       } catch (e) {
-        planned.error = {
-          code: "RECORD_IMPORT_INVALID",
-          fields: [key],
-          message: e instanceof Error ? e.message : "字段值无效",
-        };
-        return planned;
+        errors.push(
+          `${field.label}：${e instanceof Error ? e.message : "字段值无效"}`,
+        );
       }
+    }
+    if (errors.length) {
+      planned.error = {
+        code: "RECORD_IMPORT_INVALID",
+        message: errors.join("；"),
+      };
+      return planned;
     }
     for (const [column, target] of mapping.entries()) {
       if (!target.startsWith(APPEND)) continue;
