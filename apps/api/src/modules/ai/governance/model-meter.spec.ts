@@ -156,3 +156,15 @@ it('releases a failed physical HTTP attempt before the SDK retries', async () =>
     network.mockRestore();
   }
 });
+
+it('settles a lost business lease as unsent before dispatch', async () => {
+  const { meter, ledger } = fixture();
+  meter.onSend = () => Promise.reject(new Error('expired lease'));
+  await expect(
+    meter.fetch('https://example.com/v1', { method: 'POST', body: '{}' }),
+  ).rejects.toThrow('expired lease');
+  expect(ledger.settle).toHaveBeenCalledWith(
+    actor,
+    expect.objectContaining({ status: 'unsent' }),
+  );
+});

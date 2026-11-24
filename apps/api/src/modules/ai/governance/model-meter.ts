@@ -153,6 +153,11 @@ export class ModelMeter {
     await this.begin(init.body, signal);
     try {
       await this.onSend?.();
+    } catch (error) {
+      await this.finish('unsent');
+      throw error;
+    }
+    try {
       const response = await modelFetch(url, init);
       if (!response.ok) await this.finish('failed');
       return response;
