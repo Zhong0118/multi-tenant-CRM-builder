@@ -153,6 +153,16 @@ function coerceDecimal(
   type: "NUMBER" | "MONEY",
   bareUnit?: "yuan" | "wan",
 ) {
+  // Excel may stringify small or large numeric cells in scientific notation.
+  let exponent = "";
+  if (type === "NUMBER") {
+    const plain = /^([+-]?)(\d+(?:\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.exec(value);
+    if (plain) {
+      const mantissa = plain[2].replace(/^\./, "0.").replace(/\.$/, "");
+      value = plain[1] + mantissa;
+      exponent = plain[3] ?? "";
+    }
+  }
   const match =
     /^([+-]?)([¥￥]?)([+-]?)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(亿元?|万元?|元)?$/.exec(
       value,
@@ -172,17 +182,20 @@ function coerceDecimal(
   const rest = fraction.slice(shift);
   const sign = firstSign === "-" || secondSign === "-" ? "-" : "";
   const decimal = sign + whole + (rest ? "." + rest : "");
-  const number = Number(decimal);
+  const number = Number(decimal + exponent);
   if (!Number.isFinite(number)) throw new Error("数值超出范围");
   if (type === "MONEY") return decimal;
 
   // JSON numbers retain only the digits in their shortest decimal representation.
   const digits = (whole + rest).replace(/^0+/, "");
   if (digits) {
-    const [mantissa, exponent] = Math.abs(number).toExponential().split("e");
-    const sourceExponent = digits.length - rest.length - 1;
+    const [mantissa, storedExponent] = Math.abs(number)
+      .toExponential()
+      .split("e");
+    const sourceExponent =
+      digits.length - rest.length - 1 + Number(exponent.slice(1));
     if (
-      Number(exponent) !== sourceExponent ||
+      Number(storedExponent) !== sourceExponent ||
       mantissa.replace(".", "").padEnd(digits.length, "0") !== digits
     ) {
       throw new Error("超出数值字段可保留的精度");

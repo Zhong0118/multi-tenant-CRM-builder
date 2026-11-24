@@ -322,6 +322,15 @@ describe("decimal imports", () => {
     );
   });
 
+  it("preserves exact scientific and fractional NUMBER inputs accepted by older imports", () => {
+    for (const value of ["1e5", "-1.25E-7", ".5", "1."]) {
+      expect(coerceImportValue("NUMBER", value, [])).toBe(Number(value));
+    }
+    for (const value of ["9.007199254740993e15", "1e-400", "1e999"])
+      expect(() => coerceImportValue("NUMBER", value, [])).toThrow();
+    expect(() => coerceImportValue("MONEY", "1e5", [])).toThrow();
+  });
+
   it("keeps exact money text and only scales bare inputs when requested", () => {
     expect(coerceImportValue("MONEY", "9007199254740993.12", [])).toBe(
       "9007199254740993.12",
@@ -338,7 +347,6 @@ describe("decimal imports", () => {
   it.each([
     "1,20",
     "12,34,567",
-    "1e5",
     "Infinity",
     "--1",
     "1.3.4",
