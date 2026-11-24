@@ -43,6 +43,7 @@ export type AiProviderEvent =
   | { type: 'FAILED'; code: string; message?: string };
 
 export interface AiProvider {
+  resolveText?(actor: TenantContext): Promise<AiProvider>;
   generateTableBlueprint?(
     input: import('./table-model').TableProviderInput,
     signal: AbortSignal,
@@ -111,16 +112,20 @@ export function createAiProvider(
   return new UnavailableAiProvider();
 }
 
-function loadVercelOpenAiProvider(
+export function loadVercelOpenAiProvider(
   apiKey: string,
   modelKey: string,
   baseURL?: string,
   meter?: ModelMeterFactory,
+  protocol?: 'responses' | 'chat',
+  providerKey?: string,
 ): AiProvider {
   const requireFromModule = createRequire(__filename);
   const loaded = requireFromModule('./providers/vercel-openai.provider') as {
     VercelOpenAiProvider: new (input: {
       meter?: ModelMeterFactory;
+      protocol?: 'responses' | 'chat';
+      providerKey?: string;
       apiKey: string;
       modelKey: string;
       baseURL?: string;
@@ -130,6 +135,8 @@ function loadVercelOpenAiProvider(
     apiKey,
     modelKey,
     meter,
+    protocol,
+    providerKey,
     ...(baseURL ? { baseURL } : {}),
   });
 }

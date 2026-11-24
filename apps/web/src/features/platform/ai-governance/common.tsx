@@ -12,15 +12,8 @@ export type Plan =
 export type Feature = Plan["features"][number];
 export type Summary =
   paths["/api/v1/platform/tenants/{id}/ai"]["get"]["responses"][200]["content"]["application/json"];
-export const names: Record<Feature, string> = {
-  assistant: "对话助手",
-  write_proposal: "AI 写入提议",
-  communication: "整理沟通",
-  filter: "一句话筛选",
-  table_builder: "AI 建表",
-};
-export const list = (features: Feature[]) =>
-  features.map((f) => names[f]).join("、") || "无";
+export const list = (features: Feature[], names: Record<string, string>) =>
+  features.map((f) => names[f] ?? f).join("、") || "无";
 export const quotaInputValue = (s: string) => {
   const n = BigInt(s);
   const fraction = (n % BigInt(10000))

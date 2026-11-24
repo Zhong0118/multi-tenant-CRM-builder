@@ -12,6 +12,7 @@ const governanceCodeList = [
   'AI_MEMBER_QUOTA_EXHAUSTED',
   'AI_REQUEST_BUDGET_INSUFFICIENT',
   'AI_BUDGET_RESERVED',
+  'AI_MODEL_CONTEXT_EXCEEDED',
   'RATE_LIMITED',
 ] as const;
 type GovernanceCode = (typeof governanceCodeList)[number];

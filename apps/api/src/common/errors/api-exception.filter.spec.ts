@@ -66,6 +66,29 @@ describe('ApiExceptionFilter', () => {
     error.mockRestore();
   });
 
+  it('keeps model-request parse errors and unexpected exceptions out of logs', () => {
+    const filter = new ApiExceptionFilter();
+    const log = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const secret = 'model-secret-test-sentinel';
+    try {
+      const invalid = Object.assign(new SyntaxError(secret), {
+        type: 'entity.parse.failed',
+        status: 400,
+      });
+      const bad = filter.toBody(invalid, 'req_model', true);
+      const failed = filter.toBody(new Error(secret), 'req_model', true);
+      expect(bad.status).toBe(400);
+      expect(failed.status).toBe(500);
+      expect(
+        JSON.stringify([bad, failed, log.mock.calls]).includes(secret),
+      ).toBe(false);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it('does not log an expected domain error', () => {
     const filter = new ApiExceptionFilter();
     const error = jest

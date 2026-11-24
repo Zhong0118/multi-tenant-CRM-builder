@@ -1,0 +1,3 @@
+// Fixed, locally rendered OCR fixture. Keep its answer out of the prompt.
+export const modelVisionFixture =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAABAAQAAAAC18EECAAAAAnRSTlMAAHaTzTgAAADfSURBVDjL7dI7bsQgEAbgsZDCFtFyg+Um5mJRwJuL4ZtwBEoKxJ/BDQ+7XUWKlo6PQcwDwsWiN74APTKRCQZFNnS2olNnXEkgd0jmwAVpxq8T8mNZOcSGhTSwJ+0RJtwmzDcF/FT0HX4yylqDG7Ec+GyYHhJFVfwYMTNupcO4coGcwFLuHRqBpFFEfkxokEXqMNilYpJp7XHjaEQVvxt6IkSLoMMZvQlEAwbL/e/REVlGPpkRZRlwQzCMYkDeGX9Mshux4Cw9Eoc15HtRn1ByO/YLVDvigPkK//rP/3v8BUlEWngo7tQLAAAAAElFTkSuQmCC';

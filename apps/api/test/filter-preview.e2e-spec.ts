@@ -1,6 +1,6 @@
 import { parsePublishedObjectSchema } from '../src/modules/objects/published-object.service';
 import request from 'supertest';
-import { AI_PROVIDER, type AiProvider } from '../src/modules/ai/ai-provider';
+import { MeteredFakeProvider } from '../src/modules/ai/providers/metered-fake.provider';
 import {
   createCriticalHarness,
   provisionCriticalFixture,
@@ -42,7 +42,7 @@ describe('one-sentence filter preview with tenant permissions', () => {
       .send({ text, currentRule, baseViewId });
   }
   it('preserves the request-time owner placeholder for two employees and omits hidden schema and row values', async () => {
-    const provider = h.app.get<AiProvider>(AI_PROVIDER);
+    const provider = MeteredFakeProvider.prototype;
     const generate = jest
       .spyOn(provider, 'generateFilter')
       .mockResolvedValue({ rules: [own] });
@@ -59,7 +59,7 @@ describe('one-sentence filter preview with tenant permissions', () => {
   });
   it('rejects hidden, unknown and team conditions both before generation and in a mixed set of candidates', async () => {
     const generate = jest.spyOn(
-      h.app.get<AiProvider>(AI_PROVIDER),
+      MeteredFakeProvider.prototype,
       'generateFilter',
     );
     for (const condition of [
@@ -103,7 +103,7 @@ describe('one-sentence filter preview with tenant permissions', () => {
       },
     });
     jest
-      .spyOn(h.app.get<AiProvider>(AI_PROVIDER), 'generateFilter')
+      .spyOn(MeteredFakeProvider.prototype, 'generateFilter')
       .mockImplementationOnce(async (input) => {
         expect(input.fields.map((f) => f.fieldKey)).toContain('reviewCode');
         await h.adminDatabase.memberFieldPermission.create({
@@ -143,7 +143,7 @@ describe('one-sentence filter preview with tenant permissions', () => {
   });
   it('preserves selected members through request-local handles without sending the roster', async () => {
     const generate = jest
-      .spyOn(h.app.get<AiProvider>(AI_PROVIDER), 'generateFilter')
+      .spyOn(MeteredFakeProvider.prototype, 'generateFilter')
       .mockImplementation((input) =>
         Promise.resolve({ rules: [input.currentRule] }),
       );
@@ -177,7 +177,7 @@ describe('one-sentence filter preview with tenant permissions', () => {
   });
   it('resolves a unique exact name from the request and rejects an entire mixed preview for missing or unauthorized names', async () => {
     const generate = jest.spyOn(
-      h.app.get<AiProvider>(AI_PROVIDER),
+      MeteredFakeProvider.prototype,
       'generateFilter',
     );
     generate.mockResolvedValueOnce({ rules: [ownerRule('Critical Other')] });
@@ -220,7 +220,7 @@ describe('one-sentence filter preview with tenant permissions', () => {
   });
   it('rejects duplicate effective names and rechecks carried members after generation', async () => {
     const generate = jest.spyOn(
-      h.app.get<AiProvider>(AI_PROVIDER),
+      MeteredFakeProvider.prototype,
       'generateFilter',
     );
     const target = { id: f.otherEmployee.memberId };
@@ -322,7 +322,7 @@ describe('one-sentence filter preview with tenant permissions', () => {
       conditions: [{ fieldKey: 'advisor', operator: 'in', value: [value] }],
     });
     const generate = jest.spyOn(
-      h.app.get<AiProvider>(AI_PROVIDER),
+      MeteredFakeProvider.prototype,
       'generateFilter',
     );
     const named = (name: string) =>
@@ -362,7 +362,7 @@ describe('one-sentence filter preview with tenant permissions', () => {
   });
   it('checks view ownership and object before generating', async () => {
     const generate = jest.spyOn(
-      h.app.get<AiProvider>(AI_PROVIDER),
+      MeteredFakeProvider.prototype,
       'generateFilter',
     );
     await preview(f.employee.cookie, empty, f.otherRecord.id).expect(404);

@@ -1,3 +1,8 @@
+import {
+  estimatePlanCost,
+  platformTextModel,
+  planUsageMix,
+} from './model-cost';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@crm/database';
@@ -16,6 +21,7 @@ import {
   platformUsage,
   type Tx,
 } from './admin-usage';
+import { featureCatalog, readCatalog } from './feature-catalog';
 type Plan = z.infer<typeof outputs.plan>;
 type Settings = z.infer<typeof outputs.settings>;
 type Edit = z.infer<typeof inputs.planEdit>;
@@ -41,11 +47,17 @@ async function settings(tx: Tx) {
 export function validatePlan(dto: Edit) {
   if (new Set(dto.features).size !== dto.features.length)
     invalid('套餐功能不能重复。');
-  if (
-    dto.features.includes('write_proposal') &&
-    !dto.features.includes('assistant')
-  )
-    invalid('AI 写入提议需要同时开通对话助手。');
+  for (const item of featureCatalog) {
+    if (!dto.features.includes(item.key)) continue;
+    if (!item.released) invalid(item.label + '即将上线，暂时不能加入套餐。');
+    if (item.requires && !dto.features.includes(item.requires))
+      invalid(
+        item.label +
+          '需要同时开通' +
+          featureCatalog.find((f) => f.key === item.requires)?.label +
+          '。',
+      );
+  }
 }
 async function assignable(tx: Tx, id: string | null) {
   if (!id) return null;
@@ -160,9 +172,21 @@ export class PlatformAiAdminService {
     });
   }
   list(user: string) {
-    return this.runner.withUser(user, (tx) =>
-      tx.$queryRaw<Plan[]>(Prisma.sql`${planSelect} ORDER BY p.name,p.id`),
-    );
+    return this.runner.withUser(user, async (tx) => {
+      const plans = await tx.$queryRaw<Plan[]>(
+        Prisma.sql`${planSelect} ORDER BY p.name,p.id`,
+      );
+      const price = await platformTextModel(tx);
+      const mix = new Map((await planUsageMix(tx)).map((row) => [row.id, row]));
+      return plans.map((plan) => ({
+        ...plan,
+        costEstimate: estimatePlanCost(
+          plan.monthlyTokens,
+          price,
+          mix.get(plan.id) ?? { input: '0', output: '0' },
+        ),
+      }));
+    });
   }
   plan(user: string, id: string) {
     return this.runner.withUser(user, (tx) => getPlan(tx, id));
@@ -237,8 +261,11 @@ export class PlatformAiAdminService {
   runtime(user: string) {
     return this.runner.withUser(user, async (tx) => {
       const s = await settings(tx);
-      const provider = this.config.get<string>('AI_PROVIDER') ?? null;
-      const model = this.config.get<string>('AI_MODEL') ?? null;
+      const active = await platformTextModel(tx);
+      const provider =
+        active?.provider ?? this.config.get<string>('AI_PROVIDER') ?? null;
+      const model =
+        active?.model ?? this.config.get<string>('AI_MODEL') ?? null;
       const test = this.config.get<string>('NODE_ENV') === 'test';
       const configured = test
         ? provider === 'fake'
@@ -256,9 +283,10 @@ export class PlatformAiAdminService {
         ...s,
         provider,
         model,
-        configured,
+        configured: !!active || configured,
         anomalies,
         affectedCompanies,
+        catalog: await readCatalog(tx),
       };
     });
   }

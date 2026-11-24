@@ -22,10 +22,11 @@ services:
       FIRST_ADMIN_PHONE: ${FIRST_ADMIN_PHONE:?Set the approved bootstrap phone}
       DATABASE_URL: ${DATABASE_URL:?Set the crm_app runtime URL}
       REDIS_URL: ${REDIS_URL:?Set the authenticated Redis URL}
-      AI_PROVIDER: ${AI_PROVIDER:-openai}
-      AI_MODEL: ${AI_MODEL:?Set AI_MODEL}
-      AI_API_KEY: ${AI_API_KEY:?Set AI_API_KEY}
+      AI_PROVIDER: ${AI_PROVIDER:-${AI_MODEL:+openai}}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
       AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL_KEYRING: ${AI_MODEL_KEYRING:-}
       AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-45000}
       SMS_PROVIDER: ${SMS_PROVIDER:?Set SMS_PROVIDER to tencent}
       TENCENT_SMS_SECRET_ID: ${TENCENT_SMS_SECRET_ID:?Set TENCENT_SMS_SECRET_ID}

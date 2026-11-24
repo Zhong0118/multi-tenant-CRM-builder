@@ -217,6 +217,7 @@ export class AiOrchestrator {
     };
     yield { event: 'turn.started', data: { turnId: begun.turnId } };
 
+    let provider = this.provider;
     let buffer = '';
     const publicEvents = new AiPublicEventQueue();
     const usageCounter = { toolCalls: 0 };
@@ -278,8 +279,9 @@ export class AiOrchestrator {
           await collector.tool.execute(regenerate, 'regenerate');
           completed = true;
         } else {
+          provider = await (provider.resolveText?.(context) ?? provider);
           const merged = mergeProviderAndPublicEvents(
-            this.provider.streamTurn({
+            provider.streamTurn({
               actor: context,
               messages,
               system: [
@@ -440,8 +442,8 @@ export class AiOrchestrator {
           usage,
           toolSummary: toolSummaries,
           sourceSummary: sources,
-          providerKey: this.provider.providerKey,
-          modelKey: this.provider.modelKey,
+          providerKey: provider.providerKey,
+          modelKey: provider.modelKey,
         });
         yield {
           event: 'turn.cancelled',
@@ -466,8 +468,8 @@ export class AiOrchestrator {
           toolSummary: toolSummaries,
           sourceSummary: sources,
           errorCode: failedCode,
-          providerKey: this.provider.providerKey,
-          modelKey: this.provider.modelKey,
+          providerKey: provider.providerKey,
+          modelKey: provider.modelKey,
         });
         yield {
           event: 'turn.failed',
@@ -491,8 +493,8 @@ export class AiOrchestrator {
           toolSummary: toolSummaries,
           sourceSummary: sources,
           errorCode: code,
-          providerKey: this.provider.providerKey,
-          modelKey: this.provider.modelKey,
+          providerKey: provider.providerKey,
+          modelKey: provider.modelKey,
         });
         yield {
           event: 'turn.failed',
@@ -514,8 +516,8 @@ export class AiOrchestrator {
           toolSummary: toolSummaries,
           sourceSummary: sources,
           errorCode: 'AI_TURN_FAILED',
-          providerKey: this.provider.providerKey,
-          modelKey: this.provider.modelKey,
+          providerKey: provider.providerKey,
+          modelKey: provider.modelKey,
         });
         yield {
           event: 'turn.failed',
@@ -537,8 +539,8 @@ export class AiOrchestrator {
           toolSummary: toolSummaries,
           sourceSummary: sources,
           errorCode: clientAbort.aborted ? null : code,
-          providerKey: this.provider.providerKey,
-          modelKey: this.provider.modelKey,
+          providerKey: provider.providerKey,
+          modelKey: provider.modelKey,
         });
         yield {
           event: clientAbort.aborted ? 'turn.cancelled' : 'turn.failed',
@@ -558,8 +560,8 @@ export class AiOrchestrator {
         usage,
         toolSummary: toolSummaries,
         sourceSummary: sources,
-        providerKey: this.provider.providerKey,
-        modelKey: this.provider.modelKey,
+        providerKey: provider.providerKey,
+        modelKey: provider.modelKey,
       };
       const candidates = collector.candidates;
       const coverage = search.coverage(candidates);
@@ -628,8 +630,8 @@ export class AiOrchestrator {
         toolSummary: toolSummaries,
         sourceSummary: sources,
         errorCode: code,
-        providerKey: this.provider.providerKey,
-        modelKey: this.provider.modelKey,
+        providerKey: provider.providerKey,
+        modelKey: provider.modelKey,
       });
       yield cancelled
         ? {

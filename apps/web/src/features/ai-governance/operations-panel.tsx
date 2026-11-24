@@ -15,7 +15,8 @@ import dayjs from "dayjs";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { MemberIdentity } from "@/components/identity/member-identity";
 import {
-  featureNames,
+  catalogLabels,
+  type FeatureCatalog,
   workspaceAi,
   type Detail,
   type Usage,
@@ -93,6 +94,7 @@ function identity(members: Member[], id: string) {
   );
 }
 export function OperationsPanel({
+  catalog,
   tenantCode,
   memberId,
   members,
@@ -100,7 +102,9 @@ export function OperationsPanel({
   tenantCode: string;
   memberId: string;
   members: Member[];
+  catalog: FeatureCatalog;
 }) {
+  const featureNames = catalogLabels(catalog);
   const [filters, setFilters] = useState<Record<string, string>>({}),
     [open, setOpen] = useState(false),
     [selected, select] = useState<string>();
@@ -253,6 +257,7 @@ export function OperationsPanel({
           <LoadError error={detail.error} retry={() => void detail.refetch()} />
         ) : detail.data ? (
           <OperationDetail
+            featureNames={featureNames}
             item={detail.data}
             members={members}
             tenantCode={tenantCode}
@@ -265,10 +270,12 @@ export function OperationsPanel({
   );
 }
 function OperationDetail({
+  featureNames,
   item,
   members,
   tenantCode,
 }: {
+  featureNames: Record<string, string>;
   item: Detail;
   members: Member[];
   tenantCode: string;

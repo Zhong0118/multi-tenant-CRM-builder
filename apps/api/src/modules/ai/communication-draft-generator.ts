@@ -153,7 +153,9 @@ export class CommunicationDraftGenerator {
     const content = text.trim();
     if (!content || text.length > 4000)
       throw new ApiException('VALIDATION_FAILED', 400);
-    if (!this.provider.generateCommunication)
+    const provider = await (this.provider.resolveText?.(ctx.actor) ??
+      this.provider);
+    if (!provider.generateCommunication)
       throw new ApiException('AI_PROVIDER_UNAVAILABLE', 503);
     const metadata = ctx.fields.map(({ fieldKey, label, type, options }) => ({
       fieldKey,
@@ -187,11 +189,7 @@ export class CommunicationDraftGenerator {
         );
       });
       raw = await Promise.race([
-        this.provider.generateCommunication(
-          input,
-          controller.signal,
-          ctx.actor,
-        ),
+        provider.generateCommunication(input, controller.signal, ctx.actor),
         timeout,
       ]);
     } catch (error) {

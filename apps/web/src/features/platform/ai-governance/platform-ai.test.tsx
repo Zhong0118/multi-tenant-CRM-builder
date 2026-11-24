@@ -42,7 +42,9 @@ const company = {
   trend: [],
   usage: [],
 };
+import { catalogFixture } from "../../ai-governance/catalog.fixture";
 const settings = {
+  catalog: catalogFixture,
   configured: true,
   disabled: false,
   provider: "DeepSeek",
@@ -75,6 +77,13 @@ beforeEach(() => {
   }));
 });
 describe("平台 AI 治理", () => {
+  it("即将上线的销售功能不可勾选", async () => {
+    show(<PlatformPlans />);
+    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    expect(
+      await screen.findByRole("checkbox", { name: /今日建议/ }),
+    ).toBeDisabled();
+  });
   it("只在编辑时挂载套餐抽屉，以便服务器和客户端使用相同的初始结构", async () => {
     show(<PlatformPlans />);
     const edit = await screen.findByRole("button", { name: "编辑" });

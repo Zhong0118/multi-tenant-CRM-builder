@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { modelFetch } from './governance/model-transport';
 import { communicationWireSchema } from './communication-output';
 import {
   FakeAiProvider,
@@ -24,7 +25,10 @@ jest.mock('ai', () => ({
 }));
 
 jest.mock('@ai-sdk/openai', () => ({
-  createOpenAI: jest.fn(() => (modelKey: string) => ({ modelKey })),
+  createOpenAI: jest.fn(() => ({
+    responses: (modelKey: string) => ({ modelKey }),
+    chat: (modelKey: string) => ({ modelKey }),
+  })),
 }));
 
 import { generateText, streamText } from 'ai';
@@ -253,10 +257,10 @@ describe('VercelOpenAiProvider mapping', () => {
       model: { modelKey: 'test-model' },
       prompt: JSON.stringify(input),
       output: { name: 'communication_draft' },
-      abortSignal: signal,
       maxRetries: 0,
       providerOptions: { openai: { store: false } },
     });
+    expect(options?.abortSignal).toBeInstanceOf(AbortSignal);
     expect(options).not.toHaveProperty('tools');
   });
 
@@ -443,7 +447,10 @@ describe('VercelOpenAiProvider mapping', () => {
       }).providerKey,
     ).toBe('openai');
     await collect(provider.streamTurn(streamInput));
-    expect(createOpenAI).toHaveBeenCalledWith({ apiKey: 'sk-test' });
+    expect(createOpenAI).toHaveBeenCalledWith({
+      apiKey: 'sk-test',
+      fetch: modelFetch,
+    });
     expect(createOpenAI).toHaveBeenCalledWith(
       expect.not.objectContaining({ baseURL: expect.anything() }),
     );
@@ -470,6 +477,7 @@ describe('VercelOpenAiProvider mapping', () => {
     expect(createOpenAI).toHaveBeenCalledWith({
       apiKey: 'sk-test',
       baseURL: 'https://example-compatible.invalid/v1',
+      fetch: modelFetch,
     });
     const events = await collect(
       new VercelOpenAiProvider({

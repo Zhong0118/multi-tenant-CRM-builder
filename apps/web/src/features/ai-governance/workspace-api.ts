@@ -12,13 +12,12 @@ export type Settings = Read<"WorkspaceAiAdminController_settings">;
 export type Usage = Read<"WorkspaceAiAdminController_usage">;
 export type OperationPage = Read<"WorkspaceAiAdminController_operations">;
 export type Detail = Read<"WorkspaceAiAdminController_detail">;
-export const featureNames: Record<AiFeature, string> = {
-  assistant: "对话助手",
-  write_proposal: "AI 写入提议",
-  communication: "整理沟通",
-  filter: "一句话筛选",
-  table_builder: "AI 建表",
-};
+export type FeatureCatalog = Settings["catalog"];
+export function catalogLabels(catalog: FeatureCatalog) {
+  return Object.fromEntries(catalog.map(({ key, label }) => [key, label]));
+}
+export const catalogGroups = (catalog: FeatureCatalog) =>
+  Array.from(new Set(catalog.map((f) => f.group)));
 const base = (tenant: string) =>
   "/api/v1/workspaces/" + encodeURIComponent(tenant) + "/ai/";
 export const workspaceAi = {

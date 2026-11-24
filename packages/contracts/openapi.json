@@ -10723,7 +10723,10 @@
                                 "write_proposal",
                                 "communication",
                                 "filter",
-                                "table_builder"
+                                "table_builder",
+                                "daily_brief",
+                                "writing",
+                                "daily_report"
                               ],
                               "type": "string"
                             },
@@ -10861,6 +10864,1386 @@
         "tags": ["platform-ai-governance"]
       }
     },
+    "/api/v1/platform/ai-models": {
+      "get": {
+        "operationId": "ModelAdminController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "assignments": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "dimensions": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "nullable": true,
+                            "type": "integer"
+                          },
+                          "model": {
+                            "type": "string"
+                          },
+                          "providerId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "enum": ["text", "vision", "embedding"],
+                            "type": "string"
+                          },
+                          "revisionId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "version": {
+                            "exclusiveMinimum": true,
+                            "maximum": 9007199254740991,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "purpose",
+                          "providerId",
+                          "revisionId",
+                          "model",
+                          "version",
+                          "dimensions"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "environment": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "configured": {
+                          "type": "boolean"
+                        },
+                        "missing": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "model": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "provider": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "configured",
+                        "missing",
+                        "provider",
+                        "model"
+                      ],
+                      "type": "object"
+                    },
+                    "providers": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "activeRevisionId": {
+                            "format": "uuid",
+                            "nullable": true,
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "draftRevisionId": {
+                            "format": "uuid",
+                            "nullable": true,
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "id": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "preset": {
+                            "type": "string"
+                          },
+                          "revisions": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "baseURL": {
+                                  "maxLength": 2048,
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "embeddings": {
+                                  "type": "boolean"
+                                },
+                                "id": {
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                                  "type": "string"
+                                },
+                                "keyLast4": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "models": {
+                                  "items": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "capabilities": {
+                                        "items": {
+                                          "enum": [
+                                            "text",
+                                            "vision",
+                                            "embedding"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "maxItems": 3,
+                                        "type": "array"
+                                      },
+                                      "contextTokens": {
+                                        "exclusiveMinimum": true,
+                                        "maximum": 2147483647,
+                                        "minimum": 0,
+                                        "nullable": true,
+                                        "type": "integer"
+                                      },
+                                      "currency": {
+                                        "nullable": true,
+                                        "pattern": "^[A-Z]{3}$",
+                                        "type": "string"
+                                      },
+                                      "inputPrice": {
+                                        "nullable": true,
+                                        "pattern": "^\\d{1,12}(\\.\\d{1,8})?$",
+                                        "type": "string"
+                                      },
+                                      "maxOutputTokens": {
+                                        "exclusiveMinimum": true,
+                                        "maximum": 2147483647,
+                                        "minimum": 0,
+                                        "nullable": true,
+                                        "type": "integer"
+                                      },
+                                      "name": {
+                                        "maxLength": 256,
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      "outputPrice": {
+                                        "nullable": true,
+                                        "pattern": "^\\d{1,12}(\\.\\d{1,8})?$",
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "capabilities",
+                                      "contextTokens",
+                                      "maxOutputTokens",
+                                      "inputPrice",
+                                      "outputPrice",
+                                      "currency"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "maxItems": 200,
+                                  "type": "array"
+                                },
+                                "protocol": {
+                                  "enum": ["responses", "chat"],
+                                  "type": "string"
+                                },
+                                "tests": {
+                                  "items": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "dimensions": {
+                                        "maximum": 9007199254740991,
+                                        "minimum": -9007199254740991,
+                                        "nullable": true,
+                                        "type": "integer"
+                                      },
+                                      "durationMs": {
+                                        "maximum": 9007199254740991,
+                                        "minimum": -9007199254740991,
+                                        "nullable": true,
+                                        "type": "integer"
+                                      },
+                                      "errorCode": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "finishedAt": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                                        "type": "string"
+                                      },
+                                      "inputTokens": {
+                                        "type": "number"
+                                      },
+                                      "model": {
+                                        "type": "string"
+                                      },
+                                      "outputTokens": {
+                                        "type": "number"
+                                      },
+                                      "purpose": {
+                                        "enum": ["text", "vision", "embedding"],
+                                        "type": "string"
+                                      },
+                                      "sequence": {
+                                        "maximum": 9007199254740991,
+                                        "minimum": -9007199254740991,
+                                        "type": "integer"
+                                      },
+                                      "startedAt": {
+                                        "type": "string"
+                                      },
+                                      "status": {
+                                        "enum": [
+                                          "running",
+                                          "success",
+                                          "failed"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "steps": {
+                                        "items": {
+                                          "properties": {
+                                            "durationMs": {
+                                              "maximum": 9007199254740991,
+                                              "minimum": -9007199254740991,
+                                              "type": "integer"
+                                            },
+                                            "errorCode": {
+                                              "type": "string"
+                                            },
+                                            "httpStatus": {
+                                              "maximum": 9007199254740991,
+                                              "minimum": -9007199254740991,
+                                              "type": "integer"
+                                            },
+                                            "name": {
+                                              "type": "string"
+                                            },
+                                            "ok": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "name",
+                                            "durationMs",
+                                            "ok"
+                                          ],
+                                          "type": "object"
+                                        },
+                                        "type": "array"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "sequence",
+                                      "model",
+                                      "purpose",
+                                      "status",
+                                      "steps",
+                                      "dimensions",
+                                      "durationMs",
+                                      "errorCode",
+                                      "startedAt",
+                                      "finishedAt",
+                                      "inputTokens",
+                                      "outputTokens"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  "type": "array"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "baseURL",
+                                "protocol",
+                                "embeddings",
+                                "models",
+                                "keyLast4",
+                                "tests"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "version": {
+                            "exclusiveMinimum": true,
+                            "maximum": 9007199254740991,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "preset",
+                          "enabled",
+                          "version",
+                          "activeRevisionId",
+                          "draftRevisionId",
+                          "revisions"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": ["providers", "assignments", "environment"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/assignments/{purpose}": {
+      "post": {
+        "operationId": "ModelAdminController_assign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purpose",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "assignmentVersion": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "confirmReindex": {
+                    "type": "boolean"
+                  },
+                  "model": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "providerId": {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "revisionId": {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "testId": {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version",
+                  "revisionId",
+                  "providerId",
+                  "model",
+                  "testId",
+                  "assignmentVersion"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["ok"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/import-environment": {
+      "post": {
+        "operationId": "ModelAdminController_migrate",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {},
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "revisionId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["id", "version", "revisionId"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/providers": {
+      "post": {
+        "operationId": "ModelAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "baseURL": {
+                    "maxLength": 2048,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "embeddings": {
+                    "type": "boolean"
+                  },
+                  "models": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "capabilities": {
+                          "items": {
+                            "enum": ["text", "vision", "embedding"],
+                            "type": "string"
+                          },
+                          "maxItems": 3,
+                          "type": "array"
+                        },
+                        "contextTokens": {
+                          "exclusiveMinimum": true,
+                          "maximum": 2147483647,
+                          "minimum": 0,
+                          "nullable": true,
+                          "type": "integer"
+                        },
+                        "currency": {
+                          "nullable": true,
+                          "pattern": "^[A-Z]{3}$",
+                          "type": "string"
+                        },
+                        "inputPrice": {
+                          "nullable": true,
+                          "pattern": "^\\d{1,12}(\\.\\d{1,8})?$",
+                          "type": "string"
+                        },
+                        "maxOutputTokens": {
+                          "exclusiveMinimum": true,
+                          "maximum": 2147483647,
+                          "minimum": 0,
+                          "nullable": true,
+                          "type": "integer"
+                        },
+                        "name": {
+                          "maxLength": 256,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "outputPrice": {
+                          "nullable": true,
+                          "pattern": "^\\d{1,12}(\\.\\d{1,8})?$",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "capabilities",
+                        "contextTokens",
+                        "maxOutputTokens",
+                        "inputPrice",
+                        "outputPrice",
+                        "currency"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 200,
+                    "type": "array"
+                  },
+                  "name": {
+                    "maxLength": 120,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "preset": {
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "protocol": {
+                    "enum": ["responses", "chat"],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "preset",
+                  "baseURL",
+                  "protocol",
+                  "embeddings",
+                  "models"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "revisionId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["id", "version", "revisionId"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/providers/{id}": {
+      "delete": {
+        "operationId": "ModelAdminController_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": ["version"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["ok"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      },
+      "patch": {
+        "operationId": "ModelAdminController_edit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "baseURL": {
+                    "maxLength": 2048,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "embeddings": {
+                    "type": "boolean"
+                  },
+                  "models": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "capabilities": {
+                          "items": {
+                            "enum": ["text", "vision", "embedding"],
+                            "type": "string"
+                          },
+                          "maxItems": 3,
+                          "type": "array"
+                        },
+                        "contextTokens": {
+                          "exclusiveMinimum": true,
+                          "maximum": 2147483647,
+                          "minimum": 0,
+                          "nullable": true,
+                          "type": "integer"
+                        },
+                        "currency": {
+                          "nullable": true,
+                          "pattern": "^[A-Z]{3}$",
+                          "type": "string"
+                        },
+                        "inputPrice": {
+                          "nullable": true,
+                          "pattern": "^\\d{1,12}(\\.\\d{1,8})?$",
+                          "type": "string"
+                        },
+                        "maxOutputTokens": {
+                          "exclusiveMinimum": true,
+                          "maximum": 2147483647,
+                          "minimum": 0,
+                          "nullable": true,
+                          "type": "integer"
+                        },
+                        "name": {
+                          "maxLength": 256,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "outputPrice": {
+                          "nullable": true,
+                          "pattern": "^\\d{1,12}(\\.\\d{1,8})?$",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "capabilities",
+                        "contextTokens",
+                        "maxOutputTokens",
+                        "inputPrice",
+                        "outputPrice",
+                        "currency"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 200,
+                    "type": "array"
+                  },
+                  "name": {
+                    "maxLength": 120,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "preset": {
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "protocol": {
+                    "enum": ["responses", "chat"],
+                    "type": "string"
+                  },
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "name",
+                  "preset",
+                  "baseURL",
+                  "protocol",
+                  "embeddings",
+                  "models",
+                  "version"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "revisionId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["id", "version", "revisionId"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/providers/{id}/activate": {
+      "post": {
+        "operationId": "ModelAdminController_activate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "confirmReindex": {
+                    "type": "boolean"
+                  },
+                  "revisionId": {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": ["version", "revisionId"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["ok"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/providers/{id}/discover": {
+      "post": {
+        "operationId": "ModelAdminController_discover",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "revisionId": {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": ["version", "revisionId"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "models": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": ["models"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/providers/{id}/key": {
+      "post": {
+        "operationId": "ModelAdminController_key",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "apiKey": {
+                    "maxLength": 8192,
+                    "minLength": 5,
+                    "pattern": "^[\\x21-\\x7e]+$",
+                    "type": "string"
+                  },
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": ["version", "apiKey"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "revisionId": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "version": {
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["id", "version", "revisionId"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/providers/{id}/status": {
+      "post": {
+        "operationId": "ModelAdminController_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": ["version", "enabled"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["ok"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/providers/{id}/test": {
+      "post": {
+        "operationId": "ModelAdminController_test",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "model": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "enum": ["text", "vision", "embedding"],
+                    "type": "string"
+                  },
+                  "revisionId": {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "version": {
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": ["version", "revisionId", "model", "purpose"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "dimensions": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "nullable": true,
+                      "type": "integer"
+                    },
+                    "durationMs": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "nullable": true,
+                      "type": "integer"
+                    },
+                    "errorCode": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "finishedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    "inputTokens": {
+                      "type": "number"
+                    },
+                    "model": {
+                      "type": "string"
+                    },
+                    "outputTokens": {
+                      "type": "number"
+                    },
+                    "purpose": {
+                      "enum": ["text", "vision", "embedding"],
+                      "type": "string"
+                    },
+                    "sequence": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "startedAt": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": ["running", "success", "failed"],
+                      "type": "string"
+                    },
+                    "steps": {
+                      "items": {
+                        "properties": {
+                          "durationMs": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          "errorCode": {
+                            "type": "string"
+                          },
+                          "httpStatus": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "ok": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": ["name", "durationMs", "ok"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "sequence",
+                    "model",
+                    "purpose",
+                    "status",
+                    "steps",
+                    "dimensions",
+                    "durationMs",
+                    "errorCode",
+                    "startedAt",
+                    "finishedAt",
+                    "inputTokens",
+                    "outputTokens"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
+    "/api/v1/platform/ai-models/rotate-master-key": {
+      "post": {
+        "operationId": "ModelAdminController_rotate",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {},
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "remaining": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "rotated": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["rotated", "remaining"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-ai-models"]
+      }
+    },
     "/api/v1/platform/ai-plans": {
       "get": {
         "operationId": "PlatformAiAdminController_plans",
@@ -10881,6 +12264,26 @@
                         "minimum": -9007199254740991,
                         "type": "integer"
                       },
+                      "costEstimate": {
+                        "additionalProperties": false,
+                        "nullable": true,
+                        "properties": {
+                          "currency": {
+                            "type": "string"
+                          },
+                          "high": {
+                            "type": "string"
+                          },
+                          "low": {
+                            "type": "string"
+                          },
+                          "weighted": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": ["currency", "low", "high", "weighted"],
+                        "type": "object"
+                      },
                       "description": {
                         "maxLength": 1000,
                         "type": "string"
@@ -10892,11 +12295,13 @@
                             "write_proposal",
                             "communication",
                             "filter",
-                            "table_builder"
+                            "table_builder",
+                            "daily_brief",
+                            "writing",
+                            "daily_report"
                           ],
                           "type": "string"
                         },
-                        "maxItems": 5,
                         "type": "array"
                       },
                       "id": {
@@ -10929,7 +12334,8 @@
                       "monthlyTokens",
                       "assignable",
                       "version",
-                      "companies"
+                      "companies",
+                      "costEstimate"
                     ],
                     "type": "object"
                   },
@@ -10970,11 +12376,13 @@
                         "write_proposal",
                         "communication",
                         "filter",
-                        "table_builder"
+                        "table_builder",
+                        "daily_brief",
+                        "writing",
+                        "daily_report"
                       ],
                       "type": "string"
                     },
-                    "maxItems": 5,
                     "type": "array"
                   },
                   "monthlyTokens": {
@@ -11027,11 +12435,13 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
-                      "maxItems": 5,
                       "type": "array"
                     },
                     "id": {
@@ -11178,11 +12588,13 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
-                      "maxItems": 5,
                       "type": "array"
                     },
                     "id": {
@@ -11267,11 +12679,13 @@
                         "write_proposal",
                         "communication",
                         "filter",
-                        "table_builder"
+                        "table_builder",
+                        "daily_brief",
+                        "writing",
+                        "daily_report"
                       ],
                       "type": "string"
                     },
-                    "maxItems": 5,
                     "type": "array"
                   },
                   "monthlyTokens": {
@@ -11331,11 +12745,13 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
-                      "maxItems": 5,
                       "type": "array"
                     },
                     "id": {
@@ -11418,11 +12834,13 @@
                         "write_proposal",
                         "communication",
                         "filter",
-                        "table_builder"
+                        "table_builder",
+                        "daily_brief",
+                        "writing",
+                        "daily_report"
                       ],
                       "type": "string"
                     },
-                    "maxItems": 5,
                     "type": "array"
                   },
                   "monthlyTokens": {
@@ -11478,7 +12896,10 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
@@ -11551,6 +12972,69 @@
                       },
                       "type": "array"
                     },
+                    "catalog": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "group": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
+                            ],
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "outputLimit": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "nullable": true,
+                            "type": "integer"
+                          },
+                          "purpose": {
+                            "type": "string"
+                          },
+                          "released": {
+                            "type": "boolean"
+                          },
+                          "requires": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
+                            ],
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "group",
+                          "requires",
+                          "purpose",
+                          "released",
+                          "outputLimit"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
                     "configured": {
                       "type": "boolean"
                     },
@@ -11588,6 +13072,7 @@
                     "disabled",
                     "reason",
                     "version",
+                    "catalog",
                     "affectedCompanies",
                     "provider",
                     "model",
@@ -12468,8 +13953,103 @@
                       "pattern": "^\\d+$",
                       "type": "string"
                     },
+                    "catalog": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "group": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
+                            ],
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "outputLimit": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "nullable": true,
+                            "type": "integer"
+                          },
+                          "purpose": {
+                            "type": "string"
+                          },
+                          "released": {
+                            "type": "boolean"
+                          },
+                          "requires": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
+                            ],
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "group",
+                          "requires",
+                          "purpose",
+                          "released",
+                          "outputLimit"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
                     "code": {
                       "type": "string"
+                    },
+                    "costs": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "cost": {
+                            "type": "string"
+                          },
+                          "currency": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "pricedTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          },
+                          "unpricedTokens": {
+                            "description": "Exact token count in decimal notation",
+                            "pattern": "^\\d+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "currency",
+                          "cost",
+                          "unpricedTokens",
+                          "pricedTokens"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
                     },
                     "extraTokens": {
                       "description": "Exact token count in decimal notation",
@@ -12483,7 +14063,10 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
@@ -12605,7 +14188,10 @@
                               "write_proposal",
                               "communication",
                               "filter",
-                              "table_builder"
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
                             ],
                             "type": "string"
                           },
@@ -12670,6 +14256,8 @@
                     "reservedTokens",
                     "remainingTokens",
                     "percent",
+                    "costs",
+                    "catalog",
                     "trend",
                     "usage"
                   ],
@@ -12754,7 +14342,10 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
@@ -12918,7 +14509,10 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
@@ -12944,7 +14538,10 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
@@ -13326,7 +14923,10 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
@@ -13684,7 +15284,10 @@
                 "write_proposal",
                 "communication",
                 "filter",
-                "table_builder"
+                "table_builder",
+                "daily_brief",
+                "writing",
+                "daily_report"
               ],
               "type": "string"
             }
@@ -13753,7 +15356,10 @@
                               "write_proposal",
                               "communication",
                               "filter",
-                              "table_builder"
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
                             ],
                             "type": "string"
                           },
@@ -13861,7 +15467,10 @@
                         "write_proposal",
                         "communication",
                         "filter",
-                        "table_builder"
+                        "table_builder",
+                        "daily_brief",
+                        "writing",
+                        "daily_report"
                       ],
                       "type": "string"
                     },
@@ -14141,6 +15750,69 @@
                       "pattern": "^\\d+$",
                       "type": "string"
                     },
+                    "catalog": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "group": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
+                            ],
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "outputLimit": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "nullable": true,
+                            "type": "integer"
+                          },
+                          "purpose": {
+                            "type": "string"
+                          },
+                          "released": {
+                            "type": "boolean"
+                          },
+                          "requires": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
+                            ],
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "group",
+                          "requires",
+                          "purpose",
+                          "released",
+                          "outputLimit"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
                     "code": {
                       "type": "string"
                     },
@@ -14159,7 +15831,10 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
@@ -14292,6 +15967,7 @@
                     "reservedTokens",
                     "remainingTokens",
                     "percent",
+                    "catalog",
                     "disabled",
                     "preview"
                   ],
@@ -14359,6 +16035,69 @@
                       "pattern": "^\\d+$",
                       "type": "string"
                     },
+                    "catalog": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "group": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
+                            ],
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "outputLimit": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "nullable": true,
+                            "type": "integer"
+                          },
+                          "purpose": {
+                            "type": "string"
+                          },
+                          "released": {
+                            "type": "boolean"
+                          },
+                          "requires": {
+                            "enum": [
+                              "assistant",
+                              "write_proposal",
+                              "communication",
+                              "filter",
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
+                            ],
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "group",
+                          "requires",
+                          "purpose",
+                          "released",
+                          "outputLimit"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
                     "code": {
                       "type": "string"
                     },
@@ -14377,7 +16116,10 @@
                           "write_proposal",
                           "communication",
                           "filter",
-                          "table_builder"
+                          "table_builder",
+                          "daily_brief",
+                          "writing",
+                          "daily_report"
                         ],
                         "type": "string"
                       },
@@ -14510,6 +16252,7 @@
                     "reservedTokens",
                     "remainingTokens",
                     "percent",
+                    "catalog",
                     "disabled",
                     "preview"
                   ],
@@ -15435,7 +17178,10 @@
                               "write_proposal",
                               "communication",
                               "filter",
-                              "table_builder"
+                              "table_builder",
+                              "daily_brief",
+                              "writing",
+                              "daily_report"
                             ],
                             "type": "string"
                           },

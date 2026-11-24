@@ -14,7 +14,38 @@ Real local Caddy browser observation at `https://localhost:3443` covers login, `
 
 For the proposed Ubuntu 24.04 / 4 CPU / 8 GB target, [Compose](../../deploy/compose.production.yaml) runs API, Web, PostgreSQL 18, authenticated Redis, and [Caddy](../../deploy/Caddyfile). Only Caddy publishes 80/443. API uses the actual `@crm/api start:prod` command (`node dist/main`); Web uses `@crm/web start` (`next start`). Each has a separate container `PORT` (3001 and 3000). The placeholder worker has no business queues and is omitted.
 
-Copy the [environment template](../../.env.internal-trial.example) to ignored `.env.internal-trial`, restrict its permissions to 0600, and replace every placeholder. `WEB_HOST` is a hostname without a scheme. Use one public HTTPS `WEB_ORIGIN`: Caddy routes `/api/v1/*` to API and all other paths to Web, preserving the host-only session cookie for browser requests and SSR. Compose supplies the browser build argument and API public origin from `WEB_ORIGIN`; keep the template's `API_ORIGIN` and `NEXT_PUBLIC_API_ORIGIN` aligned with it. Web SSR uses private `http://api:3001` and forwards incoming cookies. Do not restore split app/API domains without a separately verified session design. Supply unique owner, `crm_app`, and Redis passwords; passwords in connection URLs must be URL-encoded. Runtime URLs use Compose hostnames `postgres` and `redis`, not localhost. Keep `CRM_APP_PASSWORD` consistent with `DATABASE_URL`, and `REDIS_PASSWORD` with `REDIS_URL`. Production requires the AI settings and `SMS_PROVIDER=tencent` plus all `TENCENT_SMS_*` credentials and approved provider identifiers in the template. Compose forwards them only to API; Web and build arguments receive no SMS or AI secrets.
+Copy the [environment template](../../.env.internal-trial.example) to ignored `.env.internal-trial`, restrict its permissions to 0600, and replace every placeholder. `WEB_HOST` is a hostname without a scheme. Use one public HTTPS `WEB_ORIGIN`: Caddy routes `/api/v1/*` to API and all other paths to Web, preserving the host-only session cookie for browser requests and SSR. Compose supplies the browser build argument and API public origin from `WEB_ORIGIN`; keep the template's `API_ORIGIN` and `NEXT_PUBLIC_API_ORIGIN` aligned with it. Web SSR uses private `http://api:3001` and forwards incoming cookies. Do not restore split app/API domains without a separately verified session design. Supply unique owner, `crm_app`, and Redis passwords; passwords in connection URLs must be URL-encoded. Runtime URLs use Compose hostnames `postgres` and `redis`, not localhost. Keep `CRM_APP_PASSWORD` consistent with `DATABASE_URL`, and `REDIS_PASSWORD` with `REDIS_URL`. Environment-backed AI uses the existing AI settings. Production requires `SMS_PROVIDER=tencent` plus all `TENCENT_SMS_*` credentials and approved provider identifiers in the template. Compose forwards them only to API; Web and build arguments receive no SMS or AI secrets.
+
+### 平台模型主密钥的首次设置与备份
+
+在服务器部署目录运行以下命令。部署文件按实际环境选择，示例使用 Compose 已读取的 `.env.internal-trial`。命令生成 32 字节随机密钥，以 0600 权限原子更新该文件，不输出密钥。遇到已有的非空配置会停止。多 API 实例从同一份受控配置分发，避免每台机器各自生成。
+
+```sh
+python3 - .env.internal-trial <<'PYTHON'
+import base64, json, os, re, secrets, sys, tempfile
+from pathlib import Path
+
+path = Path(sys.argv[1])
+data = path.read_text()
+pattern = re.compile(r"^AI_MODEL_KEYRING=.*$", re.M)
+matches = pattern.findall(data)
+if len(matches) > 1 or any(line.partition("=")[2].strip() for line in matches):
+    raise SystemExit("发现已有主密钥配置，请按轮换步骤处理")
+key = base64.b64encode(secrets.token_bytes(32)).decode("ascii")
+ring = json.dumps({"activeKeyId":"v1","keys":{"v1":key}}, separators=(",",":"))
+line = "AI_MODEL_KEYRING='" + ring + "'"
+data = pattern.sub(line, data) if matches else data.rstrip("\n") + "\n" + line + "\n"
+with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as tmp:
+    tmp.write(data)
+    tmp.flush()
+    os.fsync(tmp.fileno())
+os.replace(tmp.name, path)
+PYTHON
+```
+
+将完整 keyring（含 key ID）离线备份到独立的加密介质或受控密码库，和数据库备份分开保管。用隔离恢复环境检验备份能解密已保存的测试 Key。恢复旧数据库备份时也需要当时的主密钥；轮换后保留相应旧版本的离线副本。若所有副本丢失，平台录入的厂商 Key 都需要逐个重新录入、测试并重新分配。CRM 业务数据不受影响。主密钥轮换流程见[设计规格第 2.2 节](../superpowers/specs/2026-11-24-ai-models-and-sales-daily-design.md#22-key地址与测试)。
+
+
 
 Compose explicitly passes only the API settings needed at runtime; the API and Web do not receive database-owner credentials. The database owner is privileged and used only for provisioning, migrations, and deliberate administrative jobs. Docker administrators can inspect container environment values; restrict Docker/socket access. The [Docker ignore file](../../.dockerignore) excludes local env files, keys, dependency directories, build outputs, and dumps from build context. Never store secrets under ordinary source names.
 

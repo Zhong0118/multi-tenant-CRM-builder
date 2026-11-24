@@ -27,6 +27,7 @@ import {
   usePlans,
   type Feature,
 } from "./common";
+import { catalogLabels } from "../../ai-governance/workspace-api";
 import styles from "./platform-ai.module.css";
 const UsageCharts = dynamic(
   () => import("./usage-charts").then((m) => m.UsageCharts),
@@ -186,6 +187,29 @@ export function CompanyAi({
             </div>
           </>
         )}
+        {c.usedTokens !== "0" && (
+          <div className={styles.ledger}>
+            <span>本月估算成本</span>
+            {c.costs
+              ?.filter((row) => row.currency && row.pricedTokens !== "0")
+              .map((row) => (
+                <span key={row.currency}>
+                  {row.currency}{" "}
+                  {Number(row.cost).toLocaleString(undefined, {
+                    maximumFractionDigits: 4,
+                  })}
+                </span>
+              ))}
+            {(!c.costs?.length ||
+              c.costs.some((row) => row.unpricedTokens !== "0")) && (
+              <span>
+                未设置单价
+                {c.costs?.some((row) => row.pricedTokens !== "0") &&
+                  "（部分用量）"}
+              </span>
+            )}
+          </div>
+        )}
         <small className={styles.detail}>
           {startDay.slice(0, 7) === c.month.slice(0, 7)
             ? startDay + " 起计量 · "
@@ -248,8 +272,10 @@ export function CompanyAi({
             {impact && (
               <>
                 <p>
-                  新增功能：{list(impact.addedFeatures)}。移除功能：
-                  {list(impact.removedFeatures)}。
+                  新增功能：
+                  {list(impact.addedFeatures, catalogLabels(c.catalog))}
+                  。移除功能：
+                  {list(impact.removedFeatures, catalogLabels(c.catalog))}。
                 </p>
                 <p>
                   本月额度将为 {formatTokens(impact.totalTokens)}

@@ -22,6 +22,17 @@ describe('validateProductionConfig', () => {
     TENCENT_SMS_RESET_TEMPLATE_ID: '456',
   };
 
+  it('starts without any legacy model settings and reports only missing names for partial credentials', () => {
+    const env = { ...valid, AI_PROVIDER: '', AI_API_KEY: '', AI_MODEL: '' };
+    expect(() => validateProductionConfig(env)).not.toThrow();
+    expect(() =>
+      validateProductionConfig({ ...env, AI_API_KEY: 'private-value' }),
+    ).toThrow(/AI_PROVIDER.*AI_MODEL/);
+    expect(() =>
+      validateProductionConfig({ ...env, AI_API_KEY: 'private-value' }),
+    ).not.toThrow(/private-value/);
+  });
+
   it('accepts production runtime configuration', () => {
     expect(validateProductionConfig(valid)).toEqual(valid);
   });

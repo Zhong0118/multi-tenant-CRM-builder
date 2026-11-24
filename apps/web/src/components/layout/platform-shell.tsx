@@ -99,7 +99,9 @@ export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
       <span className={styles.breadcrumb}>
         <Link href={parent.href}>{parent.label}</Link>
         <span className={styles.breadcrumbSep}>/</span>
-        <span className={styles.breadcrumbCurrent}>详情</span>
+        <span className={styles.breadcrumbCurrent}>
+          {pathname === "/platform/settings/ai-models" ? "AI 模型" : "详情"}
+        </span>
       </span>
     );
   }

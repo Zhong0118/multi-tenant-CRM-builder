@@ -1,14 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@crm/database';
+import { Prisma } from '@crm/database';
 import { ApiException } from '../../../common/errors/api.exception';
 import { API_ERROR_MESSAGES } from '../../../common/errors/api-error-code';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../../infrastructure/database/context-runner';
 
-export type AiFeature =
-  'assistant' | 'write_proposal' | 'communication' | 'filter' | 'table_builder';
-export type AiMeteredFeature = Exclude<AiFeature, 'write_proposal'>;
+import type { FeatureKey, MeteredKey } from './feature-catalog';
+export type AiFeature = FeatureKey;
+export type AiMeteredFeature = MeteredKey;
+export interface CallSnapshot {
+  configSource: 'environment' | 'platform' | 'test';
+  purpose: 'text' | 'vision' | 'embedding';
+  providerId?: string;
+  revisionId?: string;
+  assignmentVersion?: number;
+  deploymentConfigId?: string;
+  inputPrice?: string | null;
+  outputPrice?: string | null;
+  currency?: string | null;
+}
 export interface AiReservation {
+  snapshot?: CallSnapshot;
   callId: string;
   requestId: string;
   feature: AiMeteredFeature;
@@ -85,16 +97,18 @@ export class AiLedgerService {
   }
 
   async reserve(ctx: TenantContext, call: AiReservation): Promise<void> {
+    const args = Prisma.sql`
+      ${ctx.tenantId}::uuid,${ctx.memberId}::uuid,${call.callId}::uuid,${call.requestId},${call.feature},${call.provider},
+      ${call.model},${call.inputTokens}::bigint,${call.outputTokens}::bigint,${call.expiresAt}::timestamptz`;
+    const reservation = call.snapshot
+      ? Prisma.sql`ai_reserve_snapshot_call(${args},${JSON.stringify(call.snapshot)}::jsonb)`
+      : Prisma.sql`ai_reserve_call(${args})`;
     const [row] = await this.db.withTenant(
       ctx,
       (tx) => tx.$queryRaw<
-        Array<{
-          code: RejectionCode | null;
-          recovery_date: string;
-        }>
-      >`SELECT code,recovery_date::text FROM ai_reserve_call(
-      ${ctx.tenantId}::uuid,${ctx.memberId}::uuid,${call.callId}::uuid,${call.requestId},${call.feature},${call.provider},
-      ${call.model},${call.inputTokens}::bigint,${call.outputTokens}::bigint,${call.expiresAt}::timestamptz)`,
+        Array<{ code: RejectionCode | null; recovery_date: string }>
+      >`
+        SELECT code,recovery_date::text FROM ${reservation}`,
     );
     const { code } = row;
     if (!code) return;

@@ -1,0 +1,167 @@
+.page {
+  display: grid;
+  gap: var(--space-6, 24px);
+  min-width: 0;
+}
+.panel {
+  padding: 0 20px;
+  min-width: 0;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 82px;
+  padding: 16px 0;
+  flex-wrap: wrap;
+}
+.row + .row,
+.provider + .provider {
+  border-top: 1px solid var(--border-subtle, #e6e9ed);
+}
+.copy {
+  flex: 1 1 175px;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  overflow-wrap: anywhere;
+}
+.copy span,
+.copy small,
+.caption,
+.note,
+.editor p {
+  color: var(--text-secondary, #525d70);
+}
+.copy small,
+.note,
+.status {
+  font-size: 12px;
+}
+.icon {
+  border-radius: 9px;
+  background: var(--bg-subtle, #f3f6fb);
+  color: var(--color-primary, #2563eb);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  font-size: 17px;
+  flex: none;
+}
+.status {
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #386ab1;
+}
+.status[data-tone="success"]::before {
+  background: #38805f;
+}
+.status[data-tone="error"]::before {
+  background: #b64944;
+}
+.actions {
+  margin-left: auto;
+}
+.note {
+  margin: -3px 0 12px 50px;
+}
+.form,
+.editor,
+.modelForm,
+.results,
+.confirm {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.editor {
+  margin: 24px 0 16px;
+  padding: 0;
+  border: 0;
+}
+.field,
+.form label:not(:global(.ant-checkbox-wrapper)),
+.editor label:not(:global(.ant-checkbox-wrapper)) {
+  display: grid;
+  gap: 6px;
+}
+.field {
+  min-width: 0;
+}
+.choicePopup :global(.ant-select-item-option-content) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.form p,
+.editor p {
+  margin: 0;
+}
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 8px;
+}
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 12px;
+}
+.modelForm,
+.confirm {
+  border: 1px solid var(--border-subtle, #e6e9ed);
+  border-radius: 9px;
+  padding: 15px;
+}
+.confirm {
+  background: var(--bg-subtle, #f3f6fb);
+  gap: 6px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.results {
+  gap: 8px;
+  margin-top: 8px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .row,
+  .editor,
+  .form,
+  .results,
+  .confirm {
+    animation: appear 0.18s ease-out both;
+  }
+  .page button,
+  .editor button {
+    transition:
+      transform 0.15s ease,
+      background-color 0.15s ease;
+  }
+  .page button:active,
+  .editor button:active {
+    transform: scale(0.98);
+  }
+  @keyframes appear {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

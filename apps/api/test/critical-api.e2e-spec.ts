@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { AI_PROVIDER, type AiProvider } from '../src/modules/ai/ai-provider';
+import { MeteredFakeProvider } from '../src/modules/ai/providers/metered-fake.provider';
 import { ConfigService } from '@nestjs/config';
 
 import {
@@ -491,7 +491,7 @@ describe('Critical API E2E', () => {
     const question = '查找小学英语，保留完整的要求。'.repeat(250);
     const answer = '已核对匹配范围。'.repeat(300);
     const seen: string[][] = [];
-    const provider = harness.app.get<AiProvider>(AI_PROVIDER);
+    const provider = MeteredFakeProvider.prototype;
     const mock = jest
       .spyOn(provider, 'streamTurn')
       .mockImplementationOnce(async function* ({ messages, tools }) {
@@ -557,7 +557,7 @@ describe('Critical API E2E', () => {
         data: { name: '批量上限' + i },
       })),
     });
-    const provider = harness.app.get<AiProvider>(AI_PROVIDER);
+    const provider = MeteredFakeProvider.prototype;
     const claim = '已生成 20 项提议';
     const mock = jest
       .spyOn(provider, 'streamTurn')

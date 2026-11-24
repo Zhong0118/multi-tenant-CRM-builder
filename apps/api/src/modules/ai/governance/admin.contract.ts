@@ -8,13 +8,19 @@ import {
 import { z } from 'zod';
 import { ApiException } from '../../../common/errors/api.exception';
 
-export const feature = z.enum([
-  'assistant',
-  'write_proposal',
-  'communication',
-  'filter',
-  'table_builder',
-]);
+import { featureKeys } from './feature-catalog';
+export const feature = z.enum(featureKeys);
+const catalog = z.array(
+  z.strictObject({
+    key: feature,
+    label: z.string(),
+    group: z.string(),
+    requires: feature.nullable(),
+    purpose: z.string(),
+    released: z.boolean(),
+    outputLimit: z.int().nullable(),
+  }),
+);
 export const allocation = z.enum(['shared', 'equal']);
 const tokens = z
   .string()
@@ -27,7 +33,7 @@ const version = z.number().int().positive();
 const planFields = {
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000),
-  features: z.array(feature).max(5),
+  features: z.array(feature),
   monthlyTokens: quota,
   assignable: z.boolean(),
 };
@@ -158,10 +164,22 @@ export const inputs = {
 };
 export const outputs = {
   plan,
-  plans: z.array(plan),
+  plans: z.array(
+    plan.extend({
+      costEstimate: z
+        .strictObject({
+          currency: z.string(),
+          low: z.string(),
+          high: z.string(),
+          weighted: z.boolean(),
+        })
+        .nullable(),
+    }),
+  ),
   planImpact,
   deleted: z.strictObject({ deleted: z.boolean() }),
   platform: platformState.extend({
+    catalog,
     affectedCompanies: z.int(),
     provider: z.string().nullable(),
     model: z.string().nullable(),
@@ -183,6 +201,15 @@ export const outputs = {
     total: z.int(),
   }),
   summary: tenant.extend({
+    costs: z.array(
+      z.strictObject({
+        currency: z.string().nullable(),
+        cost: z.string(),
+        unpricedTokens: tokens,
+        pricedTokens: tokens,
+      }),
+    ),
+    catalog,
     trend: z.array(z.strictObject({ month, usedTokens: tokens })),
     usage: z.array(dayUsage),
   }),
@@ -195,7 +222,7 @@ export const outputs = {
     confirmation,
   }),
   topUp: z.strictObject({ applied: z.boolean(), month }),
-  workspace: tenant.extend({ disabled: z.boolean(), preview: share }),
+  workspace: tenant.extend({ catalog, disabled: z.boolean(), preview: share }),
   usage: z.strictObject({
     month,
     daily: z.array(dayUsage),
