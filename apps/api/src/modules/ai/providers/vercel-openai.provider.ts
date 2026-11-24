@@ -2,7 +2,11 @@ import { TABLE_BUILDER_GENERATION_TIMEOUT_MS } from '../table-builder-payload';
 import { modelClient } from './model-client';
 import type { FlexibleSchema } from 'ai';
 import type { ImportAssistModelInput } from '../import-assist-model';
-import { importSystem, importMappingSchema } from './import-mapping-output';
+import {
+  expandImportMapping,
+  importSystem,
+  importMappingSchema,
+} from './import-mapping-output';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import {
   failureStatus,
@@ -107,7 +111,7 @@ export class VercelOpenAiProvider implements AiProvider {
       schema: importWireSchema,
       system: importSystem,
       disableReasoning: reasoning === 'none',
-    });
+    }).then(expandImportMapping);
   }
 
   generateSalesDaily(input: SalesDailyInput) {
