@@ -11,14 +11,16 @@ export function reportCommunication(
     WECHAT_ADDED: '已添加微信',
     NOT_REACHED: '未取得联系',
   };
-  const clauses = content
-    .split(/[\r\n。；！？!?]+/u)
+  const title = recordTitle.replace(/\s+/gu, ' ').trim();
+  const clauses = (content.match(/[^\r\n。；！？!?]+[？?]?/gu) ?? [])
     .map((s) => s.trim())
     .filter(
       (s) =>
         s.length >= 2 &&
         s.length <= 44 &&
         !/[【】]/u.test(s) &&
+        s.replace(/^.{1,20}[：:]\s*/u, '').replace(/[：:,，\s]+$/u, '') !==
+          title &&
         !/^(?:问题|计划)[：:]|^(?:您好|你好|谢谢|感谢|此致|敬礼)[，,\s]*$/u.test(
           s,
         ),
@@ -30,10 +32,11 @@ export function reportCommunication(
     outcomes[resultKey ?? ''],
   ]
     .filter((s): s is string => !!s)
-    .map((s) => s.replace(/^(?:结果|反馈|沟通|内容)[：:]\s*/u, ''));
+    .map((s) => s.replace(/^(?:结果|反馈|沟通|内容)[：:]\s*/u, ''))
+    .map((s) => (/[？?]$/u.test(s) ? '询问「' + s + '」' : s));
   const label = [activity, ...new Set(details)].filter(Boolean);
   return (
-    recordTitle.replace(/\s+/gu, ' ').trim() +
+    title +
     '：' +
     label[0] +
     (label.length > 1 ? '，' + label.slice(1).join('；') : '') +

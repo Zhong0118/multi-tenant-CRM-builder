@@ -22,3 +22,19 @@ it('keeps the recorded outcome when there is no safe excerpt and never clips neg
     ),
   ).toBe('甲 公司：致电，未取得联系。');
 });
+
+it('does not use repeated record labels as business facts from old drafts', () => {
+  expect(
+    reportCommunication(
+      '远山科技',
+      '发送消息',
+      '远山科技\n\n客户名称：远山科技\n\n报价金额为【报价金额】，请确认。',
+    ),
+  ).toBe('远山科技：发送消息。');
+});
+
+it('does not turn a question from the original message into a confirmed result', () => {
+  expect(reportCommunication('海川', '发送消息', '样品已签收？')).toBe(
+    '海川：发送消息，询问「样品已签收？」。',
+  );
+});
