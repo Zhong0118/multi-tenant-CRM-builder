@@ -4,14 +4,23 @@ const segmenter = new Intl.Segmenter('zh', { granularity: 'word' });
 const common =
   /^(?:的|确认|关于|有关|情况|了解|咨询|询问|安排|相关|目前|是否|事宜|事项|沟通|跟进|联系|本次|请问|此次|一下|已经|主题|反馈)$/u;
 
-function words(text: string) {
-  const normalized = text
-    .replace(/交(?:付|货)(?:时间|日期|周期)|发货时间/gu, '交期')
+function normalize(text: string) {
+  return text
+    .replace(
+      /(?:交付|交货|发货|供货)的?(?:时间|日期|周期|排期)|交货期|交付日/gu,
+      '交期',
+    )
     .replace(/到货日期/gu, '交期')
     .replace(/签收|收悉|接收|收货/gu, '收到');
-  return [...segmenter.segment(normalized)]
+}
+
+function words(text: string) {
+  const normalized = normalize(text);
+  const segments = [...segmenter.segment(normalized)]
     .filter((w) => w.isWordLike && !common.test(w.segment))
     .map((w) => w.segment);
+  // ICU may tokenize the CRM term 交期 as two individual characters.
+  return normalized.includes('交期') ? [...segments, '交期'] : segments;
 }
 
 export function coversTopic(text: string, topic: string) {
@@ -19,7 +28,7 @@ export function coversTopic(text: string, topic: string) {
   const body = words(text).join('');
   return tokens.length
     ? tokens.every((t) => body.includes(t))
-    : text.includes(topic);
+    : normalize(text).includes(normalize(topic));
 }
 
 export function subjectInBody(subject: string, body: string) {

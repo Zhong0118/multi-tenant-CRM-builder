@@ -31,6 +31,11 @@ export function writingChecks(
       (b) => b.text === '要带的材料',
     );
     const known = output.blocks.slice(factStart + 1, questionStart);
+    const recordRefs = new Set(
+      facts
+        .filter((f) => f.id !== 'F1' && f.source !== '本次补充')
+        .map((f) => f.id),
+    );
     const questions = output.blocks.slice(questionStart + 1, materialStart);
     const materials = output.blocks.slice(materialStart + 1);
     const signaledFact = raw.blocks.some(
@@ -39,7 +44,7 @@ export function writingChecks(
         b.factRefs.some((id) => {
           const fact = sources.get(id);
           return (
-            id !== 'F1' &&
+            recordRefs.has(id) &&
             fact &&
             canonical(b.text.slice(3)) === canonical(fact) &&
             known.some(
@@ -72,7 +77,11 @@ export function writingChecks(
       factStart >= 0 &&
       questionStart > factStart &&
       materialStart > questionStart &&
-      (!facts.some((f) => f.id !== 'F1') || signaledFact) &&
+      (!recordRefs.size || signaledFact) &&
+      known.every(
+        (b) =>
+          b.factRefs.length > 0 && b.factRefs.every((id) => recordRefs.has(id)),
+      ) &&
       signaledQuestion &&
       materialsSupported;
   }

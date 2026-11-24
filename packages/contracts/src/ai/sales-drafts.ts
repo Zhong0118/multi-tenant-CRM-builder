@@ -8,6 +8,7 @@ export type WritingOptions = {
 export interface WritingDraft {
   kind: WritingOptions["kind"];
   subject?: string;
+  missingTopics?: string[];
   blocks: { text: string; factRefs: string[] }[];
 }
 export type DailyReportSections = Record<"plans" | "completed" | "problems" | "nextSteps", string>;

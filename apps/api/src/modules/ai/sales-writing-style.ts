@@ -139,9 +139,8 @@ export function visitOutline(
     (f) => f.source !== '待办跟进' && !/^跟进[：:]/u.test(f.text),
   );
   const requests = supplementRequests(facts);
-  const known = new Map<string, SalesFact>(
-    usableFacts.filter((f) => f.source === '本次补充').map((f) => [f.id, f]),
-  );
+  const recordFacts = usableFacts.filter((f) => f.source !== '本次补充');
+  const known = new Map<string, SalesFact>();
   const questions: WritingDraft['blocks'] = [];
   const materials: WritingDraft['blocks'] = [];
   let purpose = {
@@ -160,7 +159,7 @@ export function visitOutline(
       continue;
     if (section === '情况') {
       for (const fact of cited) {
-        if (usableFacts.includes(fact)) known.set(fact.id, fact);
+        if (recordFacts.includes(fact)) known.set(fact.id, fact);
       }
     } else if (section === '材料') {
       const item = text.replace(/[。.]$/u, '').trim();
@@ -178,47 +177,60 @@ export function visitOutline(
         !/(?:谁|哪位).{0,8}负责跟进|待办跟进|跟进(?:任务|待办)|到期.{0,12}跟进/u.test(
           text,
         ) &&
-        specificVisitQuestion(text, externalFacts, options.purpose)
+        (specificVisitQuestion(text, externalFacts, options.purpose) ||
+          (/[？?]$/u.test(text) &&
+            requests.some((r) => coversTopic(text, r.topic))))
       )
         questions.push({ text, factRefs: refs });
     }
   }
-  if (!known.size && usableFacts.length)
-    known.set(usableFacts[0].id, usableFacts[0]);
+  if (!known.size && recordFacts.length) {
+    const fact =
+      recordFacts.find((f) =>
+        requests.some((r) => coversTopic(f.text, r.topic)),
+      ) ?? recordFacts[0];
+    known.set(fact.id, fact);
+  }
   const requested = requests.filter(
     (r) =>
       !nonInternalVoice(r.question) &&
       check(r.question, sources.get(r.factRef)!.text) === r.question,
   );
   if (requested.length) {
-    for (const r of requested) {
-      if (!known.has(r.factRef))
-        known.set(r.factRef, {
-          id: r.factRef,
-          source: '本次补充',
-          text:
-            '待确认：' +
-            requested
-              .filter((item) => item.factRef === r.factRef)
-              .map((item) => item.topic)
-              .join('、'),
-        });
-    }
     if (!requested.every((r) => coversTopic(purpose.text, r.topic)))
       purpose = {
         text: '确认' + requested.map((r) => r.topic).join('、'),
         factRefs: [...new Set(requested.map((r) => r.factRef))],
       };
-    const priority = requested.map((r) => {
-      const i = questions.findIndex((q) => coversTopic(q.text, r.topic));
-      const q =
-        i < 0 ? { text: r.question, factRefs: [] } : questions.splice(i, 1)[0];
-      return {
-        text: q.text,
-        factRefs: [...new Set([...q.factRefs, r.factRef])],
-      };
-    });
-    questions.unshift(...priority);
+    const priority: WritingDraft['blocks'] = [];
+    const other: WritingDraft['blocks'] = [];
+    // A single model question can cover several requested topics.
+    const candidates = questions
+      .map((q) => ({
+        q,
+        relevant: requested.filter((r) => coversTopic(q.text, r.topic)),
+      }))
+      .sort((a, b) => b.relevant.length - a.relevant.length);
+    for (const { q, relevant } of candidates) {
+      if (!relevant.length) other.push(q);
+      else if (
+        relevant.some(
+          (r) => !priority.some((p) => coversTopic(p.text, r.topic)),
+        )
+      ) {
+        priority.push({
+          text: q.text,
+          factRefs: [
+            ...new Set([...q.factRefs, ...relevant.map((r) => r.factRef)]),
+          ],
+        });
+      }
+    }
+    for (const r of requested) {
+      if (!priority.some((q) => coversTopic(q.text, r.topic)))
+        priority.push({ text: r.question, factRefs: [r.factRef] });
+    }
+    questions.splice(0, questions.length, ...priority, ...other);
   }
   const firstFact = [...known.values()].find((f) => externalFacts.includes(f));
   if (!questions.length && firstFact)

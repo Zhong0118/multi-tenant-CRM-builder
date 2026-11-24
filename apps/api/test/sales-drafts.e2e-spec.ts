@@ -79,6 +79,39 @@ describe('sales draft permissions, privacy and metering over HTTP', () => {
       spy.mockRestore();
     }
   });
+  it('streams missing topics only in metadata and leaves the model body intact', async () => {
+    const modelBlock = { text: '烦请告知预计交付时间。', factRefs: ['F2'] };
+    const spy = jest
+      .spyOn(FakeAiProvider.prototype, 'generateSalesDaily')
+      .mockImplementationOnce(async (input) => {
+        await input.onSend?.();
+        return { kind: 'email', subject: '确认交期', blocks: [modelBlock] };
+      });
+    try {
+      const response = await post(path(f.ownedRecord.id), {
+        ...options,
+        kind: 'email',
+        purpose: 'followup',
+        supplement: '确认一下交期，顺便问样品收到没有',
+      })
+        .expect(200)
+        .expect('Content-Type', /application\/x-ndjson/);
+      const frames: unknown[] = response.text
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as unknown);
+      expect(frames).toEqual([
+        expect.objectContaining({
+          type: 'meta',
+          missingTopics: ['样品是否收到'],
+        }),
+        { type: 'block', block: modelBlock },
+        { type: 'done' },
+      ]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
   it('uses only own activity, attributes completed followups once, and does not save a report', async () => {
     const tenantId = f.tenantA.id,
       recordId = f.ownedRecord.id,
