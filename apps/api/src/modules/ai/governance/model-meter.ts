@@ -3,7 +3,8 @@ import { ApiException } from '../../../common/errors/api.exception';
 import { requestExecution } from '../../../common/security/request-id.middleware';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import type { CallRateLimiter } from '../../../infrastructure/rate-limit/rate-limiter';
-import type { AiLedgerService } from './ai-ledger.service';
+import { modelFetch } from './model-transport';
+import type { AiLedgerService, CallSnapshot } from './ai-ledger.service';
 
 import { generationLimits } from './feature-catalog';
 export const outputLimit = generationLimits;
@@ -64,6 +65,8 @@ export class ModelMeter {
     readonly feature: GenerationFeature,
     private readonly provider: string,
     private readonly model: string,
+    private readonly snapshot?: CallSnapshot,
+    private readonly contextTokens?: number | null,
   ) {}
 
   async begin(body: string, signal: AbortSignal) {
@@ -73,14 +76,28 @@ export class ModelMeter {
     const key = `ai:${this.actor.tenantId}:${this.actor.memberId}`;
     const timeout =
       Math.max(90_000, Number(process.env.AI_TIMEOUT_MS) || 45_000) + 30_000;
+    const inputTokens = estimateRequestInput(body);
     try {
+      if (
+        this.contextTokens != null &&
+        inputTokens + outputLimit[this.feature] > this.contextTokens
+      ) {
+        await this.ledger.recordDenial(
+          this.actor,
+          this.feature,
+          'AI_MODEL_CONTEXT_EXCEEDED',
+          this.request.requestId,
+        );
+        throw new ApiException('AI_MODEL_CONTEXT_EXCEEDED', 400);
+      }
       await this.ledger.reserve(this.actor, {
         callId,
         requestId: this.request.requestId,
         feature: this.feature,
         provider: this.provider,
         model: this.model,
-        inputTokens: estimateRequestInput(body),
+        inputTokens,
+        snapshot: this.snapshot,
         outputTokens: outputLimit[this.feature],
         expiresAt: new Date(Date.now() + timeout),
       });
@@ -131,8 +148,16 @@ export class ModelMeter {
   fetch: typeof fetch = async (url, init) => {
     if (typeof init?.body !== 'string')
       throw new Error('Expected JSON model request body');
-    await this.begin(init.body, init.signal ?? new AbortController().signal);
-    return fetch(url, init);
+    const signal = init.signal ?? new AbortController().signal;
+    await this.begin(init.body, signal);
+    try {
+      const response = await modelFetch(url, init);
+      if (!response.ok) await this.finish('failed');
+      return response;
+    } catch (error) {
+      await this.finish(failureStatus(signal));
+      throw error;
+    }
   };
 
   async finish(status: Result, usage: Usage = {}) {

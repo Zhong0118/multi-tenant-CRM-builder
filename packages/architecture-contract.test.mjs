@@ -44,19 +44,58 @@ test("model SDK and raw provider construction stay behind governance in producti
     "modules/ai/ai-provider.ts",
     "modules/ai/governance/governed-provider.ts",
     "modules/ai/providers/vercel-openai.provider.ts",
+    "modules/ai/providers/model-client.ts",
+    "modules/ai/governance/model-runtime.ts",
     "modules/ai/providers/metered-fake.provider.ts",
     "modules/ai/providers/fake-ai.provider.ts",
   ]);
   for (const file of await readdir(src, { recursive: true })) {
-    if (!file.endsWith(".ts") || file.endsWith(".spec.ts") || allowed.has(file))
-      continue;
+    if (!file.endsWith(".ts") || file.endsWith(".spec.ts")) continue;
     const text = await readFile(new URL(file, src), "utf8");
+    if (
+      file.startsWith("modules/ai/") &&
+      file !== "modules/ai/governance/model-transport.ts"
+    ) {
+      assert.doesNotMatch(
+        text,
+        /\bfetch\s*\(|["'](?:undici|axios|(?:node:)?https?)["']/,
+        file + " must use the public HTTPS model transport",
+      );
+    }
+    if (
+      !file.startsWith("modules/ai/") &&
+      /\bfetch\s*\(|["'](?:undici|axios|(?:node:)?https?)["']/.test(text)
+    ) {
+      assert.doesNotMatch(
+        text,
+        /AI_BASE_URL|api\.(?:openai|deepseek)\.com|\/(?:chat\/completions|embeddings|responses)["'`]/,
+        file,
+      );
+    }
+    if (allowed.has(file)) continue;
+    if (file.startsWith("modules/ai/")) {
+      assert.doesNotMatch(
+        text,
+        /type\s*:\s*["']image["']|mediaType\s*:\s*["']image\//,
+        file,
+      );
+    }
     assert.doesNotMatch(
       text,
-      /\bcreateAiProvider\b|(?:\bfrom\s*|\b(?:import|require|requireFromModule)\s*\(\s*)["'](?:ai|@ai-sdk\/[^"']+|[^"']*\/(?:vercel-openai|fake-ai|metered-fake)\.provider)["']/,
+      /\b(?:createAiProvider|loadVercelOpenAiProvider|modelClient)\b|(?:\bfrom\s*|\b(?:import|require|requireFromModule)\s*\(\s*)["'](?:ai|@ai-sdk\/[^"']+|[^"']*\/(?:vercel-openai|fake-ai|metered-fake)\.provider)["']/,
       file,
     );
   }
+  const adapter = await readFile(
+    new URL("modules/ai/providers/model-client.ts", src),
+    "utf8",
+  );
+  const meter = await readFile(
+    new URL("modules/ai/governance/model-meter.ts", src),
+    "utf8",
+  );
+  assert.match(adapter, /send: typeof fetch = modelFetch/);
+  assert.match(meter, /await modelFetch\(url, init\)/);
   const factory = await readFile(
     new URL("modules/ai/governance/governed-provider.ts", src),
     "utf8",

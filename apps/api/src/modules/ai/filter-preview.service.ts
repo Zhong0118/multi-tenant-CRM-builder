@@ -304,14 +304,16 @@ export class FilterPreviewService {
           actor.role === 'TENANT_ADMIN' ? ['$me', 'any'] : ['$me'],
       }));
       await this.ledger.assertFeature(actor, 'filter');
-      if (!this.provider.generateFilter)
+      const provider = await (this.provider.resolveText?.(actor) ??
+        this.provider);
+      if (!provider.generateFilter)
         throw new ApiException('AI_PROVIDER_UNAVAILABLE', 503);
       if (Buffer.byteLength(JSON.stringify(input)) > 81920)
         throw new ApiException('AI_TOOL_PAYLOAD_LIMIT', 400);
       const signal = AbortSignal.timeout(45000);
       let output: unknown;
       try {
-        output = await this.provider.generateFilter(input, signal, actor);
+        output = await provider.generateFilter(input, signal, actor);
       } catch (error) {
         if (isAiGovernanceError(error)) throw error;
         throw new ApiException(

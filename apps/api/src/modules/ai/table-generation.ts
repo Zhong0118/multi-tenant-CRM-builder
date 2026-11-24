@@ -230,6 +230,8 @@ export async function generateTablePlan(
   if (input.mode === 'refine' && !input.table)
     invalid('table', '请选择一张草稿表。');
   const request = providerInput(input, dest);
+  if (actor && provider.resolveText)
+    provider = await provider.resolveText(actor);
   if (!provider.generateTableBlueprint)
     throw new ApiException('AI_PROVIDER_UNAVAILABLE', 503);
   let raw: unknown;
