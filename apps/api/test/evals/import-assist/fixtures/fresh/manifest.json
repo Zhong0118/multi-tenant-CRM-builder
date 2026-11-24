@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "split": "fresh",
+      "id": "h11-showroom-book",
+      "source": "fresh/h11-showroom-book.xlsx",
+      "answer": "fresh/h11-showroom-book.json"
+    },
+    {
+      "split": "fresh",
+      "id": "h12-freight-register",
+      "source": "fresh/h12-freight-register.csv",
+      "answer": "fresh/h12-freight-register.json"
+    },
+    {
+      "split": "fresh",
+      "id": "h13-customer-handover",
+      "source": "fresh/h13-customer-handover.xls",
+      "answer": "fresh/h13-customer-handover.json"
+    },
+    {
+      "split": "fresh",
+      "id": "h14-visit-estimates",
+      "source": "fresh/h14-visit-estimates.xlsx",
+      "answer": "fresh/h14-visit-estimates.json"
+    },
+    {
+      "split": "fresh",
+      "id": "h15-renewal-summary",
+      "source": "fresh/h15-renewal-summary.xls",
+      "answer": "fresh/h15-renewal-summary.json"
+    },
+    {
+      "split": "fresh",
+      "id": "h16-dispatch-control",
+      "source": "fresh/h16-dispatch-control.csv",
+      "answer": "fresh/h16-dispatch-control.json"
+    },
+    {
+      "split": "fresh",
+      "id": "h17-dispatch-note",
+      "source": "fresh/h17-dispatch-note.csv",
+      "answer": "fresh/h17-dispatch-note.json"
+    },
+    {
+      "split": "fresh",
+      "id": "h18-autumn-ratings",
+      "source": "fresh/h18-autumn-ratings.xlsx",
+      "answer": "fresh/h18-autumn-ratings.json"
+    },
+    {
+      "split": "fresh",
+      "id": "h19-winter-ratings",
+      "source": "fresh/h19-winter-ratings.xls",
+      "answer": "fresh/h19-winter-ratings.json"
+    },
+    {
+      "split": "fresh",
+      "id": "h20-field-notes",
+      "source": "fresh/h20-field-notes.csv",
+      "answer": "fresh/h20-field-notes.json"
+    }
+  ]
+}

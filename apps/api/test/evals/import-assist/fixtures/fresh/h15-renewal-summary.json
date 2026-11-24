@@ -1,0 +1,110 @@
+{
+  "id": "h15-renewal-summary",
+  "scenario": "renewal-summary",
+  "source": "fresh/h15-renewal-summary.xls",
+  "sheetName": "签约状态",
+  "profile": "admin",
+  "headerRow": 2,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": 0,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "已签约",
+      "target": {
+        "mode": "field",
+        "field": "enabled"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 3,
+      "cells": [
+        "CX812",
+        "折桂文具",
+        "否"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "CX812",
+        "acct_name": "折桂文具",
+        "enabled": false
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "CX813",
+        "圆杉仪表",
+        "是"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "CX813",
+        "acct_name": "圆杉仪表",
+        "enabled": true
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "CX814",
+        "浅湾五金",
+        "否"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "CX814",
+        "acct_name": "浅湾五金",
+        "enabled": false
+      }
+    }
+  ]
+}

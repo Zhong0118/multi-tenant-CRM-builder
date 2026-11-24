@@ -1,0 +1,288 @@
+{
+  "id": "h13-customer-handover",
+  "scenario": "customer-handover",
+  "source": "fresh/h13-customer-handover.xls",
+  "sheetName": "本季移交",
+  "profile": "admin",
+  "headerRow": 3,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "freeText",
+      "value": "客户交接清册（经办人：施迩澄）"
+    },
+    {
+      "kind": "personalName",
+      "value": "施迩澄"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "内部底价"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "待分配样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "退件样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "personalName",
+      "value": "董澜示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "handoff-41@example.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "73981"
+    },
+    {
+      "kind": "personalName",
+      "value": "滕起示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "handoff-42@example.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "73994"
+    },
+    {
+      "kind": "personalName",
+      "value": "孟逐示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "handoff-43@example.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "74007"
+    },
+    {
+      "kind": "personalName",
+      "value": "安思示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "handoff-44@example.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "74020"
+    },
+    {
+      "kind": "personalName",
+      "value": "齐杉示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "handoff-45@example.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "74033"
+    },
+    {
+      "kind": "personalName",
+      "value": "江柯示"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "handoff-46@example.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "74046"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "采购方",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客商代码",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "负责人",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "manualOwner"
+    },
+    {
+      "col": "C4",
+      "header": "联系人",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C5",
+      "header": "内部底价",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C6",
+      "header": "联系邮箱",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "userExcluded"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 4,
+      "cells": [
+        "星茂仪器",
+        "HX-904",
+        "白槿样员",
+        "董澜示",
+        "73981",
+        "handoff-41@example.invalid"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "星茂仪器",
+        "acct_code": "HX-904"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "砂桥模型",
+        "HX-331",
+        "待分配样员",
+        "滕起示",
+        "73994",
+        "handoff-42@example.invalid"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "砂桥模型",
+        "acct_code": "HX-331"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "清垣玻璃",
+        "HX-290",
+        "退件样员",
+        "孟逐示",
+        "74007",
+        "handoff-43@example.invalid"
+      ],
+      "destination": {
+        "kind": "skip"
+      },
+      "status": "SKIPPED",
+      "reason": "ownerSkip"
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "杉湾瓷业",
+        "EXISTING",
+        "蓝桐样员",
+        "安思示",
+        "74020",
+        "handoff-44@example.invalid"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "SKIPPED",
+      "reason": "existingRecord"
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "南阁木器",
+        "HX-904",
+        "白槿样员",
+        "齐杉示",
+        "74033",
+        "handoff-45@example.invalid"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "SKIPPED",
+      "reason": "duplicateInFile"
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "晚舟包装",
+        "HX-570",
+        "蓝桐样员",
+        "江柯示",
+        "74046",
+        "handoff-46@example.invalid"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "晚舟包装",
+        "acct_code": "HX-570"
+      }
+    }
+  ]
+}

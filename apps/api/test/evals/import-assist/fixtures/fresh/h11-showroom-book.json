@@ -1,0 +1,653 @@
+{
+  "id": "h11-showroom-book",
+  "scenario": "showroom-book",
+  "source": "fresh/h11-showroom-book.xlsx",
+  "sheetName": "展会采购",
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "personalName",
+      "value": "沈柏示"
+    },
+    {
+      "kind": "personalName",
+      "value": "严岑示"
+    },
+    {
+      "kind": "personalName",
+      "value": "乔杭示"
+    },
+    {
+      "kind": "personalName",
+      "value": "凌帆示"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "采购方",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客商代码",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "报价（万元）",
+      "target": {
+        "mode": "field",
+        "field": "budget"
+      },
+      "bareAmountUnit": "wan"
+    },
+    {
+      "col": "C4",
+      "header": "订购数量",
+      "target": {
+        "mode": "field",
+        "field": "units"
+      }
+    },
+    {
+      "col": "C5",
+      "header": "已签约",
+      "target": {
+        "mode": "field",
+        "field": "enabled"
+      }
+    },
+    {
+      "col": "C6",
+      "header": "华北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_1"
+      }
+    },
+    {
+      "col": "C7",
+      "header": "华北耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_2"
+      }
+    },
+    {
+      "col": "C8",
+      "header": "华北培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_4"
+      }
+    },
+    {
+      "col": "C9",
+      "header": "华南展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_5"
+      }
+    },
+    {
+      "col": "C10",
+      "header": "华南耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_6"
+      }
+    },
+    {
+      "col": "C11",
+      "header": "华南培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_8"
+      }
+    },
+    {
+      "col": "C12",
+      "header": "西北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_9"
+      }
+    },
+    {
+      "col": "C13",
+      "header": "西北耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_10"
+      }
+    },
+    {
+      "col": "C14",
+      "header": "西北培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_12"
+      }
+    },
+    {
+      "col": "C15",
+      "header": "西南展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_13"
+      }
+    },
+    {
+      "col": "C16",
+      "header": "西南耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_14"
+      }
+    },
+    {
+      "col": "C17",
+      "header": "西南培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_16"
+      }
+    },
+    {
+      "col": "C18",
+      "header": "华东展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_17"
+      }
+    },
+    {
+      "col": "C19",
+      "header": "华东耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_18"
+      }
+    },
+    {
+      "col": "C20",
+      "header": "华东培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_20"
+      }
+    },
+    {
+      "col": "C21",
+      "header": "东北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_21"
+      }
+    },
+    {
+      "col": "C22",
+      "header": "东北耗材配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_22"
+      }
+    },
+    {
+      "col": "C23",
+      "header": "东北培训配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_24"
+      }
+    },
+    {
+      "col": "C24",
+      "header": "联系人",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C25",
+      "header": "下次跟进日",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C26",
+      "header": "合同额",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C27",
+      "header": "回款日期",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C28",
+      "header": "成交概率",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C29",
+      "header": "展位楼层",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C30",
+      "header": "展区名称",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C31",
+      "header": "合同页数",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C32",
+      "header": "结算方式",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C33",
+      "header": "供电要求",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C34",
+      "header": "展位号",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C35",
+      "header": "运输批次",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C36",
+      "header": "搭建承包商",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C37",
+      "header": "撤展时间",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C38",
+      "header": "发票类型",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C39",
+      "header": "付款银行",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C40",
+      "header": "进场证号",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "栖洲会展",
+        "EXPO-731",
+        "3.25",
+        "4",
+        "是",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "沈柏示",
+        "2026-09-18",
+        "8040",
+        "2026-10-22",
+        "35%",
+        "二楼",
+        "西馆",
+        "5",
+        "转账",
+        "标准",
+        "W11",
+        "秋展二批",
+        "立方工程",
+        "闭馆后",
+        "专票",
+        "合成清算行",
+        "P910"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "栖洲会展",
+        "acct_code": "EXPO-731",
+        "budget": "32500",
+        "units": 4,
+        "enabled": true,
+        "quota_1": 1,
+        "quota_2": 2,
+        "quota_4": 3,
+        "quota_5": 4,
+        "quota_6": 5,
+        "quota_8": 6,
+        "quota_9": 7,
+        "quota_10": 8,
+        "quota_12": 9,
+        "quota_13": 10,
+        "quota_14": 11,
+        "quota_16": 12,
+        "quota_17": 13,
+        "quota_18": 1,
+        "quota_20": 2,
+        "quota_21": 3,
+        "quota_22": 4,
+        "quota_24": 5
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "青原器材",
+        "EXPO-732",
+        "1.08",
+        "5",
+        "否",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "严岑示",
+        "2026-09-18",
+        "8450",
+        "2026-10-22",
+        "45%",
+        "二楼",
+        "西馆",
+        "5",
+        "转账",
+        "标准",
+        "W12",
+        "秋展二批",
+        "立方工程",
+        "闭馆后",
+        "专票",
+        "合成清算行",
+        "P911"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "青原器材",
+        "acct_code": "EXPO-732",
+        "budget": "10800",
+        "units": 5,
+        "enabled": false,
+        "quota_1": 5,
+        "quota_2": 6,
+        "quota_4": 7,
+        "quota_5": 8,
+        "quota_6": 9,
+        "quota_8": 10,
+        "quota_9": 11,
+        "quota_10": 12,
+        "quota_12": 13,
+        "quota_13": 1,
+        "quota_14": 2,
+        "quota_16": 3,
+        "quota_17": 4,
+        "quota_18": 5,
+        "quota_20": 6,
+        "quota_21": 7,
+        "quota_22": 8,
+        "quota_24": 9
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "南台家具",
+        "EXPO-733",
+        "0.80",
+        "6",
+        "是",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "乔杭示",
+        "2026-09-18",
+        "8860",
+        "2026-10-22",
+        "55%",
+        "二楼",
+        "西馆",
+        "5",
+        "转账",
+        "标准",
+        "W13",
+        "秋展二批",
+        "立方工程",
+        "闭馆后",
+        "专票",
+        "合成清算行",
+        "P912"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "南台家具",
+        "acct_code": "EXPO-733",
+        "budget": "8000",
+        "units": 6,
+        "enabled": true,
+        "quota_1": 9,
+        "quota_2": 10,
+        "quota_4": 11,
+        "quota_5": 12,
+        "quota_6": 13,
+        "quota_8": 1,
+        "quota_9": 2,
+        "quota_10": 3,
+        "quota_12": 4,
+        "quota_13": 5,
+        "quota_14": 6,
+        "quota_16": 7,
+        "quota_17": 8,
+        "quota_18": 9,
+        "quota_20": 10,
+        "quota_21": 11,
+        "quota_22": 12,
+        "quota_24": 13
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "夕岚灯具",
+        "EXPO-734",
+        "2.7",
+        "7",
+        "否",
+        "13",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "1",
+        "2",
+        "3",
+        "4",
+        "凌帆示",
+        "2026-09-18",
+        "9270",
+        "2026-10-22",
+        "65%",
+        "二楼",
+        "西馆",
+        "5",
+        "转账",
+        "标准",
+        "W14",
+        "秋展二批",
+        "立方工程",
+        "闭馆后",
+        "专票",
+        "合成清算行",
+        "P913"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "夕岚灯具",
+        "acct_code": "EXPO-734",
+        "budget": "27000",
+        "units": 7,
+        "enabled": false,
+        "quota_1": 13,
+        "quota_2": 1,
+        "quota_4": 2,
+        "quota_5": 3,
+        "quota_6": 4,
+        "quota_8": 5,
+        "quota_9": 6,
+        "quota_10": 7,
+        "quota_12": 8,
+        "quota_13": 9,
+        "quota_14": 10,
+        "quota_16": 11,
+        "quota_17": 12,
+        "quota_18": 13,
+        "quota_20": 1,
+        "quota_21": 2,
+        "quota_22": 3,
+        "quota_24": 4
+      }
+    }
+  ]
+}

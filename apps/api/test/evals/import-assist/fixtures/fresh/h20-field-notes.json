@@ -1,0 +1,157 @@
+{
+  "id": "h20-field-notes",
+  "scenario": "field-notes",
+  "source": "fresh/h20-field-notes.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "采购方",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "销售备注",
+      "target": {
+        "mode": "field",
+        "field": "memo"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "走访纪要",
+      "target": {
+        "mode": "append",
+        "field": "memo"
+      },
+      "confidence": "review"
+    },
+    {
+      "col": "C4",
+      "header": "回款日期",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C5",
+      "header": "成交概率",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C6",
+      "header": "订购数量",
+      "target": {
+        "mode": "field",
+        "field": "units"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "苏木织造",
+        "含税报价",
+        "带样品册",
+        "2026-08-20",
+        "25%",
+        "6"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苏木织造",
+        "memo": "含税报价\n走访纪要：带样品册",
+        "units": 6
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "荻洲焊材",
+        "需要回电",
+        "已确认规格",
+        "2026-08-20",
+        "60%",
+        "18"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "荻洲焊材",
+        "memo": "需要回电\n走访纪要：已确认规格",
+        "units": 18
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "芦渡量具",
+        "月内复核",
+        "采购周期较短",
+        "2026-08-20",
+        "90%",
+        "五箱"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidNumber"
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "桥西滤材",
+        "",
+        "试用反馈良好",
+        "2026-08-20",
+        "45%",
+        "42"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "桥西滤材",
+        "memo": "走访纪要：试用反馈良好",
+        "units": 42
+      }
+    }
+  ]
+}

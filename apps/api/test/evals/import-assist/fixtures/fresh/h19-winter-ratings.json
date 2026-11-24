@@ -1,0 +1,1279 @@
+{
+  "id": "h19-winter-ratings",
+  "scenario": "winter-ratings",
+  "source": "fresh/h19-winter-ratings.xls",
+  "sheetName": "冬季资信",
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客商代码",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "采购单位名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "B级",
+          "option": "B",
+          "confidence": "high"
+        },
+        {
+          "raw": "A级",
+          "option": "A",
+          "confidence": "high"
+        },
+        {
+          "raw": "C级",
+          "option": "C",
+          "confidence": "high"
+        },
+        {
+          "raw": "外评冬-804",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-805",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-806",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-807",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-808",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-809",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-810",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-811",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-812",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-813",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-814",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-815",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-816",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-817",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-818",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-819",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-820",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-821",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-822",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-823",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-824",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-825",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-826",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-827",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-828",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-829",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-830",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-831",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-832",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-833",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-834",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-835",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-836",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-837",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-838",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-839",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-840",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-841",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-842",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-843",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-844",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-845",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-846",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-847",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-848",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-849",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-850",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外评冬-851",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "QX-7300",
+        "驿桥陶具作坊",
+        "B级"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7300",
+        "acct_name": "驿桥陶具作坊",
+        "grade": "B"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "QX-7301",
+        "原谷陶具作坊",
+        "A级"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7301",
+        "acct_name": "原谷陶具作坊",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "QX-7302",
+        "墨湖陶具作坊",
+        "C级"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7302",
+        "acct_name": "墨湖陶具作坊",
+        "grade": "C"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "QX-7303",
+        "青草陶具作坊",
+        "外评冬-804"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7303",
+        "acct_name": "青草陶具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "QX-7304",
+        "映泉陶具作坊",
+        "外评冬-805"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7304",
+        "acct_name": "映泉陶具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "QX-7305",
+        "寒田陶具作坊",
+        "外评冬-806"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7305",
+        "acct_name": "寒田陶具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "QX-7306",
+        "雾崖陶具作坊",
+        "外评冬-807"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7306",
+        "acct_name": "雾崖陶具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "QX-7307",
+        "松塔陶具作坊",
+        "外评冬-808"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7307",
+        "acct_name": "松塔陶具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "QX-7308",
+        "川梁陶具作坊",
+        "外评冬-809"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7308",
+        "acct_name": "川梁陶具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 11,
+      "cells": [
+        "QX-7309",
+        "驿桥模具作坊",
+        "外评冬-810"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7309",
+        "acct_name": "驿桥模具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 12,
+      "cells": [
+        "QX-7310",
+        "原谷模具作坊",
+        "外评冬-811"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7310",
+        "acct_name": "原谷模具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 13,
+      "cells": [
+        "QX-7311",
+        "墨湖模具作坊",
+        "外评冬-812"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7311",
+        "acct_name": "墨湖模具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 14,
+      "cells": [
+        "QX-7312",
+        "青草模具作坊",
+        "外评冬-813"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7312",
+        "acct_name": "青草模具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 15,
+      "cells": [
+        "QX-7313",
+        "映泉模具作坊",
+        "外评冬-814"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7313",
+        "acct_name": "映泉模具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 16,
+      "cells": [
+        "QX-7314",
+        "寒田模具作坊",
+        "外评冬-815"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7314",
+        "acct_name": "寒田模具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 17,
+      "cells": [
+        "QX-7315",
+        "雾崖模具作坊",
+        "外评冬-816"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7315",
+        "acct_name": "雾崖模具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 18,
+      "cells": [
+        "QX-7316",
+        "松塔模具作坊",
+        "外评冬-817"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7316",
+        "acct_name": "松塔模具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 19,
+      "cells": [
+        "QX-7317",
+        "川梁模具作坊",
+        "外评冬-818"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7317",
+        "acct_name": "川梁模具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 20,
+      "cells": [
+        "QX-7318",
+        "驿桥船具作坊",
+        "外评冬-819"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7318",
+        "acct_name": "驿桥船具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 21,
+      "cells": [
+        "QX-7319",
+        "原谷船具作坊",
+        "外评冬-820"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7319",
+        "acct_name": "原谷船具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 22,
+      "cells": [
+        "QX-7320",
+        "墨湖船具作坊",
+        "外评冬-821"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7320",
+        "acct_name": "墨湖船具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 23,
+      "cells": [
+        "QX-7321",
+        "青草船具作坊",
+        "外评冬-822"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7321",
+        "acct_name": "青草船具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 24,
+      "cells": [
+        "QX-7322",
+        "映泉船具作坊",
+        "外评冬-823"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7322",
+        "acct_name": "映泉船具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 25,
+      "cells": [
+        "QX-7323",
+        "寒田船具作坊",
+        "外评冬-824"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7323",
+        "acct_name": "寒田船具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 26,
+      "cells": [
+        "QX-7324",
+        "雾崖船具作坊",
+        "外评冬-825"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7324",
+        "acct_name": "雾崖船具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 27,
+      "cells": [
+        "QX-7325",
+        "松塔船具作坊",
+        "外评冬-826"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7325",
+        "acct_name": "松塔船具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 28,
+      "cells": [
+        "QX-7326",
+        "川梁船具作坊",
+        "外评冬-827"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7326",
+        "acct_name": "川梁船具作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 29,
+      "cells": [
+        "QX-7327",
+        "驿桥阀门作坊",
+        "外评冬-828"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7327",
+        "acct_name": "驿桥阀门作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 30,
+      "cells": [
+        "QX-7328",
+        "原谷阀门作坊",
+        "外评冬-829"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7328",
+        "acct_name": "原谷阀门作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 31,
+      "cells": [
+        "QX-7329",
+        "墨湖阀门作坊",
+        "外评冬-830"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7329",
+        "acct_name": "墨湖阀门作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 32,
+      "cells": [
+        "QX-7330",
+        "青草阀门作坊",
+        "外评冬-831"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7330",
+        "acct_name": "青草阀门作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 33,
+      "cells": [
+        "QX-7331",
+        "映泉阀门作坊",
+        "外评冬-832"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7331",
+        "acct_name": "映泉阀门作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 34,
+      "cells": [
+        "QX-7332",
+        "寒田阀门作坊",
+        "外评冬-833"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7332",
+        "acct_name": "寒田阀门作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 35,
+      "cells": [
+        "QX-7333",
+        "雾崖阀门作坊",
+        "外评冬-834"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7333",
+        "acct_name": "雾崖阀门作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 36,
+      "cells": [
+        "QX-7334",
+        "松塔阀门作坊",
+        "外评冬-835"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7334",
+        "acct_name": "松塔阀门作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 37,
+      "cells": [
+        "QX-7335",
+        "川梁阀门作坊",
+        "外评冬-836"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7335",
+        "acct_name": "川梁阀门作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 38,
+      "cells": [
+        "QX-7336",
+        "驿桥泵业作坊",
+        "外评冬-837"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7336",
+        "acct_name": "驿桥泵业作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 39,
+      "cells": [
+        "QX-7337",
+        "原谷泵业作坊",
+        "外评冬-838"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7337",
+        "acct_name": "原谷泵业作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 40,
+      "cells": [
+        "QX-7338",
+        "墨湖泵业作坊",
+        "外评冬-839"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7338",
+        "acct_name": "墨湖泵业作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 41,
+      "cells": [
+        "QX-7339",
+        "青草泵业作坊",
+        "外评冬-840"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7339",
+        "acct_name": "青草泵业作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 42,
+      "cells": [
+        "QX-7340",
+        "映泉泵业作坊",
+        "外评冬-841"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7340",
+        "acct_name": "映泉泵业作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 43,
+      "cells": [
+        "QX-7341",
+        "寒田泵业作坊",
+        "外评冬-842"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7341",
+        "acct_name": "寒田泵业作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 44,
+      "cells": [
+        "QX-7342",
+        "雾崖泵业作坊",
+        "外评冬-843"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7342",
+        "acct_name": "雾崖泵业作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 45,
+      "cells": [
+        "QX-7343",
+        "松塔泵业作坊",
+        "外评冬-844"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7343",
+        "acct_name": "松塔泵业作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 46,
+      "cells": [
+        "QX-7344",
+        "川梁泵业作坊",
+        "外评冬-845"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7344",
+        "acct_name": "川梁泵业作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 47,
+      "cells": [
+        "QX-7345",
+        "驿桥电缆作坊",
+        "外评冬-846"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7345",
+        "acct_name": "驿桥电缆作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 48,
+      "cells": [
+        "QX-7346",
+        "原谷电缆作坊",
+        "外评冬-847"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7346",
+        "acct_name": "原谷电缆作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 49,
+      "cells": [
+        "QX-7347",
+        "墨湖电缆作坊",
+        "外评冬-848"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7347",
+        "acct_name": "墨湖电缆作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 50,
+      "cells": [
+        "QX-7348",
+        "青草电缆作坊",
+        "外评冬-849"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7348",
+        "acct_name": "青草电缆作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 51,
+      "cells": [
+        "QX-7349",
+        "映泉电缆作坊",
+        "外评冬-850"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7349",
+        "acct_name": "映泉电缆作坊",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 52,
+      "cells": [
+        "QX-7350",
+        "寒田电缆作坊",
+        "外评冬-851"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "QX-7350",
+        "acct_name": "寒田电缆作坊",
+        "grade": null
+      }
+    }
+  ]
+}
