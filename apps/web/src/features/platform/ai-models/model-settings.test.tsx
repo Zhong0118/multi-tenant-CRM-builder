@@ -86,7 +86,7 @@ const data = {
 };
 function show(
   respond?: (url: string, body: Record<string, unknown>) => unknown,
-  state = () => data,
+  state: () => unknown = () => data,
 ) {
   const send = vi.fn(async (url: string, init?: RequestInit) => {
     const body = init?.body ? JSON.parse(String(init.body)) : {};
@@ -125,6 +125,26 @@ async function choose(label: string, name: string) {
 }
 afterEach(() => vi.unstubAllGlobals());
 describe("平台模型设置", () => {
+  it("测试失败的修改不影响正在使用的配置，并显示黄色状态", async () => {
+    const pending = {
+      ...provider.revisions[0],
+      id: "draft",
+      tests: [{ ...test, status: "failed" }],
+    };
+    show(undefined, () => ({
+      ...data,
+      providers: [
+        {
+          ...provider,
+          draftRevisionId: pending.id,
+          revisions: [pending, ...provider.revisions],
+        },
+      ],
+    }));
+    expect(
+      await screen.findByText("修改未生效", { selector: ".ant-tag" }),
+    ).toHaveClass("ant-tag-warning");
+  });
   it("视觉分配和供应商编辑都说明最大输出未填写", async () => {
     const send = show();
     fireEvent.click(

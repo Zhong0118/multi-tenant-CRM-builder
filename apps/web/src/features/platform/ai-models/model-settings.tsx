@@ -254,11 +254,13 @@ export function PlatformModelSettings() {
                   check = lastTest(revision);
                 const state = !p.enabled
                   ? "已停用"
-                  : check?.status === "failed"
-                    ? "测试失败"
-                    : p.draftRevisionId || !p.activeRevisionId
-                      ? "修改未生效"
-                      : "正常";
+                  : p.activeRevisionId && p.draftRevisionId
+                    ? "修改未生效"
+                    : check?.status === "failed"
+                      ? "测试失败"
+                      : p.draftRevisionId || !p.activeRevisionId
+                        ? "修改未生效"
+                        : "正常";
                 const used = data.assignments.filter(
                   (a) => a.providerId === p.id,
                 );
@@ -314,7 +316,9 @@ export function PlatformModelSettings() {
                             ? "green"
                             : state === "测试失败"
                               ? "red"
-                              : undefined
+                              : state === "修改未生效"
+                                ? "warning"
+                                : undefined
                         }
                       >
                         {state}
@@ -390,7 +394,7 @@ export function PlatformModelSettings() {
                         </Dropdown>
                       </Space>
                     </div>
-                    {state === "测试失败" && (
+                    {p.enabled && check?.status === "failed" && (
                       <p className={styles.note}>
                         {p.activeRevisionId && p.draftRevisionId
                           ? "修改未生效 · "
