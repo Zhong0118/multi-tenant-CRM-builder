@@ -47,7 +47,7 @@ describe('AI governance administration over HTTP with restricted PostgreSQL role
     await closeCriticalHarness(h);
   });
   it('serves the migrated catalog and refuses upcoming features over HTTP', async () => {
-    const expected = featureCatalog.map((row) => ({ ...row, purpose: 'text' }));
+    const expected = featureCatalog;
     const platform = await http(
       f.tenantBAdmin,
       'get',

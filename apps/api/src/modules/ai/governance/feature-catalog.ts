@@ -4,6 +4,7 @@ export const featureCatalog = [
   {
     key: 'assistant',
     label: '对话助手',
+    purpose: 'text',
     group: '基础',
     requires: null,
     outputLimit: 4096,
@@ -12,6 +13,7 @@ export const featureCatalog = [
   {
     key: 'write_proposal',
     label: 'AI 写入提议',
+    purpose: 'text',
     group: '基础',
     requires: 'assistant',
     outputLimit: null,
@@ -20,6 +22,7 @@ export const featureCatalog = [
   {
     key: 'communication',
     label: '整理沟通',
+    purpose: 'text',
     group: '数据处理',
     requires: null,
     outputLimit: 4000,
@@ -28,6 +31,7 @@ export const featureCatalog = [
   {
     key: 'filter',
     label: '一句话筛选',
+    purpose: 'text',
     group: '数据处理',
     requires: null,
     outputLimit: 3500,
@@ -36,6 +40,7 @@ export const featureCatalog = [
   {
     key: 'table_builder',
     label: 'AI 建表',
+    purpose: 'text',
     group: '管理员',
     requires: null,
     outputLimit: 16000,
@@ -44,6 +49,7 @@ export const featureCatalog = [
   {
     key: 'daily_brief',
     label: '今日建议',
+    purpose: 'text',
     group: '销售日常',
     requires: null,
     outputLimit: 2000,
@@ -52,6 +58,7 @@ export const featureCatalog = [
   {
     key: 'writing',
     label: '帮我写',
+    purpose: 'text',
     group: '销售日常',
     requires: null,
     outputLimit: 1500,
@@ -60,6 +67,7 @@ export const featureCatalog = [
   {
     key: 'daily_report',
     label: 'AI 写日报',
+    purpose: 'text',
     group: '销售日常',
     requires: null,
     outputLimit: 2500,
