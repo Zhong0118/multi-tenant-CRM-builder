@@ -302,9 +302,19 @@ async function main() {
   const files = read('manifest.json').files.filter((f) => f.split === split);
   const h = await runtime(),
     results = [];
+  const sends = [];
   try {
     for (const entry of files) {
+      // The deployed limiter admits 12 model sends per member per minute.
+      // Pace between files so fast responses do not create artificial denials.
+      while (sends.length && sends[0] <= Date.now() - 60000) sends.shift();
+      if (sends.length >= 12) {
+        await require('node:timers/promises').setTimeout(
+          Math.max(1, 60001 + sends.shift() - Date.now()),
+        );
+      }
       const log = await run(h, entry);
+      if (log.calls) sends.push(Date.now());
       results.push(log);
       console.log(
         entry.id,

@@ -174,7 +174,7 @@ function observedProvider(mode, answer, resolved, h, log) {
             ? 'truncated'
             : signal.aborted
               ? 'timeout'
-              : (e.name ?? 'providerError');
+              : (e.code ?? e.name ?? 'providerError');
         throw e;
       } finally {
         log.modelMs = Math.round(performance.now() - start);
