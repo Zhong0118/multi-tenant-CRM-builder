@@ -577,3 +577,38 @@ it("invalidates a completed check when a mapped field becomes read-only", async 
     screen.queryByRole("button", { name: /确认导入/ }),
   ).not.toBeInTheDocument();
 });
+
+it("keeps a confirmed row locked to its original write when the remaining mapping is changed", async () => {
+  const { api } = setup(recordApi(), schema, true);
+  const mock = vi.mocked(api.importRows);
+  const execute = mock.getMockImplementation()!;
+  let interrupt = true;
+  mock.mockImplementation(async (...args) => {
+    if (!args[2].dryRun && args[2].ownerMemberId === "m2" && interrupt) {
+      interrupt = false;
+      throw new Error("network");
+    }
+    return execute(...args);
+  });
+  chooseFile("姓名,业务员,线索状态\n甲,员工甲,待联系\n乙,员工乙,待联系");
+  await screen.findByText("2 行 · 3 列");
+  await checkAndImport();
+  await screen.findByText(/未收到结果的行待重查/);
+  fireEvent.mouseDown(screen.getByLabelText("映射 线索状态"));
+  fireEvent.click(
+    await screen.findByText("跳过此列", {
+      selector: ".ant-select-item-option-content",
+    }),
+  );
+  expect(
+    screen.queryByRole("button", { name: /确认导入/ }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "检查剩余行" }));
+  fireEvent.click(await screen.findByRole("button", { name: /确认导入 1 行/ }));
+  await screen.findByText(/成功 2 行/);
+  const requests = mock.mock.calls.map(([, , input]) => input);
+  expect(requests.slice(-2).map((req) => req.rows)).toEqual(
+    Array.from({ length: 2 }, () => [{ rowNumber: 3, values: { name: "乙" } }]),
+  );
+  expect(new Set(requests.map((req) => req.batchId)).size).toBe(1);
+});
