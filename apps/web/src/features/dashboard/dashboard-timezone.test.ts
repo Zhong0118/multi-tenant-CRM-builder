@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   datetimeLocalToUtcIso,
+  datetimeLocalUtcCandidates,
   utcIsoToDatetimeLocal,
 } from "./dashboard-timezone";
 
@@ -35,4 +36,37 @@ describe("dashboard tenant timezone conversion", () => {
       original,
     );
   });
+});
+
+it("reuses offset probes for a sheet with many different times on one day", () => {
+  const format = vi.spyOn(Intl.DateTimeFormat.prototype, "formatToParts");
+  try {
+    for (let minute = 0; minute < 30; minute++) {
+      const wallClock = "2025-03-02T10:" + String(minute).padStart(2, "0");
+      expect(datetimeLocalUtcCandidates(wallClock, "Pacific/Auckland")).toEqual(
+        ["2025-03-01T21:" + String(minute).padStart(2, "0") + ":00.000Z"],
+      );
+    }
+    expect(format.mock.calls.length).toBeLessThan(300);
+  } finally {
+    format.mockRestore();
+  }
+});
+
+it("keeps both offsets for half-hour folds and handles an entire skipped calendar day at midnight", () => {
+  expect(
+    datetimeLocalUtcCandidates("2024-04-07T01:45:00", "Australia/Lord_Howe"),
+  ).toEqual(["2024-04-06T14:45:00.000Z", "2024-04-06T15:15:00.000Z"]);
+  expect(
+    datetimeLocalUtcCandidates("2011-12-29T23:59:59", "Pacific/Apia"),
+  ).toEqual(["2011-12-30T09:59:59.000Z"]);
+  expect(
+    datetimeLocalUtcCandidates("2011-12-30T00:00:00", "Pacific/Apia"),
+  ).toEqual([]);
+  expect(
+    datetimeLocalUtcCandidates("2011-12-30T23:59:59", "Pacific/Apia"),
+  ).toEqual([]);
+  expect(
+    datetimeLocalUtcCandidates("2011-12-31T00:00:00", "Pacific/Apia"),
+  ).toEqual(["2011-12-30T10:00:00.000Z"]);
 });
