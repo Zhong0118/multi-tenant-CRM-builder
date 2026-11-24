@@ -22,7 +22,6 @@ export function ImportOwners({
   onChange: (name: string, dest: ImportDestination) => void;
 }) {
   const options = [
-    ...memberSelectOptions(members),
     {
       value: ":pool",
       searchText: "公共池",
@@ -30,6 +29,7 @@ export function ImportOwners({
       disabled: !poolEnabled,
     },
     { value: ":skip", searchText: "不导入", label: "这些行不导入" },
+    ...memberSelectOptions(members),
   ];
   return (
     <Table

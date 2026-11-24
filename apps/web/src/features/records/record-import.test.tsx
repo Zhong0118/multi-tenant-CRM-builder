@@ -143,6 +143,29 @@ async function checkAndImport() {
   fireEvent.click(await screen.findByRole("button", { name: /确认导入/ }));
 }
 describe("RecordImportDrawer", () => {
+  it("keeps a visible filename on cancel and reads a reselected file with the same name", async () => {
+    const { api } = setup();
+    expect(
+      screen.getByRole("button", { name: "选择或拖入 Excel / CSV 文件" }),
+    ).toBeVisible();
+    chooseFile("姓名\n张三", "客户.csv");
+    await screen.findByText("1 行 · 1 列");
+    const picker = screen.getByRole("button", { name: /重新选择/ });
+    expect(picker).toHaveTextContent("客户.csv");
+    fireEvent.change(screen.getByLabelText("选择 Excel 或 CSV 文件"), {
+      target: { files: [] },
+    });
+    expect(picker).toHaveTextContent("客户.csv");
+    chooseFile("姓名\n张三\n李四", "客户.csv");
+    await screen.findByText("2 行 · 1 列");
+    fireEvent.drop(picker, {
+      dataTransfer: { files: [new File(["姓名\n王五"], "替换.csv")] },
+    });
+    await screen.findByText("1 行 · 1 列");
+    expect(picker).toHaveTextContent("替换.csv");
+    expect(api.importRows).not.toHaveBeenCalled();
+  });
+
   it("checks and imports with the selected owner, invalidates preview on change and locks ownership once started", async () => {
     const { api } = setup(recordApi(), schema, true);
     chooseFile("姓名\n新客户");
@@ -534,6 +557,15 @@ it("requires admin resolution of unknown owners before checking and splits the c
   expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
   fireEvent.click(screen.getByText(/查看负责人对照/));
   fireEvent.mouseDown(screen.getByLabelText("归属 未匹配"));
+  const choices = document.querySelectorAll(".ant-select-item-option-content");
+  expect(
+    Array.from(choices)
+      .slice(0, 2)
+      .map((choice) => choice.textContent),
+  ).toEqual(["初始公共池未启用", "这些行不导入"]);
+  expect(choices[0].parentElement).toHaveClass(
+    "ant-select-item-option-disabled",
+  );
   fireEvent.click(
     await screen.findByText("这些行不导入", {
       selector: ".ant-select-item-option-content",

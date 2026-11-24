@@ -113,7 +113,7 @@ export function RecordImportDrawer({
       stopped.current = true;
     };
   }, []);
-  const [fileName, setFileName] = useState<string>();
+  const fileInput = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<ParsedCsv>();
   const [mapping, setMapping] = useState<string[]>([]);
   const [parseError, setParseError] = useState<string>();
@@ -414,7 +414,6 @@ export function RecordImportDrawer({
     setSource(undefined);
     setHeaders([]);
     setMatchFields([]);
-    setFileName(file?.name);
     if (!file) {
       setLoadingFile(false);
       return;
@@ -570,7 +569,36 @@ export function RecordImportDrawer({
               ? "整批新增记录使用所选负责人"
               : "本次新增记录归你负责"}
       </Typography.Paragraph>
+      <Button
+        type="dashed"
+        block
+        className={importStyles.filePicker}
+        disabled={!!busy || loadingFile}
+        onClick={() => fileInput.current?.click()}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          const file = event.dataTransfer.files[0];
+          if (file && !busy && !loadingFile) void onFile(file, "auto");
+        }}
+      >
+        {selectedFile ? (
+          <>
+            <strong>{selectedFile.name}</strong>
+            {parsed && (
+              <span>
+                {parsed.rows.length} 行 · {parsed.headers.length} 列
+              </span>
+            )}
+            <span>重新选择</span>
+          </>
+        ) : (
+          "选择或拖入 Excel / CSV 文件"
+        )}
+      </Button>
       <input
+        ref={fileInput}
+        hidden
         type="file"
         disabled={!!busy || loadingFile}
         accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -578,7 +606,7 @@ export function RecordImportDrawer({
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
-          void onFile(file, "auto");
+          if (file) void onFile(file, "auto");
         }}
       />
       <label className={styles.columnChooserRow}>
@@ -679,15 +707,8 @@ export function RecordImportDrawer({
         </>
       ) : null}
 
-      {fileName ? (
-        <Typography.Paragraph>{fileName}</Typography.Paragraph>
-      ) : null}
-
       {parsed ? (
         <>
-          <Typography.Paragraph>
-            {parsed.rows.length} 行 · {parsed.headers.length} 列
-          </Typography.Paragraph>
           {duplicateFields.length ? (
             <Alert
               type="error"
