@@ -67,7 +67,7 @@
   display: grid;
   gap: 18px;
 }
-.form label {
+.field {
   display: grid;
   gap: 6px;
 }

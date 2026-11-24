@@ -29,6 +29,7 @@ export interface Suggestions {
   localDate: string;
   generatedAt: string | null;
   remaining: number;
+  noValidatedSuggestions: boolean;
   busy: boolean;
   items: Array<
     Omit<BriefRecord, "keyDate"> & {

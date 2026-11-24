@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { Alert, Button, Drawer, Input, Space } from "antd";
+import { useState, useEffect, useId, useRef } from "react";
+import { Alert, Button, Drawer, Input, Select, Space } from "antd";
 import { CopyOutlined, EditOutlined } from "@ant-design/icons";
 import type { WritingOptions } from "@crm/contracts";
 import { recordApi } from "@/features/records/record-api";
@@ -11,6 +11,7 @@ import {
   writingDraft,
   type LiveWriting,
 } from "./sales-draft-api";
+import { GenerationWait } from "./generation-wait";
 import styles from "./sales-writing.module.css";
 const defaults: WritingOptions = {
   kind: "message",
@@ -52,11 +53,13 @@ export function SalesWriting({
   initialOptions?: WritingOptions;
   load?: typeof writingDraft;
 }) {
+  const formId = useId();
   const [options, setOptions] = useState(initialOptions);
   const [draft, setDraft] = useState(initial);
   const [draftOptions, setDraftOptions] = useState(initialOptions);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<"writing" | "activity">();
+  const busy = Boolean(pending);
   const [log, setLog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -69,7 +72,7 @@ export function SalesWriting({
     if (request.current) return;
     const stop = new AbortController();
     request.current = stop;
-    setBusy(true);
+    setPending("writing");
     setError("");
     setCopied(false);
     setOptions(opts);
@@ -111,14 +114,14 @@ export function SalesWriting({
       }
     } finally {
       request.current = null;
-      setBusy(false);
+      setPending(undefined);
     }
   }
   async function openLog() {
     if (request.current) return;
     const stop = new AbortController();
     request.current = stop;
-    setBusy(true);
+    setPending("activity");
     setError("");
     try {
       await checkWritingActivity(tenantCode, objectCode, recordId, stop.signal);
@@ -127,7 +130,7 @@ export function SalesWriting({
       if (!stop.signal.aborted) setError(draftError(e));
     } finally {
       request.current = null;
-      setBusy(false);
+      setPending(undefined);
     }
   }
   const body = draft
@@ -139,22 +142,19 @@ export function SalesWriting({
     <section className={styles.editor} aria-label="帮我写">
       <div className={styles.options}>
         {(Object.keys(labels) as (keyof typeof labels)[]).map((key) => (
-          <label key={key}>
-            {labels[key]}
-            <select
+          <div key={key} className={styles.field}>
+            <label htmlFor={formId + key}>{labels[key]}</label>
+            <Select
+              id={formId + key}
               value={options[key]}
-              onChange={(e) =>
-                setOptions({ ...options, [key]: e.target.value })
-              }
+              onChange={(value) => setOptions({ ...options, [key]: value })}
               disabled={busy}
-            >
-              {Object.entries(choices[key]).map(([value, text]) => (
-                <option key={value} value={value}>
-                  {text}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={Object.entries(choices[key]).map(([value, label]) => ({
+                value,
+                label,
+              }))}
+            />
+          </div>
         ))}
       </div>
       <label>
@@ -173,13 +173,17 @@ export function SalesWriting({
         <Button
           type="primary"
           icon={<EditOutlined aria-hidden />}
-          aria-label={draft ? "按当前选项生成" : "生成"}
-          loading={busy}
+          aria-label={
+            pending === "writing" ? "生成中" : draft ? "按当前选项生成" : "生成"
+          }
+          loading={pending === "writing"}
+          disabled={busy}
           onClick={() => generate(options)}
         >
-          {draft ? "按当前选项生成" : "生成"}
+          {pending === "writing" ? "生成中" : draft ? "按当前选项生成" : "生成"}
         </Button>
-        {busy && (
+        {pending === "writing" && <GenerationWait feature="writing" />}
+        {pending === "writing" && (
           <Button onClick={() => request.current?.abort()}>取消生成</Button>
         )}
       </Space>
@@ -196,9 +200,14 @@ export function SalesWriting({
             })}
           </small>
           {draft.subject && <h4>{draft.subject}</h4>}
-          {draft.blocks.map((b, i) => (
-            <p key={i}>{b.text}</p>
-          ))}
+          {draft.blocks.map((block, index) =>
+            draft.kind === "visit" &&
+            ["已知情况", "要问的问题", "要带的材料"].includes(block.text) ? (
+              <h4 key={index}>{block.text}</h4>
+            ) : (
+              <p key={index}>{block.text}</p>
+            ),
+          )}
           <Space wrap>
             <Button
               icon={<CopyOutlined aria-hidden />}

@@ -18,6 +18,7 @@ import {
   type BriefList,
   type BriefRecord,
 } from "./brief-api";
+import { GenerationWait } from "@/features/ai/generation-wait";
 import styles from "./brief.module.css";
 
 export function BriefSuggestions({
@@ -82,7 +83,8 @@ export function BriefSuggestions({
       setPending(false);
     }
   };
-  const data = query.isError || query.isFetching ? undefined : query.data;
+  const data = query.data;
+  const generating = pending || Boolean(data?.busy);
   return (
     <section className={styles.box} aria-label="今日建议">
       <div className={styles.header}>
@@ -98,7 +100,7 @@ export function BriefSuggestions({
       </div>
       {!collapsed && (
         <div className={styles.content}>
-          {query.isFetching ? (
+          {query.isFetching && !generating ? (
             <Skeleton active paragraph={{ rows: 1 }} />
           ) : query.isError ? (
             <Alert
@@ -133,10 +135,16 @@ export function BriefSuggestions({
                       !hasCandidates || !data.remaining || data.busy || pending
                     }
                     onClick={() => void generate()}
-                    loading={pending || data.busy}
+                    aria-label={generating ? "生成中" : undefined}
+                    loading={generating}
                   >
-                    {data.generatedAt ? "重新生成" : "生成今日建议"}
+                    {generating
+                      ? "生成中"
+                      : data.generatedAt
+                        ? "重新生成"
+                        : "生成今日建议"}
                   </Button>
+                  {generating && <GenerationWait feature="daily_brief" />}
                   {pending && (
                     <Button onClick={() => controller.current?.abort()}>
                       取消
@@ -150,38 +158,44 @@ export function BriefSuggestions({
                   )}
                 </div>
                 {data.generatedAt && !data.items.length && (
-                  <p>当前没有可展示的建议。</p>
+                  <p>
+                    {!hasCandidates
+                      ? "今天没有需要特别关注的客户。"
+                      : data.noValidatedSuggestions
+                        ? "有需要关注的记录，但本次 AI 建议均未通过校验。请查看下方的工作清单。"
+                        : "有需要关注的记录，但上次的建议已不适用于当前记录。请查看下方的工作清单。"}
+                  </p>
                 )}
-                {data.items.map((i) => {
-                  const href = sourceRecordHref(
-                    tenantCode,
-                    i.objectCode,
-                    i.recordId,
-                  );
-                  return (
-                    <article key={i.recordId} className={styles.item}>
-                      <div>
-                        <strong>{i.title}</strong> · {i.objectName}
-                        <p>
-                          {i.reason} · {i.explanation}
-                        </p>
-                      </div>
-                      <div className={styles.actions}>
-                        <Link href={href}>打开记录</Link>
-                        {writing && (
-                          <Link href={href + "?writing=1"}>帮我写</Link>
-                        )}
-                        {i.canFollowUp && (
-                          <Link
-                            href={href + "?section=followups&briefFollowup=1"}
-                          >
-                            加跟进
-                          </Link>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })}
+                {!query.isFetching &&
+                  data.items.map((i) => {
+                    const href = sourceRecordHref(
+                      tenantCode,
+                      i.objectCode,
+                      i.recordId,
+                    );
+                    return (
+                      <article key={i.recordId} className={styles.item}>
+                        <div>
+                          <strong>{i.suggestedTitle}</strong> · {i.title}（
+                          {i.objectName}）<p>{i.explanation}</p>
+                          <p>依据 · {i.reason}</p>
+                        </div>
+                        <div className={styles.actions}>
+                          <Link href={href}>打开记录</Link>
+                          {writing && (
+                            <Link href={href + "?writing=1"}>帮我写</Link>
+                          )}
+                          {i.canFollowUp && (
+                            <Link
+                              href={href + "?section=followups&briefFollowup=1"}
+                            >
+                              加跟进
+                            </Link>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
               </>
             )
           )}

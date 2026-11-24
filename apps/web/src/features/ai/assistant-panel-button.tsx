@@ -2,8 +2,8 @@
 
 import { SalesWriting } from "./sales-writing";
 import { useAiFeature } from "@/features/ai-governance/access";
-import { RobotOutlined } from "@ant-design/icons";
-import { Button, Drawer } from "antd";
+import { ArrowLeftOutlined, RobotOutlined } from "@ant-design/icons";
+import { Button, Drawer, Space } from "antd";
 import { useEffect, useRef, useState } from "react";
 import type { FilterRule } from "@crm/contracts";
 import type { AssistantPageContext } from "./assistant-commands";
@@ -131,9 +131,21 @@ function AvailableAssistantPanel(
       </Button>
       <Drawer
         title={
-          compose ? [recordTitle, "帮我写"].filter(Boolean).join(" · ") : null
+          compose ? (
+            <Space>
+              {props.assistant && (
+                <Button
+                  type="text"
+                  aria-label="返回助手"
+                  icon={<ArrowLeftOutlined />}
+                  onClick={() => setCompose(false)}
+                />
+              )}
+              {[recordTitle, "帮我写"].filter(Boolean).join(" · ")}
+            </Space>
+          ) : null
         }
-        closable={compose}
+        closable={compose && { placement: "end" }}
         placement="right"
         open={open}
         onClose={() => setOpen(false)}
@@ -153,18 +165,11 @@ function AvailableAssistantPanel(
         {props.writing &&
           recordId &&
           (compose ? (
-            <>
-              {props.assistant && (
-                <Button type="text" onClick={() => setCompose(false)}>
-                  返回助手
-                </Button>
-              )}
-              <SalesWriting
-                tenantCode={tenantCode}
-                objectCode={objectCode}
-                recordId={recordId}
-              />
-            </>
+            <SalesWriting
+              tenantCode={tenantCode}
+              objectCode={objectCode}
+              recordId={recordId}
+            />
           ) : (
             <Button onClick={() => setCompose(true)}>帮我写</Button>
           ))}

@@ -189,6 +189,9 @@ export class DailyBriefService {
           generatedAt: row?.generated_at?.toISOString() ?? null,
           remaining: Math.min(3, 4 - (row?.attempts ?? 0)),
           busy: row?.busy ?? false,
+          noValidatedSuggestions: Boolean(
+            row?.generated_at && !row.items.length,
+          ),
           items,
         };
       },

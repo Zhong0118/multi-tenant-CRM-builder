@@ -162,6 +162,7 @@ function RecordWorkspaceSession({
       )}
       {record ? (
             <RecordDetailPage
+              timeZone={initialPage.timeZone}
               tenantCode={tenantCode}
               schema={schema}
               record={record}

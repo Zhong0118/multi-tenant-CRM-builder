@@ -34,7 +34,7 @@ export function BriefSettings({
       void client.invalidateQueries({
         queryKey: ["daily-brief-suggestions", tenantCode],
       });
-      toast.success("今日简报规则已保存");
+      toast.success("需要关注规则已保存");
     },
   });
   const r = draft ?? query.data;
@@ -52,8 +52,8 @@ export function BriefSettings({
   return (
     <Page width="settings">
       <PageHeader
-        title="今日简报"
-        description="设置哪些记录进入成员的个人工作清单。保存即生效。"
+        title="需要关注"
+        description="决定员工工作台「需要关注」里列出哪些记录"
       />
       {query.isError ? (
         <LoadError error={query.error} retry={() => void query.refetch()} />
@@ -68,9 +68,10 @@ export function BriefSettings({
               if (draft) save.mutate(draft);
             }}
           >
-            <label>
-              纳入的业务表
+            <div className={styles.field}>
+              <span id="brief-objects-label">纳入的业务表</span>
               <Radio.Group
+                aria-labelledby="brief-objects-label"
                 value={r.objectIds === null ? "all" : "selected"}
                 onChange={(e) =>
                   change({ objectIds: e.target.value === "all" ? null : [] })
@@ -80,7 +81,7 @@ export function BriefSettings({
                   { label: "指定业务表", value: "selected" },
                 ]}
               />
-            </label>
+            </div>
             {r.objectIds !== null && (
               <Select
                 aria-label="选择业务表"
@@ -100,7 +101,7 @@ export function BriefSettings({
                 ["reclaimDays", "提前提醒收回"],
               ] as const
             ).map(([k, label]) => (
-              <label key={k}>
+              <label key={k} className={styles.field}>
                 {label}
                 <InputNumber
                   aria-label={label}

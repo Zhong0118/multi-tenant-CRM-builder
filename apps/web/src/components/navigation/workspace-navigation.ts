@@ -65,7 +65,7 @@ export function workspaceSettingsNavigation(
       items: [
         {
           href: `${root}/settings/daily-brief`,
-          label: "今日简报",
+          label: "需要关注",
           icon: "calendar",
         },
         { href: `${root}/settings/ai`, label: "AI", icon: "ai" },

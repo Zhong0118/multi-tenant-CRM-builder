@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Modal, Space } from "antd";
 import type { DailyReportSections } from "@crm/contracts";
 import { draftError, reportDraft } from "@/features/ai/sales-draft-api";
+import { GenerationWait } from "@/features/ai/generation-wait";
 import styles from "./report-draft.module.css";
 type Section = keyof DailyReportSections;
 const names: Record<Section, string> = {
@@ -86,9 +87,15 @@ export function ReportDraft({
   return (
     <div>
       <Space wrap>
-        <Button onClick={generate} loading={busy} disabled={disabled}>
-          AI 起草
+        <Button
+          onClick={generate}
+          aria-label={busy ? "生成中" : undefined}
+          loading={busy}
+          disabled={disabled}
+        >
+          {busy ? "生成中" : "AI 起草"}
         </Button>
+        {busy && <GenerationWait feature="daily_report" />}
         {busy && (
           <Button onClick={() => request.current?.abort()}>取消生成</Button>
         )}
