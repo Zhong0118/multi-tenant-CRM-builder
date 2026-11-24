@@ -461,5 +461,148 @@
     ],
     "mustOmit": [],
     "permissionCeiling": "manual-default"
+  },
+  {
+    "id": "dev-21",
+    "industry": "文物修复",
+    "description": "我们做文物修复。分别管理「藏品」「修复方案」「修复工序」。每个实体独立建表，名称作为文字标题。",
+    "existingObjects": [],
+    "answers": [],
+    "mustCover": [
+      {
+        "entity": "藏品",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      },
+      {
+        "entity": "修复方案",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      },
+      {
+        "entity": "修复工序",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      }
+    ],
+    "mustOmit": [],
+    "permissionCeiling": "manual-default"
+  },
+  {
+    "id": "dev-22",
+    "industry": "设备维护",
+    "description": "我们做设备维护。分别管理「设备」「备件」「巡检单」「领料单」。每个实体独立建表，名称作为文字标题。",
+    "existingObjects": [],
+    "answers": [],
+    "mustCover": [
+      {
+        "entity": "设备",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      },
+      {
+        "entity": "备件",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      },
+      {
+        "entity": "巡检单",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      },
+      {
+        "entity": "领料单",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      }
+    ],
+    "mustOmit": [],
+    "permissionCeiling": "manual-default"
+  },
+  {
+    "id": "dev-23",
+    "industry": "工程服务",
+    "description": "我们做工程服务。分别管理「客户」「合同」「项目」「回款」「开票」。每个实体独立建表，名称作为文字标题。合同和回款都希望自动关联客户记录，请说明可用的替代做法。",
+    "existingObjects": [],
+    "answers": [],
+    "mustCover": [
+      {
+        "entity": "客户",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      },
+      {
+        "entity": "合同",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      },
+      {
+        "entity": "项目",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      },
+      {
+        "entity": "回款",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      },
+      {
+        "entity": "开票",
+        "fields": [
+          {
+            "meaning": "名称",
+            "type": "TEXT"
+          }
+        ]
+      }
+    ],
+    "mustOmit": [
+      "关联客户"
+    ],
+    "permissionCeiling": "manual-default"
   }
 ]

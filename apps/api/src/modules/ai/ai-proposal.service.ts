@@ -521,14 +521,17 @@ export class AiProposalService {
         EXPIRED: '提议已过期',
         REJECTED: '提议已取消',
       };
+      const fieldMessage = Object.values(view.fieldErrors ?? {})
+        .flat()
+        .join('；');
+      const failureMessage =
+        view.failureCode && Object.hasOwn(API_ERROR_MESSAGES, view.failureCode)
+          ? API_ERROR_MESSAGES[view.failureCode as ApiErrorCode]
+          : messages[view.status];
       results.push({
         proposalId: item.proposalId,
         status: view.status,
-        message:
-          view.failureCode &&
-          Object.hasOwn(API_ERROR_MESSAGES, view.failureCode)
-            ? API_ERROR_MESSAGES[view.failureCode as ApiErrorCode]
-            : messages[view.status],
+        message: fieldMessage || failureMessage,
         changes: view.changes,
       });
     }

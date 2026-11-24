@@ -205,7 +205,11 @@ export function QuestionCard({
                     ? values[field.key]
                     : undefined
                 }
-                error={visibleErrors.get(field.key)?.join(" ")}
+                error={
+                  visibleErrors.has(field.key)
+                    ? field.label + "：" + visibleErrors.get(field.key)?.join(" ")
+                    : undefined
+                }
                 disabled={busy}
                 onChange={(value) =>
                   setValues((old) => ({ ...old, [field.key]: value }))

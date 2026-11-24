@@ -98,9 +98,11 @@
       {"entity": "推荐单", "fields": [{"meaning": "推荐主题", "type": "TEXT"}]},
       {"entity": "面试", "fields": [{"meaning": "面试主题", "type": "TEXT"}]},
       {"entity": "录用通知", "fields": [{"meaning": "通知名称", "type": "TEXT"}]},
-      {"entity": "到岗登记", "fields": [{"meaning": "登记名称", "type": "TEXT"}]}
+      {"entity": "到岗登记", "fields": [{"meaning": "登记名称", "type": "TEXT"}]},
+      {"entity": "保用期回访", "fields": [{"meaning": "回访主题", "type": "TEXT"}]}
     ],
-    "mustOmit": ["保用期回访"],
+    "overLimit": true,
+    "mustOmit": [],
     "permissionCeiling": "manual-default"
   },
   {

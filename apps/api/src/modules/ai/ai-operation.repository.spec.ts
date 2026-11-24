@@ -753,6 +753,13 @@ describe('AiOperationRepository', () => {
     const { repo, tx } = setup();
     jest.mocked(resolvePublishedObjectInTransaction).mockResolvedValue({
       ...resolved,
+      schema: {
+        ...resolved.schema,
+        fields: [
+          { fieldKey: 'name', label: '客户名称' },
+          { fieldKey: 'phone', label: '手机' },
+        ],
+      },
       access: {
         ...resolved.access,
         canUpdate: true,
@@ -779,7 +786,7 @@ describe('AiOperationRepository', () => {
     } as never);
     const view = await repo.getOwned(context, id);
     expect(view?.fieldErrors).toEqual({
-      name: ['请填写必填字段。'],
+      name: ['客户名称：请填写必填字段。'],
     });
     expect(view).not.toHaveProperty('fieldErrors.phone');
   });

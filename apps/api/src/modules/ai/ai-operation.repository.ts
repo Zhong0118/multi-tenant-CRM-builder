@@ -163,15 +163,18 @@ function toView(
         !Object.hasOwn(resolved?.access.fields ?? {}, fieldKey)
       )
         continue;
+      const field = resolved.schema.fields.find((f) => f.fieldKey === fieldKey);
       if (
-        resolved?.schema.fields.some((field) => field.fieldKey === fieldKey) &&
+        field &&
         resolved.access.fields[fieldKey] === 'EDIT' &&
         (code === 'FIELD_REQUIRED' ||
           code === 'FIELD_INVALID' ||
           code === 'FIELD_OPTION_INACTIVE')
       ) {
         fieldErrors[fieldKey] = [
-          API_ERROR_MESSAGES[code as keyof typeof API_ERROR_MESSAGES],
+          field.label +
+            '：' +
+            API_ERROR_MESSAGES[code as keyof typeof API_ERROR_MESSAGES],
         ];
       }
     }
