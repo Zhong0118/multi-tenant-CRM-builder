@@ -66,6 +66,7 @@ import {
   buildImportHeaderEvidence,
   buildImportPreview,
   applyImportAdvice,
+  reviewImportPlan,
   draftForImportHeader,
   importableField,
   aiImportableField,
@@ -648,6 +649,7 @@ export function RecordImportDrawer({
   }
   async function generate() {
     if (
+      !source ||
       !preview?.needed ||
       !fileKey ||
       attemptedFiles.has(fileKey) ||
@@ -683,7 +685,7 @@ export function RecordImportDrawer({
     setStarted(Date.now());
     clearCheck();
     try {
-      const plan = await requestImportAssist(
+      const response = await requestImportAssist(
         tenantCode,
         schema.object.code,
         preview.request,
@@ -697,13 +699,21 @@ export function RecordImportDrawer({
         return;
       if (
         !preview.request.candidates.some(
-          (c) => c.headerRow === plan.headerRow,
+          (c) => c.headerRow === response.headerRow,
         ) ||
-        (headerLocked && plan.headerRow !== headerRow)
+        (headerLocked && response.headerRow !== headerRow)
       ) {
         setAiNotice("表头建议与当前文件不符，请手动核对");
         return;
       }
+      const plan = reviewImportPlan(
+        response,
+        preview,
+        source,
+        sheetName,
+        schema.fields,
+        timeZone,
+      );
       setGenerated({ plan, preview, scope: assistScope });
       setSnapshot(before);
       setDraftChanged(false);
@@ -1473,6 +1483,12 @@ export function RecordImportDrawer({
                       )}
                     {field && isOptionField(field) && (
                       <ImportValues
+                        key={JSON.stringify([
+                          fileKey,
+                          sheetName,
+                          headerRow,
+                          field.fieldKey,
+                        ])}
                         rows={parsed.rows}
                         index={index}
                         field={field}
@@ -1481,10 +1497,7 @@ export function RecordImportDrawer({
                         preview={current?.preview}
                         headerRow={headerRow}
                         disabled={!!busy || mappingLocked}
-                        onChange={(raw, option) => {
-                          const choices = new Map(valueChoices[index]);
-                          if (option === undefined) choices.delete(raw);
-                          else choices.set(raw, option);
+                        onChange={(choices) => {
                           setValueChoices((prev) => ({
                             ...prev,
                             [index]: choices,

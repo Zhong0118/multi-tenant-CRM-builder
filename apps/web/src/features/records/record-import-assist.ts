@@ -15,6 +15,9 @@ import {
   type PublishedFieldView,
 } from "@/features/objects/object-types";
 import {
+  coerceImportValue,
+  isImportNullMarker,
+  matchImportOption,
   normalizeHeader,
   matchingImportOptions,
   inferImportDateOrder,
@@ -506,4 +509,122 @@ export function applyImportAdvice(
       ]),
     ].slice(0, 3);
   return next;
+}
+
+export function remainingImportValues(
+  rows: string[][],
+  index: number,
+  field: PublishedFieldView,
+  choices?: ReadonlyMap<string, string | null>,
+) {
+  const options = activeOptions(field);
+  const unresolved = new Set<string>();
+  let rowCount = 0;
+  for (const row of rows) {
+    const raw = row[index]?.trim();
+    if (!raw || isImportNullMarker(field.type, raw)) continue;
+    const parts =
+      field.type === "MULTI_SELECT" ? splitImportOptions(raw) : [raw];
+    let affected = false;
+    for (const value of parts) {
+      if (
+        !choices?.has(value) &&
+        matchImportOption(value, options) === undefined
+      ) {
+        unresolved.add(value);
+        affected = true;
+      }
+    }
+    if (affected) rowCount++;
+  }
+  return { values: [...unresolved], rowCount };
+}
+
+export function setRemainingImportValues(
+  choices: ReadonlyMap<string, string | null> | undefined,
+  values: readonly string[],
+  undo = false,
+) {
+  const next = new Map(choices);
+  for (const raw of values) {
+    if (undo) {
+      if (next.get(raw) === null) next.delete(raw);
+    } else if (!next.has(raw)) next.set(raw, null);
+  }
+  return next;
+}
+
+const competingColumnLabels = {
+  DATE: "日期",
+  DATETIME: "日期时间",
+  MONEY: "金额",
+  NUMBER: "数值",
+} as const;
+type ComparableType = keyof typeof competingColumnLabels;
+
+function parsesAs(type: ComparableType, value: string, timeZone?: string) {
+  if (!value?.trim() || isImportNullMarker(type, value)) return false;
+  const orders =
+    type === "DATE" || type === "DATETIME"
+      ? (["DMY", "MDY"] as const)
+      : [undefined];
+  return orders.some((dateOrder) => {
+    try {
+      return (
+        coerceImportValue(type, value, [], { timeZone, dateOrder }) !== null
+      );
+    } catch {
+      return false;
+    }
+  });
+}
+
+export function reviewImportPlan(
+  plan: ImportAssistPlan,
+  preview: ImportPreview,
+  file: ImportFile,
+  sheet: string,
+  fields: PublishedFieldView[],
+  timeZone?: string,
+): ImportAssistPlan {
+  const candidate = preview.request.candidates.find(
+    (row) => row.headerRow === plan.headerRow,
+  );
+  if (!candidate) return plan;
+  // Compare all physical cells locally, including rows beyond the sampled or masked preview.
+  let rows: string[][] | undefined;
+  const compatible = new Map<ComparableType, string[]>();
+  const columns = plan.columns.map((advice) => {
+    const target = advice.target;
+    if (advice.confidence !== "high" || target.mode !== "field") return advice;
+    const type = fields.find((field) => field.fieldKey === target.field)?.type;
+    if (
+      type !== "DATE" &&
+      type !== "DATETIME" &&
+      type !== "MONEY" &&
+      type !== "NUMBER"
+    )
+      return advice;
+    let sources = compatible.get(type);
+    if (!sources) {
+      rows ??= file.sheet(sheet, plan.headerRow).rows;
+      const data = rows;
+      sources = candidate.columns
+        .filter(
+          (col, i) =>
+            !col.excluded &&
+            !col.locked &&
+            data.some((row) => parsesAs(type, row[i], timeZone)),
+        )
+        .map((col) => col.col);
+      compatible.set(type, sources);
+    }
+    if (!sources.some((col) => col !== advice.col)) return advice;
+    return {
+      ...advice,
+      confidence: "review" as const,
+      reason: "文件中还有其他" + competingColumnLabels[type] + "列，请确认",
+    };
+  });
+  return { ...plan, columns };
 }
