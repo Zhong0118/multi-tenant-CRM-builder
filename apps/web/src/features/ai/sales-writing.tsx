@@ -1,0 +1,278 @@
+"use client";
+import { useState, useEffect, useRef } from "react";
+import { Alert, Button, Drawer, Input, Space } from "antd";
+import { CopyOutlined, EditOutlined } from "@ant-design/icons";
+import type { WritingOptions } from "@crm/contracts";
+import { recordApi } from "@/features/records/record-api";
+import { RecordActivityTimeline } from "@/features/records/record-activity-timeline";
+import {
+  checkWritingActivity,
+  draftError,
+  writingDraft,
+  type LiveWriting,
+} from "./sales-draft-api";
+import styles from "./sales-writing.module.css";
+const defaults: WritingOptions = {
+  kind: "message",
+  purpose: "followup",
+  tone: "friendly",
+  length: "short",
+};
+const choices = {
+  kind: {
+    message: "微信 / 短信",
+    email: "邮件",
+    call: "电话提纲",
+    visit: "拜访准备",
+  },
+  purpose: {
+    followup: "跟进",
+    invite: "邀约",
+    quote: "报价说明",
+    payment: "催款",
+    thanks: "感谢",
+    other: "其他",
+  },
+  tone: { friendly: "亲切", formal: "正式" },
+  length: { short: "短", medium: "中" },
+};
+const labels = { kind: "类型", purpose: "目的", tone: "语气", length: "长度" };
+export function SalesWriting({
+  tenantCode,
+  objectCode,
+  recordId,
+  initial,
+  initialOptions = defaults,
+  load = writingDraft,
+}: {
+  tenantCode: string;
+  objectCode: string;
+  recordId: string;
+  initial?: LiveWriting;
+  initialOptions?: WritingOptions;
+  load?: typeof writingDraft;
+}) {
+  const [options, setOptions] = useState(initialOptions);
+  const [draft, setDraft] = useState(initial);
+  const [draftOptions, setDraftOptions] = useState(initialOptions);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [log, setLog] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
+  async function generate(
+    opts: WritingOptions,
+    mode?: "regenerate" | "shorter" | "formal",
+  ) {
+    if (request.current) return;
+    const stop = new AbortController();
+    request.current = stop;
+    setBusy(true);
+    setError("");
+    setCopied(false);
+    setOptions(opts);
+    try {
+      const result = await load(
+        tenantCode,
+        objectCode,
+        recordId,
+        mode && draft?.basis
+          ? {
+              ...opts,
+              rewrite: {
+                mode,
+                basis: draft.basis,
+                refs: [...new Set(draft.blocks.flatMap((b) => b.factRefs))],
+                previousLength: body.length,
+              },
+            }
+          : opts,
+        stop.signal,
+        (p) => {
+          if (!stop.signal.aborted) setDraft(p);
+        },
+      );
+      if (!stop.signal.aborted) {
+        setDraft(result);
+        setDraftOptions(opts);
+      }
+    } catch (e) {
+      if (!stop.signal.aborted) {
+        setError(draftError(e));
+        if (
+          e &&
+          typeof e === "object" &&
+          "status" in e &&
+          [401, 403, 404].includes(Number(e.status))
+        )
+          setDraft(undefined);
+      }
+    } finally {
+      request.current = null;
+      setBusy(false);
+    }
+  }
+  async function openLog() {
+    if (request.current) return;
+    const stop = new AbortController();
+    request.current = stop;
+    setBusy(true);
+    setError("");
+    try {
+      await checkWritingActivity(tenantCode, objectCode, recordId, stop.signal);
+      if (!stop.signal.aborted) setLog(true);
+    } catch (e) {
+      if (!stop.signal.aborted) setError(draftError(e));
+    } finally {
+      request.current = null;
+      setBusy(false);
+    }
+  }
+  const body = draft
+    ? [draft.subject, ...draft.blocks.map((b) => b.text)]
+        .filter(Boolean)
+        .join("\n\n")
+    : "";
+  return (
+    <section className={styles.editor} aria-label="帮我写">
+      <div className={styles.options}>
+        {(Object.keys(labels) as (keyof typeof labels)[]).map((key) => (
+          <label key={key}>
+            {labels[key]}
+            <select
+              value={options[key]}
+              onChange={(e) =>
+                setOptions({ ...options, [key]: e.target.value })
+              }
+              disabled={busy}
+            >
+              {Object.entries(choices[key]).map(([value, text]) => (
+                <option key={value} value={value}>
+                  {text}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </div>
+      <label>
+        补充
+        <Input.TextArea
+          value={options.supplement ?? ""}
+          maxLength={1000}
+          disabled={busy}
+          placeholder="这次想确认的事"
+          onChange={(e) =>
+            setOptions({ ...options, supplement: e.target.value })
+          }
+        />
+      </label>
+      <Space wrap>
+        <Button
+          type="primary"
+          icon={<EditOutlined aria-hidden />}
+          aria-label={draft ? "按当前选项生成" : "生成"}
+          loading={busy}
+          onClick={() => generate(options)}
+        >
+          {draft ? "按当前选项生成" : "生成"}
+        </Button>
+        {busy && (
+          <Button onClick={() => request.current?.abort()}>取消生成</Button>
+        )}
+      </Space>
+      {error && <Alert showIcon type="error" title={error} />}
+      {draft && (
+        <div className={styles.result} aria-live="polite">
+          <strong>
+            {choices.kind[draft.kind]} · {draft.title}
+          </strong>
+          <small>
+            AI 生成 · {new Date(draft.generatedAt).toLocaleString("zh-CN")}
+          </small>
+          {draft.subject && <h4>{draft.subject}</h4>}
+          {draft.blocks.map((b, i) => (
+            <p key={i}>{b.text}</p>
+          ))}
+          <Space wrap>
+            <Button
+              icon={<CopyOutlined aria-hidden />}
+              disabled={busy}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(body);
+                  setCopied(true);
+                } catch {
+                  setError("复制失败，请选择正文复制。");
+                }
+              }}
+            >
+              {copied ? "已复制" : "复制"}
+            </Button>
+            <Button
+              disabled={busy}
+              onClick={() => generate(draftOptions, "regenerate")}
+            >
+              重新生成
+            </Button>
+            <Button
+              disabled={busy}
+              onClick={() =>
+                generate({ ...draftOptions, length: "short" }, "shorter")
+              }
+            >
+              更短一些
+            </Button>
+            <Button
+              disabled={busy}
+              onClick={() =>
+                generate({ ...draftOptions, tone: "formal" }, "formal")
+              }
+            >
+              更正式一些
+            </Button>
+            {draft.canLog && (
+              <Button disabled={busy} onClick={openLog}>
+                已发送，记一笔沟通
+              </Button>
+            )}
+          </Space>
+        </div>
+      )}
+      <Drawer
+        title="记一笔沟通"
+        open={log}
+        destroyOnHidden
+        onClose={() => {
+          if (!saving) setLog(false);
+        }}
+        closable={!saving}
+        keyboard={!saving}
+        maskClosable={!saving}
+      >
+        {log && draft && (
+          <RecordActivityTimeline
+            tenantCode={tenantCode}
+            objectCode={objectCode}
+            recordId={recordId}
+            api={recordApi}
+            canCreate
+            initialActivity={{
+              content: body,
+              activityType:
+                draft.kind === "call"
+                  ? "CALL"
+                  : draft.kind === "visit"
+                    ? "MEETING"
+                    : "MESSAGE",
+            }}
+            onDraftStateChange={({ saving }) => setSaving(saving)}
+            onCreated={() => setLog(false)}
+          />
+        )}
+      </Drawer>
+    </section>
+  );
+}

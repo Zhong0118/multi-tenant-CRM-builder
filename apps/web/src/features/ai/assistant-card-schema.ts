@@ -3,6 +3,7 @@ import {
   type AssistantAction,
   type AssistantQuestion,
 } from "@crm/contracts";
+import { writingOptionsSchema, liveWritingSchema } from "./sales-draft-api";
 import { z } from "zod";
 
 const text = z.string().min(1);
@@ -49,6 +50,13 @@ const rule = z.unknown().transform(parseFilterRule);
 export const actionSchema: z.ZodType<AssistantAction> = z.discriminatedUnion(
   "kind",
   [
+    z.object({
+      kind: z.literal("writing"),
+      objectCode: text,
+      recordId: text,
+      options: writingOptionsSchema,
+      draft: liveWritingSchema.optional(),
+    }),
     z.object({
       kind: z.literal("communication"),
       draftId: text,

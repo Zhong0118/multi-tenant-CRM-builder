@@ -1,0 +1,70 @@
+.editor,
+.result {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.editor {
+  padding: 12px;
+}
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+.editor label,
+.result small {
+  display: block;
+}
+.options select {
+  display: block;
+  font: inherit;
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 4px;
+  width: 100%;
+  margin-top: 4px;
+}
+.result {
+  padding: 14px;
+  background: #f5f8fc;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+  animation: enter 0.18s ease;
+}
+.result p,
+.result h4 {
+  margin: 0;
+  white-space: pre-line;
+}
+.result small {
+  color: #546173;
+}
+.editor button {
+  transition: transform 0.16s ease;
+}
+.editor button:hover {
+  transform: translateY(-1px);
+}
+.editor button:active {
+  transform: scale(0.98);
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result {
+    animation: none;
+  }
+  .editor button {
+    transition: none;
+  }
+}

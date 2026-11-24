@@ -59,6 +59,7 @@ export interface RecordActivityTimelineProps {
   objectCode: string;
   recordId: string;
   canCreate: boolean;
+  initialActivity?: {activityType:MemberActivityType;content:string};
   canDelete?: boolean;
   action?: ReactNode;
   api: RecordApi;
@@ -71,6 +72,7 @@ export function RecordActivityTimeline({
   objectCode,
   recordId,
   canCreate,
+  initialActivity,
   canDelete = false,
   action,
   api,
@@ -78,10 +80,10 @@ export function RecordActivityTimeline({
   onDraftStateChange,
 }: RecordActivityTimelineProps) {
   const queryClient = useQueryClient();
-  const [composing, setComposing] = useState(false);
-  const [activityType, setActivityType] = useState<MemberActivityType>("NOTE");
+  const [composing, setComposing] = useState(Boolean(initialActivity));
+  const [activityType, setActivityType] = useState<MemberActivityType>(initialActivity?.activityType ?? "NOTE");
   const [outcome, setOutcome] = useState<ActivityOutcome>();
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(initialActivity?.content ?? "");
   const [error, setError] = useState<string>();
   const queryKey = [
     "workspace",
