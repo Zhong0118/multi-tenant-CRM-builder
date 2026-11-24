@@ -2,6 +2,7 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { ApiException } from '../../common/errors/api.exception';
 import { requireVisibleRecord } from '../records/record-command';
 import type { RecordsTransaction } from '../records/records.repository';
+import { reportCommunication } from './report-communication';
 import { MEMBER_ACTIVITY_TYPES } from '../records/record-activity';
 import {
   localDateAt,
@@ -156,6 +157,7 @@ export async function reportFacts(
       select: {
         id: true,
         record: recordSelect,
+        activityType: true,
         content: true,
         resultKey: true,
       },
@@ -235,18 +237,29 @@ export async function reportFacts(
     }
     return titles.get(record.id);
   }
+  const activityLabels: Record<string, string> = {
+    CALL: '致电',
+    MESSAGE: '发送消息',
+    MEETING: '会面沟通',
+    NOTE: '记录沟通',
+  };
   for (const a of activities) {
     const t = await title(a.record);
     if (!t) continue;
     rows.push({
       section: 'completed',
-      text: t + '，沟通记录：' + a.content.slice(0, 400),
+      text: reportCommunication(
+        t,
+        activityLabels[a.activityType] ?? '记录沟通',
+        a.content,
+        a.resultKey,
+      ),
     });
     if (a.resultKey === 'NOT_REACHED')
       rows.push({ section: 'problems', text: t + '，此次联系未获回应。' });
     for (const line of a.content.split('\n')) {
       const explicit = /^(问题|计划)[：:]\s*(.+)$/u.exec(line.trim());
-      if (explicit)
+      if (explicit && !/[【】]/u.test(explicit[2]))
         rows.push({
           section: explicit[1] === '问题' ? 'problems' : 'plans',
           text: t + '：' + explicit[2].slice(0, 300),
@@ -261,14 +274,13 @@ export async function reportFacts(
         ? { section: 'nextSteps', text: '跟进' + t + '：' + f.title }
         : {
             section: 'completed',
-            text:
-              '完成' +
-              t +
-              '的跟进：' +
-              f.title +
-              (f.completionActivity?.content
-                ? '。' + f.completionActivity.content.slice(0, 300)
-                : ''),
+            text: reportCommunication(
+              t,
+              '完成跟进',
+              [f.title, f.completionActivity?.content]
+                .filter(Boolean)
+                .join('\n'),
+            ),
           },
     );
   }

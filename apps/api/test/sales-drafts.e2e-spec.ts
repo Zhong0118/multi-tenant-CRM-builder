@@ -114,6 +114,16 @@ describe('sales draft permissions, privacy and metering over HTTP', () => {
       data: {
         tenantId,
         recordId,
+        actorMemberId,
+        activityType: 'MESSAGE',
+        content:
+          '您好！\n沟通：核对交期。\n报价金额为【报价金额】，请确认。\n结果：样品已签收，交期未定。',
+      },
+    });
+    await h.adminDatabase.recordActivity.create({
+      data: {
+        tenantId,
+        recordId,
         actorMemberId: f.otherEmployee.memberId,
         activityType: 'MESSAGE',
         content: '同事做的不能计入',
@@ -132,6 +142,14 @@ describe('sales draft permissions, privacy and metering over HTTP', () => {
       const prompt = spy.mock.calls.at(-1)![0].prompt;
       expect(prompt.match(/完成演示回访/g)).toHaveLength(1);
       expect(prompt).not.toContain('同事做的不能计入');
+      expect(prompt).not.toContain('【报价金额】');
+      expect(body.sections.completed.split('\n')).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(
+            /^.+：发送消息，核对交期；样品已签收，交期未定。$/u,
+          ),
+        ]),
+      );
       expect(
         await h.adminDatabase.dailyReport.count({ where: { tenantId } }),
       ).toBe(0);
