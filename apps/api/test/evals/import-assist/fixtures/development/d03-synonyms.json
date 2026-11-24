@@ -1,0 +1,148 @@
+{
+  "id": "d03-synonyms",
+  "scenario": "synonyms",
+  "source": "development/d03-synonyms.xlsx",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "单位名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客商代码",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "签单与否",
+      "target": {
+        "mode": "field",
+        "field": "enabled"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d03-synonyms-1",
+        "K-d03-synonyms-1",
+        "是"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d03-synonyms-1",
+        "acct_code": "K-d03-synonyms-1",
+        "enabled": true
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d03-synonyms-2",
+        "K-d03-synonyms-2",
+        "N"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d03-synonyms-2",
+        "acct_code": "K-d03-synonyms-2",
+        "enabled": false
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d03-synonyms-3",
+        "K-d03-synonyms-3",
+        "√"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d03-synonyms-3",
+        "acct_code": "K-d03-synonyms-3",
+        "enabled": true
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d03-synonyms-4",
+        "K-d03-synonyms-4",
+        "无"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d03-synonyms-4",
+        "acct_code": "K-d03-synonyms-4",
+        "enabled": false
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d03-synonyms-5",
+        "K-d03-synonyms-5",
+        "true"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d03-synonyms-5",
+        "acct_code": "K-d03-synonyms-5",
+        "enabled": true
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

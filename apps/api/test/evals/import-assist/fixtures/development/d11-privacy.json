@@ -1,0 +1,520 @@
+{
+  "id": "d11-privacy",
+  "scenario": "privacy",
+  "source": "development/d11-privacy.xls",
+  "sheetName": "来件-synth.d@demo.invalid",
+  "profile": "admin",
+  "headerRow": 3,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "单位名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "线索片段",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "内部底价",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C4",
+      "header": "审批编号",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C5",
+      "header": "系统流水",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C6",
+      "header": "业务员",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "owner"
+    },
+    {
+      "col": "C7",
+      "header": "协作成员",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C8",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "A类",
+          "option": "A",
+          "confidence": "high"
+        },
+        {
+          "raw": "B档",
+          "option": "B",
+          "confidence": "high"
+        },
+        {
+          "raw": "重点客户",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "未评级",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "C级",
+          "option": "C",
+          "confidence": "high"
+        },
+        {
+          "raw": "vault-d5@demo.invalid",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "vault-d6@demo.invalid",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "vault-d7@demo.invalid",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d11-privacy-1",
+        "+86 138-0000-5678",
+        "RESTRICT-d11-privacy-C3-0",
+        "RESTRICT-d11-privacy-C4-0",
+        "RESTRICT-d11-privacy-C5-0",
+        "蓝桐样员",
+        "RESTRICT-d11-privacy-C7-0",
+        "A类"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d11-privacy-1",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d11-privacy-2",
+        "010-5555-5678",
+        "RESTRICT-d11-privacy-C3-1",
+        "RESTRICT-d11-privacy-C4-1",
+        "RESTRICT-d11-privacy-C5-1",
+        "白槿样员",
+        "RESTRICT-d11-privacy-C7-1",
+        "B档"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d11-privacy-2",
+        "grade": "B"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d11-privacy-3",
+        "sample.d@demo.invalid",
+        "RESTRICT-d11-privacy-C3-2",
+        "RESTRICT-d11-privacy-C4-2",
+        "RESTRICT-d11-privacy-C5-2",
+        "待分配样员",
+        "RESTRICT-d11-privacy-C7-2",
+        "重点客户"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d11-privacy-3",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "松川商社-d11-privacy-4",
+        "11010519491231002X",
+        "RESTRICT-d11-privacy-C3-3",
+        "RESTRICT-d11-privacy-C4-3",
+        "RESTRICT-d11-privacy-C5-3",
+        "退件样员",
+        "RESTRICT-d11-privacy-C7-3",
+        "未评级"
+      ],
+      "destination": {
+        "kind": "skip"
+      },
+      "status": "SKIPPED",
+      "reason": "ownerSkip"
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "松川商社-d11-privacy-5",
+        "6222 0200 0000 5678",
+        "RESTRICT-d11-privacy-C3-4",
+        "RESTRICT-d11-privacy-C4-4",
+        "RESTRICT-d11-privacy-C5-4",
+        "蓝桐样员",
+        "RESTRICT-d11-privacy-C7-4",
+        "C级"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d11-privacy-5",
+        "grade": "C"
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "松川商社-d11-privacy-6",
+        "+86 138-1111-5678",
+        "RESTRICT-d11-privacy-C3-5",
+        "RESTRICT-d11-privacy-C4-5",
+        "RESTRICT-d11-privacy-C5-5",
+        "白槿样员",
+        "RESTRICT-d11-privacy-C7-5",
+        "vault-d5@demo.invalid"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d11-privacy-6",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "松川商社-d11-privacy-7",
+        "sample.d2@demo.invalid",
+        "RESTRICT-d11-privacy-C3-6",
+        "RESTRICT-d11-privacy-C4-6",
+        "RESTRICT-d11-privacy-C5-6",
+        "待分配样员",
+        "RESTRICT-d11-privacy-C7-6",
+        "vault-d6@demo.invalid"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d11-privacy-7",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 11,
+      "cells": [
+        "松川商社-d11-privacy-8",
+        "内部合成摘录D",
+        "RESTRICT-d11-privacy-C3-7",
+        "RESTRICT-d11-privacy-C4-7",
+        "RESTRICT-d11-privacy-C5-7",
+        "退件样员",
+        "RESTRICT-d11-privacy-C7-7",
+        "vault-d7@demo.invalid"
+      ],
+      "destination": {
+        "kind": "skip"
+      },
+      "status": "SKIPPED",
+      "reason": "ownerSkip"
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "freeText",
+      "value": "造册说明 d11-privacy 合成姓名陶森样"
+    },
+    {
+      "kind": "personalName",
+      "value": "陶森样"
+    },
+    {
+      "kind": "sheetEmail",
+      "value": "synth.d@demo.invalid"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "内部底价"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "审批编号"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "系统流水"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "协作成员"
+    },
+    {
+      "kind": "mobile",
+      "value": "+86 138-0000-5678"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C3-0"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C4-0"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C5-0"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C7-0"
+    },
+    {
+      "kind": "landline",
+      "value": "010-5555-5678"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C3-1"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C4-1"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C5-1"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C7-1"
+    },
+    {
+      "kind": "email",
+      "value": "sample.d@demo.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C3-2"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C4-2"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C5-2"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "待分配样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C7-2"
+    },
+    {
+      "kind": "nationalId",
+      "value": "11010519491231002X"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C3-3"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C4-3"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C5-3"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "退件样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C7-3"
+    },
+    {
+      "kind": "bank",
+      "value": "6222 0200 0000 5678"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C3-4"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C4-4"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C5-4"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C7-4"
+    },
+    {
+      "kind": "mobile",
+      "value": "+86 138-1111-5678"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C3-5"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C4-5"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C5-5"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C7-5"
+    },
+    {
+      "kind": "distinctValueEmail",
+      "value": "vault-d5@demo.invalid"
+    },
+    {
+      "kind": "email",
+      "value": "sample.d2@demo.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C3-6"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C4-6"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C5-6"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C7-6"
+    },
+    {
+      "kind": "distinctValueEmail",
+      "value": "vault-d6@demo.invalid"
+    },
+    {
+      "kind": "freeText",
+      "value": "内部合成摘录D"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C3-7"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C4-7"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C5-7"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d11-privacy-C7-7"
+    },
+    {
+      "kind": "distinctValueEmail",
+      "value": "vault-d7@demo.invalid"
+    }
+  ]
+}

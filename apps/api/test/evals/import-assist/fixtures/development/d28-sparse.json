@@ -1,0 +1,146 @@
+{
+  "id": "d28-sparse",
+  "scenario": "sparse",
+  "source": "development/d28-sparse.xlsx",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "单位名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "专栏",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C4",
+      "header": "专栏",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d28-sparse-1",
+        "",
+        "批次1",
+        "批次1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d28-sparse-1"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d28-sparse-2",
+        "",
+        "批次2",
+        "批次2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d28-sparse-2"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d28-sparse-3",
+        "",
+        "批次3",
+        "批次3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d28-sparse-3"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d28-sparse-4",
+        "",
+        "批次1",
+        "批次1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d28-sparse-4"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d28-sparse-5",
+        "",
+        "批次2",
+        "批次2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d28-sparse-5"
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

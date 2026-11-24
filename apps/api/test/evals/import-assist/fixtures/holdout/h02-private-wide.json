@@ -1,0 +1,1168 @@
+{
+  "id": "h02-private-wide",
+  "scenario": "private-wide",
+  "source": "holdout/h02-private-wide.xls",
+  "sheetName": "来件-synth.h@demo.invalid",
+  "profile": "admin",
+  "headerRow": 3,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "机构全称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "凭据摘录",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "private_margin",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C4",
+      "header": "audit_copy",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C5",
+      "header": "sys_stamp",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C6",
+      "header": "销售",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "owner"
+    },
+    {
+      "col": "C7",
+      "header": "协作成员",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C8",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "一档",
+          "option": "A",
+          "confidence": "high"
+        },
+        {
+          "raw": "二档",
+          "option": "B",
+          "confidence": "high"
+        },
+        {
+          "raw": "关键伙伴",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "未评",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "C级",
+          "option": "C",
+          "confidence": "high"
+        },
+        {
+          "raw": "vault-h5@demo.invalid",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "vault-h6@demo.invalid",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "vault-h7@demo.invalid",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    },
+    {
+      "col": "C9",
+      "header": "华北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_1"
+      }
+    },
+    {
+      "col": "C10",
+      "header": "华北耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_2"
+      }
+    },
+    {
+      "col": "C11",
+      "header": "华北维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_3"
+      }
+    },
+    {
+      "col": "C12",
+      "header": "华北培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_4"
+      }
+    },
+    {
+      "col": "C13",
+      "header": "华南展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_5"
+      }
+    },
+    {
+      "col": "C14",
+      "header": "华南耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_6"
+      }
+    },
+    {
+      "col": "C15",
+      "header": "华南维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_7"
+      }
+    },
+    {
+      "col": "C16",
+      "header": "华南培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_8"
+      }
+    },
+    {
+      "col": "C17",
+      "header": "西北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_9"
+      }
+    },
+    {
+      "col": "C18",
+      "header": "西北耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_10"
+      }
+    },
+    {
+      "col": "C19",
+      "header": "西北维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_11"
+      }
+    },
+    {
+      "col": "C20",
+      "header": "西北培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_12"
+      }
+    },
+    {
+      "col": "C21",
+      "header": "西南展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_13"
+      }
+    },
+    {
+      "col": "C22",
+      "header": "西南耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_14"
+      }
+    },
+    {
+      "col": "C23",
+      "header": "西南维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_15"
+      }
+    },
+    {
+      "col": "C24",
+      "header": "西南培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_16"
+      }
+    },
+    {
+      "col": "C25",
+      "header": "华东展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_17"
+      }
+    },
+    {
+      "col": "C26",
+      "header": "华东耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_18"
+      }
+    },
+    {
+      "col": "C27",
+      "header": "华东维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_19"
+      }
+    },
+    {
+      "col": "C28",
+      "header": "华东培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_20"
+      }
+    },
+    {
+      "col": "C29",
+      "header": "东北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_21"
+      }
+    },
+    {
+      "col": "C30",
+      "header": "东北耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_22"
+      }
+    },
+    {
+      "col": "C31",
+      "header": "东北维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_23"
+      }
+    },
+    {
+      "col": "C32",
+      "header": "东北培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_24"
+      }
+    },
+    {
+      "col": "C33",
+      "header": "原账分区32",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C34",
+      "header": "原账分区33",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C35",
+      "header": "原账分区34",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C36",
+      "header": "原账分区35",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C37",
+      "header": "原账分区36",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C38",
+      "header": "原账分区37",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C39",
+      "header": "原账分区38",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C40",
+      "header": "原账分区39",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 4,
+      "cells": [
+        "苇原商社-h02-private-wide-1",
+        "+86 139 0000 2468",
+        "RESTRICT-h02-private-wide-C3-0",
+        "RESTRICT-h02-private-wide-C4-0",
+        "RESTRICT-h02-private-wide-C5-0",
+        "蓝桐样员",
+        "RESTRICT-h02-private-wide-C7-0",
+        "一档",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h02-private-wide-1",
+        "grade": "A",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "苇原商社-h02-private-wide-2",
+        "021-5555-2468",
+        "RESTRICT-h02-private-wide-C3-1",
+        "RESTRICT-h02-private-wide-C4-1",
+        "RESTRICT-h02-private-wide-C5-1",
+        "白槿样员",
+        "RESTRICT-h02-private-wide-C7-1",
+        "二档",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h02-private-wide-2",
+        "grade": "B",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "苇原商社-h02-private-wide-3",
+        "sample.h@demo.invalid",
+        "RESTRICT-h02-private-wide-C3-2",
+        "RESTRICT-h02-private-wide-C4-2",
+        "RESTRICT-h02-private-wide-C5-2",
+        "待分配样员",
+        "RESTRICT-h02-private-wide-C7-2",
+        "关键伙伴",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h02-private-wide-3",
+        "grade": "A",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "苇原商社-h02-private-wide-4",
+        "31010119900307001X",
+        "RESTRICT-h02-private-wide-C3-3",
+        "RESTRICT-h02-private-wide-C4-3",
+        "RESTRICT-h02-private-wide-C5-3",
+        "退件样员",
+        "RESTRICT-h02-private-wide-C7-3",
+        "未评",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1"
+      ],
+      "destination": {
+        "kind": "skip"
+      },
+      "status": "SKIPPED",
+      "reason": "ownerSkip"
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "苇原商社-h02-private-wide-5",
+        "6222 0200 0000 2468",
+        "RESTRICT-h02-private-wide-C3-4",
+        "RESTRICT-h02-private-wide-C4-4",
+        "RESTRICT-h02-private-wide-C5-4",
+        "蓝桐样员",
+        "RESTRICT-h02-private-wide-C7-4",
+        "C级",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h02-private-wide-5",
+        "grade": "C",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "苇原商社-h02-private-wide-6",
+        "+86 139 1111 2468",
+        "RESTRICT-h02-private-wide-C3-5",
+        "RESTRICT-h02-private-wide-C4-5",
+        "RESTRICT-h02-private-wide-C5-5",
+        "白槿样员",
+        "RESTRICT-h02-private-wide-C7-5",
+        "vault-h5@demo.invalid",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h02-private-wide-6",
+        "grade": null,
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "苇原商社-h02-private-wide-7",
+        "sample.h2@demo.invalid",
+        "RESTRICT-h02-private-wide-C3-6",
+        "RESTRICT-h02-private-wide-C4-6",
+        "RESTRICT-h02-private-wide-C5-6",
+        "待分配样员",
+        "RESTRICT-h02-private-wide-C7-6",
+        "vault-h6@demo.invalid",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h02-private-wide-7",
+        "grade": null,
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 11,
+      "cells": [
+        "苇原商社-h02-private-wide-8",
+        "内部合成摘录H",
+        "RESTRICT-h02-private-wide-C3-7",
+        "RESTRICT-h02-private-wide-C4-7",
+        "RESTRICT-h02-private-wide-C5-7",
+        "退件样员",
+        "RESTRICT-h02-private-wide-C7-7",
+        "vault-h7@demo.invalid",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2"
+      ],
+      "destination": {
+        "kind": "skip"
+      },
+      "status": "SKIPPED",
+      "reason": "ownerSkip"
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "freeText",
+      "value": "造册说明 h02-private-wide 合成姓名陶森样"
+    },
+    {
+      "kind": "personalName",
+      "value": "陶森样"
+    },
+    {
+      "kind": "sheetEmail",
+      "value": "synth.h@demo.invalid"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "private_margin"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "audit_copy"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "sys_stamp"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "协作成员"
+    },
+    {
+      "kind": "mobile",
+      "value": "+86 139 0000 2468"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C3-0"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C4-0"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C5-0"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C7-0"
+    },
+    {
+      "kind": "landline",
+      "value": "021-5555-2468"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C3-1"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C4-1"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C5-1"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C7-1"
+    },
+    {
+      "kind": "email",
+      "value": "sample.h@demo.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C3-2"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C4-2"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C5-2"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "待分配样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C7-2"
+    },
+    {
+      "kind": "nationalId",
+      "value": "31010119900307001X"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C3-3"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C4-3"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C5-3"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "退件样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C7-3"
+    },
+    {
+      "kind": "bank",
+      "value": "6222 0200 0000 2468"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C3-4"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C4-4"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C5-4"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C7-4"
+    },
+    {
+      "kind": "mobile",
+      "value": "+86 139 1111 2468"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C3-5"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C4-5"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C5-5"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C7-5"
+    },
+    {
+      "kind": "distinctValueEmail",
+      "value": "vault-h5@demo.invalid"
+    },
+    {
+      "kind": "email",
+      "value": "sample.h2@demo.invalid"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C3-6"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C4-6"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C5-6"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C7-6"
+    },
+    {
+      "kind": "distinctValueEmail",
+      "value": "vault-h6@demo.invalid"
+    },
+    {
+      "kind": "freeText",
+      "value": "内部合成摘录H"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C3-7"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C4-7"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C5-7"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h02-private-wide-C7-7"
+    },
+    {
+      "kind": "distinctValueEmail",
+      "value": "vault-h7@demo.invalid"
+    }
+  ]
+}

@@ -1,0 +1,175 @@
+{
+  "id": "d05-wrong-neighbours",
+  "scenario": "wrong-neighbours",
+  "source": "development/d05-wrong-neighbours.xls",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "原单位名称",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "userExcluded"
+    },
+    {
+      "col": "C3",
+      "header": "上游联系人编号",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C4",
+      "header": "编码",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d05-wrong-neighbours-1",
+        "EXCLUDE-0",
+        "批次1",
+        "K-d05-wrong-neighbours-1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d05-wrong-neighbours-1",
+        "acct_code": "K-d05-wrong-neighbours-1"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d05-wrong-neighbours-2",
+        "EXCLUDE-1",
+        "批次2",
+        "K-d05-wrong-neighbours-2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d05-wrong-neighbours-2",
+        "acct_code": "K-d05-wrong-neighbours-2"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d05-wrong-neighbours-3",
+        "EXCLUDE-2",
+        "批次3",
+        "K-d05-wrong-neighbours-3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d05-wrong-neighbours-3",
+        "acct_code": "K-d05-wrong-neighbours-3"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d05-wrong-neighbours-4",
+        "EXCLUDE-3",
+        "批次1",
+        "K-d05-wrong-neighbours-4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d05-wrong-neighbours-4",
+        "acct_code": "K-d05-wrong-neighbours-4"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d05-wrong-neighbours-5",
+        "EXCLUDE-4",
+        "批次2",
+        "K-d05-wrong-neighbours-5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d05-wrong-neighbours-5",
+        "acct_code": "K-d05-wrong-neighbours-5"
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "EXCLUDE-0"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "EXCLUDE-1"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "EXCLUDE-2"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "EXCLUDE-3"
+    },
+    {
+      "kind": "excludedCell",
+      "value": "EXCLUDE-4"
+    }
+  ]
+}

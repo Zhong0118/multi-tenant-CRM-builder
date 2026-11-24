@@ -1,0 +1,120 @@
+{
+  "id": "d21-invalid-date",
+  "scenario": "invalid-date",
+  "source": "development/d21-invalid-date.xls",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "拜访日期",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d21-invalid-date-1",
+        "20240229"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d21-invalid-date-1",
+        "contact_day": "2024-02-29"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d21-invalid-date-2",
+        "20230229"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidDate"
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d21-invalid-date-3",
+        "2024年3月5日"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d21-invalid-date-3",
+        "contact_day": "2024-03-05"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d21-invalid-date-4",
+        "20241131"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidDate"
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d21-invalid-date-5",
+        "20241201"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d21-invalid-date-5",
+        "contact_day": "2024-12-01"
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": 0,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "id": "d29-timestamp",
+  "scenario": "timestamp",
+  "source": "development/d29-timestamp.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "预约时间",
+      "target": {
+        "mode": "field",
+        "field": "visit_at"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d29-timestamp-1",
+        "2026-08-21 10:30"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d29-timestamp-1",
+        "visit_at": "2026-08-21T02:30:00.000Z"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d29-timestamp-2",
+        "2026-08-21T02:30:00Z"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d29-timestamp-2",
+        "visit_at": "2026-08-21T02:30:00.000Z"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d29-timestamp-3",
+        "2026年8月21日"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d29-timestamp-3",
+        "visit_at": "2026-08-20T16:00:00.000Z"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d29-timestamp-4",
+        "2026-08-21T10:30:00+08:00"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d29-timestamp-4",
+        "visit_at": "2026-08-21T02:30:00.000Z"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d29-timestamp-5",
+        "2026-08-21 26:00"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidTime"
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": 0,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

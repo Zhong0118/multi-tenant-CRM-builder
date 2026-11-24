@@ -1,0 +1,3773 @@
+{
+  "id": "d27-duplicates",
+  "scenario": "duplicates",
+  "source": "development/d27-duplicates.xls",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "负责人",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "owner"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "",
+        "FIRST-VALID",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "FAILED",
+      "reason": "requiredName"
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d27-duplicates-2",
+        "FIRST-VALID",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-2",
+        "acct_code": "FIRST-VALID"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d27-duplicates-3",
+        "K-d27-duplicates-3",
+        "待分配样员"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-3",
+        "acct_code": "K-d27-duplicates-3"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d27-duplicates-4",
+        "K-d27-duplicates-4",
+        "退件样员"
+      ],
+      "destination": {
+        "kind": "skip"
+      },
+      "status": "SKIPPED",
+      "reason": "ownerSkip"
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d27-duplicates-5",
+        "EXISTING",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "SKIPPED",
+      "reason": "existingRecord"
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "松川商社-d27-duplicates-6",
+        "ACROSS-BATCH",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-6",
+        "acct_code": "ACROSS-BATCH"
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "松川商社-d27-duplicates-7",
+        "K-d27-duplicates-7",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-7",
+        "acct_code": "K-d27-duplicates-7"
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "松川商社-d27-duplicates-8",
+        "K-d27-duplicates-8",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-8",
+        "acct_code": "K-d27-duplicates-8"
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "松川商社-d27-duplicates-9",
+        "K-d27-duplicates-9",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-9",
+        "acct_code": "K-d27-duplicates-9"
+      }
+    },
+    {
+      "rowNumber": 11,
+      "cells": [
+        "松川商社-d27-duplicates-10",
+        "K-d27-duplicates-10",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-10",
+        "acct_code": "K-d27-duplicates-10"
+      }
+    },
+    {
+      "rowNumber": 12,
+      "cells": [
+        "松川商社-d27-duplicates-11",
+        "K-d27-duplicates-11",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-11",
+        "acct_code": "K-d27-duplicates-11"
+      }
+    },
+    {
+      "rowNumber": 13,
+      "cells": [
+        "松川商社-d27-duplicates-12",
+        "K-d27-duplicates-12",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-12",
+        "acct_code": "K-d27-duplicates-12"
+      }
+    },
+    {
+      "rowNumber": 14,
+      "cells": [
+        "松川商社-d27-duplicates-13",
+        "K-d27-duplicates-13",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-13",
+        "acct_code": "K-d27-duplicates-13"
+      }
+    },
+    {
+      "rowNumber": 15,
+      "cells": [
+        "松川商社-d27-duplicates-14",
+        "K-d27-duplicates-14",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-14",
+        "acct_code": "K-d27-duplicates-14"
+      }
+    },
+    {
+      "rowNumber": 16,
+      "cells": [
+        "松川商社-d27-duplicates-15",
+        "K-d27-duplicates-15",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-15",
+        "acct_code": "K-d27-duplicates-15"
+      }
+    },
+    {
+      "rowNumber": 17,
+      "cells": [
+        "松川商社-d27-duplicates-16",
+        "K-d27-duplicates-16",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-16",
+        "acct_code": "K-d27-duplicates-16"
+      }
+    },
+    {
+      "rowNumber": 18,
+      "cells": [
+        "松川商社-d27-duplicates-17",
+        "K-d27-duplicates-17",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-17",
+        "acct_code": "K-d27-duplicates-17"
+      }
+    },
+    {
+      "rowNumber": 19,
+      "cells": [
+        "松川商社-d27-duplicates-18",
+        "K-d27-duplicates-18",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-18",
+        "acct_code": "K-d27-duplicates-18"
+      }
+    },
+    {
+      "rowNumber": 20,
+      "cells": [
+        "松川商社-d27-duplicates-19",
+        "K-d27-duplicates-19",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-19",
+        "acct_code": "K-d27-duplicates-19"
+      }
+    },
+    {
+      "rowNumber": 21,
+      "cells": [
+        "松川商社-d27-duplicates-20",
+        "K-d27-duplicates-20",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-20",
+        "acct_code": "K-d27-duplicates-20"
+      }
+    },
+    {
+      "rowNumber": 22,
+      "cells": [
+        "松川商社-d27-duplicates-21",
+        "K-d27-duplicates-21",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-21",
+        "acct_code": "K-d27-duplicates-21"
+      }
+    },
+    {
+      "rowNumber": 23,
+      "cells": [
+        "松川商社-d27-duplicates-22",
+        "K-d27-duplicates-22",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-22",
+        "acct_code": "K-d27-duplicates-22"
+      }
+    },
+    {
+      "rowNumber": 24,
+      "cells": [
+        "松川商社-d27-duplicates-23",
+        "K-d27-duplicates-23",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-23",
+        "acct_code": "K-d27-duplicates-23"
+      }
+    },
+    {
+      "rowNumber": 25,
+      "cells": [
+        "松川商社-d27-duplicates-24",
+        "K-d27-duplicates-24",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-24",
+        "acct_code": "K-d27-duplicates-24"
+      }
+    },
+    {
+      "rowNumber": 26,
+      "cells": [
+        "松川商社-d27-duplicates-25",
+        "K-d27-duplicates-25",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-25",
+        "acct_code": "K-d27-duplicates-25"
+      }
+    },
+    {
+      "rowNumber": 27,
+      "cells": [
+        "松川商社-d27-duplicates-26",
+        "K-d27-duplicates-26",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-26",
+        "acct_code": "K-d27-duplicates-26"
+      }
+    },
+    {
+      "rowNumber": 28,
+      "cells": [
+        "松川商社-d27-duplicates-27",
+        "K-d27-duplicates-27",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-27",
+        "acct_code": "K-d27-duplicates-27"
+      }
+    },
+    {
+      "rowNumber": 29,
+      "cells": [
+        "松川商社-d27-duplicates-28",
+        "K-d27-duplicates-28",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-28",
+        "acct_code": "K-d27-duplicates-28"
+      }
+    },
+    {
+      "rowNumber": 30,
+      "cells": [
+        "松川商社-d27-duplicates-29",
+        "K-d27-duplicates-29",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-29",
+        "acct_code": "K-d27-duplicates-29"
+      }
+    },
+    {
+      "rowNumber": 31,
+      "cells": [
+        "松川商社-d27-duplicates-30",
+        "K-d27-duplicates-30",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-30",
+        "acct_code": "K-d27-duplicates-30"
+      }
+    },
+    {
+      "rowNumber": 32,
+      "cells": [
+        "松川商社-d27-duplicates-31",
+        "K-d27-duplicates-31",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-31",
+        "acct_code": "K-d27-duplicates-31"
+      }
+    },
+    {
+      "rowNumber": 33,
+      "cells": [
+        "松川商社-d27-duplicates-32",
+        "K-d27-duplicates-32",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-32",
+        "acct_code": "K-d27-duplicates-32"
+      }
+    },
+    {
+      "rowNumber": 34,
+      "cells": [
+        "松川商社-d27-duplicates-33",
+        "K-d27-duplicates-33",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-33",
+        "acct_code": "K-d27-duplicates-33"
+      }
+    },
+    {
+      "rowNumber": 35,
+      "cells": [
+        "松川商社-d27-duplicates-34",
+        "K-d27-duplicates-34",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-34",
+        "acct_code": "K-d27-duplicates-34"
+      }
+    },
+    {
+      "rowNumber": 36,
+      "cells": [
+        "松川商社-d27-duplicates-35",
+        "K-d27-duplicates-35",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-35",
+        "acct_code": "K-d27-duplicates-35"
+      }
+    },
+    {
+      "rowNumber": 37,
+      "cells": [
+        "松川商社-d27-duplicates-36",
+        "K-d27-duplicates-36",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-36",
+        "acct_code": "K-d27-duplicates-36"
+      }
+    },
+    {
+      "rowNumber": 38,
+      "cells": [
+        "松川商社-d27-duplicates-37",
+        "K-d27-duplicates-37",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-37",
+        "acct_code": "K-d27-duplicates-37"
+      }
+    },
+    {
+      "rowNumber": 39,
+      "cells": [
+        "松川商社-d27-duplicates-38",
+        "K-d27-duplicates-38",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-38",
+        "acct_code": "K-d27-duplicates-38"
+      }
+    },
+    {
+      "rowNumber": 40,
+      "cells": [
+        "松川商社-d27-duplicates-39",
+        "K-d27-duplicates-39",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-39",
+        "acct_code": "K-d27-duplicates-39"
+      }
+    },
+    {
+      "rowNumber": 41,
+      "cells": [
+        "松川商社-d27-duplicates-40",
+        "K-d27-duplicates-40",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-40",
+        "acct_code": "K-d27-duplicates-40"
+      }
+    },
+    {
+      "rowNumber": 42,
+      "cells": [
+        "松川商社-d27-duplicates-41",
+        "K-d27-duplicates-41",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-41",
+        "acct_code": "K-d27-duplicates-41"
+      }
+    },
+    {
+      "rowNumber": 43,
+      "cells": [
+        "松川商社-d27-duplicates-42",
+        "K-d27-duplicates-42",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-42",
+        "acct_code": "K-d27-duplicates-42"
+      }
+    },
+    {
+      "rowNumber": 44,
+      "cells": [
+        "松川商社-d27-duplicates-43",
+        "K-d27-duplicates-43",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-43",
+        "acct_code": "K-d27-duplicates-43"
+      }
+    },
+    {
+      "rowNumber": 45,
+      "cells": [
+        "松川商社-d27-duplicates-44",
+        "K-d27-duplicates-44",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-44",
+        "acct_code": "K-d27-duplicates-44"
+      }
+    },
+    {
+      "rowNumber": 46,
+      "cells": [
+        "松川商社-d27-duplicates-45",
+        "K-d27-duplicates-45",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-45",
+        "acct_code": "K-d27-duplicates-45"
+      }
+    },
+    {
+      "rowNumber": 47,
+      "cells": [
+        "松川商社-d27-duplicates-46",
+        "K-d27-duplicates-46",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-46",
+        "acct_code": "K-d27-duplicates-46"
+      }
+    },
+    {
+      "rowNumber": 48,
+      "cells": [
+        "松川商社-d27-duplicates-47",
+        "K-d27-duplicates-47",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-47",
+        "acct_code": "K-d27-duplicates-47"
+      }
+    },
+    {
+      "rowNumber": 49,
+      "cells": [
+        "松川商社-d27-duplicates-48",
+        "K-d27-duplicates-48",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-48",
+        "acct_code": "K-d27-duplicates-48"
+      }
+    },
+    {
+      "rowNumber": 50,
+      "cells": [
+        "松川商社-d27-duplicates-49",
+        "K-d27-duplicates-49",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-49",
+        "acct_code": "K-d27-duplicates-49"
+      }
+    },
+    {
+      "rowNumber": 51,
+      "cells": [
+        "松川商社-d27-duplicates-50",
+        "K-d27-duplicates-50",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-50",
+        "acct_code": "K-d27-duplicates-50"
+      }
+    },
+    {
+      "rowNumber": 52,
+      "cells": [
+        "松川商社-d27-duplicates-51",
+        "K-d27-duplicates-51",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-51",
+        "acct_code": "K-d27-duplicates-51"
+      }
+    },
+    {
+      "rowNumber": 53,
+      "cells": [
+        "松川商社-d27-duplicates-52",
+        "K-d27-duplicates-52",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-52",
+        "acct_code": "K-d27-duplicates-52"
+      }
+    },
+    {
+      "rowNumber": 54,
+      "cells": [
+        "松川商社-d27-duplicates-53",
+        "K-d27-duplicates-53",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-53",
+        "acct_code": "K-d27-duplicates-53"
+      }
+    },
+    {
+      "rowNumber": 55,
+      "cells": [
+        "松川商社-d27-duplicates-54",
+        "K-d27-duplicates-54",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-54",
+        "acct_code": "K-d27-duplicates-54"
+      }
+    },
+    {
+      "rowNumber": 56,
+      "cells": [
+        "松川商社-d27-duplicates-55",
+        "K-d27-duplicates-55",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-55",
+        "acct_code": "K-d27-duplicates-55"
+      }
+    },
+    {
+      "rowNumber": 57,
+      "cells": [
+        "松川商社-d27-duplicates-56",
+        "K-d27-duplicates-56",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-56",
+        "acct_code": "K-d27-duplicates-56"
+      }
+    },
+    {
+      "rowNumber": 58,
+      "cells": [
+        "松川商社-d27-duplicates-57",
+        "K-d27-duplicates-57",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-57",
+        "acct_code": "K-d27-duplicates-57"
+      }
+    },
+    {
+      "rowNumber": 59,
+      "cells": [
+        "松川商社-d27-duplicates-58",
+        "K-d27-duplicates-58",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-58",
+        "acct_code": "K-d27-duplicates-58"
+      }
+    },
+    {
+      "rowNumber": 60,
+      "cells": [
+        "松川商社-d27-duplicates-59",
+        "K-d27-duplicates-59",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-59",
+        "acct_code": "K-d27-duplicates-59"
+      }
+    },
+    {
+      "rowNumber": 61,
+      "cells": [
+        "松川商社-d27-duplicates-60",
+        "K-d27-duplicates-60",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-60",
+        "acct_code": "K-d27-duplicates-60"
+      }
+    },
+    {
+      "rowNumber": 62,
+      "cells": [
+        "松川商社-d27-duplicates-61",
+        "K-d27-duplicates-61",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-61",
+        "acct_code": "K-d27-duplicates-61"
+      }
+    },
+    {
+      "rowNumber": 63,
+      "cells": [
+        "松川商社-d27-duplicates-62",
+        "K-d27-duplicates-62",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-62",
+        "acct_code": "K-d27-duplicates-62"
+      }
+    },
+    {
+      "rowNumber": 64,
+      "cells": [
+        "松川商社-d27-duplicates-63",
+        "K-d27-duplicates-63",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-63",
+        "acct_code": "K-d27-duplicates-63"
+      }
+    },
+    {
+      "rowNumber": 65,
+      "cells": [
+        "松川商社-d27-duplicates-64",
+        "K-d27-duplicates-64",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-64",
+        "acct_code": "K-d27-duplicates-64"
+      }
+    },
+    {
+      "rowNumber": 66,
+      "cells": [
+        "松川商社-d27-duplicates-65",
+        "K-d27-duplicates-65",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-65",
+        "acct_code": "K-d27-duplicates-65"
+      }
+    },
+    {
+      "rowNumber": 67,
+      "cells": [
+        "松川商社-d27-duplicates-66",
+        "K-d27-duplicates-66",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-66",
+        "acct_code": "K-d27-duplicates-66"
+      }
+    },
+    {
+      "rowNumber": 68,
+      "cells": [
+        "松川商社-d27-duplicates-67",
+        "K-d27-duplicates-67",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-67",
+        "acct_code": "K-d27-duplicates-67"
+      }
+    },
+    {
+      "rowNumber": 69,
+      "cells": [
+        "松川商社-d27-duplicates-68",
+        "K-d27-duplicates-68",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-68",
+        "acct_code": "K-d27-duplicates-68"
+      }
+    },
+    {
+      "rowNumber": 70,
+      "cells": [
+        "松川商社-d27-duplicates-69",
+        "K-d27-duplicates-69",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-69",
+        "acct_code": "K-d27-duplicates-69"
+      }
+    },
+    {
+      "rowNumber": 71,
+      "cells": [
+        "松川商社-d27-duplicates-70",
+        "K-d27-duplicates-70",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-70",
+        "acct_code": "K-d27-duplicates-70"
+      }
+    },
+    {
+      "rowNumber": 72,
+      "cells": [
+        "松川商社-d27-duplicates-71",
+        "K-d27-duplicates-71",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-71",
+        "acct_code": "K-d27-duplicates-71"
+      }
+    },
+    {
+      "rowNumber": 73,
+      "cells": [
+        "松川商社-d27-duplicates-72",
+        "K-d27-duplicates-72",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-72",
+        "acct_code": "K-d27-duplicates-72"
+      }
+    },
+    {
+      "rowNumber": 74,
+      "cells": [
+        "松川商社-d27-duplicates-73",
+        "K-d27-duplicates-73",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-73",
+        "acct_code": "K-d27-duplicates-73"
+      }
+    },
+    {
+      "rowNumber": 75,
+      "cells": [
+        "松川商社-d27-duplicates-74",
+        "K-d27-duplicates-74",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-74",
+        "acct_code": "K-d27-duplicates-74"
+      }
+    },
+    {
+      "rowNumber": 76,
+      "cells": [
+        "松川商社-d27-duplicates-75",
+        "K-d27-duplicates-75",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-75",
+        "acct_code": "K-d27-duplicates-75"
+      }
+    },
+    {
+      "rowNumber": 77,
+      "cells": [
+        "松川商社-d27-duplicates-76",
+        "K-d27-duplicates-76",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-76",
+        "acct_code": "K-d27-duplicates-76"
+      }
+    },
+    {
+      "rowNumber": 78,
+      "cells": [
+        "松川商社-d27-duplicates-77",
+        "K-d27-duplicates-77",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-77",
+        "acct_code": "K-d27-duplicates-77"
+      }
+    },
+    {
+      "rowNumber": 79,
+      "cells": [
+        "松川商社-d27-duplicates-78",
+        "K-d27-duplicates-78",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-78",
+        "acct_code": "K-d27-duplicates-78"
+      }
+    },
+    {
+      "rowNumber": 80,
+      "cells": [
+        "松川商社-d27-duplicates-79",
+        "K-d27-duplicates-79",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-79",
+        "acct_code": "K-d27-duplicates-79"
+      }
+    },
+    {
+      "rowNumber": 81,
+      "cells": [
+        "松川商社-d27-duplicates-80",
+        "K-d27-duplicates-80",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-80",
+        "acct_code": "K-d27-duplicates-80"
+      }
+    },
+    {
+      "rowNumber": 82,
+      "cells": [
+        "松川商社-d27-duplicates-81",
+        "K-d27-duplicates-81",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-81",
+        "acct_code": "K-d27-duplicates-81"
+      }
+    },
+    {
+      "rowNumber": 83,
+      "cells": [
+        "松川商社-d27-duplicates-82",
+        "K-d27-duplicates-82",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-82",
+        "acct_code": "K-d27-duplicates-82"
+      }
+    },
+    {
+      "rowNumber": 84,
+      "cells": [
+        "松川商社-d27-duplicates-83",
+        "K-d27-duplicates-83",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-83",
+        "acct_code": "K-d27-duplicates-83"
+      }
+    },
+    {
+      "rowNumber": 85,
+      "cells": [
+        "松川商社-d27-duplicates-84",
+        "K-d27-duplicates-84",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-84",
+        "acct_code": "K-d27-duplicates-84"
+      }
+    },
+    {
+      "rowNumber": 86,
+      "cells": [
+        "松川商社-d27-duplicates-85",
+        "K-d27-duplicates-85",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-85",
+        "acct_code": "K-d27-duplicates-85"
+      }
+    },
+    {
+      "rowNumber": 87,
+      "cells": [
+        "松川商社-d27-duplicates-86",
+        "K-d27-duplicates-86",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-86",
+        "acct_code": "K-d27-duplicates-86"
+      }
+    },
+    {
+      "rowNumber": 88,
+      "cells": [
+        "松川商社-d27-duplicates-87",
+        "K-d27-duplicates-87",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-87",
+        "acct_code": "K-d27-duplicates-87"
+      }
+    },
+    {
+      "rowNumber": 89,
+      "cells": [
+        "松川商社-d27-duplicates-88",
+        "K-d27-duplicates-88",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-88",
+        "acct_code": "K-d27-duplicates-88"
+      }
+    },
+    {
+      "rowNumber": 90,
+      "cells": [
+        "松川商社-d27-duplicates-89",
+        "K-d27-duplicates-89",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-89",
+        "acct_code": "K-d27-duplicates-89"
+      }
+    },
+    {
+      "rowNumber": 91,
+      "cells": [
+        "松川商社-d27-duplicates-90",
+        "K-d27-duplicates-90",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-90",
+        "acct_code": "K-d27-duplicates-90"
+      }
+    },
+    {
+      "rowNumber": 92,
+      "cells": [
+        "松川商社-d27-duplicates-91",
+        "K-d27-duplicates-91",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-91",
+        "acct_code": "K-d27-duplicates-91"
+      }
+    },
+    {
+      "rowNumber": 93,
+      "cells": [
+        "松川商社-d27-duplicates-92",
+        "K-d27-duplicates-92",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-92",
+        "acct_code": "K-d27-duplicates-92"
+      }
+    },
+    {
+      "rowNumber": 94,
+      "cells": [
+        "松川商社-d27-duplicates-93",
+        "K-d27-duplicates-93",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-93",
+        "acct_code": "K-d27-duplicates-93"
+      }
+    },
+    {
+      "rowNumber": 95,
+      "cells": [
+        "松川商社-d27-duplicates-94",
+        "K-d27-duplicates-94",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-94",
+        "acct_code": "K-d27-duplicates-94"
+      }
+    },
+    {
+      "rowNumber": 96,
+      "cells": [
+        "松川商社-d27-duplicates-95",
+        "K-d27-duplicates-95",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-95",
+        "acct_code": "K-d27-duplicates-95"
+      }
+    },
+    {
+      "rowNumber": 97,
+      "cells": [
+        "松川商社-d27-duplicates-96",
+        "K-d27-duplicates-96",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-96",
+        "acct_code": "K-d27-duplicates-96"
+      }
+    },
+    {
+      "rowNumber": 98,
+      "cells": [
+        "松川商社-d27-duplicates-97",
+        "K-d27-duplicates-97",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-97",
+        "acct_code": "K-d27-duplicates-97"
+      }
+    },
+    {
+      "rowNumber": 99,
+      "cells": [
+        "松川商社-d27-duplicates-98",
+        "K-d27-duplicates-98",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-98",
+        "acct_code": "K-d27-duplicates-98"
+      }
+    },
+    {
+      "rowNumber": 100,
+      "cells": [
+        "松川商社-d27-duplicates-99",
+        "K-d27-duplicates-99",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-99",
+        "acct_code": "K-d27-duplicates-99"
+      }
+    },
+    {
+      "rowNumber": 101,
+      "cells": [
+        "松川商社-d27-duplicates-100",
+        "K-d27-duplicates-100",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-100",
+        "acct_code": "K-d27-duplicates-100"
+      }
+    },
+    {
+      "rowNumber": 102,
+      "cells": [
+        "松川商社-d27-duplicates-101",
+        "K-d27-duplicates-101",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-101",
+        "acct_code": "K-d27-duplicates-101"
+      }
+    },
+    {
+      "rowNumber": 103,
+      "cells": [
+        "松川商社-d27-duplicates-102",
+        "K-d27-duplicates-102",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-102",
+        "acct_code": "K-d27-duplicates-102"
+      }
+    },
+    {
+      "rowNumber": 104,
+      "cells": [
+        "松川商社-d27-duplicates-103",
+        "K-d27-duplicates-103",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-103",
+        "acct_code": "K-d27-duplicates-103"
+      }
+    },
+    {
+      "rowNumber": 105,
+      "cells": [
+        "松川商社-d27-duplicates-104",
+        "K-d27-duplicates-104",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-104",
+        "acct_code": "K-d27-duplicates-104"
+      }
+    },
+    {
+      "rowNumber": 106,
+      "cells": [
+        "松川商社-d27-duplicates-105",
+        "K-d27-duplicates-105",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-105",
+        "acct_code": "K-d27-duplicates-105"
+      }
+    },
+    {
+      "rowNumber": 107,
+      "cells": [
+        "松川商社-d27-duplicates-106",
+        "K-d27-duplicates-106",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-106",
+        "acct_code": "K-d27-duplicates-106"
+      }
+    },
+    {
+      "rowNumber": 108,
+      "cells": [
+        "松川商社-d27-duplicates-107",
+        "K-d27-duplicates-107",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-107",
+        "acct_code": "K-d27-duplicates-107"
+      }
+    },
+    {
+      "rowNumber": 109,
+      "cells": [
+        "松川商社-d27-duplicates-108",
+        "K-d27-duplicates-108",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-108",
+        "acct_code": "K-d27-duplicates-108"
+      }
+    },
+    {
+      "rowNumber": 110,
+      "cells": [
+        "松川商社-d27-duplicates-109",
+        "K-d27-duplicates-109",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-109",
+        "acct_code": "K-d27-duplicates-109"
+      }
+    },
+    {
+      "rowNumber": 111,
+      "cells": [
+        "松川商社-d27-duplicates-110",
+        "K-d27-duplicates-110",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-110",
+        "acct_code": "K-d27-duplicates-110"
+      }
+    },
+    {
+      "rowNumber": 112,
+      "cells": [
+        "松川商社-d27-duplicates-111",
+        "K-d27-duplicates-111",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-111",
+        "acct_code": "K-d27-duplicates-111"
+      }
+    },
+    {
+      "rowNumber": 113,
+      "cells": [
+        "松川商社-d27-duplicates-112",
+        "K-d27-duplicates-112",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-112",
+        "acct_code": "K-d27-duplicates-112"
+      }
+    },
+    {
+      "rowNumber": 114,
+      "cells": [
+        "松川商社-d27-duplicates-113",
+        "K-d27-duplicates-113",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-113",
+        "acct_code": "K-d27-duplicates-113"
+      }
+    },
+    {
+      "rowNumber": 115,
+      "cells": [
+        "松川商社-d27-duplicates-114",
+        "K-d27-duplicates-114",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-114",
+        "acct_code": "K-d27-duplicates-114"
+      }
+    },
+    {
+      "rowNumber": 116,
+      "cells": [
+        "松川商社-d27-duplicates-115",
+        "K-d27-duplicates-115",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-115",
+        "acct_code": "K-d27-duplicates-115"
+      }
+    },
+    {
+      "rowNumber": 117,
+      "cells": [
+        "松川商社-d27-duplicates-116",
+        "K-d27-duplicates-116",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-116",
+        "acct_code": "K-d27-duplicates-116"
+      }
+    },
+    {
+      "rowNumber": 118,
+      "cells": [
+        "松川商社-d27-duplicates-117",
+        "K-d27-duplicates-117",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-117",
+        "acct_code": "K-d27-duplicates-117"
+      }
+    },
+    {
+      "rowNumber": 119,
+      "cells": [
+        "松川商社-d27-duplicates-118",
+        "K-d27-duplicates-118",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-118",
+        "acct_code": "K-d27-duplicates-118"
+      }
+    },
+    {
+      "rowNumber": 120,
+      "cells": [
+        "松川商社-d27-duplicates-119",
+        "K-d27-duplicates-119",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-119",
+        "acct_code": "K-d27-duplicates-119"
+      }
+    },
+    {
+      "rowNumber": 121,
+      "cells": [
+        "松川商社-d27-duplicates-120",
+        "K-d27-duplicates-120",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-120",
+        "acct_code": "K-d27-duplicates-120"
+      }
+    },
+    {
+      "rowNumber": 122,
+      "cells": [
+        "松川商社-d27-duplicates-121",
+        "K-d27-duplicates-121",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-121",
+        "acct_code": "K-d27-duplicates-121"
+      }
+    },
+    {
+      "rowNumber": 123,
+      "cells": [
+        "松川商社-d27-duplicates-122",
+        "K-d27-duplicates-122",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-122",
+        "acct_code": "K-d27-duplicates-122"
+      }
+    },
+    {
+      "rowNumber": 124,
+      "cells": [
+        "松川商社-d27-duplicates-123",
+        "K-d27-duplicates-123",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-123",
+        "acct_code": "K-d27-duplicates-123"
+      }
+    },
+    {
+      "rowNumber": 125,
+      "cells": [
+        "松川商社-d27-duplicates-124",
+        "K-d27-duplicates-124",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-124",
+        "acct_code": "K-d27-duplicates-124"
+      }
+    },
+    {
+      "rowNumber": 126,
+      "cells": [
+        "松川商社-d27-duplicates-125",
+        "K-d27-duplicates-125",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-125",
+        "acct_code": "K-d27-duplicates-125"
+      }
+    },
+    {
+      "rowNumber": 127,
+      "cells": [
+        "松川商社-d27-duplicates-126",
+        "K-d27-duplicates-126",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-126",
+        "acct_code": "K-d27-duplicates-126"
+      }
+    },
+    {
+      "rowNumber": 128,
+      "cells": [
+        "松川商社-d27-duplicates-127",
+        "K-d27-duplicates-127",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-127",
+        "acct_code": "K-d27-duplicates-127"
+      }
+    },
+    {
+      "rowNumber": 129,
+      "cells": [
+        "松川商社-d27-duplicates-128",
+        "K-d27-duplicates-128",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-128",
+        "acct_code": "K-d27-duplicates-128"
+      }
+    },
+    {
+      "rowNumber": 130,
+      "cells": [
+        "松川商社-d27-duplicates-129",
+        "K-d27-duplicates-129",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-129",
+        "acct_code": "K-d27-duplicates-129"
+      }
+    },
+    {
+      "rowNumber": 131,
+      "cells": [
+        "松川商社-d27-duplicates-130",
+        "K-d27-duplicates-130",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-130",
+        "acct_code": "K-d27-duplicates-130"
+      }
+    },
+    {
+      "rowNumber": 132,
+      "cells": [
+        "松川商社-d27-duplicates-131",
+        "K-d27-duplicates-131",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-131",
+        "acct_code": "K-d27-duplicates-131"
+      }
+    },
+    {
+      "rowNumber": 133,
+      "cells": [
+        "松川商社-d27-duplicates-132",
+        "K-d27-duplicates-132",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-132",
+        "acct_code": "K-d27-duplicates-132"
+      }
+    },
+    {
+      "rowNumber": 134,
+      "cells": [
+        "松川商社-d27-duplicates-133",
+        "K-d27-duplicates-133",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-133",
+        "acct_code": "K-d27-duplicates-133"
+      }
+    },
+    {
+      "rowNumber": 135,
+      "cells": [
+        "松川商社-d27-duplicates-134",
+        "K-d27-duplicates-134",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-134",
+        "acct_code": "K-d27-duplicates-134"
+      }
+    },
+    {
+      "rowNumber": 136,
+      "cells": [
+        "松川商社-d27-duplicates-135",
+        "K-d27-duplicates-135",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-135",
+        "acct_code": "K-d27-duplicates-135"
+      }
+    },
+    {
+      "rowNumber": 137,
+      "cells": [
+        "松川商社-d27-duplicates-136",
+        "K-d27-duplicates-136",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-136",
+        "acct_code": "K-d27-duplicates-136"
+      }
+    },
+    {
+      "rowNumber": 138,
+      "cells": [
+        "松川商社-d27-duplicates-137",
+        "K-d27-duplicates-137",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-137",
+        "acct_code": "K-d27-duplicates-137"
+      }
+    },
+    {
+      "rowNumber": 139,
+      "cells": [
+        "松川商社-d27-duplicates-138",
+        "K-d27-duplicates-138",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-138",
+        "acct_code": "K-d27-duplicates-138"
+      }
+    },
+    {
+      "rowNumber": 140,
+      "cells": [
+        "松川商社-d27-duplicates-139",
+        "K-d27-duplicates-139",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-139",
+        "acct_code": "K-d27-duplicates-139"
+      }
+    },
+    {
+      "rowNumber": 141,
+      "cells": [
+        "松川商社-d27-duplicates-140",
+        "K-d27-duplicates-140",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-140",
+        "acct_code": "K-d27-duplicates-140"
+      }
+    },
+    {
+      "rowNumber": 142,
+      "cells": [
+        "松川商社-d27-duplicates-141",
+        "K-d27-duplicates-141",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-141",
+        "acct_code": "K-d27-duplicates-141"
+      }
+    },
+    {
+      "rowNumber": 143,
+      "cells": [
+        "松川商社-d27-duplicates-142",
+        "K-d27-duplicates-142",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-142",
+        "acct_code": "K-d27-duplicates-142"
+      }
+    },
+    {
+      "rowNumber": 144,
+      "cells": [
+        "松川商社-d27-duplicates-143",
+        "K-d27-duplicates-143",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-143",
+        "acct_code": "K-d27-duplicates-143"
+      }
+    },
+    {
+      "rowNumber": 145,
+      "cells": [
+        "松川商社-d27-duplicates-144",
+        "K-d27-duplicates-144",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-144",
+        "acct_code": "K-d27-duplicates-144"
+      }
+    },
+    {
+      "rowNumber": 146,
+      "cells": [
+        "松川商社-d27-duplicates-145",
+        "K-d27-duplicates-145",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-145",
+        "acct_code": "K-d27-duplicates-145"
+      }
+    },
+    {
+      "rowNumber": 147,
+      "cells": [
+        "松川商社-d27-duplicates-146",
+        "K-d27-duplicates-146",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-146",
+        "acct_code": "K-d27-duplicates-146"
+      }
+    },
+    {
+      "rowNumber": 148,
+      "cells": [
+        "松川商社-d27-duplicates-147",
+        "K-d27-duplicates-147",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-147",
+        "acct_code": "K-d27-duplicates-147"
+      }
+    },
+    {
+      "rowNumber": 149,
+      "cells": [
+        "松川商社-d27-duplicates-148",
+        "K-d27-duplicates-148",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-148",
+        "acct_code": "K-d27-duplicates-148"
+      }
+    },
+    {
+      "rowNumber": 150,
+      "cells": [
+        "松川商社-d27-duplicates-149",
+        "K-d27-duplicates-149",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-149",
+        "acct_code": "K-d27-duplicates-149"
+      }
+    },
+    {
+      "rowNumber": 151,
+      "cells": [
+        "松川商社-d27-duplicates-150",
+        "K-d27-duplicates-150",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-150",
+        "acct_code": "K-d27-duplicates-150"
+      }
+    },
+    {
+      "rowNumber": 152,
+      "cells": [
+        "松川商社-d27-duplicates-151",
+        "K-d27-duplicates-151",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-151",
+        "acct_code": "K-d27-duplicates-151"
+      }
+    },
+    {
+      "rowNumber": 153,
+      "cells": [
+        "松川商社-d27-duplicates-152",
+        "K-d27-duplicates-152",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-152",
+        "acct_code": "K-d27-duplicates-152"
+      }
+    },
+    {
+      "rowNumber": 154,
+      "cells": [
+        "松川商社-d27-duplicates-153",
+        "K-d27-duplicates-153",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-153",
+        "acct_code": "K-d27-duplicates-153"
+      }
+    },
+    {
+      "rowNumber": 155,
+      "cells": [
+        "松川商社-d27-duplicates-154",
+        "K-d27-duplicates-154",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-154",
+        "acct_code": "K-d27-duplicates-154"
+      }
+    },
+    {
+      "rowNumber": 156,
+      "cells": [
+        "松川商社-d27-duplicates-155",
+        "K-d27-duplicates-155",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-155",
+        "acct_code": "K-d27-duplicates-155"
+      }
+    },
+    {
+      "rowNumber": 157,
+      "cells": [
+        "松川商社-d27-duplicates-156",
+        "K-d27-duplicates-156",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-156",
+        "acct_code": "K-d27-duplicates-156"
+      }
+    },
+    {
+      "rowNumber": 158,
+      "cells": [
+        "松川商社-d27-duplicates-157",
+        "K-d27-duplicates-157",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-157",
+        "acct_code": "K-d27-duplicates-157"
+      }
+    },
+    {
+      "rowNumber": 159,
+      "cells": [
+        "松川商社-d27-duplicates-158",
+        "K-d27-duplicates-158",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-158",
+        "acct_code": "K-d27-duplicates-158"
+      }
+    },
+    {
+      "rowNumber": 160,
+      "cells": [
+        "松川商社-d27-duplicates-159",
+        "K-d27-duplicates-159",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-159",
+        "acct_code": "K-d27-duplicates-159"
+      }
+    },
+    {
+      "rowNumber": 161,
+      "cells": [
+        "松川商社-d27-duplicates-160",
+        "K-d27-duplicates-160",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-160",
+        "acct_code": "K-d27-duplicates-160"
+      }
+    },
+    {
+      "rowNumber": 162,
+      "cells": [
+        "松川商社-d27-duplicates-161",
+        "K-d27-duplicates-161",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-161",
+        "acct_code": "K-d27-duplicates-161"
+      }
+    },
+    {
+      "rowNumber": 163,
+      "cells": [
+        "松川商社-d27-duplicates-162",
+        "K-d27-duplicates-162",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-162",
+        "acct_code": "K-d27-duplicates-162"
+      }
+    },
+    {
+      "rowNumber": 164,
+      "cells": [
+        "松川商社-d27-duplicates-163",
+        "K-d27-duplicates-163",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-163",
+        "acct_code": "K-d27-duplicates-163"
+      }
+    },
+    {
+      "rowNumber": 165,
+      "cells": [
+        "松川商社-d27-duplicates-164",
+        "K-d27-duplicates-164",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-164",
+        "acct_code": "K-d27-duplicates-164"
+      }
+    },
+    {
+      "rowNumber": 166,
+      "cells": [
+        "松川商社-d27-duplicates-165",
+        "K-d27-duplicates-165",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-165",
+        "acct_code": "K-d27-duplicates-165"
+      }
+    },
+    {
+      "rowNumber": 167,
+      "cells": [
+        "松川商社-d27-duplicates-166",
+        "K-d27-duplicates-166",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-166",
+        "acct_code": "K-d27-duplicates-166"
+      }
+    },
+    {
+      "rowNumber": 168,
+      "cells": [
+        "松川商社-d27-duplicates-167",
+        "K-d27-duplicates-167",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-167",
+        "acct_code": "K-d27-duplicates-167"
+      }
+    },
+    {
+      "rowNumber": 169,
+      "cells": [
+        "松川商社-d27-duplicates-168",
+        "K-d27-duplicates-168",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-168",
+        "acct_code": "K-d27-duplicates-168"
+      }
+    },
+    {
+      "rowNumber": 170,
+      "cells": [
+        "松川商社-d27-duplicates-169",
+        "K-d27-duplicates-169",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-169",
+        "acct_code": "K-d27-duplicates-169"
+      }
+    },
+    {
+      "rowNumber": 171,
+      "cells": [
+        "松川商社-d27-duplicates-170",
+        "K-d27-duplicates-170",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-170",
+        "acct_code": "K-d27-duplicates-170"
+      }
+    },
+    {
+      "rowNumber": 172,
+      "cells": [
+        "松川商社-d27-duplicates-171",
+        "K-d27-duplicates-171",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-171",
+        "acct_code": "K-d27-duplicates-171"
+      }
+    },
+    {
+      "rowNumber": 173,
+      "cells": [
+        "松川商社-d27-duplicates-172",
+        "K-d27-duplicates-172",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-172",
+        "acct_code": "K-d27-duplicates-172"
+      }
+    },
+    {
+      "rowNumber": 174,
+      "cells": [
+        "松川商社-d27-duplicates-173",
+        "K-d27-duplicates-173",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-173",
+        "acct_code": "K-d27-duplicates-173"
+      }
+    },
+    {
+      "rowNumber": 175,
+      "cells": [
+        "松川商社-d27-duplicates-174",
+        "K-d27-duplicates-174",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-174",
+        "acct_code": "K-d27-duplicates-174"
+      }
+    },
+    {
+      "rowNumber": 176,
+      "cells": [
+        "松川商社-d27-duplicates-175",
+        "K-d27-duplicates-175",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-175",
+        "acct_code": "K-d27-duplicates-175"
+      }
+    },
+    {
+      "rowNumber": 177,
+      "cells": [
+        "松川商社-d27-duplicates-176",
+        "K-d27-duplicates-176",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-176",
+        "acct_code": "K-d27-duplicates-176"
+      }
+    },
+    {
+      "rowNumber": 178,
+      "cells": [
+        "松川商社-d27-duplicates-177",
+        "K-d27-duplicates-177",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-177",
+        "acct_code": "K-d27-duplicates-177"
+      }
+    },
+    {
+      "rowNumber": 179,
+      "cells": [
+        "松川商社-d27-duplicates-178",
+        "K-d27-duplicates-178",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-178",
+        "acct_code": "K-d27-duplicates-178"
+      }
+    },
+    {
+      "rowNumber": 180,
+      "cells": [
+        "松川商社-d27-duplicates-179",
+        "K-d27-duplicates-179",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-179",
+        "acct_code": "K-d27-duplicates-179"
+      }
+    },
+    {
+      "rowNumber": 181,
+      "cells": [
+        "松川商社-d27-duplicates-180",
+        "K-d27-duplicates-180",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-180",
+        "acct_code": "K-d27-duplicates-180"
+      }
+    },
+    {
+      "rowNumber": 182,
+      "cells": [
+        "松川商社-d27-duplicates-181",
+        "K-d27-duplicates-181",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-181",
+        "acct_code": "K-d27-duplicates-181"
+      }
+    },
+    {
+      "rowNumber": 183,
+      "cells": [
+        "松川商社-d27-duplicates-182",
+        "K-d27-duplicates-182",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-182",
+        "acct_code": "K-d27-duplicates-182"
+      }
+    },
+    {
+      "rowNumber": 184,
+      "cells": [
+        "松川商社-d27-duplicates-183",
+        "K-d27-duplicates-183",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-183",
+        "acct_code": "K-d27-duplicates-183"
+      }
+    },
+    {
+      "rowNumber": 185,
+      "cells": [
+        "松川商社-d27-duplicates-184",
+        "K-d27-duplicates-184",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-184",
+        "acct_code": "K-d27-duplicates-184"
+      }
+    },
+    {
+      "rowNumber": 186,
+      "cells": [
+        "松川商社-d27-duplicates-185",
+        "K-d27-duplicates-185",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-185",
+        "acct_code": "K-d27-duplicates-185"
+      }
+    },
+    {
+      "rowNumber": 187,
+      "cells": [
+        "松川商社-d27-duplicates-186",
+        "K-d27-duplicates-186",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-186",
+        "acct_code": "K-d27-duplicates-186"
+      }
+    },
+    {
+      "rowNumber": 188,
+      "cells": [
+        "松川商社-d27-duplicates-187",
+        "K-d27-duplicates-187",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-187",
+        "acct_code": "K-d27-duplicates-187"
+      }
+    },
+    {
+      "rowNumber": 189,
+      "cells": [
+        "松川商社-d27-duplicates-188",
+        "K-d27-duplicates-188",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-188",
+        "acct_code": "K-d27-duplicates-188"
+      }
+    },
+    {
+      "rowNumber": 190,
+      "cells": [
+        "松川商社-d27-duplicates-189",
+        "K-d27-duplicates-189",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-189",
+        "acct_code": "K-d27-duplicates-189"
+      }
+    },
+    {
+      "rowNumber": 191,
+      "cells": [
+        "松川商社-d27-duplicates-190",
+        "K-d27-duplicates-190",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-190",
+        "acct_code": "K-d27-duplicates-190"
+      }
+    },
+    {
+      "rowNumber": 192,
+      "cells": [
+        "松川商社-d27-duplicates-191",
+        "K-d27-duplicates-191",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-191",
+        "acct_code": "K-d27-duplicates-191"
+      }
+    },
+    {
+      "rowNumber": 193,
+      "cells": [
+        "松川商社-d27-duplicates-192",
+        "K-d27-duplicates-192",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-192",
+        "acct_code": "K-d27-duplicates-192"
+      }
+    },
+    {
+      "rowNumber": 194,
+      "cells": [
+        "松川商社-d27-duplicates-193",
+        "K-d27-duplicates-193",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-193",
+        "acct_code": "K-d27-duplicates-193"
+      }
+    },
+    {
+      "rowNumber": 195,
+      "cells": [
+        "松川商社-d27-duplicates-194",
+        "K-d27-duplicates-194",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-194",
+        "acct_code": "K-d27-duplicates-194"
+      }
+    },
+    {
+      "rowNumber": 196,
+      "cells": [
+        "松川商社-d27-duplicates-195",
+        "K-d27-duplicates-195",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-195",
+        "acct_code": "K-d27-duplicates-195"
+      }
+    },
+    {
+      "rowNumber": 197,
+      "cells": [
+        "松川商社-d27-duplicates-196",
+        "K-d27-duplicates-196",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-196",
+        "acct_code": "K-d27-duplicates-196"
+      }
+    },
+    {
+      "rowNumber": 198,
+      "cells": [
+        "松川商社-d27-duplicates-197",
+        "K-d27-duplicates-197",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-197",
+        "acct_code": "K-d27-duplicates-197"
+      }
+    },
+    {
+      "rowNumber": 199,
+      "cells": [
+        "松川商社-d27-duplicates-198",
+        "K-d27-duplicates-198",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-198",
+        "acct_code": "K-d27-duplicates-198"
+      }
+    },
+    {
+      "rowNumber": 200,
+      "cells": [
+        "松川商社-d27-duplicates-199",
+        "K-d27-duplicates-199",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-199",
+        "acct_code": "K-d27-duplicates-199"
+      }
+    },
+    {
+      "rowNumber": 201,
+      "cells": [
+        "松川商社-d27-duplicates-200",
+        "K-d27-duplicates-200",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-200",
+        "acct_code": "K-d27-duplicates-200"
+      }
+    },
+    {
+      "rowNumber": 202,
+      "cells": [
+        "松川商社-d27-duplicates-201",
+        "K-d27-duplicates-201",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-201",
+        "acct_code": "K-d27-duplicates-201"
+      }
+    },
+    {
+      "rowNumber": 203,
+      "cells": [
+        "松川商社-d27-duplicates-202",
+        "K-d27-duplicates-202",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-202",
+        "acct_code": "K-d27-duplicates-202"
+      }
+    },
+    {
+      "rowNumber": 204,
+      "cells": [
+        "松川商社-d27-duplicates-203",
+        "K-d27-duplicates-203",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-203",
+        "acct_code": "K-d27-duplicates-203"
+      }
+    },
+    {
+      "rowNumber": 205,
+      "cells": [
+        "松川商社-d27-duplicates-204",
+        "K-d27-duplicates-204",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-204",
+        "acct_code": "K-d27-duplicates-204"
+      }
+    },
+    {
+      "rowNumber": 206,
+      "cells": [
+        "松川商社-d27-duplicates-205",
+        "K-d27-duplicates-205",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d27-duplicates-205",
+        "acct_code": "K-d27-duplicates-205"
+      }
+    },
+    {
+      "rowNumber": 207,
+      "cells": [
+        "松川商社-d27-duplicates-206",
+        "ACROSS-BATCH",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "SKIPPED",
+      "reason": "duplicateInFile"
+    },
+    {
+      "rowNumber": 208,
+      "cells": [
+        "松川商社-d27-duplicates-207",
+        "ACROSS-BATCH",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "SKIPPED",
+      "reason": "duplicateInFile"
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": 0,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "待分配样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "退件样员"
+    }
+  ]
+}

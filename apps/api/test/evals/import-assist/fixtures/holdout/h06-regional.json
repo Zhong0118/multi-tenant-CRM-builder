@@ -1,0 +1,164 @@
+{
+  "id": "h06-regional",
+  "scenario": "regional",
+  "source": "holdout/h06-regional.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "企业抬头",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      },
+      "locked": true
+    },
+    {
+      "col": "C2",
+      "header": "美式交割日",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      },
+      "dateOrder": "MDY"
+    },
+    {
+      "col": "C3",
+      "header": "报价（万元）",
+      "target": {
+        "mode": "field",
+        "field": "budget"
+      },
+      "bareAmountUnit": "wan"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "LOCKED-H1",
+        "10/14/2024",
+        "3.4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "LOCKED-H1",
+        "contact_day": "2024-10-14",
+        "budget": "34000"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "LOCKED-H2",
+        "10/15/2024",
+        "760元"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "LOCKED-H2",
+        "contact_day": "2024-10-15",
+        "budget": "760"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "LOCKED-H3",
+        "10/16/2024",
+        "0.05"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "LOCKED-H3",
+        "contact_day": "2024-10-16",
+        "budget": "500"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "LOCKED-H4",
+        "10/17/2024",
+        "1亿元"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "LOCKED-H4",
+        "contact_day": "2024-10-17",
+        "budget": "100000000"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "LOCKED-H5",
+        "10/18/2024",
+        "1,22元"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidAmount"
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "LOCKED-H1"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "LOCKED-H2"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "LOCKED-H3"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "LOCKED-H4"
+    },
+    {
+      "kind": "lockedSample",
+      "value": "LOCKED-H5"
+    }
+  ]
+}

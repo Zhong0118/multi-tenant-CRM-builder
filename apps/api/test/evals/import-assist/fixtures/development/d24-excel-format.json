@@ -1,0 +1,148 @@
+{
+  "id": "d24-excel-format",
+  "scenario": "excel-format",
+  "source": "development/d24-excel-format.xls",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "拜访日期",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d24-excel-format-1",
+        "00123",
+        "2024-03-01"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d24-excel-format-1",
+        "acct_code": "00123",
+        "contact_day": "2024-03-01"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d24-excel-format-2",
+        "00124",
+        "2024-03-02"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d24-excel-format-2",
+        "acct_code": "00124",
+        "contact_day": "2024-03-02"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d24-excel-format-3",
+        "00125",
+        "2024-03-03"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d24-excel-format-3",
+        "acct_code": "00125",
+        "contact_day": "2024-03-03"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d24-excel-format-4",
+        "00126",
+        "2024-03-04"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d24-excel-format-4",
+        "acct_code": "00126",
+        "contact_day": "2024-03-04"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d24-excel-format-5",
+        "00127",
+        "2024-03-05"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d24-excel-format-5",
+        "acct_code": "00127",
+        "contact_day": "2024-03-05"
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": 0,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

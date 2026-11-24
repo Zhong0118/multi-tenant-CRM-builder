@@ -1,0 +1,125 @@
+{
+  "id": "d10-wan",
+  "scenario": "wan",
+  "source": "development/d10-wan.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "意向额（万元）",
+      "target": {
+        "mode": "field",
+        "field": "budget"
+      },
+      "bareAmountUnit": "wan"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d10-wan-1",
+        "12"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d10-wan-1",
+        "budget": "120000"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d10-wan-2",
+        "1.2万"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d10-wan-2",
+        "budget": "12000"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d10-wan-3",
+        "¥1,200元"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d10-wan-3",
+        "budget": "1200"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d10-wan-4",
+        "3亿"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d10-wan-4",
+        "budget": "300000000"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d10-wan-5",
+        "1,22元"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidAmount"
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}
