@@ -73,6 +73,15 @@ export const featureCatalog = [
     outputLimit: 2500,
     released: true,
   },
+  {
+    key: 'import_assist',
+    label: 'AI 导入',
+    purpose: 'text',
+    group: '数据处理',
+    requires: null,
+    outputLimit: 4000,
+    released: true,
+  },
 ] as const;
 export type FeatureKey = (typeof featureCatalog)[number]['key'];
 export type MeteredKey = Exclude<
