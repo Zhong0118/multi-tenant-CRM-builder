@@ -5,7 +5,9 @@ import { featureCatalog } from './feature-catalog';
 describe('published AI plan capabilities', () => {
   it('publishes the three daily tools for explicit individual grants', () => {
     expect(
-      featureCatalog.filter((item) => item.released && item.group === '销售日常').map((item) => item.key),
+      featureCatalog
+        .filter((item) => item.released && item.group === '销售日常')
+        .map((item) => item.key),
     ).toEqual(['daily_brief', 'writing', 'daily_report']);
     for (const key of ['daily_brief', 'writing', 'daily_report']) {
       const value = feature.parse(key);

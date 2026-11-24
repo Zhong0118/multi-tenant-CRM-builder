@@ -38,16 +38,14 @@ export class FakeAiProvider implements AiProvider {
     };
     if (input.feature === 'daily_brief') {
       return {
-        items: (data.records ?? [])
-          .slice(0, 5)
-          .map((r) => ({
-            recordRef: r.recordRef,
-            reasonFactRefs: [r.facts[0].ref],
-            action: 'call',
-            explanation: '建议致电确认近况',
-            suggestedTitle: null,
-            suggestedDue: null,
-          })),
+        items: (data.records ?? []).slice(0, 5).map((r) => ({
+          recordRef: r.recordRef,
+          reasonFactRefs: [r.facts[0].ref],
+          action: 'call',
+          explanation: '建议致电确认近况',
+          suggestedTitle: null,
+          suggestedDue: null,
+        })),
       };
     }
     const facts = data.facts ?? [];
