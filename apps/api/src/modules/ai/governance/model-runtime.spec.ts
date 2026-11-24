@@ -495,7 +495,7 @@ it.each(['default', 'none'] as const)(
       ),
     ).rejects.toBeDefined();
     expect(send).toHaveBeenCalledTimes(1);
-    const body = JSON.parse(String(send.mock.calls[0][1]?.body)) as {
+    const body = JSON.parse(send.mock.calls[0][1]?.body as string) as {
       reasoning?: unknown;
       max_output_tokens: number;
     };
