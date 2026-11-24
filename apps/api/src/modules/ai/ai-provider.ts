@@ -42,7 +42,18 @@ export type AiProviderEvent =
   | { type: 'COMPLETED' }
   | { type: 'FAILED'; code: string; message?: string };
 
+export interface SalesDailyInput {
+  actor: TenantContext;
+  feature: 'daily_brief' | 'writing' | 'daily_report';
+  system: string;
+  prompt: string;
+  schema: z.ZodType;
+  signal?: AbortSignal;
+  onSend?: () => void;
+}
+
 export interface AiProvider {
+  generateSalesDaily?(input: SalesDailyInput): Promise<unknown>;
   resolveText?(actor: TenantContext): Promise<AiProvider>;
   generateTableBlueprint?(
     input: import('./table-model').TableProviderInput,

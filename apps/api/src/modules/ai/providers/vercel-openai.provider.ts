@@ -35,6 +35,7 @@ import type {
   AiProvider,
   AiProviderEvent,
   AiProviderMessage,
+  SalesDailyInput,
   AiProviderTool,
 } from '../ai-provider';
 
@@ -77,6 +78,21 @@ export class VercelOpenAiProvider implements AiProvider {
       meterFetch,
     );
     return openai[this.protocol](this.modelKey);
+  }
+
+  generateSalesDaily(input: SalesDailyInput) {
+    return this.generateStructured(
+      JSON.parse(input.prompt) as unknown,
+      input.signal ?? new AbortController().signal,
+      input.actor,
+      {
+        feature: input.feature,
+        name: input.feature,
+        schema: input.schema,
+        system: input.system,
+        onSend: input.onSend,
+      },
+    );
   }
 
   async generateTableBlueprint(
@@ -137,6 +153,7 @@ export class VercelOpenAiProvider implements AiProvider {
       feature: Exclude<GenerationFeature, 'assistant'>;
       name: string;
       schema: ZodType<T>;
+      onSend?: () => void;
       system: string;
     },
   ) {
@@ -146,9 +163,11 @@ export class VercelOpenAiProvider implements AiProvider {
       this.providerKey,
       this.modelKey,
     );
+    if (meter) meter.onSend = config.onSend;
     abortSignal = boundedSignal(abortSignal, config.feature);
     let usage: Usage | undefined;
     try {
+      if (!meter) config.onSend?.();
       const result = await generateText({
         model: this.languageModel(meter?.fetch),
         system: config.system,

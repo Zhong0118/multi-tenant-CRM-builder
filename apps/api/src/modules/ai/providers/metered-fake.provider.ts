@@ -1,5 +1,9 @@
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
-import type { AiProvider, AiProviderEvent } from '../ai-provider';
+import type {
+  AiProvider,
+  AiProviderEvent,
+  SalesDailyInput,
+} from '../ai-provider';
 import type { FilterProviderInput } from '../filter-generation';
 import type { CommunicationProviderInput } from '../communication-output';
 import type { TableProviderInput } from '../table-model';
@@ -31,6 +35,15 @@ export class MeteredFakeProvider extends FakeAiProvider {
       await meter.finish(failureStatus(signal));
       throw error;
     }
+  }
+  override generateSalesDaily(input: SalesDailyInput) {
+    return this.generate(
+      input.actor,
+      input.feature,
+      input.prompt,
+      input.signal ?? new AbortController().signal,
+      () => super.generateSalesDaily(input),
+    );
   }
   override generateTableBlueprint(
     input: TableProviderInput,

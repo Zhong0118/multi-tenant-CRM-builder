@@ -6,6 +6,7 @@ import type { CommunicationProviderInput } from '../communication-output';
 import type {
   AiProvider,
   AiProviderEvent,
+  SalesDailyInput,
   AiProviderMessage,
   AiProviderTool,
 } from '../ai-provider';
@@ -27,6 +28,44 @@ export function getFakeAiProviderCapturedToolResult(): unknown {
 
 // Local scripted provider for deterministic integration and browser testing.
 export class FakeAiProvider implements AiProvider {
+  async generateSalesDaily(input: SalesDailyInput): Promise<unknown> {
+    input.signal?.throwIfAborted();
+    input.onSend?.();
+    const data = JSON.parse(input.prompt) as {
+      options?: { kind: string };
+      records?: { recordRef: string; facts: { ref: string }[] }[];
+      facts?: { id: string; text: string; section: string }[];
+    };
+    if (input.feature === 'daily_brief') {
+      return {
+        items: (data.records ?? [])
+          .slice(0, 5)
+          .map((r) => ({
+            recordRef: r.recordRef,
+            reasonFactRefs: [r.facts[0].ref],
+            action: 'call',
+            explanation: '建议致电确认近况',
+          })),
+      };
+    }
+    const facts = data.facts ?? [];
+    const block = (f: (typeof facts)[number]) => ({
+      text: f.text,
+      factRefs: [f.id],
+    });
+    if (input.feature === 'writing')
+      return {
+        kind: data.options?.kind,
+        subject: data.options?.kind === 'email' ? '跟进沟通' : null,
+        blocks: facts.slice(0, 2).map(block),
+      };
+    return Object.fromEntries(
+      ['plans', 'completed', 'problems', 'nextSteps'].map((section) => [
+        section,
+        facts.filter((f) => f.section === section).map(block),
+      ]),
+    );
+  }
   readonly providerKey = 'fake';
   readonly modelKey = 'fake';
 
