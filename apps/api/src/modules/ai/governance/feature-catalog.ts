@@ -52,7 +52,7 @@ export const featureCatalog = [
     purpose: 'text',
     group: '销售日常',
     requires: null,
-    outputLimit: 2000,
+    outputLimit: 5400,
     released: true,
   },
   {
@@ -61,7 +61,7 @@ export const featureCatalog = [
     purpose: 'text',
     group: '销售日常',
     requires: null,
-    outputLimit: 1500,
+    outputLimit: 1600,
     released: true,
   },
   {
