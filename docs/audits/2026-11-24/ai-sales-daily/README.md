@@ -1,5 +1,7 @@
 # 销售日常 AI 验收
 
+[第五轮试用原文、3,200 token 截断回归及遗留问题](round-5/README.md)
+
 [第三轮修订后的真实输出、耗时和复评结果](round-3/README.md) · [浏览器原图](browser/README.md)
 
 ## 首轮基线
