@@ -161,6 +161,7 @@ async function main() {
       } catch (error) {
         const e = error as {
           name?: string;
+          message?: string;
           statusCode?: number;
           finishReason?: string;
           cause?: { name?: string };
@@ -174,7 +175,9 @@ async function main() {
           'ZodError',
         ];
         diagnostic = [
-          known.find((name) => name === e?.name) ?? 'OTHER',
+          e?.message === 'INCOMPLETE_OUTPUT'
+            ? 'INCOMPLETE_OUTPUT'
+            : (known.find((name) => name === e?.name) ?? 'OTHER'),
           Number.isInteger(e?.statusCode) ? e.statusCode : null,
           known.find((name) => name === e?.cause?.name),
           ['length', 'stop', 'error', 'content-filter'].find(
