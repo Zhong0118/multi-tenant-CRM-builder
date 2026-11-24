@@ -387,6 +387,27 @@ for (const { mode, files } of records.filter((r) => r.mode !== 'rules')) {
         ]),
       );
     }
+  for (const f of paired) {
+    const runs = attempts(f);
+    const pairs = [
+      [0, 1],
+      [0, 2],
+      [1, 2],
+    ];
+    const consistent = (key) =>
+      pairs.filter(
+        ([a, b]) => runs[a]?.[key] && runs[a][key] === runs[b]?.[key],
+      ).length;
+    lines.push(
+      '',
+      f.id +
+        ' 文件内三次独立输出两两比较，完整模型方案一致 ' +
+        rate(consistent('modelPlanDigest'), 3) +
+        '，目标和选项一致 ' +
+        rate(consistent('modelOutputDigest'), 3) +
+        '。',
+    );
+  }
   const evidence = pairEvidence(paired);
   lines.push(
     '',

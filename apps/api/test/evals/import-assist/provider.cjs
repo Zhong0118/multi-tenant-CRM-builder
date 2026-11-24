@@ -180,6 +180,9 @@ function observedProvider(mode, answer, resolved, h, log, protectedCells) {
           Array.isArray(output?.matchFields) ? output.matchFields : []
         ).filter((k) => forbidden.has(k)).length;
         if (answer.pair) {
+          log.modelPlanDigest = createHash('sha256')
+            .update(JSON.stringify(output))
+            .digest('hex');
           const semantic = suggestions
             .map((s) => [
               s?.col,

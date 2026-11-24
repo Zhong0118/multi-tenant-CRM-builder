@@ -317,8 +317,17 @@ async function run(h, entry, protectedCells) {
       JSON.stringify([
         candidateHeader,
         predictions,
-        auto.mapping,
-        Object.entries(auto.valueChoices).map(([k, v]) => [k, [...v].sort()]),
+        reviewHeader,
+        ...[auto, reviewed, bulk].map((draft) => [
+          draft.mapping,
+          draft.matchFields,
+          draft.dateOrders,
+          draft.amountUnits,
+          Object.entries(draft.valueChoices).map(([k, v]) => [
+            k,
+            [...v].sort(),
+          ]),
+        ]),
       ]),
     );
   }
@@ -456,6 +465,7 @@ async function main() {
             'wireDigest',
             'modelInputDigest',
             'modelOutputDigest',
+            'modelPlanDigest',
             'outputDigest',
             'zeroCallPassed',
             'modelForbiddenTargets',
