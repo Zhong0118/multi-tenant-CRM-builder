@@ -60,12 +60,16 @@ describe('AI governance administration over HTTP with restricted PostgreSQL role
     ).expect(200);
     expect(platform.body.catalog).toEqual(expected);
     expect(workspace.body.catalog).toEqual(expected);
-    await http(f.tenantBAdmin, 'post', '/platform/ai-plans', {
-      name: 'Daily writing',
+    const plan = await http(f.tenantBAdmin, 'post', '/platform/ai-plans', {
+      name: 'Daily writing ' + randomUUID(),
       description: '',
       features: ['writing'],
       assignable: true,
       monthlyTokens: '100',
+    }).expect(200);
+    const { id, version } = outputs.plan.parse(plan.body);
+    await http(f.tenantBAdmin, 'delete', '/platform/ai-plans/' + id, {
+      version,
     }).expect(200);
   });
   it('enforces session roles, stale previews, exact quota replays, audit and zero-content platform aggregates', async () => {
