@@ -11,10 +11,21 @@ import {
 import { PlatformAiAdminService } from './admin-platform.service';
 import { WorkspaceAiAdminService } from './admin-workspace.service';
 
+import { ModelConfigurationStore } from './model-configuration.store';
+import { ModelAdminService } from './model-admin.service';
+import { ModelAdminController } from './model-admin.controller';
+
 @Module({
   imports: [DatabaseModule, AuditModule, AuthModule, MembershipsModule],
-  controllers: [PlatformAiAdminController, WorkspaceAiAdminController],
+  controllers: [
+    ModelAdminController,
+    PlatformAiAdminController,
+    WorkspaceAiAdminController,
+  ],
+  exports: [ModelConfigurationStore],
   providers: [
+    ModelConfigurationStore,
+    ModelAdminService,
     PlatformAdminGuard,
     PlatformAiAdminService,
     WorkspaceAiAdminService,
