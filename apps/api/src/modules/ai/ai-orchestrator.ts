@@ -8,7 +8,10 @@ import {
   type ResolvedAssistantPage,
   type VerifiedAnswer,
 } from './assistant-questions.service';
-import { createAssistantTurnTools } from './assistant-turn-tools';
+import {
+  createAssistantTurnTools,
+  persistedAction,
+} from './assistant-turn-tools';
 import { AssistantActionsService } from './assistant-actions';
 import type { ProposalCandidate } from './ai-proposal.schema';
 
@@ -43,6 +46,7 @@ export const AI_SYSTEM_PROMPT = [
   'Choose the interaction before reading records. A request to find, filter or list matching records on the current list page (找、筛选、列出) goes directly to preview_filter with the original words. Let the user apply the preview. If no criteria were given, first call describe_object for the current list. Read its filterDirections, then call ask_user choose_option with 2–4 of those exact labels. Each label is one condition from the visible fields or the system choices 负责人是我 and 跟进到期. Never invent or combine directions. After selection, pass the selected label verbatim to preview_filter. For requested statistics, disambiguation or the targets of a requested write, use the appropriate read tools.',
   'For a general edit of the current record (“帮我改一下”), immediately call ask_user with kind fill_fields, mode pick_any and fieldKeys []. The server presents the editable fields; the user may fill just one. Use mode missing only when the specific change requires every listed value. After a validated form answer propose exactly the fields supplied.',
   'If a named target has multiple matches, call ask_user choose_record with actual search results. Only when choosing among approaches would change how to complete a concrete task, call ask_user choose_option with 2–4 short plain-text intentions. End the segment with the card, not a prose question. With sufficient information act directly. If the requested update is unavailable, end with a concise explanation. Never suggest different business changes as substitutes or assert that a field does or does not exist. Greetings and complete read-only questions take a direct answer; for a schema question describe just the visible metadata.',
+  'When asked to compose an outbound message, email, call outline or visit plan, use draft_writing with a verified unique target. First search the relevant table when not on the target page. For multiple matches use choose_record. Draft only through the tool and never emit the text yourself. If the tool is unavailable, tell the user writing is unavailable.',
   'Structured answers contain server-validated selections. Previous tool values are not replayed: read again for facts. After three questions stop and explain what information is missing.',
   'Never change owners or system fields or reschedule an existing follow-up. Refuse explicitly. Do not substitute a new task for a reschedule. Only propose changes to seen records. Never claim a write occurred.',
   'For “我负责的” in a record query use the system condition {"fieldKey":"$owner","operator":"in","value":["$me"]}. It exists independently of editable object fields. Preserve all other criteria across pages. Never infer ownership from names or from records being visible. For an operation on every match, use search_records with the exact filters to obtain eligible targets and its visible total. When total exceeds 20 end with a short message stating the total, the limit and the need to narrow the request. Do not call ask_user or propose_change for that batch.',
@@ -251,6 +255,12 @@ export class AiOrchestrator {
             page,
             filterDraft,
             userText: answer?.otherText ?? begun.user.content,
+            chosenRecord:
+              answer?.kind === 'choose_record' &&
+              answer.objectCode &&
+              answer.recordId
+                ? { objectCode: answer.objectCode, recordId: answer.recordId }
+                : undefined,
             filterChoice:
               answer?.kind === 'choose_option' ? answer.label : undefined,
           },
@@ -397,11 +407,7 @@ export class AiOrchestrator {
         collector.failureCode === 'PROPOSAL_LIMIT'
       ) {
         await this.ledger.assertFeature(context, 'assistant');
-        if (action)
-          await this.ledger.assertFeature(
-            context,
-            action.kind === 'communication' ? 'communication' : 'filter',
-          );
+        if (action) await this.ledger.assertFeature(context, action.kind);
         const content =
           openQuestion === null
             ? '已追问三次，信息仍不足。请补充具体的记录、字段或期望值后再试。'
@@ -413,7 +419,10 @@ export class AiOrchestrator {
         await this.finish(context, begun, latencyMs, {
           status: 'COMPLETED',
           content,
-          usage: { ...usage, ...(action ? { assistantAction: action } : {}) },
+          usage: {
+            ...usage,
+            ...(action ? { assistantAction: persistedAction(action) } : {}),
+          },
           sourceSummary: sources,
           toolSummary: toolSummaries,
         });
