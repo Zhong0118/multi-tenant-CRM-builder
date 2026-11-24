@@ -45,6 +45,8 @@ export class FakeAiProvider implements AiProvider {
             reasonFactRefs: [r.facts[0].ref],
             action: 'call',
             explanation: '建议致电确认近况',
+            suggestedTitle: null,
+            suggestedDue: null,
           })),
       };
     }
