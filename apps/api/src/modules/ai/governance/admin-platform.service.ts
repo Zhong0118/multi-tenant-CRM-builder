@@ -1,3 +1,8 @@
+import {
+  estimatePlanCost,
+  platformTextModel,
+  planUsageMix,
+} from './model-cost';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@crm/database';
@@ -167,9 +172,21 @@ export class PlatformAiAdminService {
     });
   }
   list(user: string) {
-    return this.runner.withUser(user, (tx) =>
-      tx.$queryRaw<Plan[]>(Prisma.sql`${planSelect} ORDER BY p.name,p.id`),
-    );
+    return this.runner.withUser(user, async (tx) => {
+      const plans = await tx.$queryRaw<Plan[]>(
+        Prisma.sql`${planSelect} ORDER BY p.name,p.id`,
+      );
+      const price = await platformTextModel(tx);
+      const mix = new Map((await planUsageMix(tx)).map((row) => [row.id, row]));
+      return plans.map((plan) => ({
+        ...plan,
+        costEstimate: estimatePlanCost(
+          plan.monthlyTokens,
+          price,
+          mix.get(plan.id) ?? { input: '0', output: '0' },
+        ),
+      }));
+    });
   }
   plan(user: string, id: string) {
     return this.runner.withUser(user, (tx) => getPlan(tx, id));
@@ -244,8 +261,11 @@ export class PlatformAiAdminService {
   runtime(user: string) {
     return this.runner.withUser(user, async (tx) => {
       const s = await settings(tx);
-      const provider = this.config.get<string>('AI_PROVIDER') ?? null;
-      const model = this.config.get<string>('AI_MODEL') ?? null;
+      const active = await platformTextModel(tx);
+      const provider =
+        active?.provider ?? this.config.get<string>('AI_PROVIDER') ?? null;
+      const model =
+        active?.model ?? this.config.get<string>('AI_MODEL') ?? null;
       const test = this.config.get<string>('NODE_ENV') === 'test';
       const configured = test
         ? provider === 'fake'
@@ -263,7 +283,7 @@ export class PlatformAiAdminService {
         ...s,
         provider,
         model,
-        configured,
+        configured: !!active || configured,
         anomalies,
         affectedCompanies,
         catalog: await readCatalog(tx),

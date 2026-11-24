@@ -187,6 +187,29 @@ export function CompanyAi({
             </div>
           </>
         )}
+        {c.usedTokens !== "0" && (
+          <div className={styles.ledger}>
+            <span>本月估算成本</span>
+            {c.costs
+              ?.filter((row) => row.currency && row.pricedTokens !== "0")
+              .map((row) => (
+                <span key={row.currency}>
+                  {row.currency}{" "}
+                  {Number(row.cost).toLocaleString(undefined, {
+                    maximumFractionDigits: 4,
+                  })}
+                </span>
+              ))}
+            {(!c.costs?.length ||
+              c.costs.some((row) => row.unpricedTokens !== "0")) && (
+              <span>
+                未设置单价
+                {c.costs?.some((row) => row.pricedTokens !== "0") &&
+                  "（部分用量）"}
+              </span>
+            )}
+          </div>
+        )}
         <small className={styles.detail}>
           {startDay.slice(0, 7) === c.month.slice(0, 7)
             ? startDay + " 起计量 · "

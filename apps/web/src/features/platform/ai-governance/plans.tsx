@@ -171,6 +171,32 @@ export function PlatformPlans() {
                 title: "月额度",
                 render: (_, p) => formatTokens(p.monthlyTokens),
               },
+              {
+                title: "额度用满估算",
+                render: (_, p) =>
+                  p.costEstimate ? (
+                    <span
+                      title={
+                        p.costEstimate.weighted
+                          ? "按当前套餐公司历史输入和输出占比估算"
+                          : "暂无历史用量，显示输入与输出单价区间"
+                      }
+                    >
+                      {p.costEstimate.currency}{" "}
+                      {Number(p.costEstimate.low).toLocaleString(undefined, {
+                        maximumFractionDigits: 4,
+                      })}
+                      {p.costEstimate.low !== p.costEstimate.high &&
+                        " – " +
+                          Number(p.costEstimate.high).toLocaleString(
+                            undefined,
+                            { maximumFractionDigits: 4 },
+                          )}
+                    </span>
+                  ) : (
+                    "未设置单价"
+                  ),
+              },
               { title: "使用公司", render: (_, p) => p.companies + " 家" },
               {
                 title: "分配状态",

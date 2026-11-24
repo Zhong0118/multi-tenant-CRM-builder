@@ -164,7 +164,18 @@ export const inputs = {
 };
 export const outputs = {
   plan,
-  plans: z.array(plan),
+  plans: z.array(
+    plan.extend({
+      costEstimate: z
+        .strictObject({
+          currency: z.string(),
+          low: z.string(),
+          high: z.string(),
+          weighted: z.boolean(),
+        })
+        .nullable(),
+    }),
+  ),
   planImpact,
   deleted: z.strictObject({ deleted: z.boolean() }),
   platform: platformState.extend({
@@ -190,6 +201,14 @@ export const outputs = {
     total: z.int(),
   }),
   summary: tenant.extend({
+    costs: z.array(
+      z.strictObject({
+        currency: z.string().nullable(),
+        cost: z.string(),
+        unpricedTokens: tokens,
+        pricedTokens: tokens,
+      }),
+    ),
     catalog,
     trend: z.array(z.strictObject({ month, usedTokens: tokens })),
     usage: z.array(dayUsage),

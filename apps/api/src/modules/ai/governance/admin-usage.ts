@@ -1,3 +1,4 @@
+import { monthlyCosts } from './model-cost';
 import { readCatalog } from './feature-catalog';
 import { Prisma } from '@crm/database';
 import { createHash } from 'node:crypto';
@@ -95,6 +96,7 @@ export async function platformUsage(tx: Tx, id: string) {
  LEFT JOIN ai_tenant_months m ON m.month=d::date AND m.tenant_id=${id}::uuid ORDER BY d`;
   return {
     ...current,
+    costs: await monthlyCosts(tx, id, current.month),
     catalog: await readCatalog(tx),
     trend,
     usage: await daily(tx, id, current.month),
