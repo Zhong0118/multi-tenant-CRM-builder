@@ -28,6 +28,7 @@ async function main() {
     options: {
       dataset: { type: 'string', default: 'development' },
       feature: { type: 'string' },
+      sample: { type: 'string' },
       report: { type: 'string' },
       real: { type: 'boolean', default: false },
     },
@@ -70,91 +71,127 @@ async function main() {
       schema,
       prompt: JSON.stringify(payload),
     });
-  const indices = Array.from({ length: samples[feature].length }, (_, i) => i);
+  let diagnostic: string | undefined;
+  const indices = Array.from(
+    { length: samples[feature].length },
+    (_, i) => i,
+  ).filter((i) => !values.sample || String(i + 1) === values.sample);
+  if (!indices.length) throw Error('Unknown sample');
   const date = '2026-11-24';
   const rows = await runDataset(
     indices,
     async (i) => {
       usage = {};
-      if (feature === 'daily_brief') {
-        const candidates = samples.daily_brief[i];
-        const raw = await call(
-          {
-            localDate: date,
-            records: candidates.map(
-              ({ recordRef, title, objectName, facts }) => ({
-                recordRef,
-                title,
-                objectName,
-                facts,
-              }),
-            ),
-          },
-          briefSystem,
-          suggestionSchema,
+      diagnostic = undefined;
+      try {
+        if (feature === 'daily_brief') {
+          const candidates = samples.daily_brief[i];
+          const raw = await call(
+            {
+              localDate: date,
+              records: candidates.map(
+                ({ recordRef, title, objectName, facts }) => ({
+                  recordRef,
+                  title,
+                  objectName,
+                  facts,
+                }),
+              ),
+            },
+            briefSystem,
+            suggestionSchema,
+          );
+          const output = validateSuggestions(raw, candidates, date);
+          const expected = suggestionSchema.parse(raw).items;
+          const valid =
+            output.length >= 3 &&
+            output.length <= 5 &&
+            output.length === expected.length;
+          return { output, raw, valid, usage };
+        }
+        if (feature === 'writing') {
+          const { options, facts, title } = samples.writing[i];
+          const raw = await call(
+            { options, facts, truncated: false, timeZone: 'Asia/Shanghai' },
+            writingSystem,
+            writingSchema,
+          );
+          const output = validateWriting(raw, options, facts);
+          const source = writingSchema.parse(raw);
+          const sentences = source.blocks
+            .flatMap((b) => b.text.match(/[^。！？!?\n]+[。！？!?]?/gu) ?? [])
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const joined = output.blocks.map((b) => b.text).join('\n');
+          const altered = sentences.filter((s) => !joined.includes(s)).length;
+          return {
+            output,
+            raw,
+            valid: joined.length > 0 && output.kind === options.kind,
+            usage,
+            sentences: sentences.length,
+            altered,
+            titleIncluded: joined.includes(title),
+          };
+        }
+        const facts = samples.daily_report[i],
+          raw = await call(
+            { workDate: date, facts, truncated: false },
+            reportSystem,
+            reportSchema,
+          );
+        const output = validateReport(raw, facts),
+          covered = facts.filter((f) =>
+            output[f.section!].includes(f.text),
+          ).length;
+        const valid = sections.every((k) =>
+          output[k]
+            .split('\n')
+            .filter(Boolean)
+            .every((s) => facts.some((f) => f.section === k && f.text === s)),
         );
-        const output = validateSuggestions(raw, candidates, date);
-        const expected = suggestionSchema.parse(raw).items;
-        const valid =
-          output.length >= 3 &&
-          output.length <= 5 &&
-          output.length === expected.length;
-        return { output, raw, valid, usage };
-      }
-      if (feature === 'writing') {
-        const { options, facts, title } = samples.writing[i];
-        const raw = await call(
-          { options, facts, truncated: false, timeZone: 'Asia/Shanghai' },
-          writingSystem,
-          writingSchema,
-        );
-        const output = validateWriting(raw, options, facts);
-        const source = writingSchema.parse(raw);
-        const sentences = source.blocks
-          .flatMap((b) => b.text.match(/[^。！？!?\n]+[。！？!?]?/gu) ?? [])
-          .map((s) => s.trim())
-          .filter(Boolean);
-        const joined = output.blocks.map((b) => b.text).join('\n');
-        const altered = sentences.filter((s) => !joined.includes(s)).length;
         return {
-          output,
           raw,
-          valid: joined.length > 0 && output.kind === options.kind,
+          output,
           usage,
-          sentences: sentences.length,
-          altered,
-          titleIncluded: joined.includes(title),
+          valid: valid && covered === facts.length,
+          covered,
+          available: facts.length,
         };
-      }
-      const facts = samples.daily_report[i],
-        raw = await call(
-          { workDate: date, facts, truncated: false },
-          reportSystem,
-          reportSchema,
-        );
-      const output = validateReport(raw, facts),
-        covered = facts.filter((f) =>
-          output[f.section!].includes(f.text),
-        ).length;
-      const valid = sections.every((k) =>
-        output[k]
-          .split('\n')
+      } catch (error) {
+        const e = error as {
+          name?: string;
+          statusCode?: number;
+          finishReason?: string;
+          cause?: { name?: string };
+        };
+        const known = [
+          'AI_NoObjectGeneratedError',
+          'AI_APICallError',
+          'AI_TypeValidationError',
+          'AI_JSONParseError',
+          'TimeoutError',
+          'ZodError',
+        ];
+        diagnostic = [
+          known.find((name) => name === e?.name) ?? 'OTHER',
+          Number.isInteger(e?.statusCode) ? e.statusCode : null,
+          known.find((name) => name === e?.cause?.name),
+          ['length', 'stop', 'error', 'content-filter'].find(
+            (reason) => reason === e?.finishReason,
+          ),
+        ]
           .filter(Boolean)
-          .every((s) => facts.some((f) => f.section === k && f.text === s)),
-      );
-      return {
-        raw,
-        output,
-        usage,
-        valid: valid && covered === facts.length,
-        covered,
-        available: facts.length,
-      };
+          .join('/');
+        throw error;
+      }
     },
     (_, draft) => (draft.valid ? [] : ['OUTPUT_MISMATCH']),
+    () => diagnostic,
   );
   const passed = rows.filter((r) => !r.failures.length).length;
-  const retained = rows.map(({ sample, draft, failures }) => ({
+  const retained = rows.map(({ sample, draft, failures, modelOutput }) => ({
+    diagnostic: modelOutput,
     sample: sample + 1,
     draft,
     failures,
