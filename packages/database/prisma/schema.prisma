@@ -1269,6 +1269,7 @@ model AiDailyUsage {
 }
 
 model AiModelCall {
+  catalog AiFeatureCatalog @relation(fields: [feature], references: [key], onDelete: NoAction, onUpdate: NoAction, map: "ai_model_calls_feature_fk")
   id String @id @db.Uuid
   tenantId String @map("tenant_id") @db.Uuid
   memberId String @map("member_id") @db.Uuid
@@ -1454,4 +1455,19 @@ model AiModelAssignment {
   revision AiModelRevision @relation(fields: [providerId, revisionId], references: [providerId, id], onDelete: NoAction, onUpdate: NoAction)
   model AiConfigModel @relation(fields: [revisionId, modelName], references: [revisionId, name], onDelete: NoAction, onUpdate: NoAction)
   @@map("ai_model_assignments")
+}
+
+model AiFeatureCatalog {
+  key String @id
+  label String
+  groupLabel String @map("group_label")
+  position Int @unique
+  purpose String
+  requiresKey String? @map("requires_key")
+  released Boolean
+  outputLimit Int? @map("output_limit")
+  dependency AiFeatureCatalog? @relation("AiFeatureDependencies", fields: [requiresKey], references: [key], onDelete: NoAction, onUpdate: NoAction)
+  dependents AiFeatureCatalog[] @relation("AiFeatureDependencies")
+  calls AiModelCall[]
+  @@map("ai_feature_catalog")
 }
