@@ -25,7 +25,10 @@ export class DatabaseContextRunner {
   withTenant<T>(
     context: TenantContext,
     work: (transaction: Prisma.TransactionClient) => Promise<T>,
-    options?: { timeout: number },
+    options?: {
+      timeout?: number;
+      isolationLevel?: Prisma.TransactionIsolationLevel;
+    },
   ): Promise<T> {
     return this.database
       .transaction(async (transaction) => {

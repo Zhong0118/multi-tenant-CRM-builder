@@ -32,7 +32,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   transaction<T>(
     work: (transaction: Prisma.TransactionClient) => Promise<T>,
-    options?: { timeout: number },
+    options?: {
+      timeout?: number;
+      isolationLevel?: Prisma.TransactionIsolationLevel;
+    },
   ): Promise<T> {
     return this.client.$transaction(work, options);
   }
