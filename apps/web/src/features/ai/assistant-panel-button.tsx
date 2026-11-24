@@ -130,7 +130,9 @@ function AvailableAssistantPanel(
         {props.assistant ? "助手" : "帮我写"}
       </Button>
       <Drawer
-        title={compose ? "帮我写" : null}
+        title={
+          compose ? [recordTitle, "帮我写"].filter(Boolean).join(" · ") : null
+        }
         closable={compose}
         placement="right"
         open={open}

@@ -98,6 +98,7 @@ export class SalesDraftsService {
     return {
       title,
       canLog,
+      timeZone,
       basis,
       ...validateWriting(raw, options.data, facts),
       generatedAt: new Date().toISOString(),
@@ -123,10 +124,10 @@ export class SalesDraftsService {
   }
   async report(actor: TenantContext, workDate: string, signal?: AbortSignal) {
     await this.ledger.assertFeature(actor, 'daily_report');
-    const { facts, truncated } = await this.records.withTenantTransaction(
-      actor,
-      (db) => reportFacts(db, actor, workDate),
-    );
+    const { facts, truncated, timeZone } =
+      await this.records.withTenantTransaction(actor, (db) =>
+        reportFacts(db, actor, workDate),
+      );
     if (!facts.length) return { empty: true as const };
     const raw = await this.generate(
       actor,
@@ -139,6 +140,7 @@ export class SalesDraftsService {
     return {
       empty: false as const,
       sections: validateReport(raw, facts),
+      timeZone,
       generatedAt: new Date().toISOString(),
     };
   }

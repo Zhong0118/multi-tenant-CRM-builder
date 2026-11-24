@@ -293,5 +293,5 @@ export async function reportFacts(
         text: '办理了「' + t + '」的状态流转。',
       });
   }
-  return boundedFacts(rows);
+  return { ...boundedFacts(rows), timeZone: zone };
 }

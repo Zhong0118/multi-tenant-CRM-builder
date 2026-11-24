@@ -107,7 +107,10 @@ export function ReportDraft({
         {preview && (
           <>
             <p>
-              AI 生成 · {new Date(preview.generatedAt).toLocaleString("zh-CN")}
+              AI 生成 ·{" "}
+              {new Date(preview.generatedAt).toLocaleString("zh-CN", {
+                timeZone: preview.timeZone,
+              })}
             </p>
             <table className={styles.compare}>
               <thead>

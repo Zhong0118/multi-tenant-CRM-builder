@@ -190,7 +190,10 @@ export function SalesWriting({
             {choices.kind[draft.kind]} · {draft.title}
           </strong>
           <small>
-            AI 生成 · {new Date(draft.generatedAt).toLocaleString("zh-CN")}
+            AI 生成 ·{" "}
+            {new Date(draft.generatedAt).toLocaleString("zh-CN", {
+              timeZone: draft.timeZone,
+            })}
           </small>
           {draft.subject && <h4>{draft.subject}</h4>}
           {draft.blocks.map((b, i) => (

@@ -27,6 +27,7 @@ const meta = z.object({
   subject: z.string().optional(),
   generatedAt: z.string(),
   canLog: z.boolean(),
+  timeZone: z.string().optional(),
   basis: z.string().optional(),
 });
 const block = z.object({ text: z.string(), factRefs: z.array(z.string()) });
@@ -122,7 +123,12 @@ export async function reportDraft(
   signal: AbortSignal,
 ): Promise<
   | { empty: true }
-  | { empty: false; sections: DailyReportSections; generatedAt: string }
+  | {
+      empty: false;
+      sections: DailyReportSections;
+      generatedAt: string;
+      timeZone?: string;
+    }
 > {
   return (
     await post(base(tenant) + "daily-report", { workDate }, signal)
