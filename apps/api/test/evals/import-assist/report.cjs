@@ -35,6 +35,71 @@ const tokenStats = (values) => {
 };
 const row = (cells) => '| ' + cells.join(' | ') + ' |';
 const split = process.argv[2];
+if (split === 'totals') {
+  const groups = ['development', 'final', 'fresh', 'holdout'].map((name) =>
+    load(name, 'none'),
+  );
+  const fingerprint = JSON.parse(
+    fs.readFileSync(path.join(reports, 'eval-freeze.json')),
+  ).fingerprint;
+  for (const group of groups) assert.equal(group.fingerprint, fingerprint);
+  const lines = [
+    '# DeepSeek Responses 调用统计',
+    '',
+    '按实际物理请求计数，包含主评测与注入对照的独立重复、超时和截断。token 仅汇总厂商返回用量的请求。',
+    '',
+    row([
+      '集合',
+      '独立请求',
+      '实呼',
+      '错误',
+      '超时',
+      '截断',
+      'p50 / p95 ms',
+      '有 token 读数 / 实呼',
+      '输入 token 总计',
+      '输出 token 总计',
+      '出站隐私检查',
+      '通过的权限探针 / 探针数',
+    ]),
+    row(Array(12).fill('---')),
+  ];
+  const all = groups.flatMap((g) => g.files.flatMap(attempts));
+  for (const [label, requests] of [
+    ...groups.map((g) => [g.split, g.files.flatMap(attempts)]),
+    ['全部', all],
+  ]) {
+    const sent = requests.filter((a) => a.calls);
+    const measured = sent.filter(
+      (a) => Number.isFinite(a.inputTokens) && Number.isFinite(a.outputTokens),
+    );
+    lines.push(
+      row([
+        label,
+        requests.length,
+        sent.length,
+        requests.filter((a) => a.error).length,
+        sent.filter((a) => a.error === 'timeout').length,
+        sent.filter((a) => a.error === 'truncated').length,
+        percentiles(sent.map((a) => a.modelMs)),
+        measured.length + ' / ' + sent.length,
+        total(measured, 'inputTokens'),
+        total(measured, 'outputTokens'),
+        sent.filter((a) => a.wireScanned && !a.privacy.length).length +
+          ' / ' +
+          sent.length,
+        2 * requests.filter((a) => a.authorization.pass).length +
+          ' / ' +
+          2 * requests.length,
+      ]),
+    );
+  }
+  fs.writeFileSync(
+    path.join(reports, 'eval-calls.md'),
+    lines.join('\n') + '\n',
+  );
+  return;
+}
 if (split === 'freeze') {
   const fingerprint = revision();
   for (const mode of modes)
