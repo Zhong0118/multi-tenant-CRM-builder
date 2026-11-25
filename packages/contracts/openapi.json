@@ -11,6 +11,115 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "AccountMembershipDto": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "employeeNo": {
+            "nullable": true,
+            "type": "string"
+          },
+          "jobTitle": {
+            "nullable": true,
+            "type": "string"
+          },
+          "memberDisplayName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "memberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "type": "string"
+          },
+          "tenantCode": {
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "memberId",
+          "tenantId",
+          "tenantCode",
+          "tenantName",
+          "role",
+          "memberDisplayName",
+          "displayName",
+          "jobTitle",
+          "employeeNo"
+        ],
+        "type": "object"
+      },
+      "AccountNameDto": {
+        "properties": {
+          "displayName": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["displayName"],
+        "type": "object"
+      },
+      "AccountProfileDto": {
+        "properties": {
+          "avatarUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "emailStatus": {
+            "enum": ["UNBOUND", "UNVERIFIED", "VERIFIED", "UNDELIVERABLE"],
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isPlatformAdmin": {
+            "type": "boolean"
+          },
+          "jobTitle": {
+            "nullable": true,
+            "type": "string"
+          },
+          "mailAvailable": {
+            "type": "boolean"
+          },
+          "maskedEmail": {
+            "nullable": true,
+            "type": "string"
+          },
+          "phone": {
+            "example": "+8613800138000",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "phone",
+          "isPlatformAdmin",
+          "avatarUrl",
+          "maskedEmail",
+          "emailStatus",
+          "mailAvailable",
+          "jobTitle"
+        ],
+        "type": "object"
+      },
       "AiConversationPageDto": {
         "properties": {
           "items": {
@@ -1025,6 +1134,16 @@
         "required": ["until", "nextCursor", "pageSize", "total", "items"],
         "type": "object"
       },
+      "AvatarResponseDto": {
+        "properties": {
+          "avatarUrl": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": ["avatarUrl"],
+        "type": "object"
+      },
       "BatchUpdateRecordItemDto": {
         "properties": {
           "recordId": {
@@ -1473,9 +1592,12 @@
             "maxLength": 100,
             "minLength": 1,
             "type": "string"
+          },
+          "jobTitle": {
+            "maxLength": 50,
+            "type": "string"
           }
         },
-        "required": ["displayName"],
         "type": "object"
       },
       "ChangeMemberRoleDto": {
@@ -3514,6 +3636,15 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "DeviceMailSettingsDto": {
+        "properties": {
+          "newDeviceMailEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": ["newDeviceMailEnabled"],
+        "type": "object"
+      },
       "DraftGroupAnalysisDto": {
         "properties": {
           "blocking": {
@@ -3576,6 +3707,38 @@
           }
         },
         "required": ["itemKey", "editedValue"],
+        "type": "object"
+      },
+      "EmailAddressDto": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          }
+        },
+        "required": ["email"],
+        "type": "object"
+      },
+      "EmailChallengeDto": {
+        "properties": {
+          "challengeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maskedEmail": {
+            "type": "string"
+          }
+        },
+        "required": ["challengeId", "maskedEmail"],
+        "type": "object"
+      },
+      "EmailStatusDto": {
+        "properties": {
+          "mailAvailable": {
+            "type": "boolean"
+          }
+        },
+        "required": ["mailAvailable"],
         "type": "object"
       },
       "EmployeePermissionsDto": {
@@ -4307,6 +4470,16 @@
         "required": ["accepted", "expiresAt"],
         "type": "object"
       },
+      "JobTitleDto": {
+        "properties": {
+          "jobTitle": {
+            "maxLength": 50,
+            "type": "string"
+          }
+        },
+        "required": ["jobTitle"],
+        "type": "object"
+      },
       "LoginDto": {
         "properties": {
           "deviceKey": {
@@ -4329,6 +4502,65 @@
           }
         },
         "required": ["phone", "password", "deviceKey", "deviceSummary"],
+        "type": "object"
+      },
+      "MailReadinessDto": {
+        "properties": {
+          "issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ready": {
+            "type": "boolean"
+          }
+        },
+        "required": ["ready", "issues"],
+        "type": "object"
+      },
+      "MailStatisticDto": {
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": ["kind", "status", "count"],
+        "type": "object"
+      },
+      "MailStatisticsDto": {
+        "properties": {
+          "days": {
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MailStatisticDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["days", "items"],
+        "type": "object"
+      },
+      "MailTestResultDto": {
+        "properties": {
+          "errorCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "enum": ["sent", "failed", "unknown"],
+            "type": "string"
+          }
+        },
+        "required": ["status", "errorCode"],
         "type": "object"
       },
       "MemberFieldAccessChangeDto": {
@@ -4595,6 +4827,23 @@
           }
         },
         "required": ["accepted"],
+        "type": "object"
+      },
+      "NewEmailCodeDto": {
+        "properties": {
+          "currentPassword": {
+            "format": "password",
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "purpose": {
+            "enum": ["BIND", "CHANGE", "REVERIFY"],
+            "type": "string"
+          }
+        },
+        "required": ["purpose"],
         "type": "object"
       },
       "NotificationItemDto": {
@@ -6706,6 +6955,19 @@
         "required": ["field", "direction"],
         "type": "object"
       },
+      "RecoveryChallengeDto": {
+        "properties": {
+          "challengeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["challengeId", "message"],
+        "type": "object"
+      },
       "RegisterDto": {
         "properties": {
           "code": {
@@ -6753,6 +7015,17 @@
         "required": ["success"],
         "type": "object"
       },
+      "RemoveEmailDto": {
+        "properties": {
+          "currentPassword": {
+            "format": "password",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": ["currentPassword"],
+        "type": "object"
+      },
       "RenameAiConversationDto": {
         "properties": {
           "title": {
@@ -6762,6 +7035,31 @@
           }
         },
         "required": ["title"],
+        "type": "object"
+      },
+      "ResetEmailPasswordDto": {
+        "properties": {
+          "challengeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "code": {
+            "pattern": "^[0-9]{6}$",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "newPassword": {
+            "format": "password",
+            "maxLength": 72,
+            "minLength": 10,
+            "pattern": "^(?=.*[A-Za-z])(?=.*\\d)[\\s\\S]*$",
+            "type": "string"
+          }
+        },
+        "required": ["newPassword", "email", "challengeId", "code"],
         "type": "object"
       },
       "ResetPasswordDto": {
@@ -6985,7 +7283,7 @@
             "type": "string"
           },
           "key": {
-            "enum": ["database", "redis", "sms", "webOrigin"],
+            "enum": ["database", "redis", "sms", "mail", "webOrigin"],
             "type": "string"
           },
           "label": {
@@ -7004,6 +7302,9 @@
           "environment": {
             "type": "string"
           },
+          "mail": {
+            "$ref": "#/components/schemas/MailReadinessDto"
+          },
           "policies": {
             "$ref": "#/components/schemas/RuntimePoliciesDto"
           },
@@ -7014,7 +7315,7 @@
             "type": "array"
           }
         },
-        "required": ["environment", "services", "policies"],
+        "required": ["mail", "environment", "services", "policies"],
         "type": "object"
       },
       "RuntimeTransitionEffectDto": {
@@ -9080,6 +9381,10 @@
       },
       "TenantMemberResponseDto": {
         "properties": {
+          "avatarUrl": {
+            "nullable": true,
+            "type": "string"
+          },
           "displayName": {
             "type": "string"
           },
@@ -9098,6 +9403,10 @@
           },
           "isGroupLeader": {
             "type": "boolean"
+          },
+          "jobTitle": {
+            "nullable": true,
+            "type": "string"
           },
           "phone": {
             "example": "+8613800138000",
@@ -9571,6 +9880,31 @@
           }
         },
         "required": ["phone", "purpose", "deviceKey"],
+        "type": "object"
+      },
+      "VerifyEmailDto": {
+        "properties": {
+          "challengeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "code": {
+            "pattern": "^[0-9]{6}$",
+            "type": "string"
+          },
+          "currentPassword": {
+            "format": "password",
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "purpose": {
+            "enum": ["BIND", "CHANGE", "REVERIFY"],
+            "type": "string"
+          }
+        },
+        "required": ["purpose", "challengeId", "code"],
         "type": "object"
       },
       "WorkGoalDto": {
@@ -10126,6 +10460,83 @@
   },
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/auth/email/forgot-password": {
+      "post": {
+        "operationId": "EmailRecoveryController_forgot",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailAddressDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryChallengeDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/api/v1/auth/email/reset-password": {
+      "post": {
+        "operationId": "EmailRecoveryController_reset",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetEmailPasswordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/api/v1/auth/email/status": {
+      "get": {
+        "operationId": "EmailRecoveryController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailStatusDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
     "/api/v1/auth/forgot-password": {
       "post": {
         "operationId": "AuthController_forgotPassword",
@@ -10331,14 +10742,221 @@
     },
     "/api/v1/me": {
       "get": {
-        "operationId": "MeController_me",
+        "operationId": "UsersController_me",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tenantCode",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      }
+    },
+    "/api/v1/me/avatar": {
+      "delete": {
+        "operationId": "UsersController_remove",
         "parameters": [],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserResponseDto"
+                  "$ref": "#/components/schemas/AvatarResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      },
+      "put": {
+        "operationId": "UsersController_upload",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": ["file"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvatarResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      }
+    },
+    "/api/v1/me/email": {
+      "delete": {
+        "operationId": "AccountEmailController_remove",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveEmailDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      }
+    },
+    "/api/v1/me/email/challenges": {
+      "post": {
+        "operationId": "AccountEmailController_issue",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewEmailCodeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailChallengeDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      }
+    },
+    "/api/v1/me/email/challenges/{challengeId}": {
+      "delete": {
+        "operationId": "AccountEmailController_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "challengeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      }
+    },
+    "/api/v1/me/email/verify": {
+      "post": {
+        "operationId": "AccountEmailController_verify",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponseDto"
                 }
               }
             },
@@ -10482,6 +11100,133 @@
         "tags": ["invitations"]
       }
     },
+    "/api/v1/me/memberships": {
+      "get": {
+        "operationId": "UsersController_memberships",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AccountMembershipDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      }
+    },
+    "/api/v1/me/memberships/{memberId}/job-title": {
+      "patch": {
+        "operationId": "UsersController_jobTitle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobTitleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      }
+    },
+    "/api/v1/me/notification-settings": {
+      "get": {
+        "operationId": "AccountEmailController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceMailSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      },
+      "patch": {
+        "operationId": "AccountEmailController_updateSettings",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceMailSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceMailSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      }
+    },
     "/api/v1/me/password": {
       "patch": {
         "operationId": "MeController_changePassword",
@@ -10502,6 +11247,40 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AcceptedResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
+      }
+    },
+    "/api/v1/me/profile": {
+      "patch": {
+        "operationId": "UsersController_rename",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountNameDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileDto"
                 }
               }
             },
@@ -13690,6 +14469,54 @@
         "tags": ["platform-business-templates"]
       }
     },
+    "/api/v1/platform/mail/statistics": {
+      "get": {
+        "operationId": "PlatformOperationsController_mailStatistics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailStatisticsDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-operations"]
+      }
+    },
+    "/api/v1/platform/mail/test": {
+      "post": {
+        "operationId": "PlatformOperationsController_testMail",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailTestResultDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-operations"]
+      }
+    },
     "/api/v1/platform/operations": {
       "get": {
         "operationId": "PlatformOperationsController_operationHistory",
@@ -14854,6 +15681,50 @@
           }
         ],
         "tags": ["platform-tenants"]
+      }
+    },
+    "/api/v1/users/{userId}/avatar/{version}": {
+      "get": {
+        "operationId": "UsersController_avatar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["me"]
       }
     },
     "/api/v1/workspaces/{tenantCode}": {
