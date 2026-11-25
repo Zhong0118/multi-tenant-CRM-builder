@@ -41,4 +41,28 @@ CREATE POLICY login_devices_owner ON login_devices TO crm_app
   USING (user_id = nullif(current_setting('app.user_id',true),'')::uuid)
   WITH CHECK (user_id = nullif(current_setting('app.user_id',true),'')::uuid);
 GRANT SELECT, INSERT, UPDATE, DELETE ON email_challenges, login_devices TO crm_app;
+-- Global retention is available only through a bounded, argument-free routine.
+CREATE INDEX login_devices_expires_at_idx ON public.login_devices(expires_at);
+CREATE FUNCTION public.auth_prune_email_identity() RETURNS integer
+LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+  WITH old_codes AS (
+    SELECT id FROM public.email_challenges
+    WHERE created_at < CURRENT_TIMESTAMP - interval '30 days'
+      AND expires_at <= CURRENT_TIMESTAMP
+    ORDER BY expires_at, id LIMIT 200 FOR UPDATE SKIP LOCKED
+  ), removed_codes AS (
+    DELETE FROM public.email_challenges c USING old_codes
+    WHERE c.id = old_codes.id RETURNING 1
+  ), expired_devices AS (
+    SELECT user_id, token_hash FROM public.login_devices
+    WHERE expires_at <= CURRENT_TIMESTAMP
+    ORDER BY expires_at, user_id, token_hash LIMIT 200 FOR UPDATE SKIP LOCKED
+  ), removed_devices AS (
+    DELETE FROM public.login_devices d USING expired_devices e
+    WHERE d.user_id = e.user_id AND d.token_hash = e.token_hash RETURNING 1
+  )
+  SELECT ((SELECT count(*) FROM removed_codes) + (SELECT count(*) FROM removed_devices))::integer
+$$;
+REVOKE ALL ON FUNCTION public.auth_prune_email_identity() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.auth_prune_email_identity() TO crm_app;
 COMMIT;

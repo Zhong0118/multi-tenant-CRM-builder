@@ -1,3 +1,4 @@
+import type { IncomingHttpHeaders } from 'node:http';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
@@ -61,7 +62,8 @@ describe('Auth API (e2e)', () => {
       user: { phone: '+8613911112222', displayName: '测试用户' },
     });
     expect(registration.body).not.toHaveProperty('sessionToken');
-    const cookies = registration.headers['set-cookie'] as string[] | undefined;
+    const headers: IncomingHttpHeaders = registration.headers;
+    const cookies = headers['set-cookie'];
     expect(cookies).toHaveLength(2);
     const deviceCookie = cookies?.find((value) =>
       value.startsWith('crm_device='),

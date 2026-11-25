@@ -441,3 +441,122 @@ it('remembers both recently visited networks when a known device switches Wi-Fi'
   await visit('192.0.2.3');
   expect(queued).toEqual([]);
 });
+
+it('gives unknown, unverified, disabled, undeliverable and SMTP-rejected addresses the same recovery response', async () => {
+  const unknown = address(),
+    legacy = address(),
+    disabled = address(),
+    bounced = address(),
+    refused = address();
+  await user(legacy);
+  await admin.user.update({
+    where: { id: await user(disabled, true) },
+    data: { status: 'DISABLED' },
+  });
+  await admin.user.update({
+    where: { id: await user(bounced, true) },
+    data: { emailUndeliverableAt: new Date() },
+  });
+  await user(refused, true);
+  const attempted: string[] = [];
+  deliver = (id) => {
+    attempted.push(id);
+    return Promise.resolve(false);
+  };
+  const responses = await Promise.all(
+    [unknown, legacy, disabled, bounced, refused].map((value) =>
+      service.forgot(value, ip),
+    ),
+  );
+  expect(new Set(responses.map((row) => row.challengeId)).size).toBe(5);
+  for (const response of responses) {
+    expect(Object.keys(response).sort()).toEqual(['challengeId', 'message']);
+    expect(response.message).toBe('如果这个邮箱已绑定账号，你会收到验证码');
+  }
+  const id = responses[4].challengeId;
+  for (let i = 0; i < 100; i++) {
+    if (
+      (await admin.emailChallenge.findUnique({ where: { id } }))?.status ===
+      'DISCARDED'
+    )
+      break;
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  expect(attempted).toEqual([id]);
+  expect(
+    await admin.emailChallenge.count({
+      where: { id: { in: responses.map((r) => r.challengeId) } },
+    }),
+  ).toBe(1);
+  await expect(
+    service.reset(
+      {
+        email: refused,
+        challengeId: id,
+        code: codes.get(id)!,
+        newPassword: 'NewPass12345',
+      },
+      ip,
+    ),
+  ).rejects.toMatchObject({ code: 'VERIFICATION_INVALID' });
+});
+
+it('prunes at most 200 old challenges and expired devices per maintenance pass without exposing other accounts', async () => {
+  const id = await user(),
+    old = new Date(Date.now() - 31 * 86400_000),
+    future = new Date(Date.now() + 86400_000);
+  const oldCode = {
+    userId: id,
+    purpose: 'BIND',
+    emailVersion: 0,
+    emailDigest: '1'.repeat(64),
+    codeHash: '2'.repeat(64),
+    status: 'ACTIVE',
+    createdAt: old,
+    expiresAt: old,
+  };
+  await admin.emailChallenge.createMany({
+    data: Array.from({ length: 201 }, () => ({ ...oldCode, id: randomUUID() })),
+  });
+  const recent = await admin.emailChallenge.create({
+    data: { ...oldCode, id: randomUUID(), createdAt: new Date() },
+  });
+  const valid = await admin.emailChallenge.create({
+    data: { ...oldCode, id: randomUUID(), expiresAt: future },
+  });
+  await admin.loginDevice.createMany({
+    data: Array.from({ length: 201 }, (_, i) => ({
+      userId: id,
+      tokenHash: i.toString(16).padStart(64, '0'),
+      lastUsedAt: old,
+      expiresAt: old,
+    })),
+  });
+  await admin.loginDevice.create({
+    data: {
+      userId: id,
+      tokenHash: 'f'.repeat(64),
+      lastUsedAt: old,
+      expiresAt: future,
+    },
+  });
+  expect(await runtime.emailChallenge.count({ where: { userId: id } })).toBe(0);
+  const prune = () =>
+    runtime.$queryRaw<
+      { n: number }[]
+    >`SELECT public.auth_prune_email_identity() AS n`;
+  expect(await prune()).toEqual([{ n: 400 }]);
+  expect(await prune()).toEqual([{ n: 2 }]);
+  expect(await prune()).toEqual([{ n: 0 }]);
+  expect(
+    (
+      await admin.emailChallenge.findMany({
+        where: { userId: id },
+        select: { id: true },
+      })
+    )
+      .map((r) => r.id)
+      .sort(),
+  ).toEqual([recent.id, valid.id].sort());
+  expect(await admin.loginDevice.count({ where: { userId: id } })).toBe(1);
+});

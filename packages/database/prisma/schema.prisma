@@ -1541,5 +1541,6 @@ model LoginDevice {
 
   @@id([userId, tokenHash])
   @@index([userId, lastUsedAt], map: "login_devices_last_used_at_idx")
+  @@index([expiresAt])
   @@map("login_devices")
 }
