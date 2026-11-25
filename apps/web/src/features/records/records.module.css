@@ -1155,7 +1155,7 @@
   text-align: center;
 }
 .poolTabs:global(.ant-tabs) :global(.ant-tabs-tab-active) .poolTabCount {
-  background: var(--ant-color-primary, #2563eb);
+  background: var(--color-primary);
   color: white;
 }
 @media (max-width: 480px) {

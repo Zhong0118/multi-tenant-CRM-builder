@@ -131,35 +131,35 @@
   padding: 0;
   border: 0;
   border-radius: 5px;
-  color: #2563eb;
+  color: var(--color-primary);
   background: transparent;
   cursor: pointer;
   font-size: 16px;
   place-items: center;
 }
 .passwordToggle:hover {
-  background: #eef4ff;
+  background: var(--color-primary-soft);
 }
 .passwordToggle:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 .formAside {
   display: flex;
   justify-content: flex-end;
   margin: -6px 0 18px;
-  color: #2563eb;
+  color: var(--color-primary);
   font-size: 13px;
 }
 .formFooter {
   margin-top: 28px;
   padding-top: 20px;
-  border-top: 1px solid #d8e0e6;
-  color: #526473;
+  border-top: 1px solid var(--border-default);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 .formFooter a {
-  color: #2563eb;
+  color: var(--color-primary);
   font-weight: 600;
 }
 .filing {
@@ -198,7 +198,7 @@
   max-width: 1120px;
   margin: 0 auto 28px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #d8e0e6;
+  border-bottom: 1px solid var(--border-default);
 }
 .securityHeader h1 {
   margin: 6px 0 8px;
@@ -207,7 +207,7 @@
   letter-spacing: -0.025em;
 }
 .securityHeader p {
-  color: #526473;
+  color: var(--text-secondary);
   line-height: 1.7;
 }
 .securityGrid {
@@ -221,12 +221,12 @@
   grid-column: 1 / -1;
 }
 .securityCard {
-  border-color: #d8e0e6;
+  border-color: var(--border-default);
   box-shadow: 0 12px 32px rgba(22, 37, 50, 0.05);
 }
 .securityHint {
   margin-bottom: 4px;
-  color: #526473;
+  color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.65;
 }
@@ -243,7 +243,7 @@
   gap: 20px;
   align-items: center;
   padding: 20px 0;
-  border-bottom: 1px solid #e5eaee;
+  border-bottom: 1px solid var(--border-hairline);
 }
 .sessionRow:first-child {
   padding-top: 2px;
@@ -270,14 +270,14 @@
   gap: 2px;
 }
 .sessionMeta dt {
-  color: #758592;
+  color: var(--text-tertiary);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .sessionMeta dd {
-  color: #3f5260;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 @media (max-width: 900px) {

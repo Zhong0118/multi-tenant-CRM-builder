@@ -4,34 +4,37 @@ import { ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ReactNode } from "react";
 
+import {
+  WORKSPACE_THEME,
+  WORKSPACE_TOKENS as T,
+} from "@/components/theme/workspace-theme";
 import { QueryProvider } from "@/lib/query/query-provider";
 
 /**
+ * The public pages (landing, sign-in, registration) use the same palette as
+ * the workspace: one brand teal and one set of neutrals across the product.
  * These values must stay identical to the custom properties in globals.css.
- * Ant Design components and the CSS modules both render the same surfaces, so
- * a second near-identical palette reads as an unresolved interface.
  */
 export const TOKENS = {
-  ink: "#17232D",
-  inkHover: "#22313D",
-  textPrimary: "#17232D",
-  textSecondary: "#687681",
-  primary: "#167568",
-  primarySoft: "#E7F3F0",
-  page: "#F3F6F8",
-  surface: "#FFFFFF",
-  border: "#D8E0E5",
-  borderStrong: "#C8D2D9",
-  hairline: "#E2E5E9",
-  track: "#E4E8EB",
-  hover: "#EEF2F4",
-  selected: "#E7F3F0",
-  success: "#167568",
-  warning: "#C66C18",
-  warningSoft: "#FFF3E5",
-  danger: "#B42318",
-  fontUi:
-    '"IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
+  ink: T.ink,
+  inkHover: T.inkHover,
+  textPrimary: T.textPrimary,
+  textSecondary: T.textSecondary,
+  primary: T.primary,
+  primarySoft: T.primarySoft,
+  page: T.page,
+  surface: T.surface,
+  border: T.border,
+  borderStrong: T.borderStrong,
+  hairline: T.hairline,
+  track: T.track,
+  hover: T.hover,
+  selected: T.selected,
+  success: T.success,
+  warning: T.warning,
+  warningSoft: T.warningSoft,
+  danger: T.danger,
+  fontUi: T.fontUi,
 };
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -41,70 +44,7 @@ export function Providers({ children }: { children: ReactNode }) {
         locale={zhCN}
         // Chinese two-character labels read as "保 存" with AntD's inserted space.
         button={{ autoInsertSpace: false }}
-        theme={{
-          token: {
-            borderRadius: 8,
-            borderRadiusLG: 12,
-            colorBgLayout: TOKENS.page,
-            colorBorder: TOKENS.border,
-            colorBorderSecondary: TOKENS.border,
-            colorError: TOKENS.danger,
-            colorLink: TOKENS.primary,
-            colorPrimary: TOKENS.primary,
-            // AntD derives the soft tints from the brand colour, and for this
-            // deep, low-saturation teal it lands on a dull grey (#aab5b2) that
-            // then fills selected rows, active options and success alerts.
-            colorPrimaryBg: TOKENS.primarySoft,
-            colorPrimaryBgHover: "#DCEEE9",
-            colorPrimaryBorder: "#B9DDD4",
-            colorPrimaryBorderHover: "#8FC8BB",
-            colorSuccess: TOKENS.success,
-            colorSuccessBg: TOKENS.primarySoft,
-            colorSuccessBgHover: "#DCEEE9",
-            colorSuccessBorder: "#B9DDD4",
-            controlItemBgActive: TOKENS.selected,
-            controlItemBgActiveHover: "#DCEEE9",
-            colorText: TOKENS.textPrimary,
-            colorTextSecondary: TOKENS.textSecondary,
-            colorWarning: TOKENS.warning,
-            fontFamily: TOKENS.fontUi,
-            fontSize: 14,
-            controlHeight: 34,
-          },
-          components: {
-            Table: {
-              cellPaddingBlock: 11,
-              cellPaddingInline: 13,
-              // Record lists use size="small": about 41px rows, hairlines only.
-              cellPaddingBlockSM: 10,
-              cellPaddingInlineSM: 12,
-              borderColor: TOKENS.hairline,
-              headerBg: TOKENS.surface,
-              headerColor: TOKENS.textSecondary,
-              headerSplitColor: "transparent",
-              headerSortActiveBg: "transparent",
-              headerSortHoverBg: "transparent",
-              rowHoverBg: "#F3F5F6",
-              rowSelectedBg: TOKENS.selected,
-              rowSelectedHoverBg: "#DCEEE9",
-            },
-            Tag: { defaultBg: TOKENS.page, defaultColor: TOKENS.textSecondary },
-            Form: { labelColor: TOKENS.textSecondary, verticalLabelPadding: 0 },
-            Drawer: { paddingLG: 20 },
-            // Grey track with a raised white pill, the same control in every tab strip.
-            Segmented: {
-              trackBg: TOKENS.track,
-              trackPadding: 3,
-              itemSelectedBg: TOKENS.surface,
-              itemSelectedColor: TOKENS.textPrimary,
-              itemColor: "#4B5560",
-              itemHoverColor: TOKENS.textPrimary,
-              itemHoverBg: "transparent",
-              borderRadius: 9,
-              borderRadiusSM: 7,
-            },
-          },
-        }}
+        theme={WORKSPACE_THEME}
       >
         {children}
       </ConfigProvider>

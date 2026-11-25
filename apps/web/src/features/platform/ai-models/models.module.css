@@ -41,7 +41,7 @@
 .icon {
   border-radius: 9px;
   background: var(--bg-subtle, #f3f6fb);
-  color: var(--color-primary, #2563eb);
+  color: var(--color-primary);
   display: grid;
   place-items: center;
   width: 36px;
