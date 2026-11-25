@@ -394,7 +394,7 @@ class PrismaMembershipStore implements MembershipStore {
 
   async findMember(id: string): Promise<TenantMemberSummary | null> {
     const member = await this.transaction.tenantMember.findUnique({
-      where: { id },
+      where: { id, tenantId: this.tenantId },
     });
     return member
       ? {

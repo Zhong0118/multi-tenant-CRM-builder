@@ -117,6 +117,18 @@ describe('personal profiles (HTTP and PostgreSQL)', () => {
     ).expect(404);
     const { items } = (await get('/api/v1/' + roster, f.admin).expect(200))
       .body as { items: unknown[] };
+    const adminInOtherCompany = await h.adminDatabase.tenantMember.create({
+      data: {
+        userId: f.admin.userId,
+        tenantId: f.tenantB.id,
+        role: 'EMPLOYEE',
+      },
+    });
+    await edit(
+      roster + '/' + adminInOtherCompany.id + '/name',
+      { jobTitle: '越权' },
+      f.admin,
+    ).expect(404);
     expect(items).toContainEqual(
       expect.objectContaining({
         id: f.employee.memberId,
