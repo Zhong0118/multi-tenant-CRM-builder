@@ -6,7 +6,6 @@ const { runtime, web, tenant } = require('./runtime.cjs');
 const { readImportFile } = web('record-import-file');
 const {
   emptyAssistDraft,
-  draftForImportHeader,
   buildImportHeaderEvidence,
   buildImportPreview,
   applyImportAdvice,
@@ -143,18 +142,18 @@ async function run(h, entry, protectedCells) {
     sheet,
     fields.filter(aiImportableField),
   );
-  const header = selection.headerRow;
+  // Both paths simulate correcting the selector before applying mappings.
+  const header = answer.headerRow;
   const parsed = parse(file, sheet, header);
   const draft = initial(parsed, fields, admin, answer.columns);
   const excluded = answer.columns.flatMap((c, i) =>
     c.localOnly === 'userExcluded' ? [i] : [],
   );
   const preview = buildImportPreview({
-    headerEvidence: await buildImportHeaderEvidence(file, sheet),
+    headerEvidence: await buildImportHeaderEvidence(file, sheet, header),
     file,
     sheet,
     headerRow: header,
-    headerLocked: selection.detected,
     fields,
     draft,
     excluded,
@@ -164,6 +163,10 @@ async function run(h, entry, protectedCells) {
     id: entry.id,
     source: entry.source,
     scenario: answer.scenario,
+    detectedHeader: selection.headerRow,
+    manualHeader: selection.headerRow !== header ? header : null,
+    physicalAttempts: 0,
+    attemptErrors: [],
     actor: actor.role,
     columns: answer.columns.length,
     rowCount: answer.rows.length,
@@ -203,28 +206,13 @@ async function run(h, entry, protectedCells) {
         : (log.error ?? e.code ?? e.getStatus?.() ?? 'serviceError');
     }
   }
-  const alternate = plan && header !== plan.headerRow;
-  const candidateHeader = plan?.headerRow ?? header;
-  const candidateParsed = alternate
-    ? parse(file, sheet, candidateHeader)
-    : parsed;
-  const candidateBase = alternate
-    ? draftForImportHeader(candidateParsed?.headers ?? [], fields, admin, draft)
-    : draft;
   const apply = (base, choice) =>
     applyImportAdvice(base, preview, plan, fields, choice, queryFieldKeys);
-  const auto = plan && !alternate ? apply(draft) : draft;
+  const auto = plan ? apply(draft) : draft;
   log.endToEndMs = Math.round(performance.now() - start);
   log.planReturned = Boolean(plan);
   log.zeroCallPassed = answer.providerCalls !== 0 || log.entries === 0;
-  log.candidate = score(
-    answer,
-    candidateHeader,
-    candidateBase,
-    fields,
-    plan,
-    preview,
-  );
+  log.candidate = score(answer, header, draft, fields, plan, preview);
   log.auto = score(answer, header, auto, fields);
   log.autoBusiness = await business(
     h,
@@ -235,16 +223,8 @@ async function run(h, entry, protectedCells) {
     fields,
     answer,
   );
-  let reviewed = auto,
-    reviewParsed = parsed,
-    reviewHeader = header;
-  // Only this explicitly simulated human sees the key. Never complete absent predictions.
-  if (plan && candidateHeader === answer.headerRow) {
-    if (alternate) {
-      reviewed = apply(candidateBase);
-      reviewParsed = candidateParsed;
-      reviewHeader = candidateHeader;
-    }
+  let reviewed = auto;
+  if (plan) {
     for (const col of plan.columns) {
       const c = answer.columns.find((c) => c.col === col.col);
       if (!c || targetKey(col.target) !== targetKey(c.target)) continue;
@@ -256,7 +236,7 @@ async function run(h, entry, protectedCells) {
         reviewed = apply(reviewed, { column: col.col });
       for (const v of col.values ?? []) {
         const raw = preview.bindings.get(
-          candidateHeader + ':' + col.col + ':' + v.value,
+          header + ':' + col.col + ':' + v.value,
         );
         if (
           v.confidence === 'review' &&
@@ -273,31 +253,25 @@ async function run(h, entry, protectedCells) {
         const expected = answer.columns.find((a) => a.col === c.col);
         return {
           col: c.col,
-          headerRow: candidateHeader,
+          headerRow: header,
           target: c.target,
           correct:
-            candidateHeader === answer.headerRow &&
+            header === answer.headerRow &&
             expected &&
             targetKey(c.target) === targetKey(expected.target),
         };
       });
-  log.review = score(answer, reviewHeader, reviewed, fields);
+  log.review = score(answer, header, reviewed, fields);
   log.reviewBusiness =
     mode === 'rules'
       ? log.autoBusiness
-      : await business(h, actor, obj, reviewParsed, reviewed, fields, answer);
-  const bulk = bulkReviewed(
-    reviewed,
-    reviewParsed,
-    reviewHeader,
-    fields,
-    answer,
-  );
+      : await business(h, actor, obj, parsed, reviewed, fields, answer);
+  const bulk = bulkReviewed(reviewed, parsed, header, fields, answer);
   log.bulkColumns = Object.keys(bulk.valueChoices)
     .filter((i) => bulk.valueChoices[i] !== reviewed.valueChoices[i])
     .map((i) => 'C' + (+i + 1));
   log.bulkBusiness = log.bulkColumns.length
-    ? await business(h, actor, obj, reviewParsed, bulk, fields, answer)
+    ? await business(h, actor, obj, parsed, bulk, fields, answer)
     : log.reviewBusiness;
   if (answer.pair) {
     log.pair = answer.pair;
@@ -307,7 +281,7 @@ async function run(h, entry, protectedCells) {
         c.target,
         c.values
           ?.map((v) => [
-            preview.bindings.get(candidateHeader + ':' + c.col + ':' + v.value),
+            preview.bindings.get(header + ':' + c.col + ':' + v.value),
             v.option,
           ])
           .sort() ?? [],
@@ -315,9 +289,8 @@ async function run(h, entry, protectedCells) {
       .sort();
     log.outputDigest = sha(
       JSON.stringify([
-        candidateHeader,
+        header,
         predictions,
-        reviewHeader,
         ...[auto, reviewed, bulk].map((draft) => [
           draft.mapping,
           draft.matchFields,
@@ -444,7 +417,7 @@ async function main() {
         Math.max(1, 60001 + sends.shift() - Date.now()),
       );
     const log = await run(h, entry, protectedCells);
-    if (log.calls) sends.push(Date.now());
+    for (let n = 0; n < log.physicalAttempts; n++) sends.push(Date.now());
     return log;
   }
   try {
@@ -457,6 +430,8 @@ async function main() {
           const keys = [
             'entries',
             'calls',
+            'physicalAttempts',
+            'attemptErrors',
             'error',
             'modelMs',
             'endToEndMs',

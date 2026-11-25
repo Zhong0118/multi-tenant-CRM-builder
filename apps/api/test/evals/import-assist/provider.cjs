@@ -45,7 +45,8 @@ function guard(input, answer, resolved, actors, wire) {
         }
       }
     }
-  for (const m of tenant.members) {
+  for (const [i, m] of tenant.members.entries()) {
+    check('memberPhone', '+861390000800' + i);
     check('member', m.displayName);
     check('member', m.fixtureMemberId);
   }
@@ -60,15 +61,14 @@ function guard(input, answer, resolved, actors, wire) {
       check('restrictedLabel', f.label);
     }
   }
-  for (const row of input.candidates)
-    for (const c of row.columns) {
-      const col = answer.columns.find((x) => x.col === c.col);
-      if (col?.localOnly) hits.add('restrictedPosition');
-      if (col?.locked && (c.samples.length || c.values.length))
-        hits.add('lockedSamples');
-      if (c.locked && !/^F\d+$/.test(c.locked.field))
-        hits.add('rawFieldReference');
-    }
+  for (const c of input.columns) {
+    const col = answer.columns.find((x) => x.col === c.col);
+    if (col?.localOnly) hits.add('restrictedPosition');
+    if (col?.locked && (c.samples.length || c.values.length))
+      hits.add('lockedSamples');
+    if (c.locked && !/^F\d+$/.test(c.locked.field))
+      hits.add('rawFieldReference');
+  }
   if (input.fields.some((f) => !/^F\d+$/.test(f.ref)))
     hits.add('rawFieldReference');
   return [...hits].sort();
@@ -106,6 +106,9 @@ function observedProvider(mode, answer, resolved, h, log, protectedCells) {
       );
       const provider = new VercelOpenAiProvider({
         ...config,
+        onImportAttempt: ({ attempt, statusCode, isRetryable, message }) => {
+          log.attemptErrors.push({ attempt, statusCode, isRetryable, message });
+        },
         onUsage: (u) => {
           log.inputTokens = u.inputTokens ?? null;
           log.outputTokens = u.outputTokens ?? null;
@@ -145,13 +148,13 @@ function observedProvider(mode, answer, resolved, h, log, protectedCells) {
             ];
             log.wireScanned = true;
             if (log.privacy.length) throw Error('PRIVACY_GATE');
-            log.wireDigest = createHash('sha256')
-              .update(init.body)
-              .digest('hex');
-            const original = meter.onSend;
-            meter.onSend = async () => {
-              assert.equal(++log.calls, 1);
-              await original?.();
+            const digest = createHash('sha256').update(init.body).digest('hex');
+            if (log.wireDigest) assert.equal(digest, log.wireDigest);
+            log.wireDigest = digest;
+            meter.onSend = () => {
+              ++log.physicalAttempts;
+              assert(log.physicalAttempts <= 2);
+              log.calls = 1;
             };
             return send(url, init);
           };
@@ -195,7 +198,7 @@ function observedProvider(mode, answer, resolved, h, log, protectedCells) {
             .sort();
           log.modelOutputDigest = require('node:crypto')
             .createHash('sha256')
-            .update(JSON.stringify([output?.headerRow, semantic]))
+            .update(JSON.stringify(semantic))
             .digest('hex');
         }
         return output;

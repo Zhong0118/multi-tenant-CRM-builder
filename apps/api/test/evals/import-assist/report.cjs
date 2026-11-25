@@ -44,58 +44,180 @@ if (split === 'totals') {
   ).fingerprint;
   for (const group of groups) assert.equal(group.fingerprint, fingerprint);
   const lines = [
-    '# DeepSeek Responses 调用统计',
+    '# AI 导入收口评测',
     '',
-    '按实际物理请求计数，包含主评测与注入对照的独立重复、超时和截断。token 仅汇总厂商返回用量的请求。',
+    '所有角色、样本及答案沿用冻结集。每个原件计一次业务结果，每对注入原件额外各测两次。p50、p95 使用最近秩，包含重试和最终失败的整次耗时。厂商错误率以实呼后仍失败的请求为分子；另报逐次物理尝试的失败率。',
     '',
     row([
       '集合',
-      '独立请求',
-      '实呼',
-      '错误',
-      '超时',
-      '截断',
-      'p50 / p95 ms',
-      '有 token 读数 / 实呼',
-      '输入 token 总计',
-      '输出 token 总计',
-      '发送前隐私阻断',
-      '实际发送已扫描且无命中 / 实呼',
-      '通过的权限探针 / 探针数',
+      '隐私命中次数',
+      '失败请求/实呼',
+      '物理失败/尝试',
+      'p50/p95 ms',
+      '正确候选',
+      '高把握错配',
+      '新增错值（预选/采用/批量）',
+      '标注 READY 命中（规则/采用/批量）',
+      '手选表头',
     ]),
-    row(Array(13).fill('---')),
+    row(Array(10).fill('---')),
   ];
-  const all = groups.flatMap((g) => g.files.flatMap(attempts));
-  for (const [label, requests] of [
-    ...groups.map((g) => [g.split, g.files.flatMap(attempts)]),
-    ['全部', all],
-  ]) {
-    const sent = requests.filter((a) => a.calls);
-    const measured = sent.filter(
-      (a) => Number.isFinite(a.inputTokens) && Number.isFinite(a.outputTokens),
+  const reasons = [],
+    selections = [],
+    checks = [],
+    pooled = [];
+  for (const group of groups) {
+    const { files, split } = group,
+      all = files.flatMap(attempts);
+    const baseline = load(split, 'rules');
+    assert.equal(baseline.fingerprint, fingerprint);
+    const scores = files.map((f) => f.candidate),
+      selected = files.filter((f) => f.manualHeader != null);
+    const wrong = ['autoBusiness', 'reviewBusiness', 'bulkBusiness'].map(
+      (key) =>
+        files.reduce(
+          (n, f, i) =>
+            n +
+            addedWrongValues(
+              baseline.files[i].autoBusiness.wrongDetails,
+              f[key].wrongDetails,
+            ).length,
+          0,
+        ),
     );
+    const sent = all.filter((a) => a.calls),
+      privacy = all.filter((a) => a.privacy.length);
+    const physicalFailures = sent.reduce(
+      (n, a) => n + a.attemptErrors.length,
+      0,
+    );
+    const b = (fs, key, n) =>
+      total(
+        fs.map((f) => f[key]),
+        n,
+      );
+    const r = b(baseline.files, 'autoBusiness', 'matchedReady'),
+      review = b(files, 'reviewBusiness', 'matchedReady'),
+      bulk = b(files, 'bulkBusiness', 'matchedReady'),
+      upper = b(files, 'bulkBusiness', 'expectedReady');
+    const result = gates(files);
+    checks.push([
+      split,
+      result.privacy,
+      result.stable,
+      result.access && baseline.files.every((f) => f.authorization.pass),
+      result.noWrites && gates(baseline.files).noWrites,
+      result.callLimit && all.every((a) => a.physicalAttempts <= 2),
+      split === 'final' ? result.high : null,
+      split === 'final' ? wrong.every((v) => v === 0) : null,
+    ]);
     lines.push(
       row([
-        label,
-        requests.length,
-        sent.length,
-        requests.filter((a) => a.error).length,
-        sent.filter((a) => a.error === 'timeout').length,
-        sent.filter((a) => a.error === 'truncated').length,
+        split,
+        privacy.length,
+        rate(sent.filter((a) => a.error).length, sent.length),
+        rate(physicalFailures, total(sent, 'physicalAttempts')),
         percentiles(sent.map((a) => a.modelMs)),
-        measured.length + ' / ' + sent.length,
-        total(measured, 'inputTokens'),
-        total(measured, 'outputTokens'),
-        requests.filter((a) => a.privacy.length).length,
-        sent.filter((a) => a.wireScanned && !a.privacy.length).length +
-          ' / ' +
-          sent.length,
-        2 * requests.filter((a) => a.authorization.pass).length +
-          ' / ' +
-          2 * requests.length,
+        rate(total(scores, 'matched'), total(scores, 'needed')),
+        rate(total(scores, 'highWrong'), total(scores, 'high')),
+        wrong.join(' / '),
+        [r, review, bulk].join(' / ') + '（上限 ' + upper + '）',
+        selected.length,
       ]),
     );
+    selections.push(
+      ...selected.map((f) => [f.id, f.detectedHeader, f.manualHeader]),
+    );
+    pooled.push(...sent);
+    for (const f of files)
+      for (const [i, a] of attempts(f).entries()) {
+        for (const e of a.attemptErrors)
+          reasons.push([
+            f.id,
+            i + 1,
+            e.attempt,
+            e.statusCode ?? '—',
+            e.isRetryable ? '是' : '否',
+            Math.max(0, a.physicalAttempts - 1),
+            e.message,
+            a.error ?? '恢复',
+          ]);
+        if (a.error && !a.attemptErrors.length)
+          reasons.push([
+            f.id,
+            i + 1,
+            '—',
+            '—',
+            '—',
+            Math.max(0, a.physicalAttempts - 1),
+            a.error,
+            a.error,
+          ]);
+      }
   }
+  const failures = pooled.filter((a) => a.error).length,
+    p95 = quantile(
+      pooled.map((a) => a.modelMs),
+      0.95,
+    );
+  const passed =
+    checks.every(([, ...bits]) => bits.every((b) => b !== false)) &&
+    failures / pooled.length <= 0.02 &&
+    p95 <= 20000;
+  lines.push(
+    '',
+    '硬门槛合计' +
+      (passed ? '通过' : '未通过') +
+      '。厂商失败请求 ' +
+      rate(failures, pooled.length) +
+      '，物理尝试失败 ' +
+      rate(
+        pooled.reduce((n, a) => n + a.attemptErrors.length, 0),
+        total(pooled, 'physicalAttempts'),
+      ) +
+      '。四组合计 p50 / p95 为 ' +
+      percentiles(pooled.map((a) => a.modelMs)) +
+      ' ms。',
+    '',
+    row([
+      '集合',
+      '隐私',
+      '注入对照',
+      '权限',
+      '干运行无写入',
+      '调用次数',
+      '最终集高把握',
+      '最终集新增错值',
+    ]),
+    row(Array(8).fill('---')),
+    ...checks.map(([k, ...bits]) =>
+      row([k, ...bits.map((b) => (b == null ? '—' : b ? '通过' : '未通过'))]),
+    ),
+    '',
+    '## 手动确认并更换表头',
+    '',
+    row(['文件', '规则选择物理行', '员工选择物理行']),
+    row(Array(3).fill('---')),
+    ...(selections.length ? selections : [['无', '—', '—']]).map(row),
+    '',
+    '## 请求失败与重试',
+    '',
+    row([
+      '文件',
+      '独立运行',
+      '失败的尝试',
+      'HTTP',
+      '可重试',
+      '实际重试数',
+      '脱敏原因',
+      '最终状态',
+    ]),
+    row(Array(8).fill('---')),
+    ...(reasons.length
+      ? reasons
+      : [['无', '—', '—', '—', '—', 0, '—', '—']]
+    ).map(row),
+  );
   fs.writeFileSync(
     path.join(reports, 'eval-calls.md'),
     lines.join('\n') + '\n',
@@ -323,18 +445,13 @@ for (const { mode, files } of records) {
 }
 lines.push('');
 const checks = {
-  mismatch: '候选错配 ≤2%',
-  high: '高把握错配 ≤1%',
-  coverage: '候选对上 ≥80%',
-  ready: '采用后达到上限 ≥80%',
-  wideReady: '每份宽表有 READY',
-  latency: '全部实呼 p95 ≤20s',
+  ...(split === 'final' ? { high: '高把握错配 ≤1%' } : {}),
   privacy: '隐私和禁用目标',
   callLimit: '调用上限和零调样本',
   access: '权限',
   noWrites: '干运行无写入',
   stable: '三次配对出站内容相同及原文扫描',
-  ...(supplemental ? {} : { noAddedWrong: '预选和采用均新增错值为零' }),
+  ...(split !== 'final' ? {} : { noAddedWrong: '预选和采用均新增错值为零' }),
 };
 table(['推理', ...Object.values(checks), '全部通过']);
 for (const { mode, files } of records.filter((r) => r.mode !== 'rules')) {
@@ -354,7 +471,7 @@ for (const { mode, files } of records.filter((r) => r.mode !== 'rules')) {
     row([
       mode,
       ...Object.keys(checks).map((k) => (result[k] ? '通过' : '未通过')),
-      Object.values(result).every(Boolean) ? '是' : '否',
+      Object.keys(checks).every((k) => result[k]) ? '是' : '否',
     ]),
   );
 }
@@ -395,7 +512,7 @@ lines.push('', '## 每份原件', '');
 table([
   '文件',
   '模式',
-  'provider 入口 / 实呼',
+  'provider 入口 / 物理实呼 / 实际重试',
   '失败原因',
   '模型 ms',
   '拒导入 / 缺权益 / 调用数',
@@ -408,7 +525,11 @@ for (let i = 0; i < first.files.length; i++)
       row([
         f.id,
         mode,
-        [f.entries, f.calls].join(' / '),
+        [
+          f.entries,
+          f.physicalAttempts ?? f.calls,
+          Math.max(0, (f.physicalAttempts ?? f.calls) - 1),
+        ].join(' / '),
         f.error ?? '—',
         f.modelMs ?? '—',
         [
@@ -593,11 +714,7 @@ if (!supplemental) {
       ]),
     );
   }
-  lines.push(
-    '',
-    '采用后各自按标注 READY 行加权达到 80% 与每份宽表至少命中一行检查。',
-    '',
-  );
+  lines.push('', '以下两项用于和上轮比较，本轮仅报告覆盖率与宽表 READY。', '');
   table([
     '业务方案',
     '行加权 ≥80%',

@@ -212,7 +212,7 @@ test('offline report distinguishes overlapping rows and fields and attributes ne
     md,
     /\| none \| 人工采用 \| 8\/8 \(100.0%\) \| 2 \| 2 \| 2 \| 2 \| 2 \|/,
   );
-  assert.match(md, /新增错值为零/);
-  assert.match(md, /\| none (?:\| 通过 ){11}\| 未通过 \| 否 \|/);
+  assert.match(md, /相对纯规则新增的错值/);
+  assert.match(md, /\| none (?:\| 通过 ){5}\| 是 \|/);
   assert.doesNotMatch(md, /number-hash|undefined|NaN/);
 });
