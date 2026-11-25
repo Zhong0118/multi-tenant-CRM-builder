@@ -27,6 +27,7 @@ import {
 } from "./sidebar-width";
 
 export interface ShellUser {
+  avatarUrl?: string | null;
   displayName: string;
   phone: string;
   isPlatformAdmin: boolean;

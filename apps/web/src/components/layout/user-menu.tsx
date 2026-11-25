@@ -5,6 +5,7 @@ import type { MenuProps } from "antd";
 import Link from "next/link";
 
 import { useLogout } from "@/features/auth/logout-button";
+import { ProfileAvatar } from "@/components/identity/profile-avatar";
 import { maskPhone } from "@/features/tenants/mask-phone";
 
 import styles from "./app-shell.module.css";
@@ -26,14 +27,15 @@ export function UserMenu({
   collapsed?: boolean;
 }) {
   const { logout } = useLogout();
-  const avatar = user.displayName.trim().charAt(0) || "平";
+  const avatar = <ProfileAvatar name={user.displayName} avatarUrl={user.avatarUrl} size={32}/>;
 
   const items: MenuProps["items"] = [
     {
-      key: "profile",
+      key: "identity",
       disabled: true,
       label: (
         <div className={styles.userMeta}>
+          {avatar}
           <div className={styles.userName}>{user.displayName}</div>
           <div className={styles.userPhone}>{maskPhone(user.phone)}</div>
           <div className={styles.userRole}>{roleLabel}</div>
@@ -41,6 +43,7 @@ export function UserMenu({
       ),
     },
     { type: "divider" },
+    { key: "profile", label: <Link href="/account/profile">个人资料</Link> },
     {
       key: "security",
       label: <Link href="/account/security">账号与安全</Link>,

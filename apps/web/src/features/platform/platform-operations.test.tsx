@@ -96,6 +96,7 @@ describe("platform operations pages", () => {
       <PlatformSettingsView
         status={{
           environment: "production",
+          mail: { ready: false, issues: ["MAIL_PROVIDER"] },
           services: [
             {
               key: "sms",

@@ -19,7 +19,7 @@ export function AccountShell({
   platformAdmin = false,
   children,
 }: {
-  current?: "workspaces" | "security";
+  current?: "workspaces" | "profile" | "security";
   /** Platform administrators get their way back to the 管理中心. */
   platformAdmin?: boolean;
   children: ReactNode;
@@ -36,6 +36,7 @@ export function AccountShell({
           <Link href="/workspaces" aria-current={current === "workspaces" ? "page" : undefined}>
             我的工作区
           </Link>
+          <Link href="/account/profile" aria-current={current === "profile" ? "page" : undefined}>个人资料</Link>
           <Link href="/account/security" aria-current={current === "security" ? "page" : undefined}>
             账号安全
           </Link>

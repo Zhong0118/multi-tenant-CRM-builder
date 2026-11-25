@@ -31,6 +31,7 @@ export default async function WorkspaceLayout({
       user={{
         displayName: user.displayName,
         phone: user.phone,
+        avatarUrl: user.avatarUrl,
         isPlatformAdmin: user.isPlatformAdmin,
       }}
       businessObjects={businessObjects}
