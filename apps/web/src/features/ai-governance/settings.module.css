@@ -58,15 +58,51 @@
   margin: 0;
   padding: 0;
 }
-.features li {
+/* What the plan includes: one row per group, features as chips; a feature
+   the plan lacks is a muted chip that says how to get it. */
+.featureGroup {
   display: grid;
-  grid-template-columns: 16px 1fr;
-  gap: 1px 8px;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-hairline);
+}
+.featureGroup:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+.featureGroup h4 {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 26px;
+}
+.features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.features li {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
   align-items: center;
-  padding: 7px 0;
+  min-height: 26px;
+  padding: 2px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.features li:has(small) {
+  border-style: dashed;
+  border-radius: var(--radius-control);
+  color: var(--text-tertiary);
 }
 .features small {
-  grid-column: 2;
   font-size: 12px;
 }
 .check {
@@ -139,6 +175,10 @@
   padding: 14px 0;
 }
 @media (max-width: 680px) {
+  .featureGroup {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
   .summary {
     padding: 16px;
     gap: 10px;

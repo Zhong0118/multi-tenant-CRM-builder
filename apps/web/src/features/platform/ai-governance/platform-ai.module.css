@@ -45,3 +45,16 @@
 .wide {
   width: 100%;
 }
+
+/* Plans: headers and short cells stay on one line; the features column
+   takes the slack and wraps its tags. */
+.planTable :global(.ant-table-thead > tr > th),
+.planTable :global(.ant-table-tbody > tr > td:not(:nth-child(2))) {
+  white-space: nowrap;
+}
+.planTable :global(.ant-table-tbody > tr > td) {
+  vertical-align: top;
+}
+.muted {
+  color: var(--text-tertiary);
+}

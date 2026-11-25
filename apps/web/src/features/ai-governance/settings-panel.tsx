@@ -111,7 +111,11 @@ export function WorkspaceAiSettings({
           <div className={styles.grid}>
             <PageSection title="套餐包含的功能">
               {catalogGroups(state.catalog).map((group) => (
-                <section key={group} aria-label={group}>
+                <section
+                  key={group}
+                  aria-label={group}
+                  className={styles.featureGroup}
+                >
                   <h4>{group}</h4>
                   <ul className={styles.features}>
                     {state.catalog

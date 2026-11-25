@@ -1,5 +1,6 @@
 "use client";
 
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import type {
   TableBlueprint,
   TableBuilderAnswer,
@@ -8,11 +9,7 @@ import type {
   TablePlan,
   TableEmployeePreset,
 } from "@crm/contracts";
-import {
-  DeleteOutlined,
-  TableOutlined,
-  ThunderboltOutlined,
-} from "@ant-design/icons";
+import { DeleteOutlined, TableOutlined } from "@ant-design/icons";
 import { Alert, Button, Modal } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -301,7 +298,9 @@ export function TableBuilder({
           }
           extra={
             !result && (
-              <Link href={manual}>{draft ? "返回设计器" : "手动建表"}</Link>
+              <Link href={manual} className={styles.manualLink}>
+                {draft ? "返回设计器" : "手动建表"}
+              </Link>
             )
           }
         />
@@ -316,9 +315,12 @@ export function TableBuilder({
         ) : (
           <>
             {operation === "generating" && (
-              <div className={styles.actions}>
+              <div className={styles.generating}>
+                <AiSparkIcon aria-hidden className={styles.aiMark} />
                 <span role="status">正在生成方案，通常需要半分钟左右</span>
-                <Button onClick={cancelGeneration}>取消生成</Button>
+                <Button size="small" onClick={cancelGeneration}>
+                  取消生成
+                </Button>
               </div>
             )}
             <fieldset disabled={busy} className={styles.canvas}>
@@ -346,7 +348,7 @@ export function TableBuilder({
                       type="primary"
                       loading={busy}
                       disabled={!description.trim()}
-                      icon={<ThunderboltOutlined />}
+                      icon={<AiSparkIcon aria-hidden />}
                       onClick={() => generate(answers)}
                     >
                       生成预览

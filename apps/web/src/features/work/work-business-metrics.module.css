@@ -35,7 +35,7 @@
   padding: 12px;
   border: 1px solid var(--border-hairline);
   border-radius: 10px;
-  background: var(--surface-base, #fff);
+  background: var(--bg-surface);
   transition:
     border-color 160ms,
     transform 160ms;

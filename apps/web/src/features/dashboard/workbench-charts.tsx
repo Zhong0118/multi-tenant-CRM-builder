@@ -52,7 +52,9 @@ export function TrendChart({
             }
           }
           color={WORKSPACE_TOKENS.primary}
-          style={{ lineWidth: 2 }}
+          // A constant colour is a mark style in G2 5; `color` alone left the
+          // line in the default blue.
+          style={{ stroke: WORKSPACE_TOKENS.primary, lineWidth: 2 }}
         />
       </div>
       <table className={styles.screenReaderOnly} aria-label={`${title}数据`}>

@@ -45,7 +45,7 @@ export function EmployeePresets({
           recommendations.length === 1 ? recommendations[0] : null;
         const preset = selections[table.id];
         return (
-          <div key={table.id}>
+          <div key={table.id} className={styles.preset}>
             <label>
               {table.name}的员工权限
               <select

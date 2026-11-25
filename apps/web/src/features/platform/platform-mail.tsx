@@ -76,7 +76,7 @@ export function PlatformMail({
   return (
     <PageSection
       title="邮件发送"
-      description="最近 7 天的投递结果"
+      description="最近 7 天的投递结果。「结果未知」指发送中途连接中断，无法确认邮件服务器是否已收下。"
       extra={
         ready && (
           <Button

@@ -170,7 +170,13 @@ export function PlatformModelSettings() {
                     </span>
                     <div className={styles.copy}>
                       <strong>{purposeNames[purpose]}</strong>
-                      <span>{currentSource(data, purpose)}</span>
+                      {/* Vision and embeddings are optional: unset reads as
+                          a choice, not a fault. */}
+                      {!a && !fromEnv && purpose !== "text" ? (
+                        <span data-optional>可选，尚未配置</span>
+                      ) : (
+                        <span>{currentSource(data, purpose)}</span>
+                      )}
                       {purpose === "text" &&
                         !a &&
                         !!data.environment.missing.length && (

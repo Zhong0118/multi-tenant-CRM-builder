@@ -11,6 +11,7 @@ import {
   fieldTypeLabel,
   type ObjectDraft,
 } from "@/features/objects/object-types";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import styles from "./table-builder.module.css";
 
 const validationLabels: Record<string, string> = {
@@ -126,7 +127,12 @@ export function TableEditor({
                 onChange={(e) => patch({ description: e.target.value })}
               />
             </label>
-            <p>{table.reason}</p>
+            {table.reason && (
+              <p className={styles.reason}>
+                <AiSparkIcon aria-hidden className={styles.aiMark} />
+                <span>{table.reason}</span>
+              </p>
+            )}
           </>
         )}
         <Issues
@@ -138,11 +144,18 @@ export function TableEditor({
           <h2>{target ? "建议新增字段" : "字段"}</h2>
           <span>{fields.length} 个</span>
         </div>
+        {fields.length > 0 && (
+          <div className={styles.fieldHead} aria-hidden>
+            <span>字段名称</span>
+            <span>字段键</span>
+            <span>类型</span>
+          </div>
+        )}
         {fields.map((f, index) => (
           <div key={f.id} className={styles.field}>
             <div className={styles.fieldRow}>
               <label>
-                字段名称
+                <span className={styles.cellLabel}>字段名称</span>
                 <input
                   aria-label={`字段名称 ${index + 1}`}
                   value={f.label}
@@ -152,7 +165,19 @@ export function TableEditor({
                 />
               </label>
               <label>
-                类型
+                <span className={styles.cellLabel}>字段键</span>
+                <input
+                  aria-label={`字段键 ${index + 1}`}
+                  value={f.fieldKey}
+                  maxLength={64}
+                  spellCheck={false}
+                  onChange={(e) =>
+                    replaceField(f.id, { fieldKey: e.target.value })
+                  }
+                />
+              </label>
+              <label>
+                <span className={styles.cellLabel}>类型</span>
                 <select
                   aria-label={`字段类型 ${index + 1}`}
                   value={f.type}
@@ -191,19 +216,9 @@ export function TableEditor({
                 }
               />
             </div>
-            <label>
-              字段键
-              <input
-                aria-label={`字段键 ${index + 1}`}
-                value={f.fieldKey}
-                maxLength={64}
-                spellCheck={false}
-                onChange={(e) =>
-                  replaceField(f.id, { fieldKey: e.target.value })
-                }
-              />
-            </label>
-            <small>{f.reason}</small>
+            {f.reason && (
+              <small className={styles.fieldReason}>{f.reason}</small>
+            )}
             {f.options?.length ||
             f.type === "SINGLE_SELECT" ||
             f.type === "MULTI_SELECT" ? (

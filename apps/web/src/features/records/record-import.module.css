@@ -1,8 +1,90 @@
+/* The import drawer reads as numbered steps: file, column mapping, who owns
+   the new records, and the duplicate rule. Counters number whichever steps
+   are showing, so the sequence never skips. */
+.flow {
+  display: grid;
+  counter-reset: import-step;
+}
+.flow > :not(.step) {
+  margin-top: 12px;
+}
+.step {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding-block: 20px;
+  border-top: 1px solid var(--border-hairline);
+}
+.step:first-child {
+  padding-top: 4px;
+  border-top: 0;
+}
+.step :global(.ant-typography) {
+  margin: 0;
+}
+.stepTitle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  counter-increment: import-step;
+}
+.stepTitle::before {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--color-neutral-soft);
+  color: var(--text-secondary);
+  content: counter(import-step);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+}
+.stepTitle small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* Empty: a real drop target. Chosen: one compact line to swap the file. */
 .filePicker {
   height: auto;
   min-height: 48px;
   padding: 10px 16px;
   white-space: normal;
+}
+.filePicker[data-empty] {
+  min-height: 120px;
+  border-color: var(--border-default);
+  background: var(--bg-surface-subtle);
+}
+.filePicker[data-empty]:not(:disabled):hover,
+.filePicker[data-dragging] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.dropPrompt {
+  display: inline-grid;
+  justify-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+.dropPrompt :global(.anticon) {
+  color: var(--text-tertiary);
+  font-size: 28px;
+}
+.filePicker[data-dragging] .dropPrompt :global(.anticon) {
+  color: var(--color-primary);
 }
 .fileSummary {
   display: inline-flex;
@@ -14,20 +96,75 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.mapping {
-  border-block: 1px solid var(--ant-color-border-secondary, #e6e9ec);
-  margin-block: 12px 16px;
+.fileSummary > span:last-child {
+  color: var(--color-primary);
 }
+.hint,
+.note,
+.settingNote {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.note {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.hint {
+  margin-top: -4px;
+}
+
+/* Settings: one label column, one control column. */
+.settings {
+  display: grid;
+  gap: 8px;
+}
+.setting {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 32px;
+}
+.setting > span:first-child {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.setting :global(.ant-select) {
+  justify-self: start;
+  width: min(360px, 100%);
+}
+.settingNote {
+  padding-left: 124px;
+  margin-top: -4px;
+}
+
+.mapping {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  padding-inline: 12px;
+}
+.mappingHead,
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 58px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 64px;
   align-items: center;
   gap: 14px;
   padding: 10px 4px;
-  border-bottom: 1px solid var(--ant-color-border-secondary, #e6e9ec);
+  border-bottom: 1px solid var(--border-hairline);
 }
 .row:last-child {
   border-bottom: 0;
+}
+.mappingHead {
+  gap: 14px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border-hairline);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
 }
 .row strong,
 .row small {
@@ -40,7 +177,7 @@
 .example,
 .row small {
   margin-top: 3px;
-  color: var(--ant-color-text-secondary, #56616b);
+  color: var(--text-tertiary);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -63,12 +200,32 @@
   font-size: 13px;
 }
 
+/* AI mapping: its own quiet box — what is still open, when it was
+   generated, and the way back. */
 .assist {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px 12px;
-  margin-block: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface-subtle);
+}
+.assist > .assistSummary {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.aiMark {
+  color: var(--color-ai);
+}
+.assist small {
+  color: var(--text-tertiary);
+  font-size: 12px;
 }
 .assist > :global(.ant-collapse),
 .assist > :global(.ant-alert) {
@@ -77,8 +234,8 @@
 .assist > :global(.ant-typography) {
   margin: 0;
 }
-.assist small {
-  color: var(--ant-color-text-secondary);
+.row small :global(.ant-btn) {
+  margin-left: 8px;
 }
 .row details {
   overflow-wrap: anywhere;
@@ -86,14 +243,40 @@
 .row summary {
   cursor: pointer;
 }
+.progress {
+  display: grid;
+  gap: 4px;
+}
 @media (max-width: 680px) {
-  .row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
-    gap: 6px 10px;
+  .mapping {
+    padding-inline: 10px;
   }
-  .row > :global(.ant-tag) {
+  .mappingHead {
+    display: none;
+  }
+  /* Column name and state on one line, the controls full width below. */
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+    padding-block: 12px;
+  }
+  .row > :nth-child(2) {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+  .row > .state {
+    grid-row: 1;
     grid-column: 2;
-    justify-self: start;
+  }
+  .setting {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .setting :global(.ant-select) {
+    width: 100%;
+  }
+  .settingNote {
+    padding-left: 0;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -118,4 +301,29 @@
       transform: translateY(0);
     }
   }
+}
+
+/* Mapping state per column. */
+.state {
+  justify-self: start;
+  padding: 0 6px;
+  border-radius: var(--radius-status);
+  background: var(--color-neutral-soft);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.state[data-tone="auto"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.state[data-tone="ai"] {
+  background: var(--color-ai-soft);
+  color: var(--color-ai);
+}
+.state[data-tone="unmatched"] {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
 }
