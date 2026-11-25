@@ -106,7 +106,7 @@ export function matchImportOption(
 
 export function splitImportOptions(value: string): string[] {
   return value
-    .split(/[;；,，]/)
+    .split(/[;；,，、]/)
     .map((part) => part.trim())
     .filter(Boolean);
 }
@@ -169,9 +169,10 @@ export function coerceImportValue(
           ? choice
           : undefined;
       });
-      if (keys.includes(null)) return null;
       if (keys.includes(undefined)) throw new Error("取值未对应唯一选项");
-      return type === "SINGLE_SELECT" ? keys[0] : [...new Set(keys)];
+      if (type === "SINGLE_SELECT") return keys[0];
+      const selected = [...new Set(keys.filter((key) => key != null))];
+      return selected.length ? selected : null;
     }
     case "DATE":
     case "DATETIME":

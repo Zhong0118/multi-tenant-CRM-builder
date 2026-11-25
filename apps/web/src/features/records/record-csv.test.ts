@@ -36,6 +36,36 @@ describe("suggestFieldKey", () => {
 });
 
 describe("coerceImportValue", () => {
+  const customerTags = [
+    { key: "new", label: "新客" },
+    { key: "local", label: "本地" },
+  ];
+  const tagChoices = new Map<string, string | null>([
+    ["废弃", null],
+    ["新单", "new"],
+  ]);
+
+  it.each([
+    ["新客,废弃", ["new"]],
+    ["废弃", null],
+    ["新单,本地", ["new", "local"]],
+    ["新客、本地", ["new", "local"]],
+  ] as const)("converts the retained choices in %s", (raw, expected) => {
+    expect(
+      coerceImportValue("MULTI_SELECT", raw, customerTags, {
+        valueChoices: tagChoices,
+      }),
+    ).toEqual(expected);
+  });
+
+  it("reports unresolved choices even alongside explicitly ignored ones", () => {
+    expect(() =>
+      coerceImportValue("MULTI_SELECT", "废弃,未知", customerTags, {
+        valueChoices: tagChoices,
+      }),
+    ).toThrow("取值未对应唯一选项");
+  });
+
   it.each([
     "DATE",
     "DATETIME",

@@ -37,6 +37,7 @@ export function ImportValues({
     () => remainingImportValues(rows, index, field, choices),
     [rows, index, field, choices],
   );
+  const multi = field.type === "MULTI_SELECT";
   const canUndo = batchValues.some((raw) => choices?.get(raw) === null);
   const options = useMemo(() => activeOptions(field), [field]);
   const { entries } = remaining;
@@ -62,7 +63,8 @@ export function ImportValues({
                       );
                     }}
                   >
-                    其余 {remaining.values.length} 个值都不对应（这些格留空）
+                    其余 {remaining.values.length} 个值都不对应
+                    {multi ? "（保留同格其他选项）" : "（这些格留空）"}
                   </Button>
                   <small>
                     涉及 {remaining.rowCount} 行
@@ -151,7 +153,13 @@ export function ImportValues({
                               onChange(next);
                             }}
                           />
-                          {key === null && <small>这些行的整格留空</small>}
+                          {key === null && (
+                            <small>
+                              {multi
+                                ? "忽略此值，保留同格其他选项"
+                                : "这些行的整格留空"}
+                            </small>
+                          )}
                           {key === undefined &&
                             v?.confidence === "review" &&
                             label && (

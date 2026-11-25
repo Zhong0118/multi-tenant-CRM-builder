@@ -43,7 +43,7 @@ it("leaves only unresolved values blank across every page and undoes the batch w
     coerceImportValue(tier.type, rows[2][0], [{ key: "a", label: "A级" }], {
       valueChoices: blank,
     }),
-  ).toBe(null);
+  ).toEqual(["a"]);
   blank.set("未定55", "a");
   expect(setRemainingImportValues(blank, values, true)).toEqual(
     new Map([...before, ["未定55", "a"]]),
