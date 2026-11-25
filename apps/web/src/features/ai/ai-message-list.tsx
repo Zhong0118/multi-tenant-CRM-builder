@@ -174,7 +174,8 @@ export function AiMessageList({
         </div>
       ) : null}
     </div>
-    {questions.length > 0 ? (
+    {/* One question has nowhere to jump to. */}
+    {questions.length > 1 ? (
       <nav className={styles.questionNav} aria-label="按提问定位" ref={questionNav}>
         {questions.map((question) => (
           <Tooltip key={question.turnId} title={question.content.slice(0, 160)} placement="left" trigger={["hover", "focus"]}>

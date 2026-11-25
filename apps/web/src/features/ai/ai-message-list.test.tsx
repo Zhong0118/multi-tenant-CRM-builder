@@ -180,6 +180,11 @@ describe("AiMessageList pending answer", () => {
 
 
 describe("AiMessageList question navigation", () => {
+  it("leaves out the question navigation while there is only one question", () => {
+    render(<AiMessageList tenantCode="northwind" messages={[message("u1", "第一条问题")]} phase="IDLE" />);
+    expect(screen.queryByRole("navigation", { name: "按提问定位" })).not.toBeInTheDocument();
+  });
+
   it("does not resume following during the first upward frames of a smooth anchor scroll", () => {
     render(<AiMessageList tenantCode="northwind" messages={[message("u1", "第一条问题"), message("u2", "第二条问题")]} phase="IDLE" />);
     const scroller = screen.getByTestId("ai-message-scroller");
