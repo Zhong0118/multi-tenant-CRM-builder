@@ -1,3 +1,4 @@
+import { avatarUrl } from '../users/avatar-codec';
 import { transferSettings } from '../objects/effective-access';
 import type { PublishedFieldAccess } from '../objects/object-schema';
 import { Injectable } from '@nestjs/common';
@@ -273,7 +274,14 @@ class PrismaMembershipStore implements MembershipStore {
       this.transaction.tenantMember.findMany({
         where,
         include: {
-          user: { select: { displayName: true, phone: true, status: true } },
+          user: {
+            select: {
+              displayName: true,
+              phone: true,
+              status: true,
+              avatarVersion: true,
+            },
+          },
           group: { select: { name: true, leaderMemberId: true } },
         },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -294,6 +302,8 @@ class PrismaMembershipStore implements MembershipStore {
         phone: member.user.phone,
         groupId: member.groupId,
         groupName: member.group?.name ?? null,
+        jobTitle: member.jobTitle,
+        avatarUrl: avatarUrl(member.userId, member.user.avatarVersion),
         isGroupLeader:
           member.role === 'EMPLOYEE' &&
           member.status === 'ACTIVE' &&
@@ -372,11 +382,12 @@ class PrismaMembershipStore implements MembershipStore {
 
   async updateMemberName(
     id: string,
-    displayName: string,
+    displayName: string | undefined,
+    jobTitle?: string | null,
   ): Promise<TenantMemberSummary> {
     const member = await this.transaction.tenantMember.update({
       where: { id, tenantId: this.tenantId },
-      data: { displayName },
+      data: { displayName, jobTitle },
     });
     return { ...member, displayName: member.displayName ?? undefined };
   }
@@ -393,6 +404,7 @@ class PrismaMembershipStore implements MembershipStore {
           role: member.role,
           status: member.status,
           displayName: member.displayName ?? undefined,
+          jobTitle: member.jobTitle,
         }
       : null;
   }

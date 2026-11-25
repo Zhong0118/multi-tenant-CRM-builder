@@ -1,0 +1,139 @@
+.profile {
+  display: grid;
+  gap: 32px;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+.profile h2 {
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 600;
+  margin: 0 0 18px;
+}
+.card,
+.company {
+  padding: 24px;
+  border: 1px solid var(--border-default, #dce2eb);
+  border-radius: 12px;
+  background: var(--surface-primary, #fff);
+}
+.company + .company {
+  margin-top: 12px;
+}
+.identity,
+.company header,
+.field {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.identity {
+  flex-wrap: wrap;
+  margin: 0 0 20px;
+}
+.identityText {
+  flex: 1;
+  min-width: 90px;
+}
+.identityText strong {
+  font-size: 19px;
+}
+.identityText p,
+.company dt {
+  color: var(--text-secondary);
+  margin: 4px 0;
+}
+.actions {
+  display: grid;
+  gap: 8px;
+}
+.field {
+  align-items: end;
+  flex-wrap: wrap;
+}
+.field label {
+  flex: 1;
+  min-width: 140px;
+  display: grid;
+  gap: 6px;
+}
+.field [role="status"] {
+  width: 100%;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.field [data-error="true"] {
+  color: var(--danger, #a61d24);
+}
+.company header {
+  justify-content: space-between;
+  align-items: start;
+}
+.company header span {
+  flex: none;
+  color: var(--text-secondary);
+}
+.company h3 {
+  font-size: 17px;
+  margin: 0;
+}
+.company dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 40px;
+  margin: 14px 0 18px;
+}
+.company dd {
+  margin: 0;
+}
+.preview {
+  display: block;
+  border-radius: 8px;
+  margin: auto;
+  max-width: 100%;
+  height: auto;
+}
+.slider {
+  display: grid;
+  grid-template-columns: 5em 1fr;
+  gap: 12px;
+  margin: 12px 0;
+}
+@media (max-width: 500px) {
+  .card,
+  .company {
+    padding: 16px;
+  }
+  .actions {
+    width: 100%;
+  }
+  .company dl {
+    display: grid;
+    gap: 6px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card,
+  .company {
+    animation: appear 0.2s ease-out;
+  }
+  .profile button {
+    transition: transform 0.15s;
+  }
+  .profile button:hover:not(:disabled) {
+    transform: scale(1.02);
+  }
+  .profile button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  @keyframes appear {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

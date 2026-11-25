@@ -1,5 +1,6 @@
+import { JobTitleDto } from '../../users/profile.dto';
 import { Transform, Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -39,14 +40,20 @@ export class CreateInvitationDto {
   role!: 'TENANT_ADMIN' | 'EMPLOYEE';
 }
 
-export class ChangeMemberNameDto {
-  @ApiProperty({ minLength: 1, maxLength: 100 })
+export class ChangeMemberNameDto extends PartialType(JobTitleDto, {
+  skipNullProperties: false,
+}) {
+  @ApiPropertyOptional({ minLength: 1, maxLength: 100 })
+  @ValidateIf(
+    (dto: ChangeMemberNameDto) =>
+      dto.displayName !== undefined || dto.jobTitle === undefined,
+  )
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
   @IsString()
   @Length(1, 100)
-  displayName!: string;
+  displayName?: string;
 }
 
 export class ChangeMemberStatusDto {
@@ -245,6 +252,10 @@ export class WorkspaceSummaryResponseDto {
 }
 
 export class TenantMemberResponseDto {
+  @ApiPropertyOptional({ type: String, nullable: true }) jobTitle?:
+    string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) avatarUrl?:
+    string | null;
   @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   groupId?: string | null;
   @ApiPropertyOptional({ type: String, nullable: true }) groupName?:

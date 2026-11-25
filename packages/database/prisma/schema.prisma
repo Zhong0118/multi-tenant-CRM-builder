@@ -182,6 +182,7 @@ enum AiMessageStatus {
 }
 
 model User {
+  avatarVersion String? @map("avatar_version") @db.Uuid
   modelTests AiModelTest[]
   id                  String                        @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   displayName         String                        @map("display_name") @db.VarChar(100)
@@ -311,6 +312,7 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  jobTitle String? @map("job_title") @db.VarChar(50)
   aiUsageMonths AiMemberMonth[]
   aiOperationRecords AiOperationRecord[] @relation("AiRecordActor")
   confirmedAiOperationRecords AiOperationRecord[] @relation("AiRecordConfirmer")

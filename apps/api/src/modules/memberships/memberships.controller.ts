@@ -182,6 +182,7 @@ export class MembershipsController {
       memberId,
       dto.displayName,
       requestMeta(request),
+      dto.jobTitle,
     );
   }
 

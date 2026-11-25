@@ -4,6 +4,7 @@
 **/dist
 **/.next
 **/coverage
+**/.local/avatars
 **/*.tsbuildinfo
 **/.env
 **/.env.*

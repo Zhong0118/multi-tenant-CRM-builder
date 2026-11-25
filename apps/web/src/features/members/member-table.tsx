@@ -378,6 +378,7 @@ export function MemberTable({
           member={{
             id: member.id,
             displayName: member.displayName ?? null,
+            avatarUrl: member.avatarUrl ?? null,
             status: member.status,
           }}
           description={
@@ -386,6 +387,7 @@ export function MemberTable({
                 {ROLE_TEXT[member.role]}
                 {" · "}
               </span>
+              {member.jobTitle && <>{member.jobTitle} · </>}
               {formatPhone(member.phone) ?? "未提供手机号"}
             </>
           }

@@ -11,7 +11,7 @@ import {
   Min,
   IsOptional,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export const STRONG_PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d)[\s\S]*$/;
 export const PASSWORD_LENGTH_PATTERN = /^[\s\S]{10,72}$/u;
@@ -42,6 +42,9 @@ export class RegisterDto {
   @Length(6, 6)
   code!: string;
   @ApiProperty({ minLength: 1, maxLength: 100 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @Length(1, 100)
   displayName!: string;
