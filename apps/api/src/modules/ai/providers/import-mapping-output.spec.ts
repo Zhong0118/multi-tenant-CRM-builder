@@ -2,7 +2,6 @@ import { expandImportMapping } from './import-mapping-output';
 
 it('joins sparse value and format suggestions only to their source column', () => {
   const result = expandImportMapping({
-    headerRow: 2,
     columns: [
       { c: 'C1', f: 'F3', use: 'map', q: 'review', why: 'name' },
       null,
@@ -18,7 +17,6 @@ it('joins sparse value and format suggestions only to their source column', () =
   });
   expect(result).toEqual({
     version: 1,
-    headerRow: 2,
     matchFields: ['F5'],
     columns: [
       {

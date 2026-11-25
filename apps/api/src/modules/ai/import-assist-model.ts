@@ -11,9 +11,7 @@ export interface ImportModelColumn {
 
 export interface ImportAssistModelInput {
   sheet: string;
-  currentHeader: number;
-  headerLocked: boolean;
-  candidates: Array<{ headerRow: number; columns: ImportModelColumn[] }>;
+  columns: ImportModelColumn[];
   fields: Array<{
     ref: string;
     name: string;

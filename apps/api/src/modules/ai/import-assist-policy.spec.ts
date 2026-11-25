@@ -33,22 +33,12 @@ const schema = {
 function req(headers: string[]): ImportAssistRequest {
   return {
     sheet: '张三周报',
-    headerEvidence: headers.map((v, i) => ({
+    columns: headers.map((header, i) => ({
       col: 'C' + (i + 1),
-      hashes: [hash(v)],
+      header,
+      headerHash: hash(header),
+      samples: ['张三机密'],
     })),
-    currentHeader: 3,
-    headerLocked: false,
-    candidates: [
-      {
-        headerRow: 3,
-        columns: headers.map((header, i) => ({
-          col: 'C' + (i + 1),
-          header,
-          samples: ['张三机密'],
-        })),
-      },
-    ],
   };
 }
 const advice = (col: string, field: string, mode = 'field') => ({
@@ -59,13 +49,6 @@ const advice = (col: string, field: string, mode = 'field') => ({
 });
 it('unions all restricted positions before projection and never exposes raw keys or arbitrary free text', () => {
   const r = req(['单位名称', '业务员', '内部备注', '评级']);
-  r.candidates.unshift({
-    headerRow: 1,
-    columns: r.candidates[0].columns.map((c) => ({
-      ...c,
-      header: '王五的秘密标题',
-    })),
-  });
   const s = prepareImport(schema, r);
   const wire = JSON.stringify(s.input);
   expect(wire).not.toMatch(
@@ -80,7 +63,6 @@ it('recovers valid siblings, protects occupied fields, rejects direct conflicts 
   );
   const raw = {
     version: 1,
-    headerRow: 3,
     columns: [
       null,
       advice('C2', 'F1'),
@@ -97,18 +79,17 @@ it('recovers valid siblings, protects occupied fields, rejects direct conflicts 
 });
 it('keeps file IDs separate after masking collisions and ignores invalid or already-matched values', () => {
   const r = req(['客户等级']);
-  r.candidates[0].columns[0].values = [
+  r.columns[0].values = [
     { id: 'v1', text: '13812345678', count: 1 },
     { id: 'v2', text: '13899995678', count: 2 },
     { id: 'v3', text: 'A级', count: 3 },
   ];
   const s = prepareImport(schema, r);
-  const values = s.input.candidates[0].columns[0].values;
+  const values = s.input.columns[0].values;
   expect(values).toHaveLength(2);
   expect(values[0].text).toBe(values[1].text);
   const plan = readImportPlan(s, {
     version: 1,
-    headerRow: 3,
     columns: [
       {
         ...advice('C1', 'F2'),
@@ -130,21 +111,19 @@ it('keeps file IDs separate after masking collisions and ignores invalid or alre
 function hash(v: string) {
   return createHash('sha256').update(v).digest('hex');
 }
-it('uses leading-row hashes even with a locked header and requires evidence for every outbound position', () => {
+it('suppresses a masked heading by its current hash and honors excluded positions', () => {
   const r = req(['单位名称', '评级', '渠道']);
-  r.headerLocked = true;
-  r.headerEvidence.pop();
-  r.headerEvidence[1].hashes.push(hash('内部备注'));
+  r.columns[2].excluded = true;
+  r.columns[1].headerHash = hash('内部备注');
   const { input } = prepareImport(schema, r);
-  expect(input.candidates[0].columns.map((c) => c.col)).toEqual(['C1']);
+  expect(input.columns.map((c) => c.col)).toEqual(['C1']);
   expect(JSON.stringify(input)).not.toMatch(/[0-9a-f]{64}/);
 });
 it('omits a solved locked column and permits only its occupied target as an existing match', () => {
   const s = prepareImport(schema, req(['客户名称', '评级']));
-  expect(s.input.candidates[0].columns.map((c) => c.col)).toEqual(['C2']);
+  expect(s.input.columns.map((c) => c.col)).toEqual(['C2']);
   const p = readImportPlan(s, {
     version: 1,
-    headerRow: 3,
     columns: [advice('C2', 'F1')],
     matchFields: ['F1', 'F2'],
   });
@@ -153,15 +132,15 @@ it('omits a solved locked column and permits only its occupied target as an exis
 });
 it('masks full personal identifiers and safely retains already-masked contact shapes', () => {
   const r = req(['联系邮箱', '联系电话']);
-  r.candidates[0].columns[0].samples = ['zhangsan@qq.com', 'z***@qq.com'];
-  r.candidates[0].columns[1].samples = [
+  r.columns[0].samples = ['zhangsan@qq.com', 'z***@qq.com'];
+  r.columns[1].samples = [
     '+86 (138) 1234-5678',
     '138****5678',
     '010-12345678',
     '010-****5678',
     '11010519491231002X',
   ];
-  const [email, phone] = prepareImport(schema, r).input.candidates[0].columns;
+  const [email, phone] = prepareImport(schema, r).input.columns;
   expect(email.samples).toEqual(['z***@qq.com']);
   expect(phone.samples).toEqual(['138****5678', '010-****5678', '[号码]']);
 });
@@ -180,23 +159,17 @@ it('retains a usable subset under the UTF-8 budget and rejects fields removed fr
   expect(
     readImportPlan(s, {
       version: 1,
-      headerRow: 3,
       columns: [advice('C1', 'F2'), advice('C2', 'F3', 'append')],
       matchFields: [],
     }).columns.map((c) => c.col),
   ).toEqual(['C2']);
 });
-it('protects current manual positions and reserved fields across a proposed header change', () => {
+it('protects current manual positions and reserved fields in the selected header', () => {
   const r = req(['单位名称', '评级', '渠道']);
-  r.candidates[0].columns[0].locked = { mode: 'field', field: 'nameKey' };
-  r.candidates.push({
-    headerRow: 4,
-    columns: req(['分类', '来源', '客户评价']).candidates[0].columns,
-  });
+  r.columns[0].locked = { mode: 'field', field: 'nameKey' };
   const s = prepareImport(schema, r);
   const p = readImportPlan(s, {
     version: 1,
-    headerRow: 4,
     columns: [
       advice('C1', 'F2'),
       advice('C2', 'F1'),
@@ -213,11 +186,10 @@ it('drops an option when the model cannot distinguish normalized dictionary labe
     { key: 'y', label: 'A 级' },
   ];
   const r = req(['客户等级']);
-  r.candidates[0].columns[0].values = [{ id: 'V1', text: 'A类', count: 2 }];
+  r.columns[0].values = [{ id: 'V1', text: 'A类', count: 2 }];
   const state = prepareImport(copy, r);
   const plan = readImportPlan(state, {
     version: 1,
-    headerRow: 3,
     matchFields: [],
     columns: [
       {
@@ -228,28 +200,15 @@ it('drops an option when the model cannot distinguish normalized dictionary labe
   });
   expect(plan.columns).toEqual([]);
 });
-it('rejects all advice for an unoffered header, even when individual references exist', () => {
-  const r = req(['评级']);
-  r.headerLocked = true;
-  const state = prepareImport(schema, r);
-  expect(
-    readImportPlan(state, {
-      version: 1,
-      headerRow: 5,
-      columns: [advice('C1', 'F2')],
-      matchFields: ['F2'],
-    }),
-  ).toMatchObject({ headerRow: 3, columns: [], matchFields: [] });
-});
 it('keeps raw previews out of unknown title rows and treats system and owner headers in evidence as restricted', () => {
   const r = req(['年度汇总给张三', '联系邮箱', '来源', '单位名称']);
-  r.candidates[0].columns[0].samples = ['13812345678', 'A级'];
-  r.candidates[0].columns[0].values = [{ id: 'V1', text: 'A级', count: 2 }];
-  r.headerEvidence[1].hashes.push(hash('创建时间'));
-  r.headerEvidence[2].hashes.push(hash('负责人'));
+  r.columns[0].samples = ['13812345678', 'A级'];
+  r.columns[0].values = [{ id: 'V1', text: 'A级', count: 2 }];
+  r.columns[1].headerHash = hash('创建时间');
+  r.columns[2].headerHash = hash('负责人');
   const { input } = prepareImport(schema, r);
-  expect(input.candidates[0].columns.map((c) => c.col)).toEqual(['C1', 'C4']);
-  expect(input.candidates[0].columns[0]).toMatchObject({
+  expect(input.columns.map((c) => c.col)).toEqual(['C1', 'C4']);
+  expect(input.columns[0]).toMatchObject({
     samples: ['[号码]', '[文本]'],
     values: [],
   });
@@ -257,36 +216,32 @@ it('keeps raw previews out of unknown title rows and treats system and owner hea
 
 it('keeps unlabeled text-only columns local when another column needs advice', () => {
   const r = req(['沈雨婷', '单位名称']);
-  r.candidates[0].columns[0].samples = ['[文本]', '[文本]'];
+  r.columns[0].samples = ['[文本]', '[文本]'];
   const { input, needed } = prepareImport(schema, r);
   expect(needed).toBe(true);
-  expect(input.candidates[0].columns.map((c) => c.col)).toEqual(['C2']);
+  expect(input.columns.map((c) => c.col)).toEqual(['C2']);
 });
 
-it.each([true, false])(
-  'preserves business headings at provider input with headerLocked=%s',
-  (locked) => {
-    const labels = [
-      '联系人',
-      '下次跟进日',
-      '合同额',
-      '回款日期',
-      '微信',
-      '职务',
-      '决策人',
-      '成交概率',
-      '客商代码',
-      '签单与否',
-      '采购方',
-      '报价（万元）',
-    ];
-    const r = req([...labels, '负责人']);
-    r.headerLocked = locked;
-    expect(
-      prepareImport(schema, r).input.candidates[0].columns.map((c) => c.header),
-    ).toEqual(labels);
-  },
-);
+it('preserves current business headings at provider input', () => {
+  const labels = [
+    '联系人',
+    '下次跟进日',
+    '合同额',
+    '回款日期',
+    '微信',
+    '职务',
+    '决策人',
+    '成交概率',
+    '客商代码',
+    '签单与否',
+    '采购方',
+    '报价（万元）',
+  ];
+  const r = req([...labels, '负责人']);
+  expect(prepareImport(schema, r).input.columns.map((c) => c.header)).toEqual(
+    labels,
+  );
+});
 
 it('masks embedded contacts and identifiers before clipping a confirmed physical heading', () => {
   const r = req([
@@ -295,10 +250,7 @@ it('masks embedded contacts and identifiers before clipping a confirmed physical
     '证号11010519491231002X',
     '𠀀'.repeat(36) + '卡号6222123456789012',
   ]);
-  r.headerLocked = true;
-  expect(
-    prepareImport(schema, r).input.candidates[0].columns.map((c) => c.header),
-  ).toEqual([
+  expect(prepareImport(schema, r).input.columns.map((c) => c.header)).toEqual([
     '收款[号码]',
     '联络l***@example.org',
     '证号[号码]',
@@ -318,27 +270,18 @@ it('independently gates novel low-cardinality aliases on an enum heading and mas
     '分类9816',
     'alex@example.org',
   ];
-  for (const col of r.candidates[0].columns) {
+  for (const col of r.columns) {
     col.values = inputs.map((text, i) => ({ id: 'v' + i, text, count: 1 }));
     col.samples = ['一档', '施迩澄'];
   }
-  r.candidates.unshift({
-    headerRow: 1,
-    columns: [
-      { col: 'C1', header: '客户交接清册（经办人：施迩澄）', samples: [] },
-    ],
-  });
-  const state = prepareImport(schema, r);
-  const columns = state.input.candidates.find(
-    (row) => row.headerRow === 3,
-  )!.columns;
+  const columns = prepareImport(schema, r).input.columns;
   expect(columns.map((c) => c.col)).toEqual(['C1', 'C2', 'C3', 'C4']);
   expect(columns[0].values.map((v) => v.text)).toEqual(
     expect.arrayContaining(['一档', '关键伙伴', '同城', 'a***@example.org']),
   );
   expect(columns[1].values).toEqual([]);
   expect(columns[1].samples).not.toContain('一档');
-  expect(JSON.stringify(state.input)).not.toMatch(
+  expect(JSON.stringify(columns)).not.toMatch(
     /施迩澄|Jane Doe|请执行动作|9816|alex@example/,
   );
 });
@@ -365,4 +308,12 @@ it('keeps permission-eligible credential dictionaries, restricted name collision
     /API token|内部备注|不公开的选项|施迩澄/,
   );
   expect(JSON.stringify(input)).toContain('待核准');
+});
+
+it('keeps ambiguous owner headings and explicitly confidential columns local while allowing business compounds', () => {
+  const input = prepareImport(
+    schema,
+    req(['归属', '销售', '保密备注', '非公开资料', '销售机会', '归属区域']),
+  ).input;
+  expect(input.columns.map((c) => c.col)).toEqual(['C5', 'C6']);
 });

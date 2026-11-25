@@ -29,6 +29,8 @@ export function ownerHeading(label: string) {
 }
 export const reservedHeadings = [
   ...ownerHeadings,
+  "销售",
+  "归属",
   "记录编号",
   "创建时间",
   "更新时间",
@@ -47,7 +49,7 @@ export const reservedHeadings = [
   "workflowStateKey",
 ].map(headerKey);
 const sensitive =
-  /密码|密钥|令牌|凭据|password|secret|credential|token|cookie|session|apikey|privatekey/i;
+  /非公开|机密|保密|密码|密钥|令牌|凭据|password|secret|credential|token|cookie|session|apikey|privatekey/i;
 export function restrictedLabel(label: string) {
   const key = physicalKey(label);
   return reservedHeadings.includes(key) || sensitive.test(key);

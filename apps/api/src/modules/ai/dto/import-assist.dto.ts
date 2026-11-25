@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { ApiException } from '../../../common/errors/api.exception';
 import type { ImportAssistRequest } from '@crm/contracts';
 
-const row = z.number().int().min(1).max(10);
 const text = z.string().max(4096);
 const fieldTarget = z.strictObject({
   mode: z.enum(['field', 'append']),
@@ -11,6 +10,7 @@ const fieldTarget = z.strictObject({
 const position = z.string().regex(/^C(?:[1-9]|[1-3]\d|40)$/);
 const column = z.strictObject({
   col: position,
+  headerHash: z.string().regex(/^[0-9a-f]{64}$/),
   header: text,
   samples: z.array(text).max(5),
   excluded: z.boolean().optional(),
@@ -29,27 +29,8 @@ const column = z.strictObject({
     .optional(),
 });
 export const importRequestSchema = z.strictObject({
-  headerEvidence: z
-    .array(
-      z.strictObject({
-        col: position,
-        hashes: z.array(z.string().regex(/^[0-9a-f]{64}$/)).max(10),
-        rows: z.array(row).max(10).optional(),
-      }),
-    )
-    .max(40),
   sheet: text,
-  currentHeader: row,
-  headerLocked: z.boolean(),
-  candidates: z
-    .array(
-      z.strictObject({
-        headerRow: row,
-        columns: z.array(column).min(1).max(40),
-      }),
-    )
-    .min(1)
-    .max(10),
+  columns: z.array(column).min(1).max(40),
 });
 export const confidence = z.enum(['high', 'review']);
 export const valueAdvice = z.strictObject({
@@ -69,7 +50,6 @@ export const columnAdvice = z.strictObject({
 export const importPlanSchema = z.strictObject({
   version: z.literal(1),
   generatedAt: z.iso.datetime(),
-  headerRow: row,
   columns: z.array(columnAdvice),
   matchFields: z.array(z.string()).max(3),
 });
@@ -82,19 +62,10 @@ export function parseImportRequest(raw: unknown): ImportAssistRequest {
   if (Buffer.byteLength(JSON.stringify(raw) ?? '') > 80 * 1024) throw invalid();
   const parsed = importRequestSchema.safeParse(raw);
   if (!parsed.success) throw invalid();
-  const { candidates, currentHeader } = parsed.data;
+  const { columns } = parsed.data;
   if (
-    !unique(parsed.data.headerEvidence.map((e) => e.col)) ||
-    parsed.data.headerEvidence.some(
-      (e) => e.rows && (e.rows.length !== e.hashes.length || !unique(e.rows)),
-    ) ||
-    !unique(candidates.map((c) => c.headerRow)) ||
-    !candidates.some((c) => c.headerRow === currentHeader) ||
-    candidates.some(
-      (c) =>
-        !unique(c.columns.map((v) => v.col)) ||
-        c.columns.some((v) => v.values && !unique(v.values.map((x) => x.id))),
-    )
+    !unique(columns.map((c) => c.col)) ||
+    columns.some((c) => c.values && !unique(c.values.map((v) => v.id)))
   )
     throw invalid();
   return parsed.data;

@@ -1,3 +1,4 @@
+import { importMemberPrivacy } from './import-member-privacy';
 import { createHash } from 'node:crypto';
 import {
   candidateEnumField,
@@ -33,7 +34,7 @@ const optionKey = (s: string) => s.normalize('NFKC').replace(/\s+/gu, '');
 const budget = 40 * 1024; // reserve 8 KiB for provider instructions and framing
 const byteSize = (v: unknown) => Buffer.byteLength(JSON.stringify(v));
 function trimInput(input: ImportAssistModelInput) {
-  const columns = input.candidates.flatMap((c) => c.columns);
+  const columns = input.columns;
   for (let n = 4; n >= 0 && byteSize(input) > budget; n--) {
     for (const c of columns) c.samples = c.samples.slice(0, n);
   }
@@ -47,10 +48,7 @@ function trimInput(input: ImportAssistModelInput) {
   }
   // Make room for a usable dictionary on wide, multi-row previews.
   while (byteSize({ ...input, fields: [] }) > budget * 0.8) {
-    const widest = input.candidates.reduce((a, b) =>
-      a.columns.length >= b.columns.length ? a : b,
-    );
-    widest.columns.pop();
+    input.columns.pop();
   }
   // Prefer dropping one large option dictionary over many small scalar fields.
   const largest = input.fields
@@ -59,16 +57,15 @@ function trimInput(input: ImportAssistModelInput) {
   for (const { ref } of largest) {
     if (byteSize(input) <= budget) break;
     input.fields = input.fields.filter((f) => f.ref !== ref);
-    for (const row of input.candidates) {
-      row.columns = row.columns.filter((c) => c.locked?.field !== ref);
-      for (const c of row.columns) c.partial = true;
-    }
+    input.columns = input.columns.filter((c) => c.locked?.field !== ref);
+    for (const c of input.columns) c.partial = true;
   }
 }
 
 export function prepareImport(
   resolved: ResolvedObjectSchema,
   req: ImportAssistRequest,
+  members = importMemberPrivacy([]),
 ) {
   const blockedLabels = new Set(reservedHeadings);
   const eligible = resolved.schema.fields.filter((f) => {
@@ -84,7 +81,13 @@ export function prepareImport(
     return ok;
   });
   for (const f of eligible) {
-    if (restrictedLabel(f.fieldKey) || restrictedLabel(f.label)) {
+    if (
+      restrictedLabel(f.fieldKey) ||
+      restrictedLabel(f.label) ||
+      members.contains([f.label, f.fieldKey, f.type]) ||
+      (f.type.endsWith('_SELECT') &&
+        members.contains(selectOptions(f).map((o) => o.label)))
+    ) {
       blockedLabels.add(headerKey(f.fieldKey));
       blockedLabels.add(headerKey(f.label));
     }
@@ -96,38 +99,26 @@ export function prepareImport(
   const blockedHashes = new Set(
     [...blockedLabels].map((s) => createHash('sha256').update(s).digest('hex')),
   );
-  const evidence = new Map(req.headerEvidence.map((e) => [e.col, e]));
-  const restrictedRows = new Map<string, Set<number>>();
-  const flag = (col: string, row: number) => {
-    const rows = restrictedRows.get(col) ?? new Set<number>();
-    rows.add(row);
-    restrictedRows.set(col, rows);
-    if (row === req.currentHeader && req.headerLocked) blockedCols.add(col);
-  };
-  for (const e of req.headerEvidence) {
-    e.hashes.forEach((hash, i) => {
-      if (!blockedHashes.has(hash)) return;
-      if (e.rows) flag(e.col, e.rows[i]);
-      else blockedCols.add(e.col);
-    });
+  for (const c of req.columns) {
+    const lockedField =
+      c.locked && 'field' in c.locked ? c.locked.field : undefined;
+    if (
+      members.contains([
+        c.header,
+        c.samples,
+        c.values?.map((v) => v.text),
+        c.locked,
+      ]) ||
+      blockedHashes.has(c.headerHash) ||
+      blockedLabels.has(headerKey(c.header)) ||
+      restrictedLabel(c.header) ||
+      c.excluded ||
+      c.locked?.mode === 'owner' ||
+      (lockedField !== undefined &&
+        !allowed.some((f) => f.fieldKey === lockedField))
+    )
+      blockedCols.add(c.col);
   }
-  for (const row of req.candidates)
-    for (const c of row.columns) {
-      const lockedField =
-        c.locked && 'field' in c.locked ? c.locked.field : undefined;
-      if (
-        !evidence.get(c.col)?.hashes.length ||
-        c.excluded ||
-        c.locked?.mode === 'owner' ||
-        (lockedField !== undefined &&
-          !allowed.some((f) => f.fieldKey === lockedField))
-      )
-        blockedCols.add(c.col);
-      if (restrictedLabel(c.header) || blockedLabels.has(headerKey(c.header))) {
-        flag(c.col, row.headerRow);
-        if (!evidence.get(c.col)?.rows) blockedCols.add(c.col);
-      }
-    }
   const queryable = new Set(queryFields(resolved).map((f) => f.fieldKey));
   let optionNumber = 0,
     valueNumber = 0;
@@ -145,35 +136,17 @@ export function prepareImport(
       aliases: [headerKey(f.label), headerKey(f.fieldKey)],
     };
   });
-  const currentLocks = new Map<string, string | undefined>();
-  for (const c of req.candidates.find(
-    (row) => row.headerRow === req.currentHeader,
-  )!.columns) {
-    if (restrictedRows.get(c.col)?.has(req.currentHeader)) continue;
-    const lock = c.locked;
-    const matches = targets.filter((t) =>
-      t.aliases.includes(headerKey(c.header)),
-    );
-    if (lock || matches.length === 1)
-      currentLocks.set(
-        c.col,
-        lock
-          ? lock.mode === 'field'
-            ? targets.find((t) => t.field.fieldKey === lock.field)?.ref
-            : undefined
-          : matches[0].ref,
-      );
-  }
   const fileValues = new Map<string, { id: string; text: string }>();
-  const mapped = new Map<number, Set<string>>();
-  const occupied = new Map<number, Set<string>>();
+  const mapped = new Set<string>();
+  const occupied = new Set<string>();
   const formatColumns = new Set<ImportModelColumn>();
   const input: ImportAssistModelInput = {
-    sheet: blockedLabels.has(headerKey(req.sheet))
-      ? '工作表'
-      : projectImportHeading(req.sheet, false) || '工作表',
-    currentHeader: req.currentHeader,
-    headerLocked: req.headerLocked,
+    sheet:
+      members.redact(req.sheet) === '[成员]'
+        ? '[成员]'
+        : blockedLabels.has(headerKey(req.sheet))
+          ? '工作表'
+          : projectImportHeading(req.sheet, false) || '工作表',
     fields: targets.map(({ field: f, ref, options }) => ({
       ref,
       name: dictionaryLabel(f.label),
@@ -184,107 +157,83 @@ export function prepareImport(
         return name ? [{ ref: o.ref, name }] : [];
       }),
     })),
-    candidates: req.candidates
-      .filter((row) => !req.headerLocked || row.headerRow === req.currentHeader)
-      .map((row) => {
-        const used = new Set<string>();
-        if (row.headerRow !== req.currentHeader)
-          for (const ref of currentLocks.values()) if (ref) used.add(ref);
-        occupied.set(row.headerRow, used);
-        const confirmed = new Set<string>();
-        mapped.set(row.headerRow, confirmed);
-        const columns: ImportModelColumn[] = [];
-        for (const c of row.columns) {
-          if (row.headerRow !== req.currentHeader && currentLocks.has(c.col))
-            continue;
-          const match = targets.filter((t) =>
-            t.aliases.includes(headerKey(c.header)),
-          );
-          const lock = c.locked;
-          const target =
-            lock && 'field' in lock
-              ? targets.find((t) => t.field.fieldKey === lock.field)
-              : !lock && match.length === 1
-                ? match[0]
-                : undefined;
-          const mode = lock?.mode === 'append' ? 'append' : 'field';
-          if (target && mode === 'field') used.add(target.ref);
-          if (
-            blockedCols.has(c.col) ||
-            restrictedRows.get(c.col)?.has(row.headerRow) ||
-            (c.header &&
-              evidence.get(c.col)?.rows &&
-              !evidence.get(c.col)!.rows!.includes(row.headerRow)) ||
-            lock?.mode === 'skip' ||
-            (mode === 'append' && target?.field.type !== 'TEXTAREA')
-          )
-            continue;
-          if (target && mode === 'field') confirmed.add(target.ref);
-          const col: ImportModelColumn = {
-            col: c.col,
-            header:
-              projectImportHeading(
-                c.header,
-                req.headerLocked && row.headerRow === req.currentHeader,
-              ) || (c.header ? '[文本]' : ''),
-            samples: [],
-            values: [],
-          };
-          if (target) col.locked = { mode, field: target.ref };
-          if (restrictedRows.has(c.col)) {
-            if (!target && col.header && col.header !== '[文本]')
-              columns.push(col);
-            continue;
-          }
-          const date =
-            target && ['DATE', 'DATETIME'].includes(target.field.type);
-          const ambiguous = date
-            ? c.samples.filter((v) =>
-                /^\s*(?:0?[1-9]|1[0-2])[/. -](?:0?[1-9]|1[0-2])[/. -]\d{4}\s*$/.test(
-                  v,
-                ),
-              )
-            : [];
-          if (ambiguous.length) formatColumns.add(col);
-          col.samples = [
-            ...new Set((target ? ambiguous : c.samples).map(sampleShape)),
-          ];
-          if (!target && (!col.header || col.header === '[文本]')) {
-            col.samples = [...new Set(col.samples.map(cellShape))];
-            if (col.samples.some((sample) => sample && sample !== '[文本]'))
-              columns.push(col);
-            continue;
-          }
-          const enumField =
-            target?.field ?? candidateEnumField(col.header, allowed);
-          const options =
-            targets.find((t) => t.field === enumField)?.options ?? [];
-          const values = c.values ?? [];
-          for (const v of values.length <= 50 ? values : []) {
-            if (
-              !options.length ||
-              options.some((o) =>
-                [o.key, o.label].some(
-                  (s) => optionKey(s) === optionKey(v.text),
-                ),
-              )
-            )
-              continue;
-            const text = importEnumAlias(v.text);
-            if (!text || text === '[文本]') {
-              col.partial = true;
-              continue;
-            }
-            const ref = 'V' + ++valueNumber;
-            fileValues.set(ref, v);
-            col.values.push({ ref, text, count: v.count });
-          }
-          if (!target || col.values.length || formatColumns.has(col))
-            columns.push(col);
-        }
-        return { headerRow: row.headerRow, columns };
-      }),
+    columns: [],
   };
+  for (const c of req.columns) {
+    const match = targets.filter((t) =>
+      t.aliases.includes(headerKey(c.header)),
+    );
+    const lock = c.locked;
+    const target =
+      lock && 'field' in lock
+        ? targets.find((t) => t.field.fieldKey === lock.field)
+        : !lock && match.length === 1
+          ? match[0]
+          : undefined;
+    const mode = lock?.mode === 'append' ? 'append' : 'field';
+    if (target && mode === 'field') occupied.add(target.ref);
+    if (
+      blockedCols.has(c.col) ||
+      lock?.mode === 'skip' ||
+      (mode === 'append' && target?.field.type !== 'TEXTAREA')
+    )
+      continue;
+    if (target && mode === 'field') mapped.add(target.ref);
+    const col: ImportModelColumn = {
+      col: c.col,
+      header:
+        projectImportHeading(c.header, true) || (c.header ? '[文本]' : ''),
+      samples: [],
+      values: [],
+    };
+    if (target) col.locked = { mode, field: target.ref };
+    const date = target && ['DATE', 'DATETIME'].includes(target.field.type);
+    const ambiguous = date
+      ? c.samples.filter((v) =>
+          /^\s*(?:0?[1-9]|1[0-2])[/. -](?:0?[1-9]|1[0-2])[/. -]\d{4}\s*$/.test(
+            v,
+          ),
+        )
+      : [];
+    if (ambiguous.length) formatColumns.add(col);
+    col.samples = [
+      ...new Set((target ? ambiguous : c.samples).map(sampleShape)),
+    ];
+    if (!target && (!col.header || col.header === '[文本]')) {
+      col.samples = [...new Set(col.samples.map(cellShape))];
+      if (col.samples.some((sample) => sample && sample !== '[文本]'))
+        input.columns.push(col);
+      continue;
+    }
+    const enumField = target?.field ?? candidateEnumField(col.header, allowed);
+    const options = targets.find((t) => t.field === enumField)?.options ?? [];
+    const values = c.values ?? [];
+    for (const v of values.length <= 50 ? values : []) {
+      if (
+        !options.length ||
+        options.some((o) =>
+          [o.key, o.label].some((s) => optionKey(s) === optionKey(v.text)),
+        )
+      )
+        continue;
+      const text = importEnumAlias(v.text);
+      if (!text || text === '[文本]') {
+        col.partial = true;
+        continue;
+      }
+      const ref = 'V' + ++valueNumber;
+      fileValues.set(ref, v);
+      col.values.push({ ref, text, count: v.count });
+    }
+    if (!target || col.values.length || formatColumns.has(col))
+      input.columns.push(col);
+  }
+  input.fields = input.fields.filter((f) => !members.contains(f));
+  input.columns = input.columns.filter(
+    (c) =>
+      !members.contains(c) &&
+      (!c.locked || input.fields.some((f) => f.ref === c.locked!.field)),
+  );
   trimInput(input);
   const actionable = (c: ImportModelColumn) =>
     c.locked
@@ -294,11 +243,6 @@ export function prepareImport(
           c.values.length ||
           c.samples.some((s) => s && s !== '[文本]'),
         );
-  const headerChoice =
-    !req.headerLocked &&
-    input.candidates.filter((r) =>
-      r.columns.some((c) => c.header && c.header !== '[文本]'),
-    ).length > 1;
   return {
     input,
     targets,
@@ -308,16 +252,12 @@ export function prepareImport(
     queryable,
     formatColumns,
     actionable,
-    needed:
-      input.fields.length > 0 &&
-      (headerChoice ||
-        input.candidates.some((r) => r.columns.some(actionable))),
+    needed: input.fields.length > 0 && input.columns.some(actionable),
   };
 }
 
 const envelope = z.object({
   version: z.literal(1),
-  headerRow: z.number().int(),
   columns: z.array(z.unknown()).max(80),
   matchFields: z.array(z.unknown()).max(80),
 });
@@ -343,20 +283,12 @@ export function readImportPlan(
   const plan: ImportAssistPlan = {
     version: 1,
     generatedAt: new Date().toISOString(),
-    headerRow: input.currentHeader,
     columns: [],
     matchFields: [],
   };
   const parsed = envelope.safeParse(raw);
   if (!parsed.success) return plan;
-  const row = input.candidates.find(
-    (r) =>
-      r.headerRow === parsed.data.headerRow &&
-      r.columns.some((c) => c.header || c.locked),
-  );
-  if (!row) return plan;
-  plan.headerRow = row.headerRow;
-  const occupied = state.occupied.get(row.headerRow)!;
+  const { occupied } = state;
   const valid: ImportColumnAdvice[] = [];
   for (const item of parsed.data.columns) {
     const result = candidateAdvice.safeParse(item);
@@ -370,7 +302,7 @@ export function readImportPlan(
       bareAmountUnit,
       values,
     } = result.data;
-    const c = row.columns.find((x) => x.col === col);
+    const c = input.columns.find((x) => x.col === col);
     if (!c || !state.actionable(c)) continue;
     const safeReason = reasons.has(reason) ? reason : '建议人工核对';
     if (target.mode === 'skip') {
@@ -466,7 +398,7 @@ export function readImportPlan(
       input.fields.some((f) => f.ref === ref) &&
       state.queryable.has(t.field.fieldKey) &&
       t.field.type !== 'MULTI_SELECT' &&
-      (state.mapped.get(row.headerRow)?.has(t.ref) ||
+      (state.mapped.has(t.ref) ||
         plan.columns.some(
           (c) =>
             c.target.mode === 'field' && c.target.field === t.field.fieldKey,

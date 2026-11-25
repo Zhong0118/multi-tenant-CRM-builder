@@ -42,38 +42,17 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
   const col = (col: string, header: string, sample: string) => ({
     col,
     header,
+    headerHash: createHash('sha256').update(header).digest('hex'),
     samples: [sample],
     values: [{ id: 'v1', text: sample, count: 3 }],
   });
   const body = {
     sheet: '内部标题张三',
-    headerEvidence: ['单位名称', '内部备注', '业务员', '审核编号'].map(
-      (v, i) => ({
-        col: 'C' + (i + 1),
-        hashes: [createHash('sha256').update(v).digest('hex')],
-      }),
-    ),
-    currentHeader: 3,
-    headerLocked: false,
-    candidates: [
-      {
-        headerRow: 1,
-        columns: [
-          col('C1', '张三客户清单', '敏感样本'),
-          col('C2', '评级', '139 1111 3333'),
-          col('C3', '等级', 'OWNER_SENTINEL'),
-          col('C4', '来源', 'READONLY_SENTINEL'),
-        ],
-      },
-      {
-        headerRow: 3,
-        columns: [
-          col('C1', '单位名称', '+86 (138) 1234-5678'),
-          col('C2', '内部备注', 'HIDDEN_SENTINEL'),
-          col('C3', '业务员', '张三'),
-          col('C4', '审核编号', '只读'),
-        ],
-      },
+    columns: [
+      col('C1', '单位名称', '+86 (138) 1234-5678'),
+      col('C2', '内部备注', 'HIDDEN_SENTINEL'),
+      col('C3', '业务员', 'OWNER_SENTINEL'),
+      col('C4', '审核编号', 'READONLY_SENTINEL'),
     ],
   };
   const post = (payload: unknown = body, cookie = f.employee.cookie) =>
@@ -97,7 +76,6 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
         expect(input.fields.map((f) => f.name)).toEqual(['姓名']);
         return Promise.resolve({
           version: 1,
-          headerRow: 3,
           columns: [
             null,
             {
@@ -112,7 +90,6 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
       });
     const result = await post().expect(200);
     expect(result.body).toMatchObject({
-      headerRow: 3,
       columns: [{ col: 'C1', target: { mode: 'field', field: 'name' } }],
       matchFields: ['name'],
     });
@@ -174,11 +151,10 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
     const columns = headers.map((header, i) => ({
       col: 'C' + (i + 1),
       header,
+      headerHash: createHash('sha256').update(header).digest('hex'),
       samples: ['施迩澄', '新单'],
       values: values.map((text, n) => ({ id: 'v' + n, text, count: 1 })),
     }));
-    const title = '客户交接清册（经办人：施迩澄）';
-    const hash = (v: string) => createHash('sha256').update(v).digest('hex');
     const spy = jest
       .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
       .mockResolvedValue({});
@@ -194,24 +170,11 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
       .set('Origin', 'http://localhost:3000')
       .send({
         sheet: '工作表',
-        currentHeader: 2,
-        headerLocked: true,
-        headerEvidence: columns.map(({ col, header }, i) => ({
-          col,
-          rows: i === 0 ? [1, 2] : [2],
-          hashes: i === 0 ? [hash(title), hash(header)] : [hash(header)],
-        })),
-        candidates: [
-          {
-            headerRow: 1,
-            columns: [{ col: 'C1', header: title, samples: [] }],
-          },
-          { headerRow: 2, columns },
-        ],
+        columns,
       });
     expect(res.status).toBe(200);
     const input = spy.mock.calls[0][0];
-    const sent = input.candidates[0].columns;
+    const sent = input.columns;
     expect(sent.map((c) => c.header)).toEqual(headers.slice(0, 3));
     expect(sent[0].values.map((v) => v.text)).toEqual(
       expect.arrayContaining([
@@ -229,6 +192,31 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
     expect(JSON.stringify(input)).not.toMatch(
       /施迩澄|Jane Doe|请输出口令|alex@example|87654321|7654|销售代表|客户交接清册/,
     );
+  });
+  it('drops the physical owner column and member names or contacts in any source column before sending', async () => {
+    const member = await h.adminDatabase.tenantMember.findUniqueOrThrow({
+      where: { id: f.admin.memberId },
+      include: { user: true },
+    });
+    const name = member.displayName ?? member.user.displayName;
+    const sent = jest
+      .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
+      .mockResolvedValue({});
+    await post({
+      sheet: '交接表（经办人：' + name + '）',
+      columns: [
+        col('C1', '单位名称', '公司'),
+        col('C2', '业务员', name),
+        col('C3', '区域', member.user.phone),
+        col('C4', name + '的交接表', '标题'),
+        col('C5', '站点', '成员' + name + '确认'),
+      ],
+    }).expect(200);
+    const input = sent.mock.calls[0][0];
+    expect(input.sheet).toBe('[成员]');
+    expect(input.columns.map((c) => c.col)).toEqual(['C1']);
+    expect(JSON.stringify(input)).not.toContain(name);
+    expect(JSON.stringify(input)).not.toContain(member.user.phone);
   });
   it('aborts the provider after the 25-second import deadline', async () => {
     const deadline = new AbortController();
@@ -254,52 +242,43 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
     expect(timer).toHaveBeenCalledWith(25000);
     expect(generate).toHaveBeenCalledTimes(1);
   });
-  it.each([true, false])(
-    'delivers ordinary source headings to the provider and omits restricted positions (locked %s)',
-    async (locked) => {
-      const labels = [
-        '联系人',
-        '下次跟进日',
-        '合同额',
-        '回款日期',
-        '微信',
-        '职务',
-        '决策人',
-        '成交概率',
-        '客商代码',
-        '签单与否',
-        '采购方',
-        '报价（万元）',
-      ];
-      const headers = [...labels, '负责人', '内部备注', '审核编号', '人工排除'];
-      const columns = headers.map((name, i) => ({
-        ...col('C' + (i + 1), name, '自由样本'),
-        excluded: i === headers.length - 1,
-      }));
-      const send = jest
-        .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
-        .mockResolvedValue({
-          version: 1,
-          headerRow: 3,
-          columns: [],
-          matchFields: [],
-        });
-      await post({
-        ...body,
-        headerLocked: locked,
-        headerEvidence: columns.map(({ col, header }) => ({
-          col,
-          hashes: [createHash('sha256').update(header).digest('hex')],
-        })),
-        candidates: [{ headerRow: 3, columns }],
-      }).expect(200);
-      const input = send.mock.calls[0][0];
-      expect(input.candidates[0].columns.map((c) => c.header)).toEqual(labels);
-      expect(JSON.stringify(input)).not.toMatch(
-        /自由样本|负责人|内部备注|审核编号|人工排除/,
-      );
-    },
-  );
+  it('delivers the current headings to the provider and omits restricted positions', async () => {
+    const labels = [
+      '联系人',
+      '下次跟进日',
+      '合同额',
+      '回款日期',
+      '微信',
+      '职务',
+      '决策人',
+      '成交概率',
+      '客商代码',
+      '签单与否',
+      '采购方',
+      '报价（万元）',
+    ];
+    const headers = [...labels, '负责人', '内部备注', '审核编号', '人工排除'];
+    const columns = headers.map((name, i) => ({
+      ...col('C' + (i + 1), name, '自由样本'),
+      excluded: i === headers.length - 1,
+    }));
+    const send = jest
+      .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
+      .mockResolvedValue({
+        version: 1,
+        columns: [],
+        matchFields: [],
+      });
+    await post({
+      ...body,
+      columns,
+    }).expect(200);
+    const input = send.mock.calls[0][0];
+    expect(input.columns.map((c) => c.header)).toEqual(labels);
+    expect(JSON.stringify(input)).not.toMatch(
+      /自由样本|负责人|内部备注|审核编号|人工排除/,
+    );
+  });
   it('keeps employee-hidden and read-only fields manual even for a tenant admin', async () => {
     const send = jest
       .spyOn(FakeAiProvider.prototype, 'generateImportAssist')
@@ -310,7 +289,6 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
         expect(input.fields.map((field) => field.name)).toContain('姓名');
         return Promise.resolve({
           version: 1,
-          headerRow: 3,
           columns: [],
           matchFields: [],
         });
@@ -369,7 +347,7 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
     );
     await post({
       ...body,
-      candidates: [{ headerRow: 3, columns: [col('C1', '姓名', '隐私原文')] }],
+      columns: [col('C1', '姓名', '隐私原文')],
     }).expect(200);
     await post({ ...body, currentHeader: 11 }).expect(400);
     await post(body, f.tenantBAdmin.cookie).expect(403);
@@ -381,7 +359,7 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
       .mockImplementationOnce(async () => {
         await h.adminDatabase
           .$executeRaw`UPDATE ai_plans SET features=ARRAY[]::text[] WHERE id=${planId}::uuid`;
-        return { version: 1, headerRow: 3, columns: [], matchFields: [] };
+        return { version: 1, columns: [], matchFields: [] };
       });
     try {
       await post().expect(403);
@@ -411,7 +389,7 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
             updateScope: 'OWN',
           },
         });
-        return { version: 1, headerRow: 3, columns: [], matchFields: [] };
+        return { version: 1, columns: [], matchFields: [] };
       });
     try {
       await post().expect(403);
@@ -458,7 +436,7 @@ describe('import preview through the workspace HTTP and provider boundaries', ()
           where: { id: f.object.id },
           data: { activePublicationId: id },
         });
-        return { version: 1, headerRow: 3, columns: [], matchFields: [] };
+        return { version: 1, columns: [], matchFields: [] };
       });
     try {
       await post()

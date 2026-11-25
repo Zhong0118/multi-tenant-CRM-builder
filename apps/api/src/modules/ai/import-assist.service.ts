@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { isDeepStrictEqual } from 'node:util';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -12,10 +12,12 @@ import {
 } from './ai-governance-error';
 import { AiLedgerService } from './governance/ai-ledger.service';
 import { parseImportRequest } from './dto/import-assist.dto';
+import { importMemberPrivacy } from './import-member-privacy';
 import { prepareImport, readImportPlan } from './import-assist-policy';
 
 @Injectable()
 export class ImportAssistService {
+  private readonly logger = new Logger(ImportAssistService.name);
   constructor(
     private readonly db: DatabaseContextRunner,
     private readonly ledger: AiLedgerService,
@@ -60,7 +62,18 @@ export class ImportAssistService {
   ) {
     const initial = await this.metadata(actor, code);
     const req = parseImportRequest(body);
-    const state = prepareImport(initial, req);
+    const members = await this.db.withTenant(actor, (tx) =>
+      tx.tenantMember.findMany({
+        where: { tenantId: actor.tenantId },
+        select: {
+          displayName: true,
+          user: { select: { displayName: true, phone: true, email: true } },
+        },
+      }),
+    );
+    const privacy = importMemberPrivacy(members);
+    const state = prepareImport(initial, req, privacy);
+    if (privacy.count) this.logger.log({ memberRedactions: privacy.count });
     let output: unknown;
     if (state.needed) {
       const signal = AbortSignal.any([disconnect, AbortSignal.timeout(25000)]);

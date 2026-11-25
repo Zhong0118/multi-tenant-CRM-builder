@@ -11236,37 +11236,28 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": {
-          candidates: {
-            columns: {
-              col: string;
-              excluded?: boolean;
-              header: string;
-              locked?:
-                | {
-                    field: string;
-                    /** @enum {string} */
-                    mode: "field" | "append";
-                  }
-                | {
-                    /** @enum {string} */
-                    mode: "owner" | "skip";
-                  };
-              samples: string[];
-              values?: {
-                count: number;
-                id: string;
-                text: string;
-              }[];
-            }[];
-            headerRow: number;
-          }[];
-          currentHeader: number;
-          headerEvidence: {
+          columns: {
             col: string;
-            hashes: string[];
-            rows?: number[];
+            excluded?: boolean;
+            header: string;
+            headerHash: string;
+            locked?:
+              | {
+                  field: string;
+                  /** @enum {string} */
+                  mode: "field" | "append";
+                }
+              | {
+                  /** @enum {string} */
+                  mode: "owner" | "skip";
+                };
+            samples: string[];
+            values?: {
+              count: number;
+              id: string;
+              text: string;
+            }[];
           }[];
-          headerLocked: boolean;
           sheet: string;
         };
       };
@@ -11306,7 +11297,6 @@ export interface operations {
             }[];
             /** Format: date-time */
             generatedAt: string;
-            headerRow: number;
             matchFields: string[];
             /** @enum {number} */
             version: 1;

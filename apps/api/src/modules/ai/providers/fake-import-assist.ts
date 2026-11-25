@@ -2,11 +2,8 @@ import type { ImportAssistModelInput } from '../import-assist-model';
 
 // Scripted suggestions for local interaction and cancellation tests.
 export function fakeImportAssist(input: ImportAssistModelInput) {
-  const row =
-    input.candidates.find((r) => r.headerRow === input.currentHeader) ??
-    input.candidates[0];
   const columns =
-    row?.columns.flatMap((c) => {
+    input.columns.flatMap((c) => {
       const nameColumn = /名称|全称|company|name/i.test(c.header);
       const ratingColumn = /评级|等级|级别|grade/i.test(c.header);
       const target = c.locked
@@ -52,7 +49,6 @@ export function fakeImportAssist(input: ImportAssistModelInput) {
     }) ?? [];
   return {
     version: 1,
-    headerRow: row?.headerRow ?? input.currentHeader,
     columns,
     matchFields: [],
   };
