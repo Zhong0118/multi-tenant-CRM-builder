@@ -1,6 +1,7 @@
 import { AccountShell } from "@/components/layout/account-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { AccountEmail } from "@/features/auth/account-email";
+import styles from "./security.module.css";
 import { SessionList } from "@/features/auth/session-list";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
@@ -33,13 +34,15 @@ export default async function AccountSecurityPage() {
         title="账号安全"
         description={`${user.displayName} · ${user.phone}`}
       />
-      <AccountEmail
-        key={user.emailStatus + user.maskedEmail}
-        status={user.emailStatus}
-        maskedEmail={user.maskedEmail}
-        available={user.mailAvailable}
-        newDevice={settings?.data?.newDeviceMailEnabled ?? null}
-      />
+      <div className={styles.emailSection}>
+        <AccountEmail
+          key={user.emailStatus + user.maskedEmail}
+          status={user.emailStatus}
+          maskedEmail={user.maskedEmail}
+          available={user.mailAvailable}
+          newDevice={settings?.data?.newDeviceMailEnabled ?? null}
+        />
+      </div>
       <SessionList
         initialActive={activeResult.data}
         initialHistory={historyResult.data}
