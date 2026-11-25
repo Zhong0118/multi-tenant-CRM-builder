@@ -1,11 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
-import {
-  createHmac,
-  randomInt,
-  randomUUID,
-  timingSafeEqual,
-} from 'node:crypto';
+import { hash, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
 import { DatabaseService } from '../../infrastructure/database/database.service';
@@ -61,6 +56,11 @@ function mailbox(value?: string) {
   return email;
 }
 
+// Each server-generated challenge UUID is a fresh random salt, including on resend.
+function hashEmailCode(challengeId: string, code: string) {
+  return hash('sha256', challengeId + ':' + code);
+}
+
 @Injectable()
 export class EmailIdentityService {
   constructor(
@@ -71,11 +71,6 @@ export class EmailIdentityService {
     @Inject(AUTH_CLOCK) private readonly clock: AuthClock,
   ) {}
 
-  private digest(...parts: string[]) {
-    return createHmac('sha256', this.mail.challengeKey())
-      .update(parts.join('\0'))
-      .digest('hex');
-  }
   private async lock(tx: Tx, id: string) {
     await lockAccount(tx, id);
     const user = await tx.user.findUnique({
@@ -136,11 +131,7 @@ export class EmailIdentityService {
   async issue(userId: string, input: RequestCode, ip: string) {
     this.mail.requireAvailable();
     const email = await this.target(userId, input);
-    await this.limits.issue(
-      this.digest('address', email),
-      this.digest('ip', ip),
-      userId,
-    );
+    await this.limits.issue(hash('sha256', email), hash('sha256', ip), userId);
     const challengeId = randomUUID();
     await this.sendChallenge(
       userId,
@@ -155,10 +146,7 @@ export class EmailIdentityService {
     this.mail.requireAvailable();
     const email = mailbox(value),
       challengeId = randomUUID();
-    await this.limits.issue(
-      this.digest('address', email),
-      this.digest('ip', ip),
-    );
+    await this.limits.issue(hash('sha256', email), hash('sha256', ip));
     // SMTP latency and account-specific outcomes are invisible to anonymous clients.
     setImmediate(() => {
       void this.issueRecovery(email, challengeId).catch(() => undefined);
@@ -181,16 +169,9 @@ export class EmailIdentityService {
     id: string,
     password?: string,
   ) {
-    const emailDigest = this.digest('address', email);
+    const emailDigest = hash('sha256', email);
     const code = randomInt(1_000_000).toString().padStart(6, '0');
-    const codeHash = this.digest(
-      'code',
-      id,
-      userId,
-      purpose,
-      emailDigest,
-      code,
-    );
+    const codeHash = hashEmailCode(id, code);
     const emailVersion = await this.database.transaction(async (tx) => {
       const user = await this.lock(tx, userId);
       await this.checkPurpose(tx, user, purpose, email, password);
@@ -311,8 +292,8 @@ export class EmailIdentityService {
     password?: string,
     newPassword?: string,
   ) {
-    const emailDigest = this.digest('address', email);
-    await this.limits.confirm(emailDigest, this.digest('ip', ip));
+    const emailDigest = hash('sha256', email);
+    await this.limits.confirm(emailDigest, hash('sha256', ip));
     const ok = await this.database
       .transaction(async (tx) => {
         // All operations acquire the user lock before examining mutable challenge state.
@@ -339,14 +320,7 @@ export class EmailIdentityService {
           return false;
         const expected = Buffer.from(challenge.codeHash, 'hex');
         const supplied = Buffer.from(
-          this.digest(
-            'code',
-            challenge.id,
-            user.id,
-            purpose,
-            emailDigest,
-            input.code,
-          ),
+          hashEmailCode(challenge.id, input.code),
           'hex',
         );
         if (

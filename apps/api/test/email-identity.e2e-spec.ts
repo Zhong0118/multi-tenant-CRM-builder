@@ -1,7 +1,7 @@
 import { SessionService } from '../src/modules/auth/session.service';
 import { AuthService } from '../src/modules/auth/auth.service';
 import { PrismaAuthRepository } from '../src/modules/auth/auth.repository';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createDatabaseClient } from '@crm/database';
 import { EmailIdentityService } from '../src/modules/auth/email-identity.service';
 import { DatabaseService } from '../src/infrastructure/database/database.service';
@@ -20,7 +20,6 @@ let deliver: (id: string) => Promise<boolean> = () => Promise.resolve(true);
 const mail = {
   available: true,
   requireAvailable: () => undefined,
-  challengeKey: () => Buffer.alloc(32, 2),
   sendCode: async (input: { challengeId: string; code: string }) => {
     codes.set(input.challengeId, input.code);
     return deliver(input.challengeId);
@@ -299,8 +298,14 @@ it('binds the challenge to its account, target, purpose, and current version, ho
   const stored = await admin.emailChallenge.findUniqueOrThrow({
     where: { id: challengeId },
   });
-  expect(stored.codeHash).toMatch(/^[a-f0-9]{64}$/);
-  expect(stored.emailDigest).toMatch(/^[a-f0-9]{64}$/);
+  const sha256 = (text: string) =>
+    createHash('sha256').update(text).digest('hex');
+  expect(stored.emailDigest).toBe(sha256(email.trim().toLowerCase()));
+  expect(stored.codeHash).toBe(sha256(challengeId + ':' + body.code));
+  expect(changed.challengeId).not.toBe(challengeId);
+  expect(stored.codeHash).not.toBe(
+    sha256(changed.challengeId + ':' + body.code),
+  );
   expect(JSON.stringify(stored)).not.toContain(email);
 });
 it('reverifies a legacy address without exposing it, and leaves undeliverable old addresses out of notifications', async () => {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
-import { hkdfSync, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { ApiException } from '../../common/errors/api.exception';
 import { DatabaseService } from '../../infrastructure/database/database.service';
 import { appendAccountAudit } from '../users/account-audit';
@@ -95,18 +95,6 @@ export class MailService {
   requireAvailable() {
     if (!this.available)
       throw new ApiException('MAIL_SERVICE_UNAVAILABLE', 503);
-  }
-  challengeKey() {
-    this.requireAvailable();
-    return Buffer.from(
-      hkdfSync(
-        'sha256',
-        this.transport.config.secret,
-        'crm-account-mail',
-        'challenge-address-v1',
-        32,
-      ),
-    );
   }
 
   async enqueue(tx: Tx, event: SecurityEvent): Promise<void> {

@@ -11,7 +11,6 @@ const env: Record<string, string> = {
   SMTP_USER: 'account',
   SMTP_PASSWORD: 'private',
   MAIL_FROM: '百杰CRM <noreply@notice.baijiehub.com>',
-  MAIL_SECRET: 'a'.repeat(64),
   WEB_ORIGIN: 'https://example.org,https://crm.baijiehub.com',
 };
 const config = (data: Record<string, string>) => readMailConfig((k) => data[k]);
@@ -28,7 +27,6 @@ it('reports configuration names and selects the registered origin', () => {
     'SMTP_PASSWORD',
     'SMTP_USER',
     'MAIL_FROM',
-    'MAIL_SECRET',
     'WEB_ORIGIN',
   ]) {
     expect(config({ ...env, [k]: '' }).status.issues).toContain(k);

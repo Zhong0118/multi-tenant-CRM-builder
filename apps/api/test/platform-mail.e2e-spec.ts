@@ -22,7 +22,6 @@ const secretEnv = {
   SMTP_HOST: '127.0.0.1',
   SMTP_PORT: '1025',
   MAIL_FROM: 'noreply@notice.baijiehub.com',
-  MAIL_SECRET: 'f'.repeat(64),
 };
 describe('platform mail HTTP and account delivery', () => {
   let h: CriticalHarness, fixture: CriticalFixture, mail: MailService;
@@ -104,19 +103,21 @@ print(json.dumps({"to":msg["To"].addresses[0].addr_spec,"subject":str(msg["Subje
       .get(route + '/statistics')
       .set('Cookie', actor.cookie)
       .expect(200);
-    expect(stats.body.items).toContainEqual({
-      kind: 'test',
-      status: 'sent',
-      count: 1,
-    });
+    expect(stats.body).toHaveProperty(
+      'items',
+      expect.arrayContaining([{ kind: 'test', status: 'sent', count: 1 }]),
+    );
     expect(JSON.stringify(stats.body)).not.toContain(ownAddress);
     const ready = await request(h.app.getHttpServer())
       .get('/api/v1/platform/runtime-status')
       .set('Cookie', actor.cookie)
       .expect(200);
-    expect(ready.body.mail).toEqual({ ready: true, issues: [] });
-    expect(ready.body.services).toContainEqual(
-      expect.objectContaining({ key: 'mail', status: 'READY' }),
+    expect(ready.body).toHaveProperty('mail', { ready: true, issues: [] });
+    expect(ready.body).toHaveProperty(
+      'services',
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'mail', status: 'READY' }),
+      ]),
     );
   });
   it('rechecks version, isolates old-address bounces, stops on unknown and backs off only definite retries', async () => {

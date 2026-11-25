@@ -14,11 +14,6 @@ export function readMailConfig(get: (name: string) => string | undefined) {
   const pass = value('SMTP_PASSWORD');
   const from = value('MAIL_FROM');
   const replyTo = value('MAIL_REPLY_TO');
-  const secretText = value('MAIL_SECRET');
-  const secret =
-    /^[a-f0-9]{64,}$/i.test(secretText) && secretText.length % 2 === 0
-      ? Buffer.from(secretText, 'hex')
-      : Buffer.from(secretText, 'utf8');
   const origins = value('WEB_ORIGIN')
     .split(',')
     .map((s) => s.trim());
@@ -55,14 +50,11 @@ export function readMailConfig(get: (name: string) => string | undefined) {
     if (from !== registered && from !== '百杰CRM <' + registered + '>')
       issues.push('MAIL_FROM');
     if (replyTo && !validMailbox(replyTo)) issues.push('MAIL_REPLY_TO');
-    if (secret.length < 32 || secretText.trim() !== secretText)
-      issues.push('MAIL_SECRET');
     if (!origin) issues.push('WEB_ORIGIN');
   }
   return {
     status: { ready: !issues.length, issues },
     origin: origin ?? '',
-    secret,
     host,
     port,
     auth: user ? { user, pass } : undefined,
