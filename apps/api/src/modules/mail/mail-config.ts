@@ -55,7 +55,8 @@ export function readMailConfig(get: (name: string) => string | undefined) {
     if (from !== registered && from !== '百杰CRM <' + registered + '>')
       issues.push('MAIL_FROM');
     if (replyTo && !validMailbox(replyTo)) issues.push('MAIL_REPLY_TO');
-    if (secret.length < 32) issues.push('MAIL_SECRET');
+    if (secret.length < 32 || secretText.trim() !== secretText)
+      issues.push('MAIL_SECRET');
     if (!origin) issues.push('WEB_ORIGIN');
   }
   return {

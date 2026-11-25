@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+import { captureMail } from './helpers/mail-capture';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { MailService } from '../src/modules/mail/mail.service';
@@ -24,7 +26,7 @@ const secretEnv = {
 };
 describe('platform mail HTTP and account delivery', () => {
   let h: CriticalHarness, fixture: CriticalFixture, mail: MailService;
-  let deliver: jest.SpyInstance;
+  let capture: ReturnType<typeof captureMail>;
   const route = '/api/v1/platform/mail';
   const path = (actor: { cookie: string }, body: object = {}) =>
     request(h.app.getHttpServer())
@@ -35,12 +37,11 @@ describe('platform mail HTTP and account delivery', () => {
   beforeAll(async () => {
     Object.assign(process.env, secretEnv);
     h = await createCriticalHarness();
-    fixture = await provisionCriticalFixture(h);
+    capture = captureMail(h.app.get(MailTransport));
     mail = h.app.get(MailService);
-    deliver = jest.spyOn(h.app.get(MailTransport), 'deliver');
+    fixture = await provisionCriticalFixture(h);
   });
   afterAll(async () => {
-    deliver?.mockRestore();
     if (h) await closeCriticalHarness(h);
     for (const key of Object.keys(secretEnv)) delete process.env[key];
   });
@@ -63,15 +64,38 @@ describe('platform mail HTTP and account delivery', () => {
       data: { email: ownAddress, emailVerifiedAt: new Date() },
     });
     await path(actor, { recipient: 'third-party@example.test' }).expect(400);
-    deliver.mockResolvedValue({ action: 'sent', providerId: 'test-123' });
+    capture.outcome = { action: 'sent', providerId: 'test-123' };
     const results = await Promise.all([path(actor), path(actor)]);
     expect(results.map((r) => r.status).sort()).toEqual([200, 429]);
     expect(results.find((r) => r.status === 200)?.body).toEqual({
       status: 'sent',
       errorCode: null,
     });
-    expect(deliver).toHaveBeenCalledTimes(1);
-    expect(deliver.mock.calls[0][0]).toBe(ownAddress);
+    expect(capture.messages).toHaveLength(1);
+    const [sent] = capture.messages;
+    expect(sent.recipients).toEqual([ownAddress]);
+    const decoded = JSON.parse(
+      execFileSync(
+        'python3',
+        [
+          '-c',
+          `
+import email, email.policy, json, sys
+msg = email.message_from_bytes(sys.stdin.buffer.read(), policy=email.policy.default)
+print(json.dumps({"to":msg["To"].addresses[0].addr_spec,"subject":str(msg["Subject"]),
+  "html":msg.get_body(("html",)).get_content(),"text":msg.get_body(("plain",)).get_content()}))
+`,
+        ],
+        { input: sent.raw, encoding: 'utf8' },
+      ),
+    ) as { to: string; subject: string; text: string; html: string };
+    expect(decoded.to).toBe(ownAddress);
+    expect(decoded.subject).toBe('百杰 CRM · 测试邮件');
+    expect(decoded.text).toContain('此邮件用于测试平台发信配置。');
+    expect(decoded.html).toContain(
+      '<p style="line-height:1.6">此邮件用于测试平台发信配置。</p>',
+    );
+    expect(sent.raw.toString()).not.toMatch(/^List-Unsubscribe:/im);
     const audit = await h.adminDatabase.auditLog.findFirstOrThrow({
       where: { action: 'account.mail_test', actorId: actor.userId },
     });
@@ -127,7 +151,7 @@ describe('platform mail HTTP and account delivery', () => {
     const old = await event('email_changed', {
       oldEmail: 'previous@example.test',
     });
-    deliver.mockResolvedValue(bounce);
+    capture.outcome = bounce;
     await mail.sweep();
     expect(await read(old)).toMatchObject({
       status: 'failed',
@@ -138,7 +162,7 @@ describe('platform mail HTTP and account delivery', () => {
         .emailUndeliverableAt,
     ).toBeNull();
     const temporary = await event('password_reset');
-    deliver.mockResolvedValue({ action: 'retry', code: 'quota' });
+    capture.outcome = { action: 'retry', code: 'quota' };
     for (let attempt = 1; attempt <= 6; attempt++) {
       await mail.sweep();
       expect(await read(temporary)).toMatchObject({
@@ -155,7 +179,7 @@ describe('platform mail HTTP and account delivery', () => {
       }
     }
     const unknown = await event('password_reset');
-    deliver.mockResolvedValue({ action: 'unknown', code: 'uncertain' });
+    capture.outcome = { action: 'unknown', code: 'uncertain' };
     await mail.sweep();
     await mail.sweep();
     expect(await read(unknown)).toMatchObject({
@@ -169,7 +193,7 @@ describe('platform mail HTTP and account delivery', () => {
     });
     await mail.sweep();
     expect(await read(stale)).toMatchObject({ status: 'skipped', attempts: 0 });
-    deliver.mockResolvedValue(bounce);
+    capture.outcome = bounce;
     const challengeId = randomUUID(),
       code = '093814';
     const sent = await mail.sendCode({

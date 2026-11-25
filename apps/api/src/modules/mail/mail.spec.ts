@@ -106,6 +106,7 @@ it('renders escaped multipart content and masks recipient addresses', () => {
     env.WEB_ORIGIN.split(',')[1],
   );
   expect(code.subject).not.toContain('012345');
+  expect(code.html.split('</div>')[0]).not.toContain('012345');
   expect(code.text).toContain('012345');
   expect(code.html).toContain('10 分钟');
   const device = renderMail(

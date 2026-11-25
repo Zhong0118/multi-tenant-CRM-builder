@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createTransport } from 'nodemailer';
-import { readMailConfig } from './mail-config';
+import { readMailConfig, type MailConfig } from './mail-config';
 
 type Failure = {
   action: 'retry' | 'failed' | 'unknown';
@@ -67,6 +67,23 @@ export function classifySmtpError(error: unknown): Failure {
   return { action: 'unknown', code: 'uncertain' };
 }
 
+export type MailContent = { subject: string; html: string; text: string };
+
+export function composeMessage(
+  config: MailConfig,
+  to: string,
+  id: string,
+  content: MailContent,
+) {
+  return {
+    from: config.from,
+    replyTo: config.replyTo,
+    to: { name: '', address: to },
+    messageId: '<' + id + '@notice.baijiehub.com>',
+    ...content,
+  };
+}
+
 @Injectable()
 export class MailTransport {
   readonly config;
@@ -94,17 +111,13 @@ export class MailTransport {
   async deliver(
     to: string,
     id: string,
-    content: { subject: string; html: string; text: string },
+    content: MailContent,
   ): Promise<SmtpOutcome> {
     if (!this.smtp) return { action: 'failed', code: 'rejected' };
     try {
       const info = await this.smtp.sendMail({
-        from: this.config.from,
-        replyTo: this.config.replyTo,
-        to: { name: '', address: to },
-        messageId: '<' + id + '@notice.baijiehub.com>',
+        ...composeMessage(this.config, to, id, content),
         signal: AbortSignal.timeout(25_000),
-        ...content,
       });
       if (info.accepted.length !== 1)
         return { action: 'unknown', code: 'uncertain' };

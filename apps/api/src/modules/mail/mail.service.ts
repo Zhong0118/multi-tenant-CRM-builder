@@ -248,7 +248,8 @@ export class MailService {
   }
 
   async sweep() {
-    await this.database.client.$queryRaw`SELECT public.mail_maintain(), public.auth_prune_email_identity()`;
+    await this.database.client
+      .$queryRaw`SELECT public.mail_maintain(), public.auth_prune_email_identity()`;
     if (!this.available) return;
     const batch = await this.database.client.$queryRaw<
       Claim[]

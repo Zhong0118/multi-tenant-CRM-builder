@@ -91,6 +91,31 @@ export function renderMail(
     ...paragraphs,
     ...(link ? [label + ' ' + link] : []),
   ].join('\n\n');
-  const html = `<!doctype html><html lang="zh-CN"><body style="margin:0;background:#f5f7fa;font-family:-apple-system,'Microsoft YaHei',Arial,sans-serif"><div style="display:none;max-height:0;overflow:hidden">百杰 CRM 账号通知 · ${escape(heading)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:20px 12px"><!--[if mso]><table width="600"><tr><td><![endif]--><table role="presentation" width="100%" style="max-width:600px;background:white"><tr><td style="padding:32px;color:#172033"><b>百杰 CRM</b><h1 style="font-size:22px">${escape(heading)}</h1>${paragraphs.map((p) => '<p style="line-height:1.6">' + escape(p) + '</p>').join('')}${link ? '<p><a href="' + escape(link) + '">' + label + '</a></p>' : ''}</td></tr></table><!--[if mso]></td></tr></table><![endif]--></td></tr></table></body></html>`;
+  const body = paragraphs
+    .map((p) => `<p style="line-height:1.6">${escape(p)}</p>`)
+    .join('\n');
+  const action = link ? `<p><a href="${escape(link)}">${label}</a></p>` : '';
+  // Many inboxes append the beginning of the body to a short preheader.
+  const previewPadding = kind.startsWith('code_')
+    ? '&zwnj;&nbsp;'.repeat(100)
+    : '';
+  const html = `<!doctype html>
+<html lang="zh-CN">
+<body style="margin:0;background:#f5f7fa;font-family:-apple-system,'Microsoft YaHei',Arial,sans-serif">
+  <div style="display:none;max-height:0;overflow:hidden">百杰 CRM 账号通知 · ${escape(heading)}${previewPadding}</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
+    <td align="center" style="padding:20px 12px">
+      <!--[if mso]><table width="600"><tr><td><![endif]-->
+      <table role="presentation" width="100%" style="max-width:600px;background:white"><tr>
+        <td style="padding:32px;color:#172033">
+          <b>百杰 CRM</b><h1 style="font-size:22px">${escape(heading)}</h1>
+          ${body}
+          ${action}
+        </td>
+      </tr></table>
+      <!--[if mso]></td></tr></table><![endif]-->
+    </td>
+  </tr></table>
+</body></html>`;
   return { subject, text, html };
 }
