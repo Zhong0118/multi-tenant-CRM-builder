@@ -119,4 +119,10 @@ it('renders escaped multipart content and masks recipient addresses', () => {
   expect(device.html).toContain('&lt;i&gt;Chrome');
   expect(device.html).not.toContain('<i>');
   expect(device.text).toContain('https://crm.baijiehub.com/account/security');
+  // One template: the code in a monospace block, facts as rows, one button.
+  expect(code.html).toContain('monospace');
+  expect(code.html).not.toContain('<a href');
+  expect(device.text).toContain('设备：<i>Chrome</i>');
+  expect(device.html).toContain('查看登录设备');
+  expect(device.html).toContain('你收到这封邮件');
 });
