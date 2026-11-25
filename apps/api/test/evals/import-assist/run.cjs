@@ -10,7 +10,7 @@ const {
   buildImportPreview,
   applyImportAdvice,
   reviewImportPlan,
-  aiImportableField,
+  importableField,
 } = web('record-import-assist');
 const { OWNER } = web('record-import-mapping');
 const { targetKey, score, business, bulkReviewed } = require('./score.cjs');
@@ -140,7 +140,7 @@ async function run(h, entry, protectedCells) {
   const sheet = answer.sheetName ?? '';
   const selection = file.headerSelection(
     sheet,
-    fields.filter(aiImportableField),
+    fields.filter(importableField),
   );
   // Both paths simulate correcting the selector before applying mappings.
   const header = answer.headerRow;

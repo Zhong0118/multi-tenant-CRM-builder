@@ -147,6 +147,47 @@ async function checkAndImport() {
   fireEvent.click(await screen.findByRole("button", { name: /确认导入/ }));
 }
 describe("RecordImportDrawer", () => {
+  it("uses admin-only fields for local header detection and mapping while excluding them from AI", async () => {
+    const call = vi
+      .spyOn(assistApi, "requestImportAssist")
+      .mockResolvedValueOnce({
+        version: 1,
+        generatedAt: "2026-11-25T00:00:00Z",
+        columns: [],
+        matchFields: [],
+      });
+    const privateField = {
+      ...schema.fields[0],
+      fieldKey: "internal_price",
+      label: "内部底价",
+      importManualOnly: true,
+    };
+    setup(
+      recordApi(),
+      { ...schema, fields: [...schema.fields, privateField] },
+      true,
+      undefined,
+      true,
+    );
+    chooseFile("报价台账\n\n内部底价,客户别称\n987654,样例客户");
+    await screen.findByText("已识别第 3 行为表头，可手动调整");
+    expect(
+      screen.getByLabelText("映射 内部底价").closest(".ant-select"),
+    ).toHaveTextContent("内部底价（仅手动对照）");
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    await waitFor(() => expect(call).toHaveBeenCalled());
+    const request = call.mock.lastCall![2];
+    expect(request.columns[0]).toMatchObject({
+      excluded: true,
+      header: "",
+      samples: [],
+    });
+    expect(JSON.stringify(request)).not.toMatch(
+      /内部底价|internal_price|987654/,
+    );
+    call.mockRestore();
+  });
+
   it("counts only typed cells treated as empty in the checked plan", async () => {
     const { api } = setup(recordApi(), schema);
     chooseFile("姓名,线索状态\nNaN,#N/A\n普通姓名,null");

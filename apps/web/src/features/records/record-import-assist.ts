@@ -49,7 +49,7 @@ export function emptyAssistDraft(
   admin: boolean,
 ): AssistDraft {
   return {
-    mapping: initialMapping(headers, fields.filter(aiImportableField), admin),
+    mapping: initialMapping(headers, fields.filter(importableField), admin),
     manual: [],
     matchFields: [],
     dateOrders: {},

@@ -68,7 +68,6 @@ import {
   applyImportAdvice,
   reviewImportPlan,
   importableField,
-  aiImportableField,
   isOptionField,
   type AssistDraft,
   type ImportPreview,
@@ -123,10 +122,6 @@ export function RecordImportDrawer({
   const importable = useMemo(
     () => schema.fields.filter(importableField),
     [schema.fields],
-  );
-  const autoFields = useMemo(
-    () => (assistEnabled ? importable.filter(aiImportableField) : importable),
-    [assistEnabled, importable],
   );
   const [evidence, setEvidence] = useState<{
     parsed: ParsedCsv;
@@ -491,7 +486,7 @@ export function RecordImportDrawer({
     name: string,
     request: number,
   ) {
-    const selection = nextSource.headerSelection(name, autoFields);
+    const selection = nextSource.headerSelection(name, importable);
     const [id, identity] = await Promise.all([
       importBatchId(nextSource.bytes, name),
       importBatchId(nextSource.bytes, ""),
@@ -534,7 +529,7 @@ export function RecordImportDrawer({
     try {
       const next = file.sheet(name, row);
       setParsed(next);
-      setMapping(initialMapping(next.headers, autoFields, canChooseOwner));
+      setMapping(initialMapping(next.headers, importable, canChooseOwner));
     } catch (err) {
       showFileError(err);
     }

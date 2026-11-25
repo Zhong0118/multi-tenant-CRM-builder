@@ -211,7 +211,7 @@ describe("browser import assistance", () => {
       })),
     );
   });
-  it("leaves restricted admin fields for manual import and excludes aliases after manual mapping", async () => {
+  it("maps restricted admin fields locally and excludes exact headings and manually mapped aliases from AI", async () => {
     const privateField = {
       ...field("audit", "审核编号"),
       importManualOnly: true,
@@ -223,7 +223,7 @@ describe("browser import assistance", () => {
     );
     const parsed = file.sheet("", 1);
     const draft = emptyAssistDraft(parsed.headers, all, true);
-    expect(draft.mapping[1]).toBe(SKIP);
+    expect(draft.mapping[1]).toBe("audit");
     draft.mapping[2] = "audit";
     draft.manual.push(2);
     const p = buildImportPreview({
@@ -455,7 +455,7 @@ describe("browser import assistance", () => {
       ...decided,
       destination: () => ({ kind: "default" }),
     });
-    expect(rows[0]).toMatchObject({ values: { tier: null, amount: "20000" } });
+    expect(rows[0]).toMatchObject({ values: { tier: ["a"], amount: "20000" } });
     expect(rows[1]).toMatchObject({
       values: { amount: "3" },
       error: { code: "RECORD_IMPORT_INVALID" },
