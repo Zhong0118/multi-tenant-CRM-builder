@@ -3,9 +3,16 @@ import { encodeAvatar } from './avatar-codec';
 
 describe('avatar decoding', () => {
   it('auto-orients and crops a tagged JPEG to a metadata-free 256px WebP', async () => {
-    const image = await sharp({
-      create: { width: 80, height: 40, channels: 3, background: '#e02020' },
+    // EXIF orientation 6 turns the red left half into the top half.
+    const left = await sharp({
+      create: { width: 40, height: 40, channels: 3, background: 'red' },
     })
+      .png()
+      .toBuffer();
+    const image = await sharp({
+      create: { width: 80, height: 40, channels: 3, background: 'blue' },
+    })
+      .composite([{ input: left, left: 0, top: 0 }])
       .jpeg()
       .withMetadata({ orientation: 6 })
       .withExif({
@@ -19,7 +26,15 @@ describe('avatar decoding', () => {
     expect(meta).toMatchObject({ format: 'webp', width: 256, height: 256 });
     expect(meta.exif).toBeUndefined();
     expect(meta.xmp).toBeUndefined();
-    expect((await sharp(output).stats()).channels[0].mean).toBeGreaterThan(200);
+    const { data, info } = await sharp(output)
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const top = (32 * info.width + 128) * info.channels;
+    const bottom = (224 * info.width + 128) * info.channels;
+    expect(data[top]).toBeGreaterThan(220);
+    expect(data[top + 2]).toBeLessThan(30);
+    expect(data[bottom + 2]).toBeGreaterThan(220);
+    expect(data[bottom]).toBeLessThan(30);
   });
   it('rejects disguised input, corrupt pixels, huge rasters and animations', async () => {
     const huge = await sharp({
