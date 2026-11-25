@@ -27,15 +27,6 @@ export interface ImportFile {
   sheet: (name: string, headerRow?: number) => ParsedCsv;
 }
 
-function looksLikeLabel(value: string) {
-  return (
-    value.length <= 40 &&
-    /\p{L}/u.test(value) &&
-    !/[\n\r@]/.test(value) &&
-    !/^[-+]?\d/.test(value)
-  );
-}
-
 function selectHeader(rows: SourceRow[], fields: MatchFields): HeaderSelection {
   const leadingRows = rows
     .slice(0, HEADER_ROW_LIMIT)
@@ -53,39 +44,34 @@ function selectHeader(rows: SourceRow[], fields: MatchFields): HeaderSelection {
       !rows[index + 1] ||
       leadingRows[index].cells.length > RECORD_IMPORT_MAX_COLUMNS
     )
-      return { index, matches: 0, shaped: false };
-    const keys = cells
-      .map((cell) => suggestFieldKey(cell, fields))
-      .filter(Boolean);
-    const labels = cells.map((cell) => cell.trim()).filter(Boolean);
-    const shortLabels = labels.filter(looksLikeLabel).length;
-    const shaped =
-      shortLabels >= 2 &&
-      shortLabels > labels.length / 2 &&
-      rows.slice(index + 1, index + 4).some((row) => {
-        const belowLabels = cells
-          .map((label, i) => label.trim() && row.cells[i]?.trim())
-          .filter(Boolean);
-        return (
-          belowLabels.length >= 2 &&
-          belowLabels.some((value) => !looksLikeLabel(value))
-        );
-      });
-    return { index, matches: new Set(keys).size, shaped };
+      return 0;
+    return new Set(
+      cells.map((cell) => suggestFieldKey(cell, fields)).filter(Boolean),
+    ).size;
   });
-  const mostMatches = Math.max(...scores.map((candidate) => candidate.matches));
-  const best = scores.filter((candidate) => candidate.matches === mostMatches);
-  const shaped = best.filter((candidate) => candidate.shaped);
-  const found =
-    mostMatches > 0 && best.length === 1
-      ? best[0]
-      : mostMatches === 0 || shaped.length === 1
-        ? shaped[0]
-        : undefined;
+  const highest = Math.max(...scores);
+  if (highest > 0 && scores.indexOf(highest) === scores.lastIndexOf(highest))
+    return {
+      candidates,
+      headerRow: candidates[scores.indexOf(highest)].rowNumber,
+      detected: true,
+    };
+  const count = (cells: string[]) =>
+    cells.filter((cell) => cell?.trim()).length;
+  const widest = Math.max(...candidates.map((row) => count(row.cells)));
+  const fallback = candidates.find(({ cells }, i) => {
+    const width = count(cells);
+    const nextWidth = count(rows[i + 1]?.cells ?? []);
+    return (
+      width >= widest / 2 &&
+      nextWidth > 0 &&
+      Math.abs(width - nextWidth) <= Math.floor(Math.max(width, nextWidth) / 4)
+    );
+  });
   return {
     candidates,
-    headerRow: candidates[found?.index ?? 0].rowNumber,
-    detected: !!found,
+    headerRow: (fallback ?? candidates[0]).rowNumber,
+    detected: false,
   };
 }
 
@@ -118,6 +104,15 @@ function readTable(
     headers: pad(header.cells).map((label) => label.trim()),
     rows: body.map((row) => pad(row.cells)),
     rowNumbers: body.map((row) => row.rowNumber),
+    ...(body.some((row) => row.formulaErrors)
+      ? {
+          formulaErrors: Object.fromEntries(
+            body
+              .filter((row) => row.formulaErrors)
+              .map((row) => [row.rowNumber, row.formulaErrors!]),
+          ),
+        }
+      : {}),
   };
 }
 
@@ -190,16 +185,25 @@ export async function readImportFile(
     const ws = workbook.Sheets[name];
     if (!ws) throw new Error("无法读取工作表，请在 Excel 中另存为 XLSX 重试。");
     const byNumber = new Map<number, string[]>();
+    const formulaErrors = new Map<number, number[]>();
     for (const address of Object.keys(ws)) {
       if (address.startsWith("!")) continue;
       const { r, c } = XLSX.utils.decode_cell(address);
       const cell = ws[address];
-      if (cell.t === "e" || (cell.f && (cell.t === "z" || cell.v == null)))
+      if (cell.f && (cell.t === "z" || cell.v == null))
         throw new Error(
           `第 ${r + 1} 行存在错误或未计算的公式，请在 Excel 中重新计算并保存。`,
         );
       if (cell.t === "z" || cell.v == null) continue;
       let value = String(cell.v);
+      if (cell.t === "e") {
+        value = XLSX.utils.format_cell(cell);
+        if (value !== "#N/A") {
+          const columns = formulaErrors.get(r + 1) ?? [];
+          columns.push(c);
+          formulaErrors.set(r + 1, columns);
+        }
+      }
       if (cell.t === "n") {
         if (cell.z && XLSX.SSF.is_date(cell.z)) {
           const date = XLSX.SSF.parse_date_code(cell.v as number, {
@@ -229,6 +233,9 @@ export async function readImportFile(
       byNumber.set(number, cells);
     }
     cachedRows = Array.from(byNumber, ([rowNumber, cells]) => ({
+      ...(formulaErrors.has(rowNumber)
+        ? { formulaErrors: formulaErrors.get(rowNumber) }
+        : {}),
       rowNumber,
       cells,
     }))

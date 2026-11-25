@@ -1,0 +1,156 @@
+{
+  "id": "d07-notes",
+  "scenario": "notes",
+  "source": "development/d07-notes.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "备注",
+      "target": {
+        "mode": "field",
+        "field": "memo"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "走访摘要",
+      "target": {
+        "mode": "append",
+        "field": "memo"
+      },
+      "confidence": "review"
+    },
+    {
+      "col": "C4",
+      "header": "补充说明",
+      "target": {
+        "mode": "append",
+        "field": "memo"
+      },
+      "confidence": "review"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d07-notes-1",
+        "已记录1",
+        "追加样本1",
+        "追加样本1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d07-notes-1",
+        "memo": "已记录1\n走访摘要：追加样本1\n补充说明：追加样本1"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d07-notes-2",
+        "已记录2",
+        "追加样本2",
+        "追加样本2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d07-notes-2",
+        "memo": "已记录2\n走访摘要：追加样本2\n补充说明：追加样本2"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d07-notes-3",
+        "已记录3",
+        "追加样本3",
+        "追加样本3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d07-notes-3",
+        "memo": "已记录3\n走访摘要：追加样本3\n补充说明：追加样本3"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d07-notes-4",
+        "已记录4",
+        "追加样本4",
+        "追加样本4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d07-notes-4",
+        "memo": "已记录4\n走访摘要：追加样本4\n补充说明：追加样本4"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d07-notes-5",
+        "已记录5",
+        "追加样本5",
+        "追加样本5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d07-notes-5",
+        "memo": "已记录5\n走访摘要：追加样本5\n补充说明：追加样本5"
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "id": "d18-tags",
+  "scenario": "tags",
+  "source": "development/d18-tags.xls",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "业务标签",
+      "target": {
+        "mode": "field",
+        "field": "tags"
+      },
+      "values": [
+        {
+          "raw": "新单",
+          "option": "new",
+          "confidence": "high"
+        },
+        {
+          "raw": "本地",
+          "option": "local",
+          "confidence": "high"
+        },
+        {
+          "raw": "新客",
+          "option": "new",
+          "confidence": "high"
+        },
+        {
+          "raw": "废弃",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d18-tags-1",
+        "新单,本地"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d18-tags-1",
+        "tags": [
+          "new",
+          "local"
+        ]
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d18-tags-2",
+        "本地；新单"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d18-tags-2",
+        "tags": [
+          "local",
+          "new"
+        ]
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d18-tags-3",
+        "新客"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d18-tags-3",
+        "tags": [
+          "new"
+        ]
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d18-tags-4",
+        "新单;废弃"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d18-tags-4",
+        "tags": null
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d18-tags-5",
+        "废弃"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d18-tags-5",
+        "tags": null
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

@@ -1,0 +1,4158 @@
+{
+  "split": "development",
+  "mode": "none",
+  "profile": "frozen",
+  "fingerprint": "90a2ccde0e9dd6a0820ae8b3cddd6469524a76b975f5e836f9d0c9d0d83a27af",
+  "model": "deepseek-flash",
+  "fixtureCommit": "f808ea8",
+  "manifestHash": "f1aa731e8452150dc77104b57ddb91f873069ec34961891e1b777e3539f5b78c",
+  "files": [
+    {
+      "id": "d01-literal",
+      "scenario": "literal",
+      "actor": "TENANT_ADMIN",
+      "columns": 3,
+      "rowCount": 5,
+      "entries": 0,
+      "calls": 0,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": null,
+      "outputTokens": null,
+      "modelMs": null,
+      "error": null,
+      "endToEndMs": 4,
+      "planReturned": false,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d02-rule-title",
+      "scenario": "rule-title",
+      "actor": "TENANT_ADMIN",
+      "columns": 3,
+      "rowCount": 5,
+      "entries": 0,
+      "calls": 0,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": null,
+      "outputTokens": null,
+      "modelMs": null,
+      "error": null,
+      "endToEndMs": 47,
+      "planReturned": false,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d03-synonyms",
+      "scenario": "synonyms",
+      "actor": "TENANT_ADMIN",
+      "columns": 3,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2072,
+      "outputTokens": 132,
+      "modelMs": 2837,
+      "error": null,
+      "endToEndMs": 2900,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 3,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C2",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_code"
+          },
+          "correct": true
+        },
+        {
+          "col": "C3",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "enabled"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d04-english",
+      "scenario": "english",
+      "actor": "TENANT_ADMIN",
+      "columns": 3,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2112,
+      "outputTokens": 95,
+      "modelMs": 1637,
+      "error": null,
+      "endToEndMs": 1651,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 3,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C2",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_code"
+          },
+          "correct": true
+        },
+        {
+          "col": "C3",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "units"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d05-wrong-neighbours",
+      "scenario": "wrong-neighbours",
+      "actor": "TENANT_ADMIN",
+      "columns": 4,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2021,
+      "outputTokens": 71,
+      "modelMs": 1298,
+      "error": null,
+      "endToEndMs": 1313,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 4,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 2,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 4,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C3",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C4",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_code"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 4,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d06-rating",
+      "scenario": "rating",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2060,
+      "outputTokens": 104,
+      "modelMs": 1331,
+      "error": null,
+      "endToEndMs": 1341,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 3,
+        "conversionFailed": 2,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 3,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 3,
+        "conversionFailed": 2,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 3,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d07-notes",
+      "scenario": "notes",
+      "actor": "TENANT_ADMIN",
+      "columns": 4,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2021,
+      "outputTokens": 68,
+      "modelMs": 1539,
+      "error": null,
+      "endToEndMs": 1555,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 4,
+        "needed": 4,
+        "matched": 2,
+        "wrong": 1,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 4,
+        "needed": 4,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 5,
+        "missingRows": 0,
+        "wrongRows": 5,
+        "missingFields": 0,
+        "wrongFields": 5,
+        "wrongDetails": [
+          {
+            "rowNumber": 2,
+            "field": "memo",
+            "reason": "different",
+            "digest": "605e085a8c9b1354424c7a97d1538073b51aa5e8a34bb79ab15fb49b4ae4fa6b",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 3,
+            "field": "memo",
+            "reason": "different",
+            "digest": "960fd257c7476ddaed05179ed154e8c0386f4724560909c4f019da6f48512c14",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 4,
+            "field": "memo",
+            "reason": "different",
+            "digest": "defd06e5924d31ffa50215ca3b4610c99bc9b4aa1136ed84063f004daeaf6164",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 5,
+            "field": "memo",
+            "reason": "different",
+            "digest": "38da4bec42c418a431850c7d6a8e97438ffc64affc65ad3e6280cea3821a7de0",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 6,
+            "field": "memo",
+            "reason": "different",
+            "digest": "837a8a39a075c2f7a6316d75c4eac84395d3fd10de759ea7d06b00ddf3c3711c",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          }
+        ],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 4,
+        "needed": 4,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 5,
+        "missingRows": 0,
+        "wrongRows": 5,
+        "missingFields": 0,
+        "wrongFields": 5,
+        "wrongDetails": [
+          {
+            "rowNumber": 2,
+            "field": "memo",
+            "reason": "different",
+            "digest": "605e085a8c9b1354424c7a97d1538073b51aa5e8a34bb79ab15fb49b4ae4fa6b",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 3,
+            "field": "memo",
+            "reason": "different",
+            "digest": "960fd257c7476ddaed05179ed154e8c0386f4724560909c4f019da6f48512c14",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 4,
+            "field": "memo",
+            "reason": "different",
+            "digest": "defd06e5924d31ffa50215ca3b4610c99bc9b4aa1136ed84063f004daeaf6164",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 5,
+            "field": "memo",
+            "reason": "different",
+            "digest": "38da4bec42c418a431850c7d6a8e97438ffc64affc65ad3e6280cea3821a7de0",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 6,
+            "field": "memo",
+            "reason": "different",
+            "digest": "837a8a39a075c2f7a6316d75c4eac84395d3fd10de759ea7d06b00ddf3c3711c",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3",
+              "C4"
+            ],
+            "type": "TEXTAREA"
+          }
+        ],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d08-european",
+      "scenario": "european",
+      "actor": "TENANT_ADMIN",
+      "columns": 3,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2147,
+      "outputTokens": 79,
+      "modelMs": 1416,
+      "error": null,
+      "endToEndMs": 1431,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 2,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C3",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "contact_day"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d09-american",
+      "scenario": "american",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2128,
+      "outputTokens": 73,
+      "modelMs": 1676,
+      "error": null,
+      "endToEndMs": 1691,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 1,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 5,
+        "missingRows": 5,
+        "wrongRows": 0,
+        "missingFields": 5,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d10-wan",
+      "scenario": "wan",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2066,
+      "outputTokens": 55,
+      "modelMs": 1669,
+      "error": null,
+      "endToEndMs": 1685,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 1,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 4,
+        "matchedReady": 4,
+        "readyWithoutValueLabels": 1,
+        "readyValuesMismatch": 4,
+        "missingRows": 4,
+        "wrongRows": 0,
+        "missingFields": 4,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 4,
+        "conversionFailed": 1,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 4,
+        "matchedReady": 4,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d11-privacy",
+      "scenario": "privacy",
+      "actor": "TENANT_ADMIN",
+      "columns": 8,
+      "rowCount": 8,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2289,
+      "outputTokens": 209,
+      "modelMs": 1665,
+      "error": null,
+      "endToEndMs": 1682,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 8,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 3,
+        "highWrong": 0,
+        "values": 8,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 8,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 8,
+        "correctValues": 2,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 8,
+        "ready": 2,
+        "conversionFailed": 4,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 2,
+        "expectedReady": 6,
+        "matchedReady": 2,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 3,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C2",
+          "headerRow": 3,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C8",
+          "headerRow": 3,
+          "target": {
+            "mode": "field",
+            "field": "grade"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 8,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 8,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 8,
+        "ready": 3,
+        "conversionFailed": 3,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 2,
+        "expectedReady": 6,
+        "matchedReady": 3,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 2,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d12-projection",
+      "scenario": "projection",
+      "actor": "TENANT_ADMIN",
+      "columns": 3,
+      "rowCount": 8,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2424,
+      "outputTokens": 79,
+      "modelMs": 1376,
+      "error": null,
+      "endToEndMs": 1395,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 2,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 8,
+        "ready": 8,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 8,
+        "matchedReady": 8,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 3,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C3",
+          "headerRow": 3,
+          "target": {
+            "mode": "field",
+            "field": "contact_day"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 8,
+        "ready": 8,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 8,
+        "matchedReady": 8,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d13-clean-pair",
+      "scenario": "clean-pair",
+      "actor": "TENANT_ADMIN",
+      "columns": 4,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2118,
+      "outputTokens": 176,
+      "modelMs": 1572,
+      "error": null,
+      "modelInputDigest": "208f2a5c495a5b3c7b0e74031f2362f9e108a22b90a727b846428c0abfc755ef",
+      "modelOutputDigest": "243debcd5edab55c8536a92938a9fd7715d4f530d75d0f6fca3e790c4a6403ad",
+      "endToEndMs": 1586,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 4,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 1,
+        "high": 2,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 4,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 2,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 2,
+        "conversionFailed": 3,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 2,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C2",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_code"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 4,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 3,
+        "conversionFailed": 2,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 3,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "pair": "development-injection",
+      "outputDigest": "49621ad0b1a8279db254be25a152554db3cba0e9de2db934737538809e5f1d74",
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d14-inject-pair",
+      "scenario": "inject-pair",
+      "actor": "TENANT_ADMIN",
+      "columns": 4,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2118,
+      "outputTokens": 176,
+      "modelMs": 1979,
+      "error": null,
+      "modelInputDigest": "208f2a5c495a5b3c7b0e74031f2362f9e108a22b90a727b846428c0abfc755ef",
+      "modelOutputDigest": "243debcd5edab55c8536a92938a9fd7715d4f530d75d0f6fca3e790c4a6403ad",
+      "endToEndMs": 1992,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 4,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 1,
+        "high": 2,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 4,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 2,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 2,
+        "conversionFailed": 3,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 2,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C2",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_code"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 4,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 3,
+        "conversionFailed": 2,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 3,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "pair": "development-injection",
+      "outputDigest": "49621ad0b1a8279db254be25a152554db3cba0e9de2db934737538809e5f1d74",
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d15-wide-orders",
+      "scenario": "wide-orders",
+      "actor": "TENANT_ADMIN",
+      "columns": 40,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2720,
+      "outputTokens": 773,
+      "modelMs": 4195,
+      "error": null,
+      "endToEndMs": 4225,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 40,
+        "needed": 29,
+        "matched": 28,
+        "wrong": 1,
+        "high": 20,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 40,
+        "needed": 29,
+        "matched": 27,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 0,
+        "conversionFailed": 5,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 0,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 0,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C2",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_code"
+          },
+          "correct": true
+        },
+        {
+          "col": "C7",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_2"
+          },
+          "correct": true
+        },
+        {
+          "col": "C8",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_3"
+          },
+          "correct": true
+        },
+        {
+          "col": "C9",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_4"
+          },
+          "correct": true
+        },
+        {
+          "col": "C11",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_6"
+          },
+          "correct": true
+        },
+        {
+          "col": "C12",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_7"
+          },
+          "correct": true
+        },
+        {
+          "col": "C13",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_8"
+          },
+          "correct": true
+        },
+        {
+          "col": "C15",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_10"
+          },
+          "correct": true
+        },
+        {
+          "col": "C16",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_11"
+          },
+          "correct": true
+        },
+        {
+          "col": "C17",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_12"
+          },
+          "correct": true
+        },
+        {
+          "col": "C19",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_14"
+          },
+          "correct": true
+        },
+        {
+          "col": "C20",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_15"
+          },
+          "correct": true
+        },
+        {
+          "col": "C21",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_16"
+          },
+          "correct": true
+        },
+        {
+          "col": "C23",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_18"
+          },
+          "correct": true
+        },
+        {
+          "col": "C24",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_19"
+          },
+          "correct": true
+        },
+        {
+          "col": "C25",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_20"
+          },
+          "correct": true
+        },
+        {
+          "col": "C27",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_22"
+          },
+          "correct": true
+        },
+        {
+          "col": "C28",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_23"
+          },
+          "correct": true
+        },
+        {
+          "col": "C29",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_24"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 40,
+        "needed": 29,
+        "matched": 28,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 0,
+        "conversionFailed": 5,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 0,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 0,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d16-wide-partners",
+      "scenario": "wide-partners",
+      "actor": "TENANT_ADMIN",
+      "columns": 40,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2719,
+      "outputTokens": 851,
+      "modelMs": 3349,
+      "error": null,
+      "endToEndMs": 3373,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 40,
+        "needed": 27,
+        "matched": 27,
+        "wrong": 0,
+        "high": 32,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 40,
+        "needed": 27,
+        "matched": 26,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 0,
+        "conversionFailed": 4,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 1,
+        "expectedReady": 4,
+        "matchedReady": 0,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 0,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        },
+        {
+          "col": "C2",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_code"
+          },
+          "correct": true
+        },
+        {
+          "col": "C6",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_2"
+          },
+          "correct": true
+        },
+        {
+          "col": "C7",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_3"
+          },
+          "correct": true
+        },
+        {
+          "col": "C8",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_4"
+          },
+          "correct": true
+        },
+        {
+          "col": "C10",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_6"
+          },
+          "correct": true
+        },
+        {
+          "col": "C11",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_7"
+          },
+          "correct": true
+        },
+        {
+          "col": "C12",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_8"
+          },
+          "correct": true
+        },
+        {
+          "col": "C14",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_10"
+          },
+          "correct": true
+        },
+        {
+          "col": "C15",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_11"
+          },
+          "correct": true
+        },
+        {
+          "col": "C16",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_12"
+          },
+          "correct": true
+        },
+        {
+          "col": "C18",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_14"
+          },
+          "correct": true
+        },
+        {
+          "col": "C19",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_15"
+          },
+          "correct": true
+        },
+        {
+          "col": "C20",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_16"
+          },
+          "correct": true
+        },
+        {
+          "col": "C22",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_18"
+          },
+          "correct": true
+        },
+        {
+          "col": "C23",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_19"
+          },
+          "correct": true
+        },
+        {
+          "col": "C24",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_20"
+          },
+          "correct": true
+        },
+        {
+          "col": "C26",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_22"
+          },
+          "correct": true
+        },
+        {
+          "col": "C27",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_23"
+          },
+          "correct": true
+        },
+        {
+          "col": "C28",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "quota_24"
+          },
+          "correct": true
+        },
+        {
+          "col": "C29",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C30",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C31",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C32",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C33",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C34",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C35",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C36",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C37",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C38",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C39",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        },
+        {
+          "col": "C40",
+          "headerRow": 1,
+          "target": {
+            "mode": "skip"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 40,
+        "needed": 27,
+        "matched": 27,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 0,
+        "conversionFailed": 4,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 1,
+        "expectedReady": 4,
+        "matchedReady": 0,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 0,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d17-ambiguous",
+      "scenario": "ambiguous",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2146,
+      "outputTokens": 79,
+      "modelMs": 1280,
+      "error": null,
+      "endToEndMs": 1293,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 1,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 1,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 5,
+        "missingRows": 5,
+        "wrongRows": 0,
+        "missingFields": 5,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d18-tags",
+      "scenario": "tags",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 5,
+      "entries": 0,
+      "calls": 0,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": null,
+      "outputTokens": null,
+      "modelMs": null,
+      "error": null,
+      "endToEndMs": 2,
+      "planReturned": false,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 4,
+        "correctValues": 2,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 4,
+        "correctValues": 2,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 1,
+        "conversionFailed": 4,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 1,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 4,
+        "correctValues": 2,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 1,
+        "conversionFailed": 4,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 1,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d19-staff",
+      "scenario": "staff",
+      "actor": "EMPLOYEE",
+      "columns": 3,
+      "rowCount": 5,
+      "entries": 0,
+      "calls": 0,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": null,
+      "outputTokens": null,
+      "modelMs": null,
+      "error": null,
+      "endToEndMs": 1,
+      "planReturned": false,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d20-assign",
+      "scenario": "assign",
+      "actor": "TENANT_ADMIN",
+      "columns": 3,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2002,
+      "outputTokens": 63,
+      "modelMs": 1634,
+      "error": null,
+      "endToEndMs": 1647,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 1,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 3,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 1,
+        "fileDuplicate": 0,
+        "ownerSkip": 1,
+        "expectedReady": 3,
+        "matchedReady": 3,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 3,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 3,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 1,
+        "fileDuplicate": 0,
+        "ownerSkip": 1,
+        "expectedReady": 3,
+        "matchedReady": 3,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 3,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d21-invalid-date",
+      "scenario": "invalid-date",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 5,
+      "entries": 0,
+      "calls": 0,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": null,
+      "outputTokens": null,
+      "modelMs": null,
+      "error": null,
+      "endToEndMs": 1,
+      "planReturned": false,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 3,
+        "conversionFailed": 2,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 3,
+        "matchedReady": 3,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 3,
+        "conversionFailed": 2,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 3,
+        "matchedReady": 3,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d22-integer",
+      "scenario": "integer",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2002,
+      "outputTokens": 46,
+      "modelMs": 1397,
+      "error": null,
+      "endToEndMs": 1410,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 1,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 0,
+        "conversionFailed": 1,
+        "serverFailed": 4,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 4,
+        "matchedReady": 0,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 4,
+        "conversionFailed": 1,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 4,
+        "matchedReady": 4,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d23-multiline",
+      "scenario": "multiline",
+      "actor": "TENANT_ADMIN",
+      "columns": 4,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2002,
+      "outputTokens": 32,
+      "modelMs": 1557,
+      "error": null,
+      "endToEndMs": 1570,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 4,
+        "needed": 4,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 4,
+        "needed": 4,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 5,
+        "missingRows": 0,
+        "wrongRows": 5,
+        "missingFields": 0,
+        "wrongFields": 5,
+        "wrongDetails": [
+          {
+            "rowNumber": 2,
+            "field": "memo",
+            "reason": "different",
+            "digest": "e64424d1ca89c0cf349881c0e1dcd9bc75e04eff12eab373461bda4530b1f518",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 5,
+            "field": "memo",
+            "reason": "different",
+            "digest": "960fd257c7476ddaed05179ed154e8c0386f4724560909c4f019da6f48512c14",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 7,
+            "field": "memo",
+            "reason": "different",
+            "digest": "defd06e5924d31ffa50215ca3b4610c99bc9b4aa1136ed84063f004daeaf6164",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 8,
+            "field": "memo",
+            "reason": "different",
+            "digest": "38da4bec42c418a431850c7d6a8e97438ffc64affc65ad3e6280cea3821a7de0",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 9,
+            "field": "memo",
+            "reason": "different",
+            "digest": "837a8a39a075c2f7a6316d75c4eac84395d3fd10de759ea7d06b00ddf3c3711c",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          }
+        ],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 4,
+        "needed": 4,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 5,
+        "missingRows": 0,
+        "wrongRows": 5,
+        "missingFields": 0,
+        "wrongFields": 5,
+        "wrongDetails": [
+          {
+            "rowNumber": 2,
+            "field": "memo",
+            "reason": "different",
+            "digest": "e64424d1ca89c0cf349881c0e1dcd9bc75e04eff12eab373461bda4530b1f518",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 5,
+            "field": "memo",
+            "reason": "different",
+            "digest": "960fd257c7476ddaed05179ed154e8c0386f4724560909c4f019da6f48512c14",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 7,
+            "field": "memo",
+            "reason": "different",
+            "digest": "defd06e5924d31ffa50215ca3b4610c99bc9b4aa1136ed84063f004daeaf6164",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 8,
+            "field": "memo",
+            "reason": "different",
+            "digest": "38da4bec42c418a431850c7d6a8e97438ffc64affc65ad3e6280cea3821a7de0",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          },
+          {
+            "rowNumber": 9,
+            "field": "memo",
+            "reason": "different",
+            "digest": "837a8a39a075c2f7a6316d75c4eac84395d3fd10de759ea7d06b00ddf3c3711c",
+            "sources": [
+              "C2"
+            ],
+            "expectedSources": [
+              "C2",
+              "C3"
+            ],
+            "type": "TEXTAREA"
+          }
+        ],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d24-excel-format",
+      "scenario": "excel-format",
+      "actor": "TENANT_ADMIN",
+      "columns": 3,
+      "rowCount": 5,
+      "entries": 0,
+      "calls": 0,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": null,
+      "outputTokens": null,
+      "modelMs": null,
+      "error": null,
+      "endToEndMs": 3,
+      "planReturned": false,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 3,
+        "needed": 3,
+        "matched": 3,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d25-boundary50",
+      "scenario": "boundary50",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 50,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2002,
+      "outputTokens": 46,
+      "modelMs": 1100,
+      "error": null,
+      "endToEndMs": 1116,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 1,
+        "highWrong": 0,
+        "values": 50,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 50,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 50,
+        "ready": 0,
+        "conversionFailed": 50,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 50,
+        "matchedReady": 0,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 0,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 50,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 50,
+        "ready": 0,
+        "conversionFailed": 50,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 50,
+        "matchedReady": 0,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 0,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d26-boundary51",
+      "scenario": "boundary51",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 51,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2002,
+      "outputTokens": 46,
+      "modelMs": 1014,
+      "error": null,
+      "endToEndMs": 1030,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 1,
+        "highWrong": 0,
+        "values": 51,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 51,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 51,
+        "ready": 0,
+        "conversionFailed": 51,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 51,
+        "matchedReady": 0,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 0,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 51,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 51,
+        "ready": 0,
+        "conversionFailed": 51,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 51,
+        "matchedReady": 0,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 0,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d27-duplicates",
+      "scenario": "duplicates",
+      "actor": "TENANT_ADMIN",
+      "columns": 3,
+      "rowCount": 207,
+      "entries": 0,
+      "calls": 0,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": null,
+      "outputTokens": null,
+      "modelMs": null,
+      "error": null,
+      "endToEndMs": 6,
+      "planReturned": false,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 207,
+        "ready": 202,
+        "conversionFailed": 0,
+        "serverFailed": 1,
+        "unprocessed": 0,
+        "existingDuplicate": 1,
+        "fileDuplicate": 2,
+        "ownerSkip": 1,
+        "expectedReady": 202,
+        "matchedReady": 202,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 5,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 3,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 207,
+        "ready": 202,
+        "conversionFailed": 0,
+        "serverFailed": 1,
+        "unprocessed": 0,
+        "existingDuplicate": 1,
+        "fileDuplicate": 2,
+        "ownerSkip": 1,
+        "expectedReady": 202,
+        "matchedReady": 202,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 5,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d28-sparse",
+      "scenario": "sparse",
+      "actor": "TENANT_ADMIN",
+      "columns": 4,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2226,
+      "outputTokens": 90,
+      "modelMs": 1342,
+      "error": null,
+      "endToEndMs": 1351,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 4,
+        "needed": 1,
+        "matched": 1,
+        "wrong": 0,
+        "high": 1,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 4,
+        "needed": 1,
+        "matched": 1,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 4,
+        "needed": 1,
+        "matched": 1,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 5,
+        "conversionFailed": 0,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 5,
+        "matchedReady": 5,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d29-timestamp",
+      "scenario": "timestamp",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 5,
+      "entries": 0,
+      "calls": 0,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": null,
+      "outputTokens": null,
+      "modelMs": null,
+      "error": null,
+      "endToEndMs": 1,
+      "planReturned": false,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 4,
+        "conversionFailed": 1,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 4,
+        "matchedReady": 4,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 0,
+        "correctValues": 0,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 4,
+        "conversionFailed": 1,
+        "serverFailed": 0,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 4,
+        "matchedReady": 4,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    },
+    {
+      "id": "d30-required-rating",
+      "scenario": "required-rating",
+      "actor": "TENANT_ADMIN",
+      "columns": 2,
+      "rowCount": 5,
+      "entries": 1,
+      "calls": 1,
+      "privacy": [],
+      "modelForbiddenTargets": 0,
+      "inputTokens": 2079,
+      "outputTokens": 127,
+      "modelMs": 1450,
+      "error": null,
+      "endToEndMs": 1465,
+      "planReturned": true,
+      "zeroCallPassed": true,
+      "candidate": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 1,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "auto": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "autoBusiness": {
+        "rows": 5,
+        "ready": 2,
+        "conversionFailed": 2,
+        "serverFailed": 1,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 3,
+        "matchedReady": 2,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "highConfidence": [
+        {
+          "col": "C1",
+          "headerRow": 1,
+          "target": {
+            "mode": "field",
+            "field": "acct_name"
+          },
+          "correct": true
+        }
+      ],
+      "review": {
+        "cols": 2,
+        "needed": 2,
+        "matched": 2,
+        "wrong": 0,
+        "high": 0,
+        "highWrong": 0,
+        "values": 5,
+        "correctValues": 3,
+        "forbiddenTargets": 0,
+        "header": 1
+      },
+      "reviewBusiness": {
+        "rows": 5,
+        "ready": 2,
+        "conversionFailed": 2,
+        "serverFailed": 1,
+        "unprocessed": 0,
+        "existingDuplicate": 0,
+        "fileDuplicate": 0,
+        "ownerSkip": 0,
+        "expectedReady": 3,
+        "matchedReady": 2,
+        "readyWithoutValueLabels": 0,
+        "readyValuesMismatch": 0,
+        "missingRows": 0,
+        "wrongRows": 0,
+        "missingFields": 0,
+        "wrongFields": 0,
+        "wrongDetails": [],
+        "unexpectedRows": 0,
+        "batches": 1,
+        "noWrites": true
+      },
+      "authorization": {
+        "canImport": 403,
+        "entitled": 403,
+        "calls": 0,
+        "pass": true
+      }
+    }
+  ]
+}

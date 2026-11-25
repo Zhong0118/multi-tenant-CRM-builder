@@ -1,3 +1,4 @@
+import { buildImportRows } from "./record-import-mapping";
 import { coerceImportValue } from "./record-csv";
 import { webcrypto } from "node:crypto";
 import { describe, expect, it } from "vitest";
@@ -116,7 +117,7 @@ describe("record file import", () => {
     const shaped = await parse("清单\n旧编号,旧金额\na,23\nb,45");
     expect(shaped.headerSelection("", [])).toMatchObject({
       headerRow: 2,
-      detected: true,
+      detected: false,
     });
     const tied = await parse("名称,说明\n名称,别名\n张三,小张");
     expect(
@@ -128,11 +129,11 @@ describe("record file import", () => {
       rowNumbers: [3],
     });
   });
-  it("uses a majority of short labels and data shape in the next three nonempty rows", async () => {
+  it("uses the first sufficiently wide row followed by a comparable data row", async () => {
     const input = [
       "导出清单",
       "客户,票数," + "旧表备注".repeat(12),
-      "甲,,",
+      "甲,4,样本",
       ",,暂缺",
       "乙,12,",
       "丙,4,",
@@ -143,8 +144,22 @@ describe("record file import", () => {
     );
     expect(source.headerSelection("", [])).toMatchObject({
       headerRow: 2,
-      detected: true,
+      detected: false,
     });
+  });
+  it("leaves consecutive wide rows to the employee to confirm", async () => {
+    const source = await readImportFile(
+      file(
+        new TextEncoder().encode(
+          "部门清单\n公司,日期\n单位名称,签约时间\n示例公司,2026-10-01\n乙,2026-10-02",
+        ),
+        "headers.csv",
+      ),
+      "auto",
+    );
+    const choice = source.headerSelection("", []);
+    expect(choice.detected).toBe(false);
+    expect(choice.headerRow).toBe(2);
   });
   it("chooses the earliest plausible row when shape is the only evidence", async () => {
     const input = "旧表\n客户,金额\n甲,零元\n乙,30";
@@ -154,7 +169,7 @@ describe("record file import", () => {
     );
     expect(source.headerSelection("", [])).toMatchObject({
       headerRow: 2,
-      detected: true,
+      detected: false,
     });
   });
   it("ranks distinct normalized matches above repeated labels and shape alone", async () => {
@@ -278,6 +293,8 @@ describe("record file import", () => {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([["编号"], [], ["错误"]]);
     ws.A3 = { t: "e", v: 7, f: "1/0" };
+    XLSX.utils.sheet_add_aoa(ws, [["cached"]], { origin: "A4" });
+    ws.A4 = { t: "e", v: 42 };
     XLSX.utils.book_append_sheet(wb, ws, "清单");
     const source = await readImportFile(
       file(
@@ -286,7 +303,25 @@ describe("record file import", () => {
       ),
       "auto",
     );
-    expect(() => source.sheet("清单")).toThrow(/第 3 行.*公式/);
+    const parsed = source.sheet("清单");
+    expect(parsed.rowNumbers).toEqual([3, 4]);
+    expect(parsed.rows).toEqual([["#DIV/0!"], ["#N/A"]]);
+    expect(parsed.formulaErrors).toEqual({ 3: [0] });
+    const planned = buildImportRows({
+      parsed,
+      fields: [],
+      mapping: [":skip"],
+      dateOrders: {},
+      destination: () => ({ kind: "default" }),
+    });
+    expect(planned[0]).toMatchObject({
+      rowNumber: 3,
+      error: {
+        code: "RECORD_IMPORT_INVALID",
+        message: "编号：公式错误 #DIV/0!",
+      },
+    });
+    expect(planned[1].error).toBeUndefined();
   });
   it("rejects a formula with no cached result and keeps a calculated zero", async () => {
     const wb = XLSX.utils.book_new();

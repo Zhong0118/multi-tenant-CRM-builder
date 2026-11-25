@@ -1,0 +1,749 @@
+{
+  "id": "d16-wide-partners",
+  "scenario": "wide-partners",
+  "source": "development/d16-wide-partners.xlsx",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "Account",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "Reference",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "评级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "A类",
+          "option": "A",
+          "confidence": "high"
+        },
+        {
+          "raw": "B档",
+          "option": "B",
+          "confidence": "high"
+        },
+        {
+          "raw": "重点客户",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "未评级",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "C级",
+          "option": "C",
+          "confidence": "high"
+        }
+      ]
+    },
+    {
+      "col": "C4",
+      "header": "业务员",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "owner"
+    },
+    {
+      "col": "C5",
+      "header": "华北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_1"
+      }
+    },
+    {
+      "col": "C6",
+      "header": "华北耗材定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_2"
+      }
+    },
+    {
+      "col": "C7",
+      "header": "华北维护定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_3"
+      }
+    },
+    {
+      "col": "C8",
+      "header": "华北培训定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_4"
+      }
+    },
+    {
+      "col": "C9",
+      "header": "华南展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_5"
+      }
+    },
+    {
+      "col": "C10",
+      "header": "华南耗材定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_6"
+      }
+    },
+    {
+      "col": "C11",
+      "header": "华南维护定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_7"
+      }
+    },
+    {
+      "col": "C12",
+      "header": "华南培训定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_8"
+      }
+    },
+    {
+      "col": "C13",
+      "header": "西北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_9"
+      }
+    },
+    {
+      "col": "C14",
+      "header": "西北耗材定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_10"
+      }
+    },
+    {
+      "col": "C15",
+      "header": "西北维护定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_11"
+      }
+    },
+    {
+      "col": "C16",
+      "header": "西北培训定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_12"
+      }
+    },
+    {
+      "col": "C17",
+      "header": "西南展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_13"
+      }
+    },
+    {
+      "col": "C18",
+      "header": "西南耗材定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_14"
+      }
+    },
+    {
+      "col": "C19",
+      "header": "西南维护定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_15"
+      }
+    },
+    {
+      "col": "C20",
+      "header": "西南培训定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_16"
+      }
+    },
+    {
+      "col": "C21",
+      "header": "华东展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_17"
+      }
+    },
+    {
+      "col": "C22",
+      "header": "华东耗材定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_18"
+      }
+    },
+    {
+      "col": "C23",
+      "header": "华东维护定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_19"
+      }
+    },
+    {
+      "col": "C24",
+      "header": "华东培训定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_20"
+      }
+    },
+    {
+      "col": "C25",
+      "header": "东北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_21"
+      }
+    },
+    {
+      "col": "C26",
+      "header": "东北耗材定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_22"
+      }
+    },
+    {
+      "col": "C27",
+      "header": "东北维护定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_23"
+      }
+    },
+    {
+      "col": "C28",
+      "header": "东北培训定额",
+      "target": {
+        "mode": "field",
+        "field": "quota_24"
+      }
+    },
+    {
+      "col": "C29",
+      "header": "历史批次28",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C30",
+      "header": "历史批次29",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C31",
+      "header": "历史批次30",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C32",
+      "header": "历史批次31",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C33",
+      "header": "历史批次32",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C34",
+      "header": "历史批次33",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C35",
+      "header": "历史批次34",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C36",
+      "header": "历史批次35",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C37",
+      "header": "历史批次36",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C38",
+      "header": "历史批次37",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C39",
+      "header": "历史批次38",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C40",
+      "header": "历史批次39",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d16-wide-partners-1",
+        "K-d16-wide-partners-1",
+        "A类",
+        "蓝桐样员",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d16-wide-partners-1",
+        "acct_code": "K-d16-wide-partners-1",
+        "grade": "A",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d16-wide-partners-2",
+        "K-d16-wide-partners-2",
+        "B档",
+        "白槿样员",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d16-wide-partners-2",
+        "acct_code": "K-d16-wide-partners-2",
+        "grade": "B",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d16-wide-partners-3",
+        "K-d16-wide-partners-3",
+        "重点客户",
+        "待分配样员",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d16-wide-partners-3",
+        "acct_code": "K-d16-wide-partners-3",
+        "grade": "A",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d16-wide-partners-4",
+        "K-d16-wide-partners-4",
+        "未评级",
+        "退件样员",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1"
+      ],
+      "destination": {
+        "kind": "skip"
+      },
+      "status": "SKIPPED",
+      "reason": "ownerSkip"
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d16-wide-partners-5",
+        "K-d16-wide-partners-5",
+        "C级",
+        "蓝桐样员",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d16-wide-partners-5",
+        "acct_code": "K-d16-wide-partners-5",
+        "grade": "C",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "待分配样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "退件样员"
+    }
+  ]
+}

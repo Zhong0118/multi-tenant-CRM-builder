@@ -13,6 +13,7 @@ export type ImportDestination =
 
 export interface PlannedImportRow extends RecordImportRow {
   destination: ImportDestination;
+  emptyMarkerCount?: number;
   error?: RecordImportResultItem["error"];
 }
 

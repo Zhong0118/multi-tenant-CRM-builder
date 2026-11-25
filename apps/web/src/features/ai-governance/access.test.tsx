@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, renderHook, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { AiAccessContext, FeatureGate, QuotaNotice } from "./access";
+import { AiAccessContext, FeatureGate, QuotaNotice, useAiFeature } from "./access";
 import type { Capabilities } from "./workspace-api";
 
 const basic: Capabilities = {
@@ -13,6 +13,10 @@ const basic: Capabilities = {
   remainingTokens: null,
 };
 describe("workspace AI access", () => {
+  it("requires confirmed entitlements before an import file can be shared", () => {
+    const { result } = renderHook(() => useAiFeature("import_assist", false));
+    expect(result.current).toBe(false);
+  });
   it("restricts entry points to the member's feature set", () => {
     render(
       <AiAccessContext.Provider value={basic}>

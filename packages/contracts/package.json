@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
+    "./import-heading": "./dist/ai/import-heading.cjs",
     "./dashboard-filter": "./dist/dashboards/filter.cjs"
   },
   "types": "./dist/index.d.ts",

@@ -1,0 +1,716 @@
+{
+  "id": "h08-wide-ledger",
+  "scenario": "wide-ledger",
+  "source": "holdout/h08-wide-ledger.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "采购方",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "账户索引",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "参考日",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      },
+      "confidence": "review",
+      "dateOrder": "MDY",
+      "formatConfidence": "review"
+    },
+    {
+      "col": "C4",
+      "header": "报价（万元）",
+      "target": {
+        "mode": "field",
+        "field": "budget"
+      },
+      "bareAmountUnit": "wan"
+    },
+    {
+      "col": "C5",
+      "header": "上级机构代码",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C6",
+      "header": "华北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_1"
+      }
+    },
+    {
+      "col": "C7",
+      "header": "华北耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_2"
+      }
+    },
+    {
+      "col": "C8",
+      "header": "华北维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_3"
+      }
+    },
+    {
+      "col": "C9",
+      "header": "华北培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_4"
+      }
+    },
+    {
+      "col": "C10",
+      "header": "华南展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_5"
+      }
+    },
+    {
+      "col": "C11",
+      "header": "华南耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_6"
+      }
+    },
+    {
+      "col": "C12",
+      "header": "华南维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_7"
+      }
+    },
+    {
+      "col": "C13",
+      "header": "华南培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_8"
+      }
+    },
+    {
+      "col": "C14",
+      "header": "西北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_9"
+      }
+    },
+    {
+      "col": "C15",
+      "header": "西北耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_10"
+      }
+    },
+    {
+      "col": "C16",
+      "header": "西北维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_11"
+      }
+    },
+    {
+      "col": "C17",
+      "header": "西北培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_12"
+      }
+    },
+    {
+      "col": "C18",
+      "header": "西南展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_13"
+      }
+    },
+    {
+      "col": "C19",
+      "header": "西南耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_14"
+      }
+    },
+    {
+      "col": "C20",
+      "header": "西南维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_15"
+      }
+    },
+    {
+      "col": "C21",
+      "header": "西南培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_16"
+      }
+    },
+    {
+      "col": "C22",
+      "header": "华东展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_17"
+      }
+    },
+    {
+      "col": "C23",
+      "header": "华东耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_18"
+      }
+    },
+    {
+      "col": "C24",
+      "header": "华东维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_19"
+      }
+    },
+    {
+      "col": "C25",
+      "header": "华东培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_20"
+      }
+    },
+    {
+      "col": "C26",
+      "header": "东北展台配额",
+      "target": {
+        "mode": "field",
+        "field": "quota_21"
+      }
+    },
+    {
+      "col": "C27",
+      "header": "东北耗材计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_22"
+      }
+    },
+    {
+      "col": "C28",
+      "header": "东北维护计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_23"
+      }
+    },
+    {
+      "col": "C29",
+      "header": "东北培训计划量",
+      "target": {
+        "mode": "field",
+        "field": "quota_24"
+      }
+    },
+    {
+      "col": "C30",
+      "header": "原账分区29",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C31",
+      "header": "原账分区30",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C32",
+      "header": "原账分区31",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C33",
+      "header": "原账分区32",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C34",
+      "header": "原账分区33",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C35",
+      "header": "原账分区34",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C36",
+      "header": "原账分区35",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C37",
+      "header": "原账分区36",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C38",
+      "header": "原账分区37",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C39",
+      "header": "原账分区38",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C40",
+      "header": "原账分区39",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "苇原商社-h08-wide-ledger-1",
+        "K-h08-wide-ledger-1",
+        "3/2/2024",
+        "3.4",
+        "批次1",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h08-wide-ledger-1",
+        "acct_code": "K-h08-wide-ledger-1",
+        "contact_day": "2024-03-02",
+        "budget": "34000",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "苇原商社-h08-wide-ledger-2",
+        "K-h08-wide-ledger-2",
+        "3/3/2024",
+        "760元",
+        "批次2",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h08-wide-ledger-2",
+        "acct_code": "K-h08-wide-ledger-2",
+        "contact_day": "2024-03-03",
+        "budget": "760",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "苇原商社-h08-wide-ledger-3",
+        "K-h08-wide-ledger-3",
+        "3/4/2024",
+        "0.05",
+        "批次3",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3",
+        "批次3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h08-wide-ledger-3",
+        "acct_code": "K-h08-wide-ledger-3",
+        "contact_day": "2024-03-04",
+        "budget": "500",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "苇原商社-h08-wide-ledger-4",
+        "K-h08-wide-ledger-4",
+        "3/5/2024",
+        "1亿元",
+        "批次1",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1",
+        "批次1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h08-wide-ledger-4",
+        "acct_code": "K-h08-wide-ledger-4",
+        "contact_day": "2024-03-05",
+        "budget": "100000000",
+        "quota_1": null,
+        "quota_2": null,
+        "quota_3": null,
+        "quota_4": null,
+        "quota_5": null,
+        "quota_6": null,
+        "quota_7": null,
+        "quota_8": null,
+        "quota_9": null,
+        "quota_10": null,
+        "quota_11": null,
+        "quota_12": null,
+        "quota_13": null,
+        "quota_14": null,
+        "quota_15": null,
+        "quota_16": null,
+        "quota_17": null,
+        "quota_18": null,
+        "quota_19": null,
+        "quota_20": null,
+        "quota_21": null,
+        "quota_22": null,
+        "quota_23": null,
+        "quota_24": null
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "苇原商社-h08-wide-ledger-5",
+        "K-h08-wide-ledger-5",
+        "3/6/2024",
+        "1,22元",
+        "批次2",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2",
+        "批次2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidAmount"
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

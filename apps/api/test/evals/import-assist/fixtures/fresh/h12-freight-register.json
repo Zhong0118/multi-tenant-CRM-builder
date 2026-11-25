@@ -1,0 +1,500 @@
+{
+  "id": "h12-freight-register",
+  "scenario": "freight-register",
+  "source": "fresh/h12-freight-register.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "personalName",
+      "value": "Cora Exampleton"
+    },
+    {
+      "kind": "personalName",
+      "value": "Nila Exampleton"
+    },
+    {
+      "kind": "personalName",
+      "value": "Evan Exampleton"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "Contact person",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "Next follow-up date",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "Contract amount",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C4",
+      "header": "Payment received on",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C5",
+      "header": "Win probability",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C6",
+      "header": "Warehouse zone",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C7",
+      "header": "Port of loading",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C8",
+      "header": "Supplier VAT ID",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C9",
+      "header": "Delivery window",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C10",
+      "header": "Freight cost",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C11",
+      "header": "Container size",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C12",
+      "header": "Package count",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C13",
+      "header": "Carrier name",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C14",
+      "header": "Invoice terms",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C15",
+      "header": "Country of origin",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C16",
+      "header": "Buyer company",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C17",
+      "header": "Customer account code",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C18",
+      "header": "Quantity ordered",
+      "target": {
+        "mode": "field",
+        "field": "units"
+      }
+    },
+    {
+      "col": "C19",
+      "header": "Sales notes",
+      "target": {
+        "mode": "field",
+        "field": "memo"
+      }
+    },
+    {
+      "col": "C20",
+      "header": "Visit date",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      }
+    },
+    {
+      "col": "C21",
+      "header": "Dock gate",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C22",
+      "header": "Loading bay",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C23",
+      "header": "Item weight",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C24",
+      "header": "Weight unit",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C25",
+      "header": "Commodity class",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C26",
+      "header": "Tracking reference",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C27",
+      "header": "Booking slot",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C28",
+      "header": "Delivery priority",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C29",
+      "header": "Transit hours",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C30",
+      "header": "Insurance coverage",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C31",
+      "header": "Inspection status",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C32",
+      "header": "Product family",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C33",
+      "header": "Spare parts batch",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C34",
+      "header": "Delivery contact role",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C35",
+      "header": "Approved currency",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C36",
+      "header": "Export country",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C37",
+      "header": "Carton grade",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C38",
+      "header": "Pallet height",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C39",
+      "header": "Incoterm",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C40",
+      "header": "Shipping method",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "Cora Exampleton",
+        "2026-07-16",
+        "42000",
+        "2026-07-12",
+        "63%",
+        "Zone C",
+        "Harbor North",
+        "VAT-X0",
+        "AM",
+        "123.55",
+        "20ft",
+        "8",
+        "Bay Freight",
+        "net 45",
+        "CN",
+        "Rill Instruments",
+        "FR-633",
+        "3",
+        "Confirm pallet dimensions",
+        "2026-06-12",
+        "G0",
+        "B7",
+        "24",
+        "kg",
+        "Instruments",
+        "TR770",
+        "AM",
+        "Standard",
+        "18",
+        "Standard cover",
+        "Complete",
+        "Meters",
+        "A24",
+        "Dispatch clerk",
+        "CNY",
+        "CN",
+        "Double wall",
+        "1.2m",
+        "FOB",
+        "Sea"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Rill Instruments",
+        "acct_code": "FR-633",
+        "units": 3,
+        "memo": "Confirm pallet dimensions",
+        "contact_day": "2026-06-12"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "Nila Exampleton",
+        "2026-07-16",
+        "42000",
+        "2026-07-12",
+        "63%",
+        "Zone C",
+        "Harbor North",
+        "VAT-X1",
+        "AM",
+        "123.55",
+        "20ft",
+        "8",
+        "Bay Freight",
+        "net 45",
+        "CN",
+        "Meridian Kilns",
+        "FR-634",
+        "7",
+        "Customer requests call before pickup",
+        "2026-06-13",
+        "G1",
+        "B7",
+        "24",
+        "kg",
+        "Instruments",
+        "TR771",
+        "AM",
+        "Standard",
+        "18",
+        "Standard cover",
+        "Complete",
+        "Meters",
+        "A24",
+        "Dispatch clerk",
+        "CNY",
+        "CN",
+        "Double wall",
+        "1.2m",
+        "FOB",
+        "Sea"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Meridian Kilns",
+        "acct_code": "FR-634",
+        "units": 7,
+        "memo": "Customer requests call before pickup",
+        "contact_day": "2026-06-13"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "Evan Exampleton",
+        "2026-07-16",
+        "42000",
+        "2026-07-12",
+        "63%",
+        "Zone C",
+        "Harbor North",
+        "VAT-X2",
+        "AM",
+        "123.55",
+        "20ft",
+        "8",
+        "Bay Freight",
+        "net 45",
+        "CN",
+        "Larch Workshop",
+        "FR-635",
+        "11",
+        "Leave packing list at reception",
+        "2026-06-14",
+        "G2",
+        "B7",
+        "24",
+        "kg",
+        "Instruments",
+        "TR772",
+        "AM",
+        "Standard",
+        "18",
+        "Standard cover",
+        "Complete",
+        "Meters",
+        "A24",
+        "Dispatch clerk",
+        "CNY",
+        "CN",
+        "Double wall",
+        "1.2m",
+        "FOB",
+        "Sea"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Larch Workshop",
+        "acct_code": "FR-635",
+        "units": 11,
+        "memo": "Leave packing list at reception",
+        "contact_day": "2026-06-14"
+      }
+    }
+  ]
+}

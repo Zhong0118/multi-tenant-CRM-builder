@@ -1,0 +1,271 @@
+{
+  "id": "h03-dictionary",
+  "scenario": "dictionary",
+  "source": "holdout/h03-dictionary.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "采购方",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "等第",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "一档",
+          "option": "A",
+          "confidence": "high"
+        },
+        {
+          "raw": "二档",
+          "option": "B",
+          "confidence": "high"
+        },
+        {
+          "raw": "关键伙伴",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "未评",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "C级",
+          "option": "C",
+          "confidence": "high"
+        },
+        {
+          "raw": "历史作废",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    },
+    {
+      "col": "C3",
+      "header": "意向标签",
+      "target": {
+        "mode": "field",
+        "field": "tags"
+      },
+      "values": [
+        {
+          "raw": "初购",
+          "option": "new",
+          "confidence": "high"
+        },
+        {
+          "raw": "同城",
+          "option": "local",
+          "confidence": "high"
+        },
+        {
+          "raw": "归档",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "新客",
+          "option": "new",
+          "confidence": "high"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "苇原商社-h03-dictionary-1",
+        "一档",
+        "初购;同城"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h03-dictionary-1",
+        "grade": "A",
+        "tags": [
+          "new",
+          "local"
+        ]
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "苇原商社-h03-dictionary-2",
+        "二档",
+        "初购"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h03-dictionary-2",
+        "grade": "B",
+        "tags": [
+          "new"
+        ]
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "苇原商社-h03-dictionary-3",
+        "关键伙伴",
+        "归档;同城"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h03-dictionary-3",
+        "grade": "A",
+        "tags": null
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "苇原商社-h03-dictionary-4",
+        "未评",
+        "同城"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h03-dictionary-4",
+        "grade": null,
+        "tags": [
+          "local"
+        ]
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "苇原商社-h03-dictionary-5",
+        "C级",
+        "新客"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h03-dictionary-5",
+        "grade": "C",
+        "tags": [
+          "new"
+        ]
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "苇原商社-h03-dictionary-6",
+        "一档",
+        "初购;同城"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h03-dictionary-6",
+        "grade": "A",
+        "tags": [
+          "new",
+          "local"
+        ]
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "苇原商社-h03-dictionary-7",
+        "二档",
+        "初购"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h03-dictionary-7",
+        "grade": "B",
+        "tags": [
+          "new"
+        ]
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "苇原商社-h03-dictionary-8",
+        "历史作废",
+        "归档;同城"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h03-dictionary-8",
+        "grade": null,
+        "tags": null
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

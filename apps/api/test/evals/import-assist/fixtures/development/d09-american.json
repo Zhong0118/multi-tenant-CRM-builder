@@ -1,0 +1,129 @@
+{
+  "id": "d09-american",
+  "scenario": "american",
+  "source": "development/d09-american.xlsx",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "US预约日",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      },
+      "dateOrder": "MDY"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d09-american-1",
+        "10/14/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d09-american-1",
+        "contact_day": "2024-10-14"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d09-american-2",
+        "10/15/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d09-american-2",
+        "contact_day": "2024-10-15"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d09-american-3",
+        "10/16/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d09-american-3",
+        "contact_day": "2024-10-16"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d09-american-4",
+        "10/17/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d09-american-4",
+        "contact_day": "2024-10-17"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d09-american-5",
+        "10/18/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d09-american-5",
+        "contact_day": "2024-10-18"
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

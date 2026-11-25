@@ -44,10 +44,10 @@ export function WorkspaceAiAccess({
     </WorkspaceMemberContext.Provider>
   );
 }
-export function useAiFeature(feature: AiFeature) {
+export function useAiFeature(feature: AiFeature, allowStandalone = true) {
   const caps = useContext(AiAccessContext);
   return (
-    caps === undefined ||
+    (caps === undefined && allowStandalone) ||
     Boolean(caps && !caps.disabled && caps.features.includes(feature))
   );
 }

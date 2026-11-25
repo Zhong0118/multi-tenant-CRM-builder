@@ -53,6 +53,11 @@ export interface SalesDailyInput {
 }
 
 export interface AiProvider {
+  generateImportAssist?(
+    input: import('./import-assist-model').ImportAssistModelInput,
+    actor: TenantContext,
+    signal?: AbortSignal,
+  ): Promise<unknown>;
   generateSalesDaily?(input: SalesDailyInput): Promise<unknown>;
   resolveText?(actor: TenantContext): Promise<AiProvider>;
   generateTableBlueprint?(

@@ -19,6 +19,7 @@ import {
 } from './effective-access';
 import {
   PUBLISHED_FIELD_TYPES,
+  manualImportField,
   isSortableFieldType,
   isSystemRecordSortField,
   type JsonValue,
@@ -59,7 +60,12 @@ export interface RuntimeObjectSchema {
     icon: string | null;
     sortOrder: number;
   };
-  fields: Array<PublishedField & { access: PublishedFieldAccess }>;
+  fields: Array<
+    PublishedField & {
+      access: PublishedFieldAccess;
+      importManualOnly?: boolean;
+    }
+  >;
   defaultView: PublishedObjectSchema['defaultView'];
   actions: {
     canImport: boolean;
@@ -251,7 +257,16 @@ function projectRuntimeSchema(
       (!access.groupFieldAccess ||
         access.groupFieldAccess[field.fieldKey] === 'HIDDEN')
       ? []
-      : [{ ...field, access: fieldAccess }];
+      : [
+          {
+            ...field,
+            access: fieldAccess,
+            ...((fieldAccess === 'EDIT' || fieldAccess === 'CREATE_ONLY') &&
+            manualImportField(schema, field.fieldKey)
+              ? { importManualOnly: true }
+              : {}),
+          },
+        ];
   });
   const visibleKeys = new Set(fields.map((field) => field.fieldKey));
   return {

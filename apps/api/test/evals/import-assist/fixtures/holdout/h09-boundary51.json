@@ -1,0 +1,1167 @@
+{
+  "id": "h09-boundary51",
+  "scenario": "boundary51",
+  "source": "holdout/h09-boundary51.xlsx",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "机构全称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "意向等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "外埠评级1",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级2",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级3",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级4",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级5",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级6",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级7",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级8",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级9",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级10",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级11",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级12",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级13",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级14",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级15",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级16",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级17",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级18",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级19",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级20",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级21",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级22",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级23",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级24",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级25",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级26",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级27",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级28",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级29",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级30",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级31",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级32",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级33",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级34",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级35",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级36",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级37",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级38",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级39",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级40",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级41",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级42",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级43",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级44",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级45",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级46",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级47",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级48",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级49",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级50",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "外埠评级51",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "苇原商社-h09-boundary51-1",
+        "外埠评级1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-1",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "苇原商社-h09-boundary51-2",
+        "外埠评级2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-2",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "苇原商社-h09-boundary51-3",
+        "外埠评级3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-3",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "苇原商社-h09-boundary51-4",
+        "外埠评级4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-4",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "苇原商社-h09-boundary51-5",
+        "外埠评级5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-5",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "苇原商社-h09-boundary51-6",
+        "外埠评级6"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-6",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "苇原商社-h09-boundary51-7",
+        "外埠评级7"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-7",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "苇原商社-h09-boundary51-8",
+        "外埠评级8"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-8",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "苇原商社-h09-boundary51-9",
+        "外埠评级9"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-9",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 11,
+      "cells": [
+        "苇原商社-h09-boundary51-10",
+        "外埠评级10"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-10",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 12,
+      "cells": [
+        "苇原商社-h09-boundary51-11",
+        "外埠评级11"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-11",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 13,
+      "cells": [
+        "苇原商社-h09-boundary51-12",
+        "外埠评级12"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-12",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 14,
+      "cells": [
+        "苇原商社-h09-boundary51-13",
+        "外埠评级13"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-13",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 15,
+      "cells": [
+        "苇原商社-h09-boundary51-14",
+        "外埠评级14"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-14",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 16,
+      "cells": [
+        "苇原商社-h09-boundary51-15",
+        "外埠评级15"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-15",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 17,
+      "cells": [
+        "苇原商社-h09-boundary51-16",
+        "外埠评级16"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-16",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 18,
+      "cells": [
+        "苇原商社-h09-boundary51-17",
+        "外埠评级17"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-17",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 19,
+      "cells": [
+        "苇原商社-h09-boundary51-18",
+        "外埠评级18"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-18",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 20,
+      "cells": [
+        "苇原商社-h09-boundary51-19",
+        "外埠评级19"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-19",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 21,
+      "cells": [
+        "苇原商社-h09-boundary51-20",
+        "外埠评级20"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-20",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 22,
+      "cells": [
+        "苇原商社-h09-boundary51-21",
+        "外埠评级21"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-21",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 23,
+      "cells": [
+        "苇原商社-h09-boundary51-22",
+        "外埠评级22"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-22",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 24,
+      "cells": [
+        "苇原商社-h09-boundary51-23",
+        "外埠评级23"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-23",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 25,
+      "cells": [
+        "苇原商社-h09-boundary51-24",
+        "外埠评级24"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-24",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 26,
+      "cells": [
+        "苇原商社-h09-boundary51-25",
+        "外埠评级25"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-25",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 27,
+      "cells": [
+        "苇原商社-h09-boundary51-26",
+        "外埠评级26"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-26",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 28,
+      "cells": [
+        "苇原商社-h09-boundary51-27",
+        "外埠评级27"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-27",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 29,
+      "cells": [
+        "苇原商社-h09-boundary51-28",
+        "外埠评级28"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-28",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 30,
+      "cells": [
+        "苇原商社-h09-boundary51-29",
+        "外埠评级29"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-29",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 31,
+      "cells": [
+        "苇原商社-h09-boundary51-30",
+        "外埠评级30"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-30",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 32,
+      "cells": [
+        "苇原商社-h09-boundary51-31",
+        "外埠评级31"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-31",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 33,
+      "cells": [
+        "苇原商社-h09-boundary51-32",
+        "外埠评级32"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-32",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 34,
+      "cells": [
+        "苇原商社-h09-boundary51-33",
+        "外埠评级33"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-33",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 35,
+      "cells": [
+        "苇原商社-h09-boundary51-34",
+        "外埠评级34"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-34",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 36,
+      "cells": [
+        "苇原商社-h09-boundary51-35",
+        "外埠评级35"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-35",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 37,
+      "cells": [
+        "苇原商社-h09-boundary51-36",
+        "外埠评级36"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-36",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 38,
+      "cells": [
+        "苇原商社-h09-boundary51-37",
+        "外埠评级37"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-37",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 39,
+      "cells": [
+        "苇原商社-h09-boundary51-38",
+        "外埠评级38"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-38",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 40,
+      "cells": [
+        "苇原商社-h09-boundary51-39",
+        "外埠评级39"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-39",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 41,
+      "cells": [
+        "苇原商社-h09-boundary51-40",
+        "外埠评级40"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-40",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 42,
+      "cells": [
+        "苇原商社-h09-boundary51-41",
+        "外埠评级41"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-41",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 43,
+      "cells": [
+        "苇原商社-h09-boundary51-42",
+        "外埠评级42"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-42",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 44,
+      "cells": [
+        "苇原商社-h09-boundary51-43",
+        "外埠评级43"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-43",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 45,
+      "cells": [
+        "苇原商社-h09-boundary51-44",
+        "外埠评级44"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-44",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 46,
+      "cells": [
+        "苇原商社-h09-boundary51-45",
+        "外埠评级45"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-45",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 47,
+      "cells": [
+        "苇原商社-h09-boundary51-46",
+        "外埠评级46"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-46",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 48,
+      "cells": [
+        "苇原商社-h09-boundary51-47",
+        "外埠评级47"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-47",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 49,
+      "cells": [
+        "苇原商社-h09-boundary51-48",
+        "外埠评级48"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-48",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 50,
+      "cells": [
+        "苇原商社-h09-boundary51-49",
+        "外埠评级49"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-49",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 51,
+      "cells": [
+        "苇原商社-h09-boundary51-50",
+        "外埠评级50"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-50",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 52,
+      "cells": [
+        "苇原商社-h09-boundary51-51",
+        "外埠评级51"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h09-boundary51-51",
+        "grade": null
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "id": "h14-visit-estimates",
+  "scenario": "visit-estimates",
+  "source": "fresh/h14-visit-estimates.xlsx",
+  "sheetName": "Visits",
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "Customer legal name",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "Visit date (DD/MM/YYYY)",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      },
+      "dateOrder": "DMY"
+    },
+    {
+      "col": "C3",
+      "header": "Budget (CNY)",
+      "target": {
+        "mode": "field",
+        "field": "budget"
+      }
+    },
+    {
+      "col": "C4",
+      "header": "Contract value",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C5",
+      "header": "Next follow-up",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C6",
+      "header": "Amount collected",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C7",
+      "header": "Order quantity",
+      "target": {
+        "mode": "field",
+        "field": "units"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "Aster Drill",
+        "27/04/2026",
+        "380.50",
+        "75000",
+        "2026-12-26",
+        "45000",
+        "3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Aster Drill",
+        "contact_day": "2026-04-27",
+        "budget": "380.5",
+        "units": 3
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "Bittern Press",
+        "06/05/2026",
+        "407.50",
+        "75000",
+        "2026-12-26",
+        "45000",
+        "4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Bittern Press",
+        "contact_day": "2026-05-06",
+        "budget": "407.5",
+        "units": 4
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "Cedar Milling",
+        "31/04/2026",
+        "434.50",
+        "75000",
+        "2026-12-26",
+        "45000",
+        "5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidDate"
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "Desert Gear",
+        "19/09/2026",
+        "461.50",
+        "75000",
+        "2026-12-26",
+        "45000",
+        "6"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Desert Gear",
+        "contact_day": "2026-09-19",
+        "budget": "461.5",
+        "units": 6
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "Elm Fittings",
+        "23/12/2026",
+        "488.50",
+        "75000",
+        "2026-12-26",
+        "45000",
+        "7"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "Elm Fittings",
+        "contact_day": "2026-12-23",
+        "budget": "488.5",
+        "units": 7
+      }
+    }
+  ]
+}

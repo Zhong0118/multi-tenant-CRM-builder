@@ -7,6 +7,8 @@ import { TableBuilderService } from './table-builder.service';
 import { AssistantQuestionsService } from './assistant-questions.service';
 import { AssistantActionsService } from './assistant-actions';
 import { AiBatchController } from './ai-batch.controller';
+import { ImportAssistController } from './import-assist.controller';
+import { ImportAssistService } from './import-assist.service';
 import { FilterPreviewController } from './filter-preview.controller';
 import { FilterPreviewService } from './filter-preview.service';
 import { CommunicationDraftsService } from './communication-drafts.service';
@@ -49,6 +51,7 @@ import { AiToolRegistry } from './tool-registry';
     SalesDraftsController,
     TableBuilderController,
     FilterPreviewController,
+    ImportAssistController,
     AiController,
     AiBatchController,
     CommunicationDraftsController,
@@ -59,6 +62,7 @@ import { AiToolRegistry } from './tool-registry';
     AiLedgerService,
     TableBuilderService,
     FilterPreviewService,
+    ImportAssistService,
     CommunicationDraftsService,
     CommunicationDraftGenerator,
     ConversationRepository,

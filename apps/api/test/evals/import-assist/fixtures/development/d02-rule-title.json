@@ -1,0 +1,148 @@
+{
+  "id": "d02-rule-title",
+  "scenario": "rule-title",
+  "source": "development/d02-rule-title.xls",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 3,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "订购数量",
+      "target": {
+        "mode": "field",
+        "field": "units"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 4,
+      "cells": [
+        "K-d02-rule-title-1",
+        "松川商社-d02-rule-title-1",
+        "5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "K-d02-rule-title-1",
+        "acct_name": "松川商社-d02-rule-title-1",
+        "units": 5
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "K-d02-rule-title-2",
+        "松川商社-d02-rule-title-2",
+        "6"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "K-d02-rule-title-2",
+        "acct_name": "松川商社-d02-rule-title-2",
+        "units": 6
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "K-d02-rule-title-3",
+        "松川商社-d02-rule-title-3",
+        "7"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "K-d02-rule-title-3",
+        "acct_name": "松川商社-d02-rule-title-3",
+        "units": 7
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "K-d02-rule-title-4",
+        "松川商社-d02-rule-title-4",
+        "8"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "K-d02-rule-title-4",
+        "acct_name": "松川商社-d02-rule-title-4",
+        "units": 8
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "K-d02-rule-title-5",
+        "松川商社-d02-rule-title-5",
+        "9"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_code": "K-d02-rule-title-5",
+        "acct_name": "松川商社-d02-rule-title-5",
+        "units": 9
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": 0,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

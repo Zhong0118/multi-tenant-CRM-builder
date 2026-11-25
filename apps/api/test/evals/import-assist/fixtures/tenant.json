@@ -1,0 +1,388 @@
+{
+  "version": 1,
+  "timeZone": "Asia/Shanghai",
+  "fields": [
+    {
+      "fieldKey": "acct_name",
+      "label": "客户名称",
+      "type": "TEXT",
+      "access": "EDIT",
+      "required": true,
+      "queryable": false
+    },
+    {
+      "fieldKey": "acct_code",
+      "label": "客户编号",
+      "type": "TEXT",
+      "access": "EDIT",
+      "required": false,
+      "queryable": true
+    },
+    {
+      "fieldKey": "grade",
+      "label": "客户等级",
+      "type": "SINGLE_SELECT",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false,
+      "options": [
+        {
+          "key": "A",
+          "label": "A级",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "B",
+          "label": "B级",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "C",
+          "label": "C级",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "trial",
+          "label": "试用联系 sample.option@demo.invalid",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "old",
+          "label": "旧级",
+          "status": "INACTIVE"
+        }
+      ]
+    },
+    {
+      "fieldKey": "tags",
+      "label": "业务标签",
+      "type": "MULTI_SELECT",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false,
+      "options": [
+        {
+          "key": "new",
+          "label": "新客",
+          "status": "ACTIVE"
+        },
+        {
+          "key": "local",
+          "label": "本地",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "fieldKey": "contact_day",
+      "label": "拜访日期",
+      "type": "DATE",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "budget",
+      "label": "预算金额",
+      "type": "MONEY",
+      "access": "CREATE_ONLY",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "memo",
+      "label": "备注",
+      "type": "TEXTAREA",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "enabled",
+      "label": "已签约",
+      "type": "BOOLEAN",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "units",
+      "label": "订购数量",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "visit_at",
+      "label": "预约时间",
+      "type": "DATETIME",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "private_margin",
+      "label": "内部底价",
+      "type": "MONEY",
+      "access": "HIDDEN",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "audit_copy",
+      "label": "审批编号",
+      "type": "TEXT",
+      "access": "READ_ONLY",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "sys_stamp",
+      "label": "系统流水",
+      "type": "TEXT",
+      "access": "SYSTEM",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "other_rep",
+      "label": "协作成员",
+      "type": "MEMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_1",
+      "label": "华北展台配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_2",
+      "label": "华北耗材配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_3",
+      "label": "华北维护配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_4",
+      "label": "华北培训配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_5",
+      "label": "华南展台配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_6",
+      "label": "华南耗材配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_7",
+      "label": "华南维护配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_8",
+      "label": "华南培训配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_9",
+      "label": "西北展台配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_10",
+      "label": "西北耗材配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_11",
+      "label": "西北维护配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_12",
+      "label": "西北培训配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_13",
+      "label": "西南展台配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_14",
+      "label": "西南耗材配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_15",
+      "label": "西南维护配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_16",
+      "label": "西南培训配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_17",
+      "label": "华东展台配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_18",
+      "label": "华东耗材配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_19",
+      "label": "华东维护配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_20",
+      "label": "华东培训配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_21",
+      "label": "东北展台配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_22",
+      "label": "东北耗材配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_23",
+      "label": "东北维护配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    },
+    {
+      "fieldKey": "quota_24",
+      "label": "东北培训配额",
+      "type": "NUMBER",
+      "access": "EDIT",
+      "required": false,
+      "queryable": false
+    }
+  ],
+  "members": [
+    {
+      "ref": "SELF",
+      "fixtureMemberId": "0caca001-0000-4000-8000-000000000001",
+      "displayName": "模拟导入员",
+      "active": true
+    },
+    {
+      "ref": "REP_A",
+      "fixtureMemberId": "0caca001-0000-4000-8000-000000000002",
+      "displayName": "蓝桐样员",
+      "active": true
+    },
+    {
+      "ref": "REP_B",
+      "fixtureMemberId": "0caca001-0000-4000-8000-000000000003",
+      "displayName": "白槿样员",
+      "active": true
+    }
+  ],
+  "existing": [
+    {
+      "acct_code": "EXISTING",
+      "acct_name": "合成参照企业"
+    }
+  ],
+  "poolEnabled": true,
+  "authorizationProbes": [
+    {
+      "canImport": false,
+      "expectedHttp": 403,
+      "providerCalls": 0
+    },
+    {
+      "entitled": false,
+      "expectedHttp": 403,
+      "providerCalls": 0
+    }
+  ]
+}

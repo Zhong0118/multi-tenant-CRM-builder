@@ -1,6 +1,14 @@
+import { Logger } from '@nestjs/common';
+import { runImportRequest, type ImportAttemptFailure } from './import-retry';
 import { TABLE_BUILDER_GENERATION_TIMEOUT_MS } from '../table-builder-payload';
 import { modelClient } from './model-client';
-import type { ZodType } from 'zod';
+import type { FlexibleSchema } from 'ai';
+import type { ImportAssistModelInput } from '../import-assist-model';
+import {
+  expandImportMapping,
+  importSystem,
+  importMappingSchema,
+} from './import-mapping-output';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import {
   failureStatus,
@@ -21,6 +29,8 @@ import {
 } from '../filter-generation';
 import {
   generateText,
+  jsonSchema,
+  zodSchema,
   Output,
   streamText,
   tool,
@@ -42,6 +52,7 @@ import type {
 export class VercelOpenAiProvider implements AiProvider {
   readonly providerKey: string;
   readonly modelKey: string;
+  private readonly onImportAttempt: (failure: ImportAttemptFailure) => void;
   private readonly apiKey: string;
   private readonly baseURL?: string;
 
@@ -56,9 +67,17 @@ export class VercelOpenAiProvider implements AiProvider {
     providerKey?: string;
     protocol?: 'responses' | 'chat';
     onUsage?: (usage: Usage) => void;
+    onImportAttempt?: (failure: ImportAttemptFailure) => void;
   }) {
     this.protocol = input.protocol ?? 'responses';
     this.onUsage = input.onUsage;
+    this.onImportAttempt =
+      input.onImportAttempt ??
+      ((failure) =>
+        Logger.warn(
+          { ...failure, retries: failure.attempt - 1 },
+          'ImportAssistProvider',
+        ));
     this.meter = input.meter;
     this.apiKey = input.apiKey;
     this.modelKey = input.modelKey;
@@ -78,6 +97,36 @@ export class VercelOpenAiProvider implements AiProvider {
       meterFetch,
     );
     return openai[this.protocol](this.modelKey);
+  }
+
+  generateImportAssist(
+    input: ImportAssistModelInput,
+    actor: TenantContext,
+    signal: AbortSignal = new AbortController().signal,
+  ) {
+    const importWireSchema = jsonSchema(
+      zodSchema(importMappingSchema(input)).jsonSchema,
+    );
+    const bytes = Buffer.byteLength(
+      JSON.stringify({
+        system: importSystem,
+        input,
+        schema: importWireSchema.jsonSchema,
+      }),
+    );
+    if (bytes > 48 * 1024) throw new Error('IMPORT_PREVIEW_TOO_LARGE');
+    return runImportRequest(
+      (attemptSignal) =>
+        this.generateStructured(input, attemptSignal, actor, {
+          feature: 'import_assist',
+          name: 'import_plan',
+          schema: importWireSchema,
+          system: importSystem,
+          disableReasoning: true,
+        }),
+      signal,
+      this.onImportAttempt,
+    ).then(expandImportMapping);
   }
 
   generateSalesDaily(input: SalesDailyInput) {
@@ -152,7 +201,8 @@ export class VercelOpenAiProvider implements AiProvider {
     config: {
       feature: Exclude<GenerationFeature, 'assistant'>;
       name: string;
-      schema: ZodType<T>;
+      schema: FlexibleSchema<T>;
+      disableReasoning?: boolean;
       onSend?: () => void | Promise<void>;
       system: string;
     },
@@ -185,7 +235,7 @@ export class VercelOpenAiProvider implements AiProvider {
             // On long shortlists DeepSeek can spend the entire output budget
             // on reasoning before returning any suggestions. The SDK needs
             // forceReasoning to forward the official endpoint's effort setting.
-            ...(config.feature === 'daily_brief' &&
+            ...((config.feature === 'daily_brief' || config.disableReasoning) &&
             this.protocol === 'responses' &&
             this.modelKey === 'deepseek-flash' &&
             this.baseURL &&

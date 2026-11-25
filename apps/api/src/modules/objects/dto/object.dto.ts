@@ -509,6 +509,7 @@ export class RuntimeObjectNavigationResponseDto {
 }
 
 export class PublishedFieldResponseDto {
+  @ApiPropertyOptional({ type: Boolean }) importManualOnly?: boolean;
   @ApiProperty() id!: string;
   @ApiProperty() fieldKey!: string;
   @ApiProperty() label!: string;

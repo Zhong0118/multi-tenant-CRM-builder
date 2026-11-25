@@ -1,0 +1,131 @@
+{
+  "id": "d17-ambiguous",
+  "scenario": "ambiguous",
+  "source": "development/d17-ambiguous.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "户名",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "登记日",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      },
+      "confidence": "review",
+      "dateOrder": "DMY",
+      "formatConfidence": "review"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d17-ambiguous-1",
+        "1/05/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d17-ambiguous-1",
+        "contact_day": "2024-05-01"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d17-ambiguous-2",
+        "2/05/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d17-ambiguous-2",
+        "contact_day": "2024-05-02"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d17-ambiguous-3",
+        "3/05/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d17-ambiguous-3",
+        "contact_day": "2024-05-03"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d17-ambiguous-4",
+        "4/05/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d17-ambiguous-4",
+        "contact_day": "2024-05-04"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d17-ambiguous-5",
+        "5/05/2024"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d17-ambiguous-5",
+        "contact_day": "2024-05-05"
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

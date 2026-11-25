@@ -1,0 +1,265 @@
+{
+  "id": "h29-settlement-review",
+  "scenario": "settlement-review",
+  "source": "final/h29-settlement-review.xlsx",
+  "sheetName": "签约核对",
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "columns": [
+    {
+      "col": "C1",
+      "header": "采购公司",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "走访日（DD/MM/YYYY）",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      },
+      "dateOrder": "DMY"
+    },
+    {
+      "col": "C3",
+      "header": "下次联系日期",
+      "target": {
+        "mode": "field",
+        "field": "follow_day"
+      }
+    },
+    {
+      "col": "C4",
+      "header": "协议签署日",
+      "target": {
+        "mode": "field",
+        "field": "signed_day"
+      }
+    },
+    {
+      "col": "C5",
+      "header": "预算（万元）",
+      "target": {
+        "mode": "field",
+        "field": "budget"
+      },
+      "bareAmountUnit": "wan"
+    },
+    {
+      "col": "C6",
+      "header": "签约金额（元）",
+      "target": {
+        "mode": "field",
+        "field": "contract_sum"
+      },
+      "bareAmountUnit": "yuan"
+    },
+    {
+      "col": "C7",
+      "header": "销售额",
+      "target": {
+        "mode": "field",
+        "field": "sales_total"
+      },
+      "bareAmountUnit": "yuan"
+    },
+    {
+      "col": "C8",
+      "header": "预计回款额",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C9",
+      "header": "发票开具日",
+      "target": {
+        "mode": "skip"
+      }
+    },
+    {
+      "col": "C10",
+      "header": "订购数量",
+      "target": {
+        "mode": "field",
+        "field": "units"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "禾辙铜管",
+        "14/04/2026",
+        "2026-05-11",
+        "2026-04-19",
+        "2.10",
+        "20000",
+        "9800",
+        "1000",
+        "2026-06-11",
+        "15"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "禾辙铜管",
+        "contact_day": "2026-04-14",
+        "follow_day": "2026-05-11",
+        "signed_day": "2026-04-19",
+        "budget": "21000",
+        "contract_sum": "20000",
+        "sales_total": "9800",
+        "units": 15
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "扁舟配件",
+        "03/05/2026",
+        "2026-05-25",
+        "2026-05-17",
+        "0.40",
+        "3800",
+        "2100",
+        "700",
+        "2026-06-16",
+        "20"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "扁舟配件",
+        "contact_day": "2026-05-03",
+        "follow_day": "2026-05-25",
+        "signed_day": "2026-05-17",
+        "budget": "4000",
+        "contract_sum": "3800",
+        "sales_total": "2100",
+        "units": 20
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "竹岸油泵",
+        "29/04/2026",
+        "2026-05-22",
+        "2026-05-07",
+        "1.25",
+        "11300",
+        "6400",
+        "500",
+        "2026-06-08",
+        "NaN"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidNumber"
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "岚浦五金",
+        "17/04/2026",
+        "2026-05-09",
+        "2026-04-21",
+        "0.36",
+        "#N/A",
+        "1950",
+        "800",
+        "2026-06-21",
+        "8"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidAmount"
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "环湖研磨",
+        "31/04/2026",
+        "2026-05-20",
+        "2026-05-11",
+        "0.22",
+        "1850",
+        "860",
+        "200",
+        "2026-06-05",
+        "5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidDate"
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "方石量具",
+        "28/04/2026",
+        "2026-05-28",
+        "2026-05-20",
+        "3.28",
+        "29700",
+        "15400",
+        "3000",
+        "2026-06-09",
+        "12"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "方石量具",
+        "contact_day": "2026-04-28",
+        "follow_day": "2026-05-28",
+        "signed_day": "2026-05-20",
+        "budget": "32800",
+        "contract_sum": "29700",
+        "sales_total": "15400",
+        "units": 12
+      }
+    }
+  ]
+}
