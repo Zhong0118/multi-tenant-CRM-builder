@@ -2,7 +2,7 @@
 
 import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import Link from "next/link";
-import { Button, Tag } from "antd";
+import { Button } from "antd";
 import { useEffect, useState } from "react";
 import type { AiProposalView } from "./ai-types";
 import styles from "./ai-assistant.module.css";
@@ -122,11 +122,18 @@ export function AiProposalCard({
             {operationLabels[proposal.operation]}
           </span>
         </div>
-        <Tag>
+        <span
+          className={styles.statusBadge}
+          data-status={
+            expired && proposal.status === "PROPOSED"
+              ? "EXPIRED"
+              : proposal.status
+          }
+        >
           {expired && proposal.status === "PROPOSED"
             ? "已过期"
             : statusLabels[proposal.status]}
-        </Tag>
+        </span>
       </header>
       {proposal.operation === "UPDATE_RECORD" ? (
         <p className={styles.proposalTarget}>{proposal.targetSummary}</p>

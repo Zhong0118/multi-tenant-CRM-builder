@@ -15,7 +15,14 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 import { toApiError } from "@/lib/api/api-error";
@@ -61,6 +68,8 @@ export function AiAssistantPage({
     conversationId?: string;
     select: (id?: string) => void;
     close: () => void;
+    /** Extra header actions for this page, such as 帮我写 on a record. */
+    actions?: ReactNode;
   };
 }) {
   const router = useRouter();
@@ -573,6 +582,7 @@ export function AiAssistantPage({
             </div>
             {panel ? (
               <div className={panelStyles.headerButtons}>
+                {panel.actions}
                 <Button
                   type="text"
                   icon={<UnorderedListOutlined />}

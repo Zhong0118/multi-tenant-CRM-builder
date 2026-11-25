@@ -1,12 +1,16 @@
+/* Cards inside an answer (questions, previews, drafts): one neutral outline,
+   a 14px title, label → value rows. */
 .card {
   display: grid;
   gap: 10px;
   margin: 12px 0;
-  padding: 16px;
+  padding: 14px;
   min-width: 0;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: var(--radius-reading);
   background: var(--bg-surface);
+  font-size: 13px;
+  line-height: 20px;
   overflow-wrap: anywhere;
   animation: assistant-in 180ms ease-out;
 }
@@ -16,15 +20,30 @@
 .card dd {
   margin: 0;
 }
+.card h3 {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
 .card dl > div {
   display: grid;
-  grid-template-columns: minmax(55px, 30%) 1fr;
-  gap: 10px;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  padding: 2px 0;
 }
 .card dt,
 .card small,
 .meta {
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
+}
+.card dd {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.card a {
+  color: var(--color-primary);
+  font-weight: 500;
 }
 .meta,
 .other {
@@ -32,6 +51,31 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+/* The batch of proposals has no outline of its own: its rows are the group. */
+.batch {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.batch .meta {
+  grid-row: 1;
+  grid-column: 2;
+  justify-content: flex-end;
+  font-size: 12px;
+}
+.itemFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.itemFooter small {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.card dl:empty {
+  display: none;
 }
 .fields {
   display: grid;
@@ -72,19 +116,38 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* What the assistant is looking at, as one chip under the header. */
 .contextBar {
-  min-height: 40px;
   display: flex;
   align-items: center;
-  padding: 5px 16px;
-  border-bottom: 1px solid var(--border-default);
+  min-height: 40px;
+  padding: 8px 16px 4px;
 }
 .contextTag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 0 2px 0 10px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 999px;
+  background: var(--bg-surface-subtle);
   color: var(--text-secondary);
   font-size: 12px;
+  line-height: 18px;
+}
+.contextTag > :global(.anticon) {
+  flex: none;
+  color: var(--text-tertiary);
+}
+.contextTag :global(.ant-btn) {
+  flex: none;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  color: var(--text-tertiary);
 }
 .headerButtons {
   display: flex;
@@ -96,5 +159,44 @@
   }
   .panel {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* The side assistant is a companion panel, not a dialog. On a tablet or
+   desktop it sits inset like the page panel (same margins, corners and
+   hairline), floating with a shadow; from 1440px the page column narrows to
+   make room (app-shell reads html[data-assistant-dock]) and the shadow goes. */
+.dock :global(.ant-drawer-content-wrapper) {
+  box-shadow: var(--shadow-overlay);
+}
+.dock :global(.ant-drawer-section) {
+  background: var(--bg-surface);
+}
+@media (min-width: 768px) {
+  .dock :global(.ant-drawer-content-wrapper) {
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-reading);
+  }
+}
+@media (min-width: 1440px) {
+  .dock :global(.ant-drawer-content-wrapper) {
+    box-shadow: 0 1px 2px rgb(24 24 27 / 4%);
+  }
+}
+
+/* On a phone the trigger is the spark alone (its aria-label names it), so
+   the page's own actions keep their room in the top bar. */
+@media (max-width: 767px) {
+  .triggerLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }

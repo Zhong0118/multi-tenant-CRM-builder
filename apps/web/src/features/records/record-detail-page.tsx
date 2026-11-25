@@ -79,9 +79,10 @@ export interface RecordDetailPageProps {
 
 /**
  * The record as a page of its own (Attio, HubSpot): a top bar with the way back,
- * paging through the list it came from and the record actions; a 360px sheet on
- * the left with who owns it and every field once; tabs with counts on the right.
- * Editing happens in the sheet, so the tabs stay in view.
+ * paging through the list it came from and the record actions; the title across
+ * the page; every field once in a properties column on the left, with who owns
+ * it and the workflow below; the activity tabs on the right. The columns follow
+ * the width the page actually has (the side assistant can take some of it).
  */
 export function RecordDetailPage({
   tenantCode,
@@ -334,8 +335,8 @@ export function RecordDetailPage({
   ];
 
   const ownership = (
-    <section className={styles.railCard} aria-label="负责人与流转">
-      <h2 className={styles.cardTitle}>归属</h2>
+    <section className={styles.railBlock} aria-label="负责人与流转">
+      <h2 className={styles.sectionTitle}>归属</h2>
       <dl className={styles.facts}>
         <div>
           <dt>负责人</dt>
@@ -433,8 +434,6 @@ export function RecordDetailPage({
           <span className={styles.crumbCurrent}>#{record.recordNo}</span>
         </nav>
         <div className={styles.topActions}>
-          <AssistantPanelButton key={`assistant-${record.id}`} tenantCode={tenantCode} memberId={currentMemberId} objectCode={schema.object.code} objectName={schema.object.name} recordId={record.id} recordTitle={recordFields(schema,record).some(f=>f.fieldKey===schema.object.titleFieldKey)?record.title:'记录 '+record.recordNo}/>
-          {activeTab !== "activity" && communicationAction}
           {position && position.total > 1 ? (
             <div className={styles.pager} role="group" aria-label="逐条查看">
               <Tooltip title="上一条">
@@ -475,6 +474,7 @@ export function RecordDetailPage({
               </Tooltip>
             </div>
           ) : null}
+          {activeTab !== "activity" && communicationAction}
           {canEdit && !editing && !deleted ? (
             <Button
               disabled={ownershipPending}
@@ -511,38 +511,48 @@ export function RecordDetailPage({
               />
             </Dropdown>
           ) : null}
+          <AssistantPanelButton key={`assistant-${record.id}`} tenantCode={tenantCode} memberId={currentMemberId} objectCode={schema.object.code} objectName={schema.object.name} recordId={record.id} recordTitle={recordFields(schema,record).some(f=>f.fieldKey===schema.object.titleFieldKey)?record.title:'记录 '+record.recordNo}/>
         </div>
       </header>
 
-      <div className={styles.layout}>
-        <div className={styles.mainColumn}>
-          <section className={styles.card} aria-label="记录信息">
-            <div className={styles.identity}>
-              <h1>{record.title}</h1>
-              <p>
-                <span className={styles.no}>#{record.recordNo}</span>
-                <span aria-hidden>·</span>
-                <span>
-                  更新于{" "}
-                  <time dateTime={record.updatedAt}>
-                    {formatDateTime(record.updatedAt, timeZone)}
-                  </time>
-                </span>
-              </p>
-            </div>
-
-            {refreshWarning ? (
-              <Alert type="warning" showIcon title={refreshWarning} />
+      <div className={styles.body}>
+        <div
+          className={styles.layout}
+          data-editing={editing && !poolPreview && !deleted ? "" : undefined}
+        >
+          <div className={styles.head}>
+            <h1 className={styles.title}>{record.title}</h1>
+            <p className={styles.meta}>
+              <span className={styles.no}>#{record.recordNo}</span>
+              <span aria-hidden>·</span>
+              <span>
+                更新于{" "}
+                <time dateTime={record.updatedAt}>
+                  {formatDateTime(record.updatedAt, timeZone)}
+                </time>
+              </span>
+            </p>
+            {refreshWarning || error || poolPreview ? (
+              <div className={styles.notices}>
+                {refreshWarning ? (
+                  <Alert type="warning" showIcon title={refreshWarning} />
+                ) : null}
+                {error ? <Alert type="error" showIcon title={error} /> : null}
+                {poolPreview ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    title="公共池记录仅供预览，领取后可编辑和跟进"
+                  />
+                ) : null}
+              </div>
             ) : null}
-            {error ? <Alert type="error" showIcon title={error} /> : null}
-            {poolPreview ? (
-              <Alert
-                type="info"
-                showIcon
-                title="公共池记录仅供预览，领取后可编辑和跟进"
-              />
-            ) : null}
+          </div>
 
+          <section className={styles.props} aria-label="记录信息">
+            <h2 className={styles.sectionTitle}>
+              {editing && !poolPreview && !deleted ? "编辑记录" : "详细信息"}
+            </h2>
             {deleted ? (
               <Button onClick={onClose}>返回列表</Button>
             ) : editing && !poolPreview ? (
@@ -581,8 +591,8 @@ export function RecordDetailPage({
                 />
               </div>
             ) : (
-              <dl className={styles.fieldGrid} aria-label="业务字段">
-                {/* The title is the heading above; the grid lists the rest. */}
+              <dl className={styles.fieldList} aria-label="业务字段">
+                {/* The title is the heading above; the list holds the rest. */}
                 {fields
                   .filter(
                     (field) => field.fieldKey !== schema.object.titleFieldKey,
@@ -598,7 +608,7 @@ export function RecordDetailPage({
                       }
                     >
                       <dt>
-                        {field.label}
+                        <span className={styles.fieldLabel}>{field.label}</span>
                         {field.access === "READ_ONLY" ||
                         field.access === "CREATE_ONLY" ? (
                           <Tooltip title="只读">
@@ -623,12 +633,23 @@ export function RecordDetailPage({
             )}
           </section>
 
+          <aside className={styles.rail} aria-label="归属与流程">
+            {ownership}
+            {!deleted && !poolPreview && schema.workflowEnabled !== false ? (
+              <div className={styles.railBlock} data-slot="workflow">
+                <RecordWorkflowPanel
+                  tenantCode={tenantCode}
+                  objectCode={schema.object.code}
+                  recordId={record.id}
+                  recordVersion={record.version}
+                  onRecordChanged={refresh}
+                />
+              </div>
+            ) : null}
+          </aside>
+
           {!deleted && !poolPreview ? (
-            <section
-              className={styles.card}
-              aria-label="业务活动"
-              data-slot="activity"
-            >
+            <section className={styles.activity} aria-label="业务活动">
               <Tabs
                 className={styles.tabs}
                 activeKey={activeTab}
@@ -646,21 +667,6 @@ export function RecordDetailPage({
             </section>
           ) : null}
         </div>
-
-        <aside className={styles.rail} aria-label="归属与流程">
-          {ownership}
-          {!deleted && !poolPreview && schema.workflowEnabled !== false ? (
-            <div className={styles.railCard} data-slot="workflow">
-              <RecordWorkflowPanel
-                tenantCode={tenantCode}
-                objectCode={schema.object.code}
-                recordId={record.id}
-                recordVersion={record.version}
-                onRecordChanged={refresh}
-              />
-            </div>
-          ) : null}
-        </aside>
       </div>
 
       {modalHolder}

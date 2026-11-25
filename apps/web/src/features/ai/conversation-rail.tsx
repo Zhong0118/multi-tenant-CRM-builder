@@ -154,7 +154,6 @@ export function ConversationRail({
         {hideBrand ? null : <p className={styles.railBrand}>AI 会话</p>}
         <Button
           className={styles.railNew}
-          type="primary"
           icon={<PlusOutlined aria-hidden />}
           data-rail-new
           onClick={onNew}

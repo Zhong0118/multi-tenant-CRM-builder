@@ -1,5 +1,6 @@
 "use client";
 
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { ClockCircleOutlined, CopyOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import { useContext, useState } from "react";
@@ -95,7 +96,7 @@ export function AssistantMessage({
   return (
     <article className={styles.assistantRow}>
       <div className={styles.avatar} aria-hidden>
-        AI
+        <AiSparkIcon />
       </div>
       <div className={styles.assistantSurface}>
         <div className={styles.answerMeta}>

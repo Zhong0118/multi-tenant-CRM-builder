@@ -16,6 +16,7 @@ import {
   resultLink,
   statusLabels,
 } from "./ai-proposal-card";
+import aiStyles from "./ai-assistant.module.css";
 import styles from "./assistant-panel.module.css";
 
 export function AssistantBatchCard({
@@ -126,7 +127,10 @@ export function AssistantBatchCard({
   const canWrite = useAiFeature("write_proposal");
   const blocked = busy || !!commands?.busy;
   return (
-    <section className={styles.card} aria-label="待核对的修改">
+    <section
+      className={`${styles.card} ${styles.batch}`}
+      aria-label="待核对的修改"
+    >
       <h3>
         {batch.coverage
           ? `共 ${batch.coverage.total} 条，本次提议 ${batch.coverage.targets} 条`
@@ -170,6 +174,19 @@ export function AssistantBatchCard({
           }
           const accessible = Boolean(item.targetSummary || item.changes.length);
           const actionable = status === "PROPOSED" && accessible;
+          // A new value that has its own control below is shown once, in the
+          // control; a change from an old value keeps its "old → new" line.
+          function editedBelow(change: { label: string; before?: string }) {
+            if (!actionable || change.before !== undefined) return false;
+            return (item.editableFields ?? []).some(
+              (field) =>
+                field.label === change.label ||
+                field.key === change.label ||
+                (item.operation === "CREATE_FOLLOW_UP" &&
+                  change.label === "到期时间" &&
+                  field.key === "dueAt"),
+            );
+          }
           const link =
             status === "EXECUTED" ? resultLink(tenantCode, item) : null;
           const message =
@@ -182,10 +199,14 @@ export function AssistantBatchCard({
               <>
                 <div className={styles.meta}>
                   <span>{operationLabels[item.operation]}</span>
-                  <strong>{statusLabels[status]}</strong>
+                  <strong className={aiStyles.statusBadge} data-status={status}>
+                    {statusLabels[status]}
+                  </strong>
                 </div>
                 <dl>
-                  {item.changes.map((change, index) => (
+                  {item.changes
+                    .filter((change) => !editedBelow(change))
+                    .map((change, index) => (
                     <div key={index}>
                       <dt>{change.label}</dt>
                       <dd>
@@ -204,9 +225,6 @@ export function AssistantBatchCard({
                 ))}
                 {actionable && (
                   <>
-                    <small>
-                      有效至 {new Date(item.expiresAt).toLocaleString("zh-CN")}
-                    </small>
                     {item.editableFields?.map((field) => (
                       <AssistantFieldControl
                         key={field.key}
@@ -231,14 +249,25 @@ export function AssistantBatchCard({
                         }
                       />
                     ))}
-                    <Button
-                      type="text"
-                      size="small"
-                      disabled={blocked}
-                      onClick={() => void reject(id)}
-                    >
-                      拒绝
-                    </Button>
+                    <div className={styles.itemFooter}>
+                      <small>
+                        有效至{" "}
+                        {new Date(item.expiresAt).toLocaleString("zh-CN", {
+                          month: "numeric",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </small>
+                      <Button
+                        type="text"
+                        size="small"
+                        disabled={blocked}
+                        onClick={() => void reject(id)}
+                      >
+                        拒绝
+                      </Button>
+                    </div>
                   </>
                 )}
                 {(message || failureMessage({ ...item, status })) && (

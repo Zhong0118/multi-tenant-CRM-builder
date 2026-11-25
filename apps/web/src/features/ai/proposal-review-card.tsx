@@ -65,73 +65,76 @@ export function ProposalReviewCard({
     .map((item) => item.key);
   return (
     <div className={styles.review}>
-      {items.map((item) => {
-        const result = itemResults[item.key];
-        if (result?.status === "EXECUTED")
-          return (
-            <p key={item.key} className={styles.savedItem}>
-              {item.label}
-              <span>{result.message}</span>
-            </p>
-          );
-        const selected = selectedKeys.includes(item.key);
-        const failedItem = failedItems.get(operation(item));
-        if (failedItems.size && !failedItem && !selected) return null;
-        const retryKeys = eligible
-          .filter((entry) => operation(entry) === operation(item))
-          .map((entry) => entry.key);
-        const disabled = busy || !!item.locked;
-        const expanded = !failedItems.size || !!result || selected;
-        const controls = (
-          <>
-            {onSelect && (
-              <Checkbox
-                aria-label={`选择${item.label}`}
-                checked={selected}
-                disabled={disabled}
-                onChange={(event) => onSelect(item.key, event.target.checked)}
-              >
+      <div className={styles.items}>
+        {items.map((item) => {
+          const result = itemResults[item.key];
+          if (result?.status === "EXECUTED")
+            return (
+              <p key={item.key} className={styles.savedItem}>
                 {item.label}
-              </Checkbox>
-            )}
-            {expanded && (
-              <>
-                {item.render((value) => onEdit?.(item.key, value), disabled)}
-                {item.evidence && <blockquote>{item.evidence}</blockquote>}
-                {selected && item.error && <p role="status">{item.error}</p>}
-              </>
-            )}
-            {onRetry && failedItem === item.key && (
-              <>
-                <p role="alert">{result.message}</p>
-                <Button
-                  aria-label={busy ? "正在保存…" : "重试"}
-                  loading={busy}
-                  disabled={busy || !retryKeys.length}
-                  onClick={() => onRetry(retryKeys)}
+                <span>{result.message}</span>
+              </p>
+            );
+          const selected = selectedKeys.includes(item.key);
+          const failedItem = failedItems.get(operation(item));
+          if (failedItems.size && !failedItem && !selected) return null;
+          const retryKeys = eligible
+            .filter((entry) => operation(entry) === operation(item))
+            .map((entry) => entry.key);
+          const disabled = busy || !!item.locked;
+          const expanded = !failedItems.size || !!result || selected;
+          const controls = (
+            <>
+              {onSelect && (
+                <Checkbox
+                  aria-label={`选择${item.label}`}
+                  checked={selected}
+                  disabled={disabled}
+                  onChange={(event) => onSelect(item.key, event.target.checked)}
                 >
-                  {busy ? "正在保存…" : "重试"}
-                </Button>
-              </>
-            )}
-          </>
-        );
-        if (failedItems.size && !failedItem && selected)
-          return (
-            <details key={item.key} className={styles.item}>
-              <summary>
-                {item.label} · {item.error ? "待补充" : "待保存"}
-              </summary>
-              {controls}
-            </details>
+                  {item.label}
+                </Checkbox>
+              )}
+              {expanded && (
+                <>
+                  {item.render((value) => onEdit?.(item.key, value), disabled)}
+                  {item.evidence && <blockquote>{item.evidence}</blockquote>}
+                  {selected && item.error && <p role="status">{item.error}</p>}
+                </>
+              )}
+              {onRetry && failedItem === item.key && (
+                <>
+                  <p role="alert">{result.message}</p>
+                  <Button
+                    aria-label={busy ? "正在保存…" : "重试"}
+                    loading={busy}
+                    disabled={busy || !retryKeys.length}
+                    onClick={() => onRetry(retryKeys)}
+                  >
+                    {busy ? "正在保存…" : "重试"}
+                  </Button>
+                </>
+              )}
+            </>
           );
-        return (
-          <div key={item.key} className={onSelect ? styles.item : undefined}>
-            {controls}
-          </div>
-        );
-      })}
+          if (failedItems.size && !failedItem && selected)
+            return (
+              <details key={item.key} className={styles.item}>
+                <summary>
+                  {item.label} · {item.error ? "待补充" : "待保存"}
+                </summary>
+                {controls}
+              </details>
+            );
+          return (
+            <div key={item.key} className={onSelect ? styles.item : undefined}>
+              {controls}
+            </div>
+          );
+        })}
+      </div>
       <div className={styles.actions} aria-label="提案操作">
+        {extraActions}
         {onConfirm &&
           (fresh.length > 0 ||
             (!failedItems.size &&
@@ -148,7 +151,6 @@ export function ProposalReviewCard({
               {confirmLabel}
             </Button>
           )}
-        {extraActions}
       </div>
     </div>
   );

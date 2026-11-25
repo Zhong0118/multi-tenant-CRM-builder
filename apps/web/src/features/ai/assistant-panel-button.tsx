@@ -2,7 +2,8 @@
 
 import { SalesWriting } from "./sales-writing";
 import { useAiFeature } from "@/features/ai-governance/access";
-import { ArrowLeftOutlined, RobotOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, EditOutlined } from "@ant-design/icons";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { Button, Drawer, Space } from "antd";
 import { useEffect, useRef, useState } from "react";
 import type { FilterRule } from "@crm/contracts";
@@ -18,6 +19,7 @@ import {
   useAssistantSession,
   writeAssistantSession,
 } from "./assistant-session";
+import panelStyles from "./assistant-panel.module.css";
 
 interface PanelProps {
   tenantCode: string;
@@ -74,6 +76,17 @@ function AvailableAssistantPanel(
     setCompose(true);
     setOpen(true);
   }, [props.writing, recordId]);
+  // The panel works beside the page rather than over it: no mask, no focus
+  // trap, and on a wide screen the page column narrows to make room (the
+  // shell reads this flag), so the record or list stays usable while asking.
+  useEffect(() => {
+    if (!open) return;
+    const root = document.documentElement;
+    root.dataset.assistantDock = "open";
+    return () => {
+      delete root.dataset.assistantDock;
+    };
+  }, [open]);
   const editorDraft = useEditorDraft();
   const capture = useRef<FilterRule | undefined>(undefined);
   const [snapshot, setSnapshot] = useState<FilterRule>();
@@ -121,13 +134,15 @@ function AvailableAssistantPanel(
   return (
     <>
       <Button
-        icon={<RobotOutlined aria-hidden />}
+        icon={<AiSparkIcon aria-hidden />}
         aria-label={props.assistant ? "打开助手" : "打开帮我写"}
         onPointerDown={captureDraft}
         onKeyDown={captureDraft}
         onClick={openPanel}
       >
-        {props.assistant ? "助手" : "帮我写"}
+        <span className={panelStyles.triggerLabel}>
+          {props.assistant ? "助手" : "帮我写"}
+        </span>
       </Button>
       <Drawer
         title={
@@ -151,7 +166,10 @@ function AvailableAssistantPanel(
         onClose={() => setOpen(false)}
         aria-label="页面助手"
         destroyOnHidden
-        size="min(480px, 100vw)"
+        mask={false}
+        focusable={{ trap: false }}
+        rootClassName={panelStyles.dock}
+        size="min(400px, 100vw)"
         styles={{
           body: {
             padding: 0,
@@ -162,17 +180,13 @@ function AvailableAssistantPanel(
           section: { maxHeight: keyboardHeight ?? "100dvh" },
         }}
       >
-        {props.writing &&
-          recordId &&
-          (compose ? (
-            <SalesWriting
-              tenantCode={tenantCode}
-              objectCode={objectCode}
-              recordId={recordId}
-            />
-          ) : (
-            <Button onClick={() => setCompose(true)}>帮我写</Button>
-          ))}
+        {props.writing && recordId && compose && (
+          <SalesWriting
+            tenantCode={tenantCode}
+            objectCode={objectCode}
+            recordId={recordId}
+          />
+        )}
         {!compose && props.assistant && (
           <AiAssistantPage
             key={objectCode + ":" + (recordId ?? "")}
@@ -184,6 +198,15 @@ function AvailableAssistantPanel(
               conversationId,
               select: (id) => writeAssistantSession(activeKey, id),
               close: () => setOpen(false),
+              actions: props.writing && recordId && (
+                <Button
+                  type="text"
+                  icon={<EditOutlined aria-hidden />}
+                  onClick={() => setCompose(true)}
+                >
+                  帮我写
+                </Button>
+              ),
             }}
           />
         )}

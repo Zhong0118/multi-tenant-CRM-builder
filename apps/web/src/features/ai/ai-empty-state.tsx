@@ -1,6 +1,7 @@
 "use client";
 
-import {useAiFeature} from "@/features/ai-governance/access";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
+import { useAiFeature } from "@/features/ai-governance/access";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import styles from "./ai-assistant.module.css";
@@ -35,7 +36,7 @@ export function AiEmptyState({
   return (
     <div className={styles.empty}>
       <div className={styles.emptyMark} aria-hidden>
-        AI
+        <AiSparkIcon />
       </div>
       <h2>有什么可以帮你查的？</h2>
       <p>可查询你有权限访问的数据，修改前会请你确认</p>

@@ -251,12 +251,10 @@
   width: 28px;
   height: 28px;
   margin-top: 2px;
-  border-radius: var(--radius-control);
-  background: var(--color-primary);
-  color: var(--bg-surface);
-  font-family: var(--font-label);
-  font-size: 11px;
-  font-weight: 600;
+  border-radius: 999px;
+  background: var(--color-ai-soft);
+  color: var(--color-ai);
+  font-size: 15px;
 }
 
 .assistantSurface {
@@ -273,26 +271,24 @@
   margin-bottom: 0;
 }
 
-.assistantSurface p,
-.assistantSurface ul,
-.assistantSurface ol,
-.assistantSurface blockquote {
+/* Answer prose. :where() keeps these at class weight so cards inside an
+   answer (proposals, questions) keep their own type. */
+.assistantSurface :where(p, ul, ol, blockquote) {
   margin: 0 0 10px;
 }
 
-.assistantSurface h3,
-.assistantSurface h4 {
+.assistantSurface :where(h3, h4) {
   margin: 18px 0 6px;
   color: var(--text-primary);
   font-weight: 600;
   line-height: 1.45;
 }
 
-.assistantSurface h3 {
+.assistantSurface :where(h3) {
   font-size: 16px;
 }
 
-.assistantSurface h4 {
+.assistantSurface :where(h4) {
   font-size: 15px;
 }
 
@@ -506,30 +502,67 @@
   color: var(--text-tertiary);
 }
 
+/* An AI proposal: what will change, and a status. Neutral card, status badge
+   in the header, label → value rows, the decision bottom-right. */
 .proposalCard {
+  display: grid;
+  gap: 10px;
   margin: 14px 0 16px;
-  padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--border-default));
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--bg-surface) 92%, var(--color-primary-soft));
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--shell-ink) 5%, transparent);
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .proposalHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.proposalHeader strong { color: var(--text-primary); }
-.proposalOperation { display: block; margin-top: 3px; color: var(--text-tertiary); font-size: 12px; }
-.proposalTarget { margin: 10px 0; color: var(--text-secondary); font-size: 13px; }
+.proposalHeader strong { color: var(--text-primary); font-weight: 600; }
+.proposalOperation { display: block; margin-top: 2px; color: var(--text-tertiary); font-size: 12px; }
+.proposalTarget { margin: 0; color: var(--text-secondary); font-size: 13px; }
 .proposalChanges { margin: 0; padding: 0; }
-.proposalChanges > div { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 8px; padding: 5px 0; }
-.proposalChanges dt { color: var(--text-tertiary); font-size: 12px; }
-.proposalChanges dd { margin: 0; color: var(--text-primary); font-size: 13px; overflow-wrap: anywhere; }
+.proposalChanges > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 4px 0; }
+.proposalChanges dt { color: var(--text-tertiary); font-size: 13px; }
+.proposalChanges dd { margin: 0; color: var(--text-primary); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
 .proposalActions { display: flex; gap: 8px; margin-top: 12px; }
-.proposalStatus, .proposalWarning, .proposalFailure, .proposalSuccess { margin: 10px 0 0; font-size: 13px; }
+.proposalStatus, .proposalWarning, .proposalFailure, .proposalSuccess { margin: 0; font-size: 13px; }
 .proposalWarning { color: var(--text-secondary); }
-.proposalFailure { color: var(--color-danger, #b42318); }
+.proposalFailure { color: var(--color-danger); }
 .proposalSuccess { color: var(--text-secondary); }
-.proposalSuccess p { margin: 0 0 5px; }
-.proposalSuccess a { color: var(--color-primary); font-weight: 600; }
+.proposalSuccess p { margin: 0 0 4px; }
+.proposalSuccess a { color: var(--color-primary); font-weight: 500; }
+
+/* Proposal status, shared by the single card and the batch card. */
+.statusBadge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-status);
+  background: var(--color-neutral-soft);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.statusBadge[data-status="PROPOSED"] {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.statusBadge[data-status="EXECUTED"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.statusBadge[data-status="FAILED"],
+.statusBadge[data-status="CONFLICTED"] {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
 
 .proposalActions button:focus-visible,
 .proposalCard a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
@@ -611,32 +644,32 @@
   text-align: center;
 }
 
+/* The AI mark in its own quiet violet: AI is a helper here, not the brand. */
 .emptyMark {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 16px;
-  border-radius: var(--radius-reading);
-  background: var(--color-primary);
-  color: var(--bg-surface);
-  font-family: var(--font-label);
-  font-size: 15px;
-  font-weight: 600;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  background: var(--color-ai-soft);
+  color: var(--color-ai);
+  font-size: 18px;
 }
 
 .empty h2 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  line-height: 26px;
 }
 
 .empty p {
-  margin: 8px 0 20px;
+  margin: 6px 0 20px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .promptGrid {
@@ -647,14 +680,14 @@
 }
 
 .promptChip {
-  padding: 11px 14px;
+  padding: 9px 12px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   font: inherit;
-  font-size: 13.5px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 20px;
   text-align: left;
   cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease;
@@ -662,8 +695,8 @@
 
 .promptChip:hover,
 .promptChip:focus-visible {
-  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-default));
-  background: var(--color-primary-soft);
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
 }
 
 .jumpLatest {
@@ -677,13 +710,16 @@
   display: none !important;
 }
 
+/* "需确认后执行" is a standing rule, not news: a quiet neutral label. */
 .header :global(.ant-tag) {
-  margin-inline-end: 0;
+  margin-inline: 4px 0;
   border: 0;
-  border-radius: 999px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  border-radius: var(--radius-status);
+  background: var(--color-neutral-soft);
+  color: var(--text-secondary);
+  font-size: 12px;
   font-weight: 500;
+  vertical-align: 2px;
 }
 
 .toolToggle:focus-visible,
@@ -842,15 +878,15 @@
 }
 .answerContent { margin-bottom: 16px; }
 .tools {
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-hairline);
   border-radius: var(--radius-control);
-  background: var(--bg-page);
+  background: var(--bg-surface-subtle);
   overflow: hidden;
 }
 .toolToggle {
   display: flex;
   width: 100%;
-  padding: 10px 12px;
+  padding: 7px 12px;
   text-align: left;
   line-height: 1.5;
   transition: background 160ms ease;
@@ -858,13 +894,14 @@
 .toolToggle:hover { background: var(--bg-hover); }
 .toolChevron { margin-left: auto; font-size: 10px; transition: transform 180ms ease; }
 .toolChevronOpen { transform: rotate(90deg); }
-.toolStatus { flex: 0 0 auto; color: var(--color-primary); }
-.toolFailed { flex: 0 0 auto; color: var(--color-danger, #b42318); }
+.toolStatus { flex: 0 0 auto; color: var(--text-tertiary); }
+/* Some lookups failing is a note about the answer, not an error to fix. */
+.toolFailed { flex: 0 0 auto; color: var(--color-warning); }
 .toolReveal { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows 180ms ease, visibility 180ms; }
 .toolRevealOpen { grid-template-rows: 1fr; visibility: visible; }
 .toolReveal > div { min-height: 0; overflow: hidden; }
 .assistantSurface .toolList { padding: 0 12px 8px; margin: 0; }
-.assistantSurface .toolItem { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; padding: 8px 0; margin: 0; border-top: 1px solid var(--border-default); }
+.assistantSurface .toolItem { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; padding: 7px 0; margin: 0; border-top: 1px solid var(--border-hairline); }
 .toolBody { flex: 1; min-width: 0; }
 .toolName { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; line-height: 1.6; }
 .toolOutcome, .toolDuration { font-size: 12px; color: var(--text-secondary); }
@@ -879,7 +916,7 @@
 .sessionPreview { margin-top: 4px; font-size: 11px; color: var(--text-tertiary); font-weight: 400; }
 .composer { border-radius: 14px; }
 .composerActions button, .railNew, .promptChip { transition: transform 160ms ease, background 160ms ease, border-color 160ms ease; }
-.composerActions button:hover, .railNew:hover { transform: scale(1.025); }
+.composerActions button:hover { transform: scale(1.025); }
 .composerActions button:active, .railNew:active, .promptChip:active { transform: scale(.98); }
 .assistantRow, .userRow { animation: answerAppear 180ms ease-out; }
 @keyframes answerAppear { from { opacity: 0; } to { opacity: 1; } }
