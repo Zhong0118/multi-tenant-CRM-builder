@@ -3,6 +3,7 @@
 import { Alert, Button, Form, Input, Space, Switch, Typography } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { StatusTag } from "@/components/workbench/status-tag";
 import { PageSection } from "@/components/layout/page";
 import { emailApi, type EmailPurpose, type EmailStatus } from "./email-api";
 import { normalizeFormError, useCountdown } from "./form-support";
@@ -108,7 +109,7 @@ export function AccountEmail({
             {maskedEmail ?? "未绑定邮箱"}
           </Typography.Text>
           {status === "VERIFIED" && (
-            <Typography.Text type="secondary">已验证</Typography.Text>
+            <StatusTag tone="success">已验证</StatusTag>
           )}
           {status === "UNDELIVERABLE" && (
             <Alert

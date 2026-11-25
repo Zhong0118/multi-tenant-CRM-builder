@@ -78,8 +78,19 @@
 
 @media (max-width: 640px) {
   .bar {
-    padding: 0 12px;
+    padding: 0 8px;
+    gap: 6px;
   }
+
+  .nav {
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .nav > a { padding-inline: 5px; }
+  .nav > :global(.ant-btn) { margin-left: 0; padding-inline: 6px; }
 
   .brand > span:last-child {
     display: none;
@@ -94,24 +105,9 @@
   }
 }
 
-.main > section + div {
-  margin-top: 32px;
-}
-
 .main > header {
   margin-bottom: 24px;
 }
-@media (max-width: 640px) {
-  .bar {
-    flex-wrap: wrap;
-    height: auto;
-    min-height: 56px;
-    gap: 4px;
-    padding-block: 8px;
-  }
-  .nav { flex-wrap: wrap; }
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .nav > a {
     transition: background-color 150ms, color 150ms, transform 150ms;

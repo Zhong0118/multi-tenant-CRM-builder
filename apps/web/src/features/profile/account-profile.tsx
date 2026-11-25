@@ -33,6 +33,7 @@ type Membership = components["schemas"]["AccountMembershipDto"];
 function EditableField({
   label,
   accessibleLabel = label,
+  placeholder,
   initial,
   maxLength,
   required = false,
@@ -40,6 +41,7 @@ function EditableField({
 }: {
   label: string;
   accessibleLabel?: string;
+  placeholder?: string;
   initial: string;
   maxLength: number;
   required?: boolean;
@@ -81,6 +83,7 @@ function EditableField({
         {label}
         <Input
           aria-label={accessibleLabel}
+          placeholder={placeholder}
           value={value}
           maxLength={maxLength}
           disabled={busy}
@@ -134,7 +137,7 @@ export function AccountProfile({
           <ProfileAvatar name={displayName} avatarUrl={image} size={64} />
           <div className={styles.identityText}>
             <strong>{displayName}</strong>
-            <p>已应用于各公司</p>
+            <p>姓名和头像会显示在你加入的所有公司</p>
           </div>
           <AvatarEditor
             avatarUrl={image}
@@ -181,6 +184,7 @@ export function AccountProfile({
             </dl>
             <EditableField
               label="职位"
+              placeholder="例如：销售经理"
               accessibleLabel={m.tenantName + "职位"}
               initial={m.jobTitle ?? ""}
               maxLength={50}
