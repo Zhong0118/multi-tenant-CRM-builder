@@ -4,6 +4,8 @@ import {
   Alert,
   Button,
   Checkbox,
+  Collapse,
+  Tag,
   Drawer,
   Progress,
   Select,
@@ -13,7 +15,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   FIELD_TYPE_LABELS,
-  selectOptions,
   type PublishedFieldView,
   type RuntimeObjectSchema,
 } from "@/features/objects/object-types";
@@ -22,9 +23,8 @@ import { toApiError } from "@/lib/api/api-error";
 import type { DynamicFieldMember } from "./dynamic-field";
 import type { RecordApi, RecordImportResult } from "./record-api";
 import {
-  coerceImportValue,
+  inferImportDateOrder,
   type CsvEncoding,
-  suggestFieldKey,
   type ParsedCsv,
 } from "./record-csv";
 
@@ -32,20 +32,37 @@ import {
   readImportFile,
   importBatchId,
   importFailureCsv,
+  importRowError,
   type ImportFile,
 } from "./record-import-file";
-import { runImportBatches, summarizeImport } from "./record-import-batches";
+import { summarizeImport } from "./record-import-batches";
+import {
+  IMPORT_MANUAL_SKIP,
+  runGroupedImport,
+  resolveImportOwners,
+  type GroupedImportPlan,
+  type ImportDestination,
+} from "./record-import-groups";
+import {
+  SKIP,
+  OWNER,
+  APPEND,
+  ownerHeader,
+  initialMapping,
+  buildImportRows,
+} from "./record-import-mapping";
+import { ImportOwners } from "./record-import-owners";
+import importStyles from "./record-import.module.css";
 
 import styles from "./records.module.css";
-import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
-import { memberSelectOptions } from "@/components/identity/member-identity";
 
-const SKIP = "__skip__";
+import { memberSelectOptions } from "@/components/identity/member-identity";
 
 export interface RecordImportDrawerProps {
   tenantCode: string;
   schema: RuntimeObjectSchema;
   api: RecordApi;
+  timeZone?: string;
   canChooseOwner?: boolean;
   poolConfig?: import("./record-pool-types").RecordPoolConfig;
   members?: DynamicFieldMember[];
@@ -57,6 +74,7 @@ export function RecordImportDrawer({
   tenantCode,
   schema,
   api,
+  timeZone,
   canChooseOwner = false,
   poolConfig,
   members = [],
@@ -66,6 +84,7 @@ export function RecordImportDrawer({
   const importable = schema.fields.filter(
     (field) =>
       (field.access === "EDIT" || field.access === "CREATE_ONLY") &&
+      !field.isSystem &&
       field.type !== "MEMBER",
   );
   const [ownerMemberId, setOwnerMemberId] = useState<string>();
@@ -85,7 +104,7 @@ export function RecordImportDrawer({
   const [selectedMatchFields, setMatchFields] = useState<string[]>([]);
   const [busy, setBusy] = useState<"check" | "import">();
   const [loadingFile, setLoadingFile] = useState(false);
-  const [checked, setChecked] = useState<RecordImportResult>();
+  const [checkResult, setChecked] = useState<RecordImportResult>();
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const stopped = useRef(false);
   const running = useRef(false);
@@ -95,13 +114,93 @@ export function RecordImportDrawer({
       stopped.current = true;
     };
   }, []);
-  const [fileName, setFileName] = useState<string>();
+  const fileInput = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<ParsedCsv>();
+  const sheetSummary = useMemo(() => {
+    if (!parsed) return;
+    const occurrences = new Map<string, number>();
+    const samples = parsed.headers.map(() => new Set<string>());
+    for (const row of parsed.rows) {
+      const key = JSON.stringify(row);
+      occurrences.set(key, (occurrences.get(key) ?? 0) + 1);
+      row.forEach((value, column) => {
+        if (value && samples[column].size < 3) samples[column].add(value);
+      });
+    }
+    let duplicateRows = 0;
+    for (const count of occurrences.values()) {
+      if (count > 1) duplicateRows += count;
+    }
+    return {
+      duplicateRows,
+      samples: samples.map((values) => [...values].join(" · ")),
+    };
+  }, [parsed]);
   const [mapping, setMapping] = useState<string[]>([]);
   const [parseError, setParseError] = useState<string>();
   const [summary, setSummary] = useState<string>();
   const [result, setResult] = useState<RecordImportResult>();
 
+  const [headerRow, setHeaderRow] = useState(1);
+  const [headers, setHeaders] = useState<
+    { rowNumber: number; cells: string[] }[]
+  >([]);
+  const [autoHeader, setAutoHeader] = useState(false);
+  const [manual, setManual] = useState<number[]>([]);
+  const [ownerChoices, setOwnerChoices] = useState<
+    Map<string, ImportDestination>
+  >(new Map());
+  const [overrides, setOverrides] = useState<Record<number, "DMY" | "MDY">>({});
+  const [readyPlan, setReadyPlan] = useState<
+    GroupedImportPlan & { scope: string }
+  >();
+  const ownerColumn = canChooseOwner ? mapping.indexOf(OWNER) : -1;
+  const owners = useMemo(
+    () =>
+      parsed && ownerColumn >= 0
+        ? resolveImportOwners(
+            parsed.rows.map((row) => row[ownerColumn] ?? ""),
+            members,
+          )
+        : [],
+    [parsed, ownerColumn, members],
+  );
+  const resolvedOwners = new Map<string, ImportDestination>();
+  const poolEnabled = Boolean(
+    poolConfig?.enabled && poolConfig.lifecycleEnabled,
+  );
+  const activeMembers = new Set(
+    members.filter((m) => m.status !== "DISABLED").map((m) => m.id),
+  );
+  for (const entry of owners) {
+    const choice =
+      ownerChoices.get(entry.name) ??
+      (entry.matches.length === 1
+        ? { kind: "member" as const, id: entry.matches[0].id }
+        : undefined);
+    if (
+      choice &&
+      (choice.kind !== "pool" || poolEnabled) &&
+      (choice.kind !== "member" || activeMembers.has(choice.id))
+    )
+      resolvedOwners.set(entry.name, choice);
+  }
+  const dateInferences = useMemo(
+    () =>
+      mapping.map((key, i) => {
+        const type = schema.fields.find((f) => f.fieldKey === key)?.type;
+        return parsed && (type === "DATE" || type === "DATETIME")
+          ? inferImportDateOrder(parsed.rows.map((row) => row[i] ?? ""))
+          : undefined;
+      }),
+    [mapping, parsed, schema.fields],
+  );
+  const dateOrders = Object.fromEntries(
+    dateInferences.map((inf, i) => [
+      i,
+      overrides[i] ?? (inf === "DMY" || inf === "MDY" ? inf : undefined),
+    ]),
+  );
   const mappedFields = useMemo(
     () =>
       mapping
@@ -126,6 +225,9 @@ export function RecordImportDrawer({
     matchableFields.some(({ field }) => field.fieldKey === key),
   );
 
+  const recommendedMatch = matchableFields.find(
+    ({ field }) => field.type === "PHONE" || /编号|编码/.test(field.label),
+  )?.field;
   const duplicateFields = mappedFields.filter(
     (item, index) =>
       mappedFields.findIndex(
@@ -136,7 +238,8 @@ export function RecordImportDrawer({
     (field) =>
       field.required &&
       field.defaultValue == null &&
-      !mappedFields.some((item) => item.field.fieldKey === field.fieldKey),
+      !mappedFields.some((item) => item.field.fieldKey === field.fieldKey) &&
+      !mapping.includes(APPEND + field.fieldKey),
   );
   const skippedColumns =
     parsed?.headers.filter((_, index) => mapping[index] === SKIP) ?? [];
@@ -149,85 +252,102 @@ export function RecordImportDrawer({
   const canCheck =
     !!parsed &&
     !!batchId &&
-    mappedFields.length > 0 &&
+    (mappedFields.length > 0 ||
+      mapping.some((key) => key.startsWith(APPEND))) &&
+    resolvedOwners.size === owners.length &&
+    !dateInferences.some((v, i) => v === "ambiguous" && !overrides[i]) &&
     !duplicateFields.length &&
     !missingRequired.length &&
     completedRows.size < parsed.rows.length;
+  const mappingLocked =
+    importStarted && (!result || completedRows.size === parsed?.rows.length);
+  // A background refresh may revoke a field or change an auto-matched owner.
+  const scope = JSON.stringify([
+    tenantCode,
+    schema.object.code,
+    schema.publication.number,
+    timeZone,
+    canChooseOwner,
+    importable.map((f) => [f.fieldKey, f.access]),
+    matchFields,
+    poolEnabled,
+    Array.from(resolvedOwners),
+  ]);
+  const checked = readyPlan?.scope === scope ? checkResult : undefined;
   const eligible =
-    checked?.items.filter((item) => item.status !== "FAILED").length ?? 0;
+    checked?.items.filter((item) => item.status === "READY").length ?? 0;
 
   async function run(dryRun: boolean) {
-    if (!parsed || !batchId || running.current) return;
+    if (
+      !parsed ||
+      !batchId ||
+      running.current ||
+      (!dryRun && (!checked || !readyPlan || !eligible))
+    )
+      return;
     running.current = true;
     setBusy(dryRun ? "check" : "import");
     setSummary(undefined);
     if (!dryRun) setImportStarted(true);
-    const rows = parsed.rows
-      .map((row, index) => ({
-        rowNumber: parsed.rowNumbers?.[index] ?? index + 2,
-        values: Object.fromEntries(
-          mappedFields.map(({ index: column, field }) => [
-            field.fieldKey,
-            coerceImportValue(
-              field.type,
-              row[column] ?? "",
-              selectOptions(field),
-            ),
-          ]),
-        ),
-      }))
-      .filter(
-        (row) =>
-          !completedRows.has(row.rowNumber) &&
-          (dryRun ||
-            checked?.items.some(
-              (item) =>
-                item.rowNumber === row.rowNumber && item.status !== "FAILED",
-            )),
-      );
-    const merged = new Map(
-      dryRun ? [] : result?.items.map((item) => [item.rowNumber, item]),
-    );
-    if (!dryRun)
-      for (const item of checked?.items ?? [])
-        if (item.status === "FAILED") merged.set(item.rowNumber, item);
-    setProgress({ done: 0, total: rows.length });
-    if (dryRun) setChecked(undefined);
-    let done = 0;
-    try {
-      await runImportBatches({
-        input: {
+    const plan: GroupedImportPlan = dryRun
+      ? {
           batchId,
-          dryRun,
           matchFields,
-          rows,
-          ...(canChooseOwner
-            ? importToPool && poolConfig?.enabled && poolConfig.lifecycleEnabled
-              ? { importToPool: true }
-              : { ownerMemberId: ownerMemberId ?? null }
-            : {}),
-        },
+          rows: buildImportRows({
+            parsed,
+            mapping,
+            fields: importable,
+            timeZone,
+            dateOrders,
+            destination: (row) => {
+              if (!canChooseOwner) return { kind: "default" };
+              if (ownerColumn >= 0)
+                return resolvedOwners.get(row[ownerColumn] ?? "")!;
+              if (importToPool && poolEnabled) return { kind: "pool" };
+              return ownerMemberId
+                ? { kind: "member", id: ownerMemberId }
+                : { kind: "unassigned" };
+            },
+          }),
+        }
+      : readyPlan!;
+    let latest = result ?? summarizeImport([]);
+    if (dryRun) {
+      setChecked(undefined);
+      setReadyPlan(undefined);
+    }
+    setProgress({ done: 0, total: plan.rows.length });
+    try {
+      const next = await runGroupedImport({
+        plan,
+        checked: dryRun ? undefined : checked,
+        previousCreated: result?.items.filter(
+          (item) => item.status === "CREATED",
+        ),
         request: (input) =>
           api.importRows(tenantCode, schema.object.code, input),
         shouldStop: () => stopped.current,
-        onBatch: (next) => {
-          for (const item of next.items) merged.set(item.rowNumber, item);
-          done += next.items.length;
-          if (!stopped.current) {
-            setProgress({ done, total: rows.length });
-            if (!dryRun) setResult(summarizeImport([...merged.values()]));
-          }
+        onProgress: (partial, done, total) => {
+          if (!dryRun) latest = partial;
+          if (stopped.current) return;
+          setProgress({ done, total });
+          if (!dryRun) setResult(partial);
         },
       });
-      if (!stopped.current && dryRun)
-        setChecked(summarizeImport([...merged.values()]));
+      if (!stopped.current) {
+        if (dryRun) {
+          setChecked(next);
+          setReadyPlan({ ...plan, scope });
+        } else {
+          latest = next;
+          setResult(next);
+        }
+      }
     } catch (caught) {
       if (!stopped.current) {
         const error = toApiError(caught);
         if (error.status >= 400 && error.status < 500) {
-          const created = dryRun
-            ? (result?.created ?? 0)
-            : summarizeImport([...merged.values()]).created;
+          const created = dryRun ? (result?.created ?? 0) : latest.created;
           const ownerHint =
             error.code === "OWNER_INVALID"
               ? "请更换负责人，或由管理员确认该成员处于启用状态，且读取、修改权限已生效。"
@@ -237,7 +357,7 @@ export function RecordImportDrawer({
           );
         } else {
           setSummary(
-            `${dryRun ? "检查请求中断，本次检查不会写入数据，请重新检查。" : "请求中断，已成功的行会保留。请重新检查剩余行后继续。"}${error.message}`,
+            `${dryRun ? "检查请求中断，本次检查不会写入数据，请重新检查。" : "请求中断，未收到结果的行待重查。请重新检查剩余行后继续。"}${error.message}`,
           );
         }
       }
@@ -247,7 +367,7 @@ export function RecordImportDrawer({
         setBusy(undefined);
         if (!dryRun) setChecked(undefined);
       }
-      if (!dryRun) onCompleted(summarizeImport([...merged.values()]));
+      if (!dryRun) onCompleted(latest);
     }
   }
 
@@ -262,20 +382,45 @@ export function RecordImportDrawer({
     name: string,
     request: number,
   ) {
-    const next = nextSource.sheet(name);
+    const selection = nextSource.headerSelection(name, importable);
     const id = await importBatchId(nextSource.bytes, name);
     if (request !== readRequest.current || stopped.current) return;
     setSheetName(name);
     setBatchId(id);
-    setParsed(next);
-    setMapping(
-      next.headers.map((header) => suggestFieldKey(header, importable) ?? SKIP),
-    );
+    setHeaders(selection.candidates);
+    applyHeader(nextSource, name, selection.headerRow, selection.detected);
   }
-
-  function resetResult() {
+  function applyHeader(
+    file: ImportFile,
+    name: string,
+    row: number,
+    automatic: boolean,
+  ) {
+    setHeaderRow(row);
+    setAutoHeader(automatic);
+    setParseError(undefined);
+    setParsed(undefined);
+    setManual([]);
+    setOwnerChoices(new Map());
+    setOverrides({});
+    setMatchFields([]);
+    resetResult();
+    try {
+      const next = file.sheet(name, row);
+      setParsed(next);
+      setMapping(initialMapping(next.headers, importable, canChooseOwner));
+    } catch (err) {
+      showFileError(err);
+    }
+  }
+  function resetResult(keepCreated = false) {
+    setReadyPlan(undefined);
     setChecked(undefined);
-    setResult(undefined);
+    setResult((previous) =>
+      keepCreated && previous
+        ? summarizeImport(previous.items.filter((i) => i.status === "CREATED"))
+        : undefined,
+    );
     setSummary(undefined);
     setProgress({ done: 0, total: 0 });
   }
@@ -291,8 +436,8 @@ export function RecordImportDrawer({
     resetResult();
     setParsed(undefined);
     setSource(undefined);
+    setHeaders([]);
     setMatchFields([]);
-    setFileName(file?.name);
     if (!file) {
       setLoadingFile(false);
       return;
@@ -330,9 +475,12 @@ export function RecordImportDrawer({
   function downloadFailures() {
     if (!parsed || !displayedResult) return;
     const url = URL.createObjectURL(
-      new Blob([importFailureCsv(parsed, displayedResult.items)], {
-        type: "text/csv;charset=utf-8",
-      }),
+      new Blob(
+        [importFailureCsv(parsed, displayedResult.items, schema.fields)],
+        {
+          type: "text/csv;charset=utf-8",
+        },
+      ),
     );
     const link = document.createElement("a");
     link.href = url;
@@ -344,7 +492,22 @@ export function RecordImportDrawer({
   return (
     <Drawer
       footer={
-        <>
+        <div className={importStyles.footer}>
+          {checked && (
+            <span role="status">
+              已检查 {checked.items.length} 行 · 可导入 {eligible} ·
+              重复或已导入{" "}
+              {(checked.skipped ?? 0) -
+                checked.items.filter((i) => i.reason === IMPORT_MANUAL_SKIP)
+                  .length}{" "}
+              · 主动跳过{" "}
+              {
+                checked.items.filter((i) => i.reason === IMPORT_MANUAL_SKIP)
+                  .length
+              }{" "}
+              · 错误 {checked.failed}
+            </span>
+          )}
           <Button onClick={close}>关闭</Button>
           <Button
             type={eligible > 0 ? "default" : "primary"}
@@ -362,13 +525,13 @@ export function RecordImportDrawer({
               disabled={!!busy}
               onClick={() => void run(false)}
             >
-              确认导入（{eligible} 行，含重复检查）
+              确认导入 {eligible} 行
             </Button>
           ) : null}
-        </>
+        </div>
       }
       open
-      size={OVERLAY_SIZE.drawer}
+      size="min(100vw, clamp(720px, 64vw, 920px))"
       title="导入 Excel / CSV"
       aria-label="导入 Excel / CSV"
       onClose={close}
@@ -383,40 +546,28 @@ export function RecordImportDrawer({
           title={`成功 ${result.created} 行，跳过 ${result.skipped ?? 0} 行，失败 ${result.failed} 行。`}
         />
       ) : null}
-      {checked ? (
-        <Alert
-          type={checked.failed ? "warning" : "info"}
-          showIcon
-          title={`检查完成：可新增 ${checked.items.filter((item) => item.status === "READY").length} 行，预计跳过 ${checked.skipped ?? 0} 行，错误 ${checked.failed} 行。检查尚未写入数据。`}
-        />
-      ) : null}
       <Typography.Paragraph type="secondary">
-        支持 Excel（.xlsx / .xls）和 CSV，单个工作表最多 10000 行、40
-        列，文件最大 10 MB。系统自动分批，无需手动拆成 500 行。
+        单个工作表最多 1 万行、40 列，文件最大 10 MB。请先核对对照，再检查数据。
       </Typography.Paragraph>
-      <Typography.Paragraph type="secondary">
-        按已发布字段导入，文件中的成员和负责人姓名不会自动绑定账号。单选填写已有选项名称，多选用分号分隔（如“重点；已联系”）。导入只新增，不覆盖现有记录。
-      </Typography.Paragraph>
-      <Typography.Paragraph type="secondary">
-        CSV 自动尝试 UTF-8、UTF-16 编码标记和 GBK /
-        GB18030。编码无法保证完全识别，请核对预览，必要时手动切换。
-      </Typography.Paragraph>
-      {canChooseOwner && poolConfig?.enabled && poolConfig.lifecycleEnabled ? (
+      {canChooseOwner &&
+      ownerColumn < 0 &&
+      poolConfig?.enabled &&
+      poolConfig.lifecycleEnabled ? (
         <Checkbox
           aria-label="确认导入到初始公共池"
           checked={importToPool}
-          disabled={!!busy || loadingFile || importStarted}
+          disabled={!!busy || loadingFile || mappingLocked}
           onChange={(event) => {
             setImportToPool(event.target.checked);
             setOwnerMemberId(undefined);
-            resetResult();
+            resetResult(importStarted);
           }}
         >
           确认导入到{poolConfig.labels?.leadPool ?? "初始公共池"}
           ，允许有权限成员领取
         </Checkbox>
       ) : null}
-      {canChooseOwner ? (
+      {canChooseOwner && ownerColumn < 0 ? (
         <label className={styles.columnChooserRow}>
           <span>导入负责人</span>
           <Select
@@ -426,24 +577,55 @@ export function RecordImportDrawer({
             optionFilterProp="searchText"
             placeholder="未分配"
             value={ownerMemberId}
-            disabled={!!busy || loadingFile || importStarted}
+            disabled={!!busy || loadingFile || mappingLocked}
             options={memberSelectOptions(members)}
             onChange={(next?: string) => {
               setOwnerMemberId(next);
               if (next) setImportToPool(false);
-              resetResult();
+              resetResult(importStarted);
             }}
           />
         </label>
       ) : null}
       <Typography.Paragraph type="secondary">
-        {importToPool
-          ? "新记录无负责人，不计时；进入明确可领取的初始公共池，不能同时指定负责人"
-          : canChooseOwner
-            ? "仅为本次新增记录分配负责人，并按业务表的回收期限计时；未选择则保持未分配。公共池关闭时暂停回收，跳过的重复记录保持原归属。"
-            : "本次新增记录归你负责"}
+        {ownerColumn >= 0
+          ? "新增记录按文件中的负责人分别归属"
+          : importToPool
+            ? "新记录进入初始公共池，允许有权限成员领取"
+            : canChooseOwner
+              ? "整批新增记录使用所选负责人"
+              : "本次新增记录归你负责"}
       </Typography.Paragraph>
+      <Button
+        type="dashed"
+        block
+        className={importStyles.filePicker}
+        disabled={!!busy || loadingFile}
+        onClick={() => fileInput.current?.click()}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          const file = event.dataTransfer.files[0];
+          if (file && !busy && !loadingFile) void onFile(file, "auto");
+        }}
+      >
+        {selectedFile ? (
+          <span className={importStyles.fileSummary}>
+            <strong>{selectedFile.name}</strong>
+            {parsed && (
+              <span>
+                {parsed.rows.length} 行 · {parsed.headers.length} 列
+              </span>
+            )}
+            <span>重新选择</span>
+          </span>
+        ) : (
+          "选择或拖入 Excel / CSV 文件"
+        )}
+      </Button>
       <input
+        ref={fileInput}
+        hidden
         type="file"
         disabled={!!busy || loadingFile}
         accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -451,7 +633,7 @@ export function RecordImportDrawer({
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
-          void onFile(file, "auto");
+          if (file) void onFile(file, "auto");
         }}
       />
       <label className={styles.columnChooserRow}>
@@ -480,7 +662,7 @@ export function RecordImportDrawer({
       ) : null}
       {importStarted ? (
         <Typography.Paragraph type="secondary">
-          本批次已开始导入，负责人、编码、工作表和映射已锁定。同一账号重选原文件和工作表可继续，已成功的行会跳过。修改文件后请使用查重字段避免重复。
+          本批次已开始导入。已成功的行保留原归属，剩余行修改后须重新检查。重试请使用原文件和同一工作表。
         </Typography.Paragraph>
       ) : null}
       {source?.sheetNames.length ? (
@@ -516,10 +698,30 @@ export function RecordImportDrawer({
           />
         </label>
       ) : null}
+      {source && headers.length > 0 && (
+        <label className={styles.columnChooserRow}>
+          <span>表头在第几行</span>
+          <Select
+            aria-label="表头在第几行"
+            value={headerRow}
+            disabled={!!busy || loadingFile || importStarted}
+            options={headers.map((h) => ({
+              value: h.rowNumber,
+              label: `第 ${h.rowNumber} 行 · ${h.cells.filter(Boolean).slice(0, 4).join(" / ").slice(0, 70)}`,
+            }))}
+            onChange={(row) => applyHeader(source, sheetName, row, false)}
+          />
+        </label>
+      )}
+      {autoHeader && headerRow > 1 && (
+        <Typography.Text type="secondary">
+          已识别第 {headerRow} 行为表头，可手动调整
+        </Typography.Text>
+      )}
       {loadingFile ? (
         <Typography.Paragraph>正在读取文件…</Typography.Paragraph>
       ) : null}
-      {progress.total > 0 ? (
+      {busy && progress.total > 0 ? (
         <>
           <Progress
             percent={Math.round((progress.done / progress.total) * 100)}
@@ -531,18 +733,9 @@ export function RecordImportDrawer({
           </Typography.Paragraph>
         </>
       ) : null}
-      <Typography.Paragraph type="secondary">
-        关闭页面会停止后续批次，正在提交的批次可能完成。恢复时请使用同一账号重新选择原文件和工作表。
-      </Typography.Paragraph>
-      {fileName ? (
-        <Typography.Paragraph>{fileName}</Typography.Paragraph>
-      ) : null}
 
       {parsed ? (
         <>
-          <Typography.Paragraph>
-            {parsed.rows.length} 行 · {parsed.headers.length} 列
-          </Typography.Paragraph>
           {duplicateFields.length ? (
             <Alert
               type="error"
@@ -564,46 +757,137 @@ export function RecordImportDrawer({
               title={`将跳过 ${skippedColumns.length} 列：${skippedColumns.map((header) => header || "空表头").join("、")}。未匹配或同名字段不会自动选择，请核对后手动映射需要导入的列。`}
             />
           ) : null}
-          <div className={styles.columnChooser}>
-            {parsed.headers.map((header, index) => (
-              <label
-                key={`${header}-${index}`}
-                className={styles.columnChooserRow}
-              >
-                <span>{header || `第 ${index + 1} 列`}</span>
-                <Select
-                  disabled={!!busy || loadingFile || importStarted}
-                  aria-label={`映射 ${header || `第 ${index + 1} 列`}`}
-                  className={styles.importMap}
-                  value={mapping[index]}
-                  onChange={(next) => {
-                    resetResult();
-                    setMatchFields([]);
-                    setMapping((current) =>
-                      current.map((value, itemIndex) =>
-                        itemIndex === index ? next : value,
-                      ),
-                    );
-                  }}
-                  options={[
-                    { value: SKIP, label: "跳过此列" },
-                    ...importable.map((field) => ({
-                      value: field.fieldKey,
-                      label: `${field.label} · ${FIELD_TYPE_LABELS[field.type]}${importable.some((other) => other.fieldKey !== field.fieldKey && other.label === field.label) ? `（${field.fieldKey}）` : ""}${field.required ? "（必填）" : ""}`,
-                    })),
-                  ]}
-                />
-              </label>
-            ))}
+          <div className={importStyles.mapping} aria-label="文件列对照">
+            {parsed.headers.map((header, index) => {
+              const label = header || `第 ${index + 1} 列`;
+              const lockedOwner = !canChooseOwner && ownerHeader(header);
+              return (
+                <div key={index} className={importStyles.row}>
+                  <div>
+                    <strong>{label}</strong>
+                    <div className={importStyles.example}>
+                      {sheetSummary?.samples[index]}
+                    </div>
+                  </div>
+                  <div>
+                    <Select
+                      disabled={
+                        lockedOwner || !!busy || loadingFile || mappingLocked
+                      }
+                      id={`import-map-${index}`}
+                      aria-label={`映射 ${label}`}
+                      value={mapping[index]}
+                      onChange={(next) => {
+                        resetResult(importStarted);
+                        setMatchFields([]);
+                        setManual((prev) =>
+                          prev.includes(index) ? prev : [...prev, index],
+                        );
+                        setOverrides((prev) => {
+                          const next = { ...prev };
+                          delete next[index];
+                          return next;
+                        });
+                        if (next === OWNER || mapping[index] === OWNER)
+                          setOwnerChoices(new Map());
+                        setMapping((current) =>
+                          current.map((old, i) => (i === index ? next : old)),
+                        );
+                      }}
+                      options={[
+                        { value: SKIP, label: "跳过此列" },
+                        ...(canChooseOwner
+                          ? [
+                              {
+                                value: OWNER,
+                                label: "按行指定负责人",
+                                disabled:
+                                  ownerColumn >= 0 && ownerColumn !== index,
+                              },
+                            ]
+                          : []),
+                        ...importable.map((field) => ({
+                          value: field.fieldKey,
+                          label: `${field.label} · ${FIELD_TYPE_LABELS[field.type]}${importable.some((other) => other.fieldKey !== field.fieldKey && other.label === field.label) ? `（${field.fieldKey}）` : ""}${field.required ? "（必填）" : ""}`,
+                        })),
+                        ...importable
+                          .filter((f) => f.type === "TEXTAREA")
+                          .map((f) => ({
+                            value: APPEND + f.fieldKey,
+                            label: `追加到「${f.label}」`,
+                          })),
+                      ]}
+                    />
+                    {lockedOwner && <small>仅公司管理员可按行指定负责人</small>}
+                    {dateInferences[index] === "conflict" ? (
+                      <small>同一列的日期顺序冲突，请更正文件后重选</small>
+                    ) : (
+                      dateInferences[index] && (
+                        <Select
+                          aria-label={`日期顺序 ${label}`}
+                          placeholder="请选择日月顺序"
+                          value={dateOrders[index]}
+                          disabled={!!busy || mappingLocked}
+                          options={[
+                            { value: "DMY", label: "日/月/年" },
+                            { value: "MDY", label: "月/日/年" },
+                          ]}
+                          onChange={(order) => {
+                            setOverrides((prev) => ({
+                              ...prev,
+                              [index]: order,
+                            }));
+                            resetResult(importStarted);
+                          }}
+                        />
+                      )
+                    )}
+                  </div>
+                  <Tag>
+                    {manual.includes(index)
+                      ? "手动"
+                      : mapping[index] === SKIP
+                        ? "未对照"
+                        : "自动"}
+                  </Tag>
+                </div>
+              );
+            })}
           </div>
+          {ownerColumn >= 0 && (
+            <Collapse
+              items={[
+                {
+                  key: "owners",
+                  label: `查看负责人对照 · ${owners.length} 个姓名 · ${owners.length - resolvedOwners.size} 个待处理`,
+                  children: (
+                    <ImportOwners
+                      owners={owners}
+                      members={members}
+                      resolved={resolvedOwners}
+                      disabled={!!busy || mappingLocked}
+                      poolEnabled={poolEnabled}
+                      onChange={(name, dest) => {
+                        setOwnerChoices((prev) =>
+                          new Map(prev).set(name, dest),
+                        );
+                        resetResult(importStarted);
+                      }}
+                    />
+                  ),
+                },
+              ]}
+            />
+          )}
           <label className={styles.columnChooserRow}>
             <span>查重字段（可选，最多 3 个）</span>
             <Select
               mode="multiple"
               aria-label="查重字段"
+              style={{ minWidth: "min(320px, 100%)" }}
               value={matchFields}
               maxCount={3}
-              disabled={!!busy || loadingFile || importStarted}
+              disabled={!!busy || loadingFile || mappingLocked}
               placeholder="选择手机号、编号等业务唯一标识"
               options={matchableFields.map(({ field }) => ({
                 value: field.fieldKey,
@@ -611,36 +895,22 @@ export function RecordImportDrawer({
               }))}
               onChange={(fields) => {
                 setMatchFields(fields);
-                resetResult();
+                resetResult(importStarted);
               }}
             />
           </label>
+          {!!sheetSummary?.duplicateRows && (
+            <Alert
+              type="warning"
+              showIcon
+              title={`文件中有 ${sheetSummary.duplicateRows} 行与其他行完全相同${recommendedMatch ? "，建议使用「" + recommendedMatch.label + "」查重" : ""}`}
+            />
+          )}
           <Typography.Paragraph type="secondary">
             {matchFields.length
               ? "所选字段全部相同时跳过。查重字段不能为空；按当前账号可见的数据查重，文件内重复也会跳过。"
               : "未选择查重字段：只防止同一文件重复导入。不同文件的重复数据会新增，请选择能标识一条业务记录的字段。"}
           </Typography.Paragraph>
-          <div style={{ overflowX: "auto" }}>
-            <table className={styles.importPreview}>
-              <caption>前 3 行预览</caption>
-              <thead>
-                <tr>
-                  {parsed.headers.map((header, index) => (
-                    <th key={`${header}-${index}`}>{header}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {parsed.rows.slice(0, 3).map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {row.map((cell, cellIndex) => (
-                      <td key={cellIndex}>{cell}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </>
       ) : null}
 
@@ -651,18 +921,7 @@ export function RecordImportDrawer({
             .slice(0, 50)
             .map((item) => (
               <li key={item.rowNumber}>
-                第 {item.rowNumber} 行：
-                {item.error?.fields?.length
-                  ? `${item.error.fields
-                      .map(
-                        (fieldKey) =>
-                          schema.fields.find(
-                            (field) => field.fieldKey === fieldKey,
-                          )?.label ?? fieldKey,
-                      )
-                      .join("、")}：`
-                  : ""}
-                {item.error?.message ?? "导入失败"}
+                {importRowError(item, schema.fields)}
               </li>
             ))}
         </ul>

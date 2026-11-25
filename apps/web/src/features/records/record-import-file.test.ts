@@ -49,9 +49,11 @@ describe("record file import", () => {
         "2026-06-27",
         "17753397243",
       ]);
-      expect(coerceImportValue("DATETIME", sheet.rows[0][2], [])).toBe(
-        "2026-06-27T00:00:00.000Z",
-      );
+      expect(
+        coerceImportValue("DATETIME", sheet.rows[0][2], [], {
+          timeZone: "UTC",
+        }),
+      ).toBe("2026-06-27T00:00:00.000Z");
       expect(sheet.rowNumbers).toEqual([2, 4]);
       expect(imported.sheet("其他").rows).toEqual([["第二张"]]);
     },
@@ -79,8 +81,241 @@ describe("record file import", () => {
       readImportFile(
         file(new TextEncoder().encode("name\na,b"), "a.csv"),
         "auto",
-      ),
+      ).then((source) => source.sheet("")),
     ).rejects.toThrow(/表头/);
+  });
+  it("recognizes the third physical CSV line after a narrow title and preserves quoted records", async () => {
+    const input =
+      '\n"客户,清单"\r\n姓名,姓名,编号\r\n"李\n四",别名,0004\r\n\r\n王五,,0005';
+    const source = await readImportFile(
+      file(new TextEncoder().encode(input), "rows.csv"),
+      "auto",
+    );
+    const fields = [
+      { fieldKey: "name", label: "姓名" },
+      { fieldKey: "code", label: "编号" },
+    ];
+    const choice = source.headerSelection("", fields);
+    expect(choice).toMatchObject({ headerRow: 3, detected: true });
+    expect(choice.candidates.map((row) => row.rowNumber)).toEqual([2, 3, 4, 7]);
+    expect(source.sheet("", choice.headerRow)).toEqual({
+      headers: ["姓名", "姓名", "编号"],
+      rows: [
+        ["李\n四", "别名", "0004"],
+        ["王五", "", "0005"],
+      ],
+      rowNumbers: [4, 7],
+    });
+    expect(source.sheet("", 4).rowNumbers).toEqual([7]);
+    expect(() => source.sheet("", 1)).toThrow(/表头/);
+    expect(() => source.sheet("", 5)).toThrow(/表头/);
+  });
+  it("uses a unique shaped header and leaves ambiguous all-text rows for manual selection", async () => {
+    const parse = (text: string) =>
+      readImportFile(file(new TextEncoder().encode(text), "rows.csv"), "auto");
+    const shaped = await parse("清单\n旧编号,旧金额\na,23\nb,45");
+    expect(shaped.headerSelection("", [])).toMatchObject({
+      headerRow: 2,
+      detected: true,
+    });
+    const tied = await parse("名称,说明\n名称,别名\n张三,小张");
+    expect(
+      tied.headerSelection("", [{ fieldKey: "name", label: "名称" }]),
+    ).toMatchObject({ headerRow: 1, detected: false });
+    expect(tied.sheet("", 2)).toEqual({
+      headers: ["名称", "别名"],
+      rows: [["张三", "小张"]],
+      rowNumbers: [3],
+    });
+  });
+  it("uses a majority of short labels and data shape in the next three nonempty rows", async () => {
+    const input = [
+      "导出清单",
+      "客户,票数," + "旧表备注".repeat(12),
+      "甲,,",
+      ",,暂缺",
+      "乙,12,",
+      "丙,4,",
+    ].join("\n");
+    const source = await readImportFile(
+      file(new TextEncoder().encode(input), "rows.csv"),
+      "auto",
+    );
+    expect(source.headerSelection("", [])).toMatchObject({
+      headerRow: 2,
+      detected: true,
+    });
+  });
+  it("chooses the earliest plausible row when shape is the only evidence", async () => {
+    const input = "旧表\n客户,金额\n甲,零元\n乙,30";
+    const source = await readImportFile(
+      file(new TextEncoder().encode(input), "rows.csv"),
+      "auto",
+    );
+    expect(source.headerSelection("", [])).toMatchObject({
+      headerRow: 2,
+      detected: true,
+    });
+  });
+  it("ranks distinct normalized matches above repeated labels and shape alone", async () => {
+    const input =
+      "姓名,姓名,姓名\n1,2,3\n　ＮＡＭＥ：, 编 号 ,备注\n张三,001,客户";
+    const source = await readImportFile(
+      file(new TextEncoder().encode(input), "rows.csv"),
+      "auto",
+    );
+    const choice = source.headerSelection("", [
+      { fieldKey: "name", label: "姓名" },
+      { fieldKey: "code", label: "编号" },
+    ]);
+    expect(choice).toMatchObject({ headerRow: 3, detected: true });
+    expect(source.sheet("", choice.headerRow).rows).toEqual([
+      ["张三", "001", "客户"],
+    ]);
+  });
+  it("rejects a manual header outside the first ten physical rows", async () => {
+    const input = '"标题\n延续"\n' + "\n".repeat(8) + "姓名\n王五";
+    const source = await readImportFile(
+      file(new TextEncoder().encode(input), "rows.csv"),
+      "auto",
+    );
+    expect(
+      source
+        .headerSelection("", [{ fieldKey: "name", label: "姓名" }])
+        .candidates.map((row) => row.rowNumber),
+    ).toEqual([1]);
+    expect(() => source.sheet("", 11)).toThrow(/表头/);
+  });
+  it("preserves the default first nonempty row for the object-field importer", async () => {
+    const source = await readImportFile(
+      file(
+        new TextEncoder().encode("\n".repeat(10) + "姓名\n张三"),
+        "offset.csv",
+      ),
+      "auto",
+    );
+    expect(source.sheet("")).toEqual({
+      headers: ["姓名"],
+      rows: [["张三"]],
+      rowNumbers: [12],
+    });
+    expect(() => source.headerSelection("", [])).toThrow(/前 10 行/);
+  });
+  it.each(["xls", "xlsx"] as const)(
+    "keeps %s absolute column positions and row holes",
+    async (bookType) => {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([]);
+      XLSX.utils.sheet_add_aoa(
+        ws,
+        [["旧清单"], [], ["姓名", null, "编号"], [], ["李四", null, "0008"]],
+        { origin: "C2" },
+      );
+      ws["!ref"] = "C2:E6";
+      XLSX.utils.book_append_sheet(wb, ws, "清单");
+      const bytes = new Uint8Array(XLSX.write(wb, { type: "array", bookType }));
+      const source = await readImportFile(
+        file(bytes, `rows.${bookType}`),
+        "auto",
+      );
+      const choice = source.headerSelection("清单", [
+        { fieldKey: "name", label: "姓名" },
+      ]);
+      expect(choice).toMatchObject({ headerRow: 4, detected: true });
+      expect(source.sheet("清单", choice.headerRow)).toEqual({
+        headers: ["", "", "姓名", "", "编号"],
+        rows: [["", "", "李四", "", "0008"]],
+        rowNumbers: [6],
+      });
+    },
+  );
+  it.each(["csv", "xlsx"] as const)(
+    "allows 10,000 data rows below the tenth %s row and rejects overflow",
+    async (extension) => {
+      async function load(count: number) {
+        const data = Array.from({ length: 9 }, () => ["说明"]);
+        data.push(["姓名"], ...Array.from({ length: count }, () => ["成员"]));
+        if (extension === "csv")
+          return readImportFile(
+            file(new TextEncoder().encode(data.join("\n")), "rows.csv"),
+            "auto",
+          );
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "清单");
+        return readImportFile(
+          file(
+            new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" })),
+            "rows.xlsx",
+          ),
+          "auto",
+        );
+      }
+      const source = await load(10000);
+      const name = source.sheetNames[0] ?? "";
+      expect(source.sheet(name, 10).rowNumbers?.at(-1)).toBe(10010);
+      expect(() => source.sheet(name, 9)).toThrow(/10000/);
+      await expect(
+        load(10005).then((source) => source.sheet(name, 10)),
+      ).rejects.toThrow(/10000/);
+    },
+  );
+  it("keeps sparse Excel data, its original whitespace, and its actual source row", async () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([["姓名", "备注"]]);
+    XLSX.utils.sheet_add_aoa(ws, [["李四", "   "]], { origin: "A12000" });
+    XLSX.utils.book_append_sheet(wb, ws, "稀疏表");
+    const bytes = new Uint8Array(
+      XLSX.write(wb, { type: "array", bookType: "xlsx" }),
+    );
+    const imported = await readImportFile(file(bytes, "sparse.xlsx"), "auto");
+    expect(imported.sheet("稀疏表")).toEqual({
+      headers: ["姓名", "备注"],
+      rows: [["李四", "   "]],
+      rowNumbers: [12000],
+    });
+  });
+  it("rejects formula errors in Excel with the physical line number", async () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([["编号"], [], ["错误"]]);
+    ws.A3 = { t: "e", v: 7, f: "1/0" };
+    XLSX.utils.book_append_sheet(wb, ws, "清单");
+    const source = await readImportFile(
+      file(
+        new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" })),
+        "error.xlsx",
+      ),
+      "auto",
+    );
+    expect(() => source.sheet("清单")).toThrow(/第 3 行.*公式/);
+  });
+  it("rejects a formula with no cached result and keeps a calculated zero", async () => {
+    const wb = XLSX.utils.book_new();
+    for (const [name, cell] of [
+      ["无结果", { t: "z", f: "1+1" }],
+      ["已计算", { t: "n", f: "1-1", v: 0 }],
+    ] as const) {
+      const ws = XLSX.utils.aoa_to_sheet([["合计"], [""]]);
+      ws.A2 = cell;
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    }
+    const source = await readImportFile(
+      file(
+        new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" })),
+        "formulas.xlsx",
+      ),
+      "auto",
+    );
+    expect(() => source.sheet("无结果")).toThrow(/第 2 行.*公式/);
+    expect(source.sheet("已计算").rows).toEqual([["0"]]);
+  });
+  it("applies the 40-column limit to the chosen table", async () => {
+    const input = "说明" + ",".repeat(40) + "\n姓名,编号\n张三,3";
+    const source = await readImportFile(
+      file(new TextEncoder().encode(input), "wide.csv"),
+      "auto",
+    );
+    expect(source.sheet("", 2).headers).toEqual(["姓名", "编号"]);
+    expect(() => source.sheet("", 1)).toThrow(/40 列/);
   });
   it("same bytes and sheet retain a batch id, separate sheets do not", async () => {
     Object.defineProperty(globalThis.crypto, "subtle", {
@@ -109,9 +344,10 @@ describe("record file import", () => {
           },
         },
       ],
+      [{ fieldKey: "name", label: "姓名" }],
     );
     expect(csv).toContain("\uFEFF");
-    expect(csv).toContain("格式不正确");
+    expect(csv).toContain("第 2 行：姓名：格式不正确");
     expect(csv).toContain("'=CMD()");
     expect(csv).not.toContain("正常");
   });

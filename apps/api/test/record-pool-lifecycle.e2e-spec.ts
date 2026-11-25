@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
+import type { RecordImportResponse } from '../src/modules/records/records.service';
 import {
   createCriticalHarness,
   closeCriticalHarness,
@@ -189,6 +191,179 @@ describe('generic record pool lifecycle HTTP', () => {
         ownershipExpiresAt: row.ownershipExpiresAt!.toISOString(),
       },
     });
+  });
+
+  it('checks owner groups without mutation and preserves original ownership after a lost acknowledgement', async () => {
+    const batchId = randomUUID();
+    const rows = (rowNumber: number, name: string) => [
+      { rowNumber, values: { name } },
+    ];
+    const input = (ownerMemberId: string, rowNumber: number, name: string) => ({
+      ownerMemberId,
+      batchId,
+      matchFields: ['name'],
+      rows: rows(rowNumber, name),
+    });
+    const a = input(f.employee.memberId, 4, '共享客户编号');
+    const b = input(f.otherEmployee.memberId, 80, '共享客户编号');
+    const c = input(f.otherEmployee.memberId, 81, '独立客户编号');
+    const counts = async () => {
+      const tenantId = f.tenantA.id;
+      const [records, audits, receipts] = await Promise.all([
+        h.adminDatabase.record.count({
+          where: { tenantId, objectId: f.object.id },
+        }),
+        h.adminDatabase.auditLog.count({
+          where: { tenantId, action: 'record.created' },
+        }),
+        h.adminDatabase.$queryRaw<{ n: number }[]>`
+          SELECT count(*)::int AS n FROM record_import_rows WHERE tenant_id = ${tenantId}::uuid AND batch_id = ${batchId}::uuid`,
+      ]);
+      return { records, audits, receipts: receipts[0].n };
+    };
+    const baseline = await counts();
+    const run = async (body: object) =>
+      json<RecordImportResponse>(
+        await post('/records/import', body).expect(201),
+      );
+
+    const later = await run({
+      ...b,
+      dryRun: true,
+      rows: [...b.rows, ...c.rows],
+    });
+    const fillerRows = Array.from({ length: 98 }, (_, i) => ({
+      rowNumber: i + 100,
+      values: { name: '批次边界' + i },
+    }));
+    const earlier = await run({
+      ...a,
+      dryRun: true,
+      rows: [...rows(2, ''), ...a.rows, ...fillerRows],
+    });
+    expect(earlier.items).toHaveLength(100);
+    expect(
+      earlier.items.slice(0, 2).map((i) => [i.rowNumber, i.status]),
+    ).toEqual([
+      [2, 'FAILED'],
+      [4, 'READY'],
+    ]);
+    expect(later.items.map((i) => [i.rowNumber, i.status])).toEqual([
+      [80, 'READY'],
+      [81, 'READY'],
+    ]);
+    expect(earlier.items[1].matchKey).toMatch(/^[0-9a-f]{64}$/);
+    expect(later.items[0].matchKey).toBe(earlier.items[1].matchKey);
+    expect(later.items[1].matchKey).not.toBe(earlier.items[1].matchKey);
+    const nextBatch = await run({
+      ...a,
+      dryRun: true,
+      rows: rows(200, '共享客户编号'),
+    });
+    expect(nextBatch.items[0].matchKey).toBe(earlier.items[1].matchKey);
+    const competingFile = { ...b, batchId: randomUUID() };
+    expect(
+      (await run({ ...competingFile, dryRun: true })).items[0].status,
+    ).toBe('READY');
+    expect(await counts()).toEqual(baseline);
+
+    // A client that lost the first write response only knows the original sheet and row.
+    await post('/records/import', a).expect(201);
+    const reassigned = input(f.otherEmployee.memberId, 4, '重新编辑');
+    const rechecked = await run({ ...reassigned, dryRun: true });
+    expect(rechecked.items).toMatchObject([
+      { rowNumber: 4, status: 'SKIPPED', reason: '该行已导入。' },
+    ]);
+    const replay = await run(reassigned);
+    expect(replay.created).toBe(0);
+    // Both callers previously checked row 81 as ready.
+    const writes = await Promise.all([run(c), run(c)]);
+    expect(writes.map((r) => r.items[0].status).sort()).toEqual([
+      'CREATED',
+      'SKIPPED',
+    ]);
+    expect(await counts()).toEqual({
+      records: baseline.records + 2,
+      audits: baseline.audits + 2,
+      receipts: 2,
+    });
+    const stored = await h.adminDatabase.record.findMany({
+      where: {
+        tenantId: f.tenantA.id,
+        objectId: f.object.id,
+        title: { in: ['共享客户编号', '独立客户编号'] },
+      },
+      select: { title: true, ownerMemberId: true, id: true },
+    });
+    const first = stored.find((r) => r.title === '共享客户编号')!;
+    const second = stored.find((r) => r.title === '独立客户编号')!;
+    expect(first.ownerMemberId).toBe(f.employee.memberId);
+    expect(second.ownerMemberId).toBe(f.otherEmployee.memberId);
+    await get('/records/' + first.id, f.employee).expect(200);
+    await get('/records/' + second.id, f.employee).expect(404);
+    await get('/records/' + second.id, f.otherEmployee).expect(200);
+    const employeeCheck = json<RecordImportResponse>(
+      await post(
+        '/records/import',
+        {
+          dryRun: true,
+          matchFields: ['name'],
+          rows: [...a.rows, ...c.rows],
+        },
+        f.employee,
+      ).expect(201),
+    );
+    expect(employeeCheck.items.map((item) => item.status)).toEqual([
+      'SKIPPED',
+      'READY',
+    ]);
+    for (const r of stored) {
+      const audit = await h.adminDatabase.auditLog.findFirstOrThrow({
+        where: { resourceId: r.id, action: 'record.created' },
+      });
+      expect(audit).toMatchObject({
+        tenantId: f.tenantA.id,
+        actorId: f.admin.userId,
+        after: { ownerMemberId: r.ownerMemberId },
+      });
+    }
+    // A different file can race a write between check and create.
+    const newBatch = await run(competingFile);
+    expect(newBatch.items).toMatchObject([
+      { rowNumber: 80, status: 'SKIPPED' },
+    ]);
+  });
+
+  it('validates group ownership on both check and write for employees, foreign members, disabled members, and a disabled pool', async () => {
+    const rows = [{ rowNumber: 4, values: { name: '权限测试客户' } }];
+    await h.adminDatabase.tenantMember.update({
+      where: { id: f.otherEmployee.memberId },
+      data: { status: 'DISABLED' },
+    });
+    for (const dryRun of [true, false]) {
+      const body = { rows, batchId: randomUUID(), dryRun };
+      await post(
+        '/records/import',
+        { ...body, ownerMemberId: f.admin.memberId },
+        f.employee,
+      ).expect(403);
+      await post('/records/import', {
+        ...body,
+        ownerMemberId: f.tenantBAdmin.memberId,
+      }).expect(400);
+      await post('/records/import', {
+        ...body,
+        ownerMemberId: f.otherEmployee.memberId,
+      }).expect(400);
+      await post('/records/import', { ...body, importToPool: true }).expect(
+        403,
+      );
+    }
+    expect(
+      await h.adminDatabase.record.count({
+        where: { title: '权限测试客户', tenantId: f.tenantA.id },
+      }),
+    ).toBe(0);
   });
 
   it('starts an employee record waiting for contact and moves it only on an explicit contact outcome', async () => {

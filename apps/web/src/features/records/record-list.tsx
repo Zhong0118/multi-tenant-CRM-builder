@@ -1332,6 +1332,7 @@ export function RecordList({
 
         {canImport && importOpen ? (
           <RecordImportDrawer
+            timeZone={page.timeZone ?? undefined}
             tenantCode={tenantCode}
             schema={schema}
             api={api}

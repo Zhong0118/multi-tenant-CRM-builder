@@ -4100,7 +4100,7 @@ export interface components {
       status: "ACTIVE" | "DISABLED";
     };
     ImportRecordRowDto: {
-      /** @description CSV 行号，表头为第 1 行。 */
+      /** @description 源文件中的原始数据行号，切换表头和按负责人分组时保持不变。 */
       rowNumber: number;
       values: {
         [key: string]: unknown;

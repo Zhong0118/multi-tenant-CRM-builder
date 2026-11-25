@@ -1,4 +1,9 @@
-import { parseImportDate } from "@/lib/import-date";
+import { coerceImportDate, type ImportDateOrder } from "./record-import-date";
+
+export {
+  inferImportDateOrder,
+  type ImportDateOrder,
+} from "./record-import-date";
 
 export const RECORD_IMPORT_MAX_ROWS = 10000;
 export const RECORD_IMPORT_MAX_COLUMNS = 40;
@@ -47,73 +52,155 @@ export function decodeRecordCsv(bytes: Uint8Array, encoding: CsvEncoding) {
   };
 }
 
+function normalizeHeader(value: string) {
+  return value
+    .normalize("NFKC")
+    .replace(/\s+/gu, "")
+    .replace(/[.:;,!?。、]+$/u, "")
+    .toLowerCase();
+}
+
 export function suggestFieldKey(
   header: string,
   fields: Array<{ fieldKey: string; label: string }>,
 ): string | undefined {
-  const normalized = header.trim().toLowerCase();
-  const byKey = fields.find(
-    (field) => field.fieldKey.toLowerCase() === normalized,
+  const normalized = normalizeHeader(header);
+  if (!normalized) return undefined;
+  const matches = fields.filter(
+    (field) =>
+      normalizeHeader(field.fieldKey) === normalized ||
+      normalizeHeader(field.label) === normalized,
   );
-  if (byKey) return byKey.fieldKey;
-  const byLabel = fields.filter(
-    (field) => field.label.toLowerCase() === normalized,
+  return matches.length === 1 ? matches[0].fieldKey : undefined;
+}
+
+type ImportOption = { key: string; label: string };
+
+export interface ImportValueContext {
+  timeZone?: string;
+  dateOrder?: ImportDateOrder;
+  bareAmountUnit?: "yuan" | "wan";
+}
+
+function normalizeOption(value: string) {
+  return value.normalize("NFKC").replace(/\s+/gu, "");
+}
+
+export function matchImportOption(
+  value: string,
+  options: ImportOption[],
+): string | undefined {
+  const normalized = normalizeOption(value);
+  if (!normalized) return undefined;
+  const matches = options.filter(
+    (option) =>
+      normalizeOption(option.key) === normalized ||
+      normalizeOption(option.label) === normalized,
   );
-  return byLabel.length === 1 ? byLabel[0].fieldKey : undefined;
+  return matches.length === 1 ? matches[0].key : undefined;
+}
+
+export function splitImportOptions(value: string): string[] {
+  return value
+    .split(/[;；,，]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
 export function coerceImportValue(
   type: string,
   raw: string,
-  options: Array<{ key: string; label: string }>,
+  options: ImportOption[],
+  context: ImportValueContext = {},
 ): unknown {
   const value = raw.trim();
   if (value === "") return null;
   switch (type) {
     case "BOOLEAN":
-      if (["是", "true", "1", "yes"].includes(value.toLowerCase())) return true;
-      if (["否", "false", "0", "no"].includes(value.toLowerCase()))
+      if (
+        ["是", "true", "1", "yes", "有", "y", "√"].includes(value.toLowerCase())
+      )
+        return true;
+      if (
+        ["否", "false", "0", "no", "无", "n", "×"].includes(value.toLowerCase())
+      )
         return false;
-      return value;
-    case "NUMBER": {
-      const numeric = Number(value.replace(/,/g, ""));
-      return Number.isFinite(numeric) ? numeric : value;
-    }
+      throw new Error("无法识别是否值");
+    case "NUMBER":
     case "MONEY":
-      return value.replace(/,/g, "").replace(/^¥/, "");
+      return coerceDecimal(value, type, context.bareAmountUnit);
     case "SINGLE_SELECT":
-      return matchOption(value, options) ?? value;
-    case "MULTI_SELECT":
-      return value
-        .split(/[;；,，]/)
-        .map((part) => part.trim())
-        .filter(Boolean)
-        .map((part) => matchOption(part, options) ?? part);
-    case "DATETIME":
-      return coerceDateTime(value);
+    case "MULTI_SELECT": {
+      const parts =
+        type === "SINGLE_SELECT" ? [value] : splitImportOptions(value);
+      const keys = parts.map((part) => {
+        const key = matchImportOption(part, options);
+        if (key === undefined) throw new Error("取值未对应唯一选项");
+        return key;
+      });
+      return type === "SINGLE_SELECT" ? keys[0] : [...new Set(keys)];
+    }
     case "DATE":
-      return parseImportDate(value) ?? value;
+    case "DATETIME":
+      return coerceImportDate(type, value, context);
     default:
       return value;
   }
 }
 
-function matchOption(
+function coerceDecimal(
   value: string,
-  options: Array<{ key: string; label: string }>,
-): string | undefined {
-  return options.find(
-    (option) => option.key === value || option.label === value,
-  )?.key;
-}
-
-function coerceDateTime(value: string): string {
-  const dateOnly = parseImportDate(value);
-  if (dateOnly) return `${dateOnly}T00:00:00.000Z`;
-  if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
+  type: "NUMBER" | "MONEY",
+  bareUnit?: "yuan" | "wan",
+) {
+  value = value.normalize("NFKC").replace(/(\d) +(?=[万亿元])/, "$1");
+  // Excel may stringify small or large numeric cells in scientific notation.
+  let exponent = "";
+  if (type === "NUMBER") {
+    const plain = /^([+-]?)(\d+(?:\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.exec(value);
+    if (plain) {
+      const mantissa = plain[2].replace(/^\./, "0.").replace(/\.$/, "");
+      value = plain[1] + mantissa;
+      exponent = plain[3] ?? "";
+    }
+  }
   const match =
-    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value);
-  if (!match) return value;
-  const seconds = match[6] ?? "00";
-  return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${seconds}.000Z`;
+    /^([+-]?)([¥￥]?)([+-]?)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(亿元?|万元?|元)?$/.exec(
+      value,
+    );
+  if (!match || (match[1] && match[3]))
+    throw new Error("数值格式无效，请检查符号、千分位和单位");
+  const [, firstSign, currency, secondSign, integer, fraction = "", unit] =
+    match;
+  const shift = unit?.startsWith("亿")
+    ? 8
+    : unit?.startsWith("万") || (!unit && !currency && bareUnit === "wan")
+      ? 4
+      : 0;
+  const whole = (
+    integer.replace(/,/g, "") + fraction.slice(0, shift).padEnd(shift, "0")
+  ).replace(/^0+(?=\d)/, "");
+  const rest = fraction.slice(shift);
+  const sign = firstSign === "-" || secondSign === "-" ? "-" : "";
+  const decimal = sign + whole + (rest ? "." + rest : "");
+  const number = Number(decimal + exponent);
+  if (!Number.isFinite(number)) throw new Error("数值超出范围");
+  if (type === "MONEY") return decimal;
+
+  // JSON numbers retain only the digits in their shortest decimal representation.
+  const digits = (whole + rest).replace(/^0+/, "");
+  if (digits) {
+    const [mantissa, storedExponent] = Math.abs(number)
+      .toExponential()
+      .split("e");
+    const sourceExponent =
+      digits.length - rest.length - 1 + Number(exponent.slice(1));
+    if (
+      Number(storedExponent) !== sourceExponent ||
+      mantissa.replace(".", "").padEnd(digits.length, "0") !== digits
+    ) {
+      throw new Error("超出数值字段可保留的精度");
+    }
+  }
+  return number;
 }

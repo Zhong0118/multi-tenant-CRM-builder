@@ -33,15 +33,26 @@ export function datetimeLocalUtcCandidates(
   const target = parseWallClock(value);
   const targetEpoch = wallClockEpoch(target);
   const targetText = wallClockText(target);
-  const formatter = wallClockFormatter(timeZone);
+  const { formatter, offsetsByDay } = zoneOffsets(timeZone);
   const offsets = new Set<number>();
-  const hour = 60 * 60 * 1000;
+  const targetDay = Math.floor(targetEpoch / DAY) * DAY;
 
-  for (let distance = -48; distance <= 48; distance += 1) {
-    const probe = new Date(targetEpoch + distance * hour);
-    offsets.add(
-      wallClockEpoch(wallClockAt(probe, formatter)) - probe.getTime(),
-    );
+  // Cover the entire ±48h search window at either edge of the local date.
+  // A candidate from the wider window still has to round-trip exactly.
+  for (let day = targetDay - 2 * DAY; day <= targetDay + 2 * DAY; day += DAY) {
+    let dailyOffsets = offsetsByDay.get(day);
+    if (!dailyOffsets) {
+      dailyOffsets = new Set<number>();
+      for (let epoch = day; epoch < day + DAY; epoch += HOUR) {
+        dailyOffsets.add(
+          wallClockEpoch(wallClockAt(new Date(epoch), formatter)) - epoch,
+        );
+      }
+      if (offsetsByDay.size >= 512)
+        offsetsByDay.delete(offsetsByDay.keys().next().value!);
+      offsetsByDay.set(day, dailyOffsets);
+    }
+    for (const offset of dailyOffsets) offsets.add(offset);
   }
 
   return Array.from(offsets)
@@ -53,6 +64,28 @@ export function datetimeLocalUtcCandidates(
     .map((candidate) => candidate.toISOString())
     .filter((candidate, index, values) => values.indexOf(candidate) === index)
     .sort();
+}
+
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+// Keep only reusable time-zone metadata, never cell values or import results.
+let cachedZone:
+  | {
+      timeZone: string;
+      formatter: Intl.DateTimeFormat;
+      offsetsByDay: Map<number, Set<number>>;
+    }
+  | undefined;
+
+function zoneOffsets(timeZone: string) {
+  if (cachedZone?.timeZone !== timeZone) {
+    cachedZone = {
+      timeZone,
+      formatter: wallClockFormatter(timeZone),
+      offsetsByDay: new Map(),
+    };
+  }
+  return cachedZone;
 }
 
 function wallClockFormatter(timeZone: string): Intl.DateTimeFormat {
