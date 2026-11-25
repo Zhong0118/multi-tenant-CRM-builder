@@ -21,6 +21,7 @@ import {
   type AuthStore,
   type AuthUser,
   type ChallengePurpose,
+  type LoginDeviceInput,
   type SessionKind,
 } from './auth.repository';
 import { normalizeChineseMobile } from './phone-number';
@@ -42,7 +43,7 @@ interface VerificationInput {
   deviceKey: string;
 }
 
-interface RegisterInput {
+interface RegisterInput extends LoginDeviceInput {
   phone: string;
   code: string;
   displayName: string;
@@ -51,7 +52,7 @@ interface RegisterInput {
   deviceSummary?: string;
 }
 
-interface LoginInput {
+interface LoginInput extends LoginDeviceInput {
   phone: string;
   password: string;
   ip?: string;
@@ -94,6 +95,7 @@ const SESSION_HISTORY_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const VERIFICATION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface AuthenticatedSessionResult {
+  deviceCookie?: string;
   accepted: true;
   sessionId: string;
   sessionToken: string;
@@ -262,6 +264,13 @@ export class AuthService {
 
     return this.repository.transaction(async (store) => {
       await store.updateLastLoginAt(user.id, this.clock());
+      // A concurrent reset or deactivation can commit during password verification.
+      const current = await store.findUserById(user.id);
+      if (
+        current?.status !== 'ACTIVE' ||
+        current.passwordHash !== user.passwordHash
+      )
+        throw new ApiException('INVALID_CREDENTIALS', 401);
       return this.issueSession(store, user, input);
     });
   }
@@ -283,6 +292,7 @@ export class AuthService {
           await store.updatePassword(
             user.id,
             await this.passwordHasher.hash(input.newPassword),
+            'password_reset',
           );
           await store.revokeAllSessions(user.id, this.clock());
         }
@@ -300,7 +310,7 @@ export class AuthService {
 
   changePassword(input: ChangePasswordInput): Promise<{ accepted: true }> {
     return this.repository.transaction(async (store) => {
-      const user = await store.findUserById(input.userId);
+      const user = await store.findUserById(input.userId, true);
       if (
         !user ||
         !(await this.passwordHasher.verify(
@@ -314,6 +324,7 @@ export class AuthService {
       await store.updatePassword(
         user.id,
         await this.passwordHasher.hash(input.newPassword),
+        'password_changed',
       );
       await store.revokeOtherSessions(
         user.id,
@@ -435,19 +446,22 @@ export class AuthService {
   private async issueSession(
     store: AuthStore,
     user: AuthUser,
-    meta: { ip?: string; deviceSummary?: string },
+    meta: LoginDeviceInput & { ip?: string; deviceSummary?: string },
   ): Promise<AuthenticatedSessionResult> {
     const issued = await this.sessions.issue(store, {
       userId: user.id,
       now: this.clock(),
       ip: meta.ip,
       deviceSummary: meta.deviceSummary,
+      deviceCookie: meta.deviceCookie,
+      userAgent: meta.userAgent,
     });
 
     return {
       accepted: true,
       sessionId: issued.session.id,
       sessionToken: issued.token,
+      deviceCookie: issued.session.deviceCookie,
       expiresAt: issued.session.expiresAt,
       user: {
         id: user.id,

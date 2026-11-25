@@ -7,6 +7,7 @@ import {
   AUTH_REPOSITORY,
   type AuthRepository,
   type AuthSession,
+  type LoginDeviceInput,
   type AuthStore,
 } from './auth.repository';
 
@@ -38,7 +39,7 @@ export class SessionService {
 
   async issue(
     store: AuthStore,
-    input: {
+    input: LoginDeviceInput & {
       userId: string;
       now: Date;
       ip?: string;
@@ -46,14 +47,17 @@ export class SessionService {
     },
   ): Promise<{ session: AuthSession; token: string }> {
     const token = this.tokenGenerator();
-    const session = await store.createSession({
-      userId: input.userId,
-      tokenHash: hashSessionToken(token),
-      expiresAt: new Date(input.now.getTime() + 30 * 24 * 60 * 60 * 1000),
-      ip: input.ip,
-      deviceSummary: input.deviceSummary,
-      createdAt: input.now,
-    });
+    const session = await store.createSession(
+      {
+        userId: input.userId,
+        tokenHash: hashSessionToken(token),
+        expiresAt: new Date(input.now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        ip: input.ip,
+        deviceSummary: input.deviceSummary,
+        createdAt: input.now,
+      },
+      { userAgent: input.userAgent, deviceCookie: input.deviceCookie },
+    );
 
     return { session, token };
   }

@@ -11,6 +11,13 @@ import {
   createVerificationSender,
   VERIFICATION_SENDER,
 } from '../../infrastructure/verification/verification-sender';
+import { MailModule } from '../mail/mail.module';
+import {
+  AccountEmailController,
+  EmailRecoveryController,
+} from './email.controller';
+import { EmailIdentityService } from './email-identity.service';
+import { EmailRateLimits } from './email-rate-limits';
 import { AuthController, MeController } from './auth.controller';
 import { AUTH_REPOSITORY, PrismaAuthRepository } from './auth.repository';
 import {
@@ -27,8 +34,16 @@ import {
 } from './session.service';
 
 @Module({
-  controllers: [AuthController, MeController],
+  imports: [MailModule],
+  controllers: [
+    AuthController,
+    MeController,
+    AccountEmailController,
+    EmailRecoveryController,
+  ],
   providers: [
+    EmailIdentityService,
+    EmailRateLimits,
     AuthService,
     SessionService,
     SessionAuthGuard,

@@ -36,6 +36,7 @@ import {
   SessionPageResponseDto,
   UserResponseDto,
   VerificationChallengeDto,
+import { DEVICE_COOKIE, DEVICE_LIFETIME } from './login-device';
 } from './dto';
 import { SESSION_COOKIE_NAME, SessionAuthGuard } from './session-auth.guard';
 import type { SessionPrincipal } from './session.service';
@@ -61,6 +62,14 @@ function publicAuthResult(
     secure: !localHttp,
     expires: result.expiresAt,
     path: '/',
+  if (result.deviceCookie)
+    response.cookie(DEVICE_COOKIE, result.deviceCookie, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: true,
+      maxAge: DEVICE_LIFETIME,
+      path: '/',
+    });
   });
   return { accepted: result.accepted, user: result.user };
 }
@@ -91,7 +100,12 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     return this.auth
-      .register({ ...dto, ip: requestIp(request) })
+      .register({
+        ...dto,
+        ip: requestIp(request),
+        deviceCookie: request.cookies?.[DEVICE_COOKIE] as string | undefined,
+        userAgent: request.get('user-agent'),
+      })
       .then((result) => publicAuthResult(response, result));
   }
 
@@ -104,7 +118,12 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     return this.auth
-      .login({ ...dto, ip: requestIp(request) })
+      .login({
+        ...dto,
+        ip: requestIp(request),
+        deviceCookie: request.cookies?.[DEVICE_COOKIE] as string | undefined,
+        userAgent: request.get('user-agent'),
+      })
       .then((result) => publicAuthResult(response, result));
   }
 
