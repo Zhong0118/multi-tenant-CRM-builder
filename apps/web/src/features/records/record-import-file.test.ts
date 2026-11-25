@@ -117,7 +117,7 @@ describe("record file import", () => {
     const shaped = await parse("清单\n旧编号,旧金额\na,23\nb,45");
     expect(shaped.headerSelection("", [])).toMatchObject({
       headerRow: 2,
-      detected: true,
+      detected: false,
     });
     const tied = await parse("名称,说明\n名称,别名\n张三,小张");
     expect(
@@ -129,11 +129,11 @@ describe("record file import", () => {
       rowNumbers: [3],
     });
   });
-  it("uses a majority of short labels and data shape in the next three nonempty rows", async () => {
+  it("uses the first sufficiently wide row followed by a comparable data row", async () => {
     const input = [
       "导出清单",
       "客户,票数," + "旧表备注".repeat(12),
-      "甲,,",
+      "甲,4,样本",
       ",,暂缺",
       "乙,12,",
       "丙,4,",
@@ -144,10 +144,10 @@ describe("record file import", () => {
     );
     expect(source.headerSelection("", [])).toMatchObject({
       headerRow: 2,
-      detected: true,
+      detected: false,
     });
   });
-  it("keeps consecutive rows of business headings open for one header-and-column preview", async () => {
+  it("leaves consecutive wide rows to the employee to confirm", async () => {
     const source = await readImportFile(
       file(
         new TextEncoder().encode(
@@ -159,7 +159,7 @@ describe("record file import", () => {
     );
     const choice = source.headerSelection("", []);
     expect(choice.detected).toBe(false);
-    expect(choice.headerRow).toBe(3);
+    expect(choice.headerRow).toBe(2);
   });
   it("chooses the earliest plausible row when shape is the only evidence", async () => {
     const input = "旧表\n客户,金额\n甲,零元\n乙,30";
@@ -169,7 +169,7 @@ describe("record file import", () => {
     );
     expect(source.headerSelection("", [])).toMatchObject({
       headerRow: 2,
-      detected: true,
+      detected: false,
     });
   });
   it("ranks distinct normalized matches above repeated labels and shape alone", async () => {

@@ -1,4 +1,3 @@
-import { businessLabel } from "./record-import-heading";
 import type { ParsingOptions } from "xlsx";
 import { parseCsvRows, type SourceRow } from "@/lib/csv";
 import type { RecordImportResultItem } from "./record-api";
@@ -28,15 +27,6 @@ export interface ImportFile {
   sheet: (name: string, headerRow?: number) => ParsedCsv;
 }
 
-function looksLikeLabel(value: string) {
-  return (
-    value.length <= 40 &&
-    /\p{L}/u.test(value) &&
-    !/[\n\r@]/.test(value) &&
-    !/^[-+]?\d/.test(value)
-  );
-}
-
 function selectHeader(rows: SourceRow[], fields: MatchFields): HeaderSelection {
   const leadingRows = rows
     .slice(0, HEADER_ROW_LIMIT)
@@ -54,56 +44,34 @@ function selectHeader(rows: SourceRow[], fields: MatchFields): HeaderSelection {
       !rows[index + 1] ||
       leadingRows[index].cells.length > RECORD_IMPORT_MAX_COLUMNS
     )
-      return { index, matches: 0, shaped: false };
-    const keys = cells
-      .map((cell) => suggestFieldKey(cell, fields))
-      .filter(Boolean);
-    const labels = cells.map((cell) => cell.trim()).filter(Boolean);
-    const shortLabels = labels.filter(looksLikeLabel).length;
-    const shaped =
-      shortLabels >= 2 &&
-      shortLabels > labels.length / 2 &&
-      rows.slice(index + 1, index + 4).some((row) => {
-        const belowLabels = cells
-          .map((label, i) => label.trim() && row.cells[i]?.trim())
-          .filter(Boolean);
-        return (
-          belowLabels.length >= 2 &&
-          belowLabels.some((value) => !looksLikeLabel(value))
-        );
-      });
-    return { index, matches: new Set(keys).size, shaped };
+      return 0;
+    return new Set(
+      cells.map((cell) => suggestFieldKey(cell, fields)).filter(Boolean),
+    ).size;
   });
-  const mostMatches = Math.max(...scores.map((candidate) => candidate.matches));
-  const best = scores.filter((candidate) => candidate.matches === mostMatches);
-  const shaped = best.filter((candidate) => candidate.shaped);
-  // A grouped heading followed by actual column headings can match the same
-  // later data rows. Keep that choice editable and offer both rows to preview.
-  const adjacent = shaped[1];
-  if (
-    mostMatches === 0 &&
-    adjacent &&
-    adjacent.index === shaped[0].index + 1 &&
-    [shaped[0], adjacent].every(({ index }) =>
-      candidates[index].cells.some((value) => businessLabel(value.trim())),
-    )
-  ) {
+  const highest = Math.max(...scores);
+  if (highest > 0 && scores.indexOf(highest) === scores.lastIndexOf(highest))
     return {
       candidates,
-      headerRow: candidates[adjacent.index].rowNumber,
-      detected: false,
+      headerRow: candidates[scores.indexOf(highest)].rowNumber,
+      detected: true,
     };
-  }
-  const found =
-    mostMatches > 0 && best.length === 1
-      ? best[0]
-      : mostMatches === 0 || shaped.length === 1
-        ? shaped[0]
-        : undefined;
+  const count = (cells: string[]) =>
+    cells.filter((cell) => cell?.trim()).length;
+  const widest = Math.max(...candidates.map((row) => count(row.cells)));
+  const fallback = candidates.find(({ cells }, i) => {
+    const width = count(cells);
+    const nextWidth = count(rows[i + 1]?.cells ?? []);
+    return (
+      width >= widest / 2 &&
+      nextWidth > 0 &&
+      Math.abs(width - nextWidth) <= Math.floor(Math.max(width, nextWidth) / 4)
+    );
+  });
   return {
     candidates,
-    headerRow: candidates[found?.index ?? 0].rowNumber,
-    detected: !!found,
+    headerRow: (fallback ?? candidates[0]).rowNumber,
+    detected: false,
   };
 }
 

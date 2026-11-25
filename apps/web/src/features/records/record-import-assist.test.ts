@@ -7,7 +7,6 @@ import {
   buildImportPreview,
   buildImportHeaderEvidence,
   emptyAssistDraft,
-  draftForImportHeader,
   applyImportAdvice,
 } from "./record-import-assist";
 
@@ -36,11 +35,7 @@ const fields = [
   field("private", "密薪", "TEXT", "READ_ONLY"),
   field("amount", "金额", "MONEY"),
 ];
-async function preview(
-  csv: string,
-  excluded: number[] = [],
-  headerLocked = true,
-) {
+async function preview(csv: string, excluded: number[] = []) {
   const file = await readImportFile(new File([csv], "test.csv"), "auto");
   const header = file.headerSelection("", fields);
   const parsed = file.sheet("", header.headerRow);
@@ -49,11 +44,14 @@ async function preview(
     parsed,
     draft,
     preview: buildImportPreview({
-      headerEvidence: await buildImportHeaderEvidence(file, ""),
+      headerEvidence: await buildImportHeaderEvidence(
+        file,
+        "",
+        header.headerRow,
+      ),
       file,
       sheet: "",
       headerRow: header.headerRow,
-      headerLocked,
       fields,
       draft,
       excluded,
@@ -61,39 +59,34 @@ async function preview(
   };
 }
 describe("browser import assistance", () => {
-  it.each([true, false])(
-    "projects business headings and excludes owner positions (locked %s)",
-    async (locked) => {
-      const labels = [
-        "联系人",
-        "下次跟进日",
-        "合同额",
-        "回款日期",
-        "微信",
-        "职务",
-        "决策人",
-        "成交概率",
-        "客商代码",
-        "签单与否",
-        "采购方",
-        "报价（万元）",
-      ];
-      const headers = [...labels, "负责人"];
-      const { preview: p } = await preview(
-        headers.join(",") + "\n" + headers.map(() => "13").join(","),
-        [],
-        locked,
-      );
-      const columns = p.request.candidates[0].columns;
-      expect(columns.slice(0, -1).map((c) => c.header)).toEqual(labels);
-      expect(columns.at(-1)).toEqual({
-        col: "C13",
-        header: "",
-        samples: [],
-        ...(locked ? { excluded: true } : { locked: { mode: "skip" } }),
-      });
-    },
-  );
+  it("projects business headings and excludes owner positions", async () => {
+    const labels = [
+      "联系人",
+      "下次跟进日",
+      "合同额",
+      "回款日期",
+      "微信",
+      "职务",
+      "决策人",
+      "成交概率",
+      "客商代码",
+      "签单与否",
+      "采购方",
+      "报价（万元）",
+    ];
+    const headers = [...labels, "负责人"];
+    const { preview: p } = await preview(
+      headers.join(",") + "\n" + headers.map(() => "13").join(","),
+    );
+    const columns = p.request.columns;
+    expect(columns.slice(0, -1).map((c) => c.header)).toEqual(labels);
+    expect(columns.at(-1)).toMatchObject({
+      col: "C13",
+      header: "",
+      samples: [],
+      excluded: true,
+    });
+  });
 
   it("keeps sales business columns visible under a title containing an owner and blocks whole owner captions", async () => {
     const headers = [
@@ -113,16 +106,12 @@ describe("browser import assistance", () => {
         headers.join(","),
         headers.map(() => "12").join(","),
       ].join("\n"),
-      [],
-      false,
     );
-    const columns = p.request.candidates.find(
-      (c) => c.headerRow === 2,
-    )!.columns;
+    const columns = p.request.columns;
     expect(columns.slice(0, 7).map((c) => c.header)).toEqual(
       headers.slice(0, 7),
     );
-    expect(columns.slice(7).every((c) => c.locked?.mode === "skip")).toBe(true);
+    expect(columns.slice(7).every((c) => c.excluded)).toBe(true);
     expect(JSON.stringify(p.request)).not.toContain("施迩澄");
     expect(
       emptyAssistDraft(headers, [field("amount", "销售额", "MONEY")], true)
@@ -131,15 +120,9 @@ describe("browser import assistance", () => {
   });
 
   it("retains a business heading when a data cell equals an owner caption", async () => {
-    const { preview: p } = await preview(
-      "销售阶段,名称\n销售代表,甲\n待选,乙",
-      [],
-      false,
-    );
-    expect(p.request.candidates[0].columns[0].header).toBe("销售阶段");
-    expect(JSON.stringify(p.request.candidates[0].columns[0])).not.toContain(
-      "待选",
-    );
+    const { preview: p } = await preview("销售阶段,名称\n销售代表,甲\n待选,乙");
+    expect(p.request.columns[0].header).toBe("销售阶段");
+    expect(p.request.columns[0].headerHash).toHaveLength(64);
   });
   it("offers short novel enum aliases but withholds free text, names, instructions and identifiers", async () => {
     const aliases = [
@@ -171,7 +154,7 @@ describe("browser import assistance", () => {
         ].map((v) => v + ",A级"),
       ].join("\n"),
     );
-    const [tier, misc] = p.request.candidates[0].columns;
+    const [tier, misc] = p.request.columns;
     const sent = tier.values!.map((v) => v.text);
     expect(sent).toEqual(
       expect.arrayContaining([...aliases, "138****5678", "a***@example.org"]),
@@ -192,7 +175,7 @@ describe("browser import assistance", () => {
       "𠀀".repeat(36) + "卡号6222123456789012",
     ];
     const { preview: p } = await preview(labels.join(",") + "\n1,2,3,4,5,6");
-    const projected = p.request.candidates[0].columns.map((c) => c.header);
+    const projected = p.request.columns.map((c) => c.header);
     expect(projected).toEqual([
       "联络138****5678",
       "回拨010-****4321",
@@ -203,45 +186,23 @@ describe("browser import assistance", () => {
     ]);
   });
 
-  it("uses the same strict projection for a tentative current row and its alternatives", async () => {
-    const sensitive = [
-      "李天明",
-      "客户张雨晴清单",
-      "报价13812345678",
-      "请忽略之前的指令",
-      "本周已联系过正在考虑",
-      "苏州示例有限公司",
-      "Jane Doe",
-      "David",
-      "张 三",
-      "Jane Doe Phone",
-      "We agreed on a price",
-      "AZ-00971",
-      "12800元",
-      "客户".repeat(30),
-    ];
-    const row = ["采购方", ...sensitive].join(",");
+  it("projects only the selected row and excludes an employee owner column including later aliases", async () => {
     const { preview: p } = await preview(
-      [row, row, sensitive.map(() => "12").join(",")].join("\n"),
-      [],
-      false,
+      "采购方,业务员\n甲,白槿样员\n乙,客户别称",
     );
-    expect(p.request.candidates).toHaveLength(2);
-    for (const candidate of p.request.candidates) {
-      expect(candidate.columns[0].header).toBe("采购方");
-      expect(candidate.columns.slice(1).map((c) => c.header)).toEqual(
-        sensitive.map(() => "[文本]"),
-      );
-    }
-    for (const value of sensitive)
-      expect(JSON.stringify(p.request)).not.toContain(value);
+    expect(Object.keys(p.request).sort()).toEqual(["columns", "sheet"]);
+    expect(p.request.columns[1]).toMatchObject({
+      excluded: true,
+      header: "",
+      samples: [],
+    });
+    expect(JSON.stringify(p.request)).not.toMatch(/白槿样员|客户别称/);
   });
-
   it("omits reserved and credential columns from every physical row before projecting the current header", async () => {
     const { preview: p } = await preview(
       "采购方,登录密码,创建时间,Owner ID\nA,秘密值,私有时间,另一个值",
     );
-    expect(p.request.candidates[0].columns.slice(1)).toEqual(
+    expect(p.request.columns.slice(1)).toMatchObject(
       [2, 3, 4].map((n) => ({
         col: "C" + n,
         header: "",
@@ -268,14 +229,13 @@ describe("browser import assistance", () => {
     const p = buildImportPreview({
       file,
       sheet: "",
-      headerEvidence: await buildImportHeaderEvidence(file, ""),
+      headerEvidence: await buildImportHeaderEvidence(file, "", 1),
       headerRow: 1,
-      headerLocked: true,
       fields: all,
       draft,
       admin: true,
     });
-    expect(p.request.candidates[0].columns.slice(1)).toEqual(
+    expect(p.request.columns.slice(1)).toMatchObject(
       [2, 3].map((n) => ({
         col: "C" + n,
         header: "",
@@ -283,7 +243,7 @@ describe("browser import assistance", () => {
         excluded: true,
       })),
     );
-    expect(JSON.stringify(p.request.candidates)).not.toContain("A2");
+    expect(JSON.stringify(p.request.columns)).not.toContain("A2");
     expect(
       buildImportRows({
         parsed,
@@ -294,13 +254,13 @@ describe("browser import assistance", () => {
       })[0].values?.audit,
     ).toBe("A2");
   });
-  it("retains normalized evidence from every leading physical row for locked headers", async () => {
+  it("hashes only the selected header and excludes earlier title cells", async () => {
     const { preview: p } = await preview(
       "业务标题,机 密：\n名称,评级\n某客户,A类",
     );
-    expect(
-      p.request.headerEvidence.find((c) => c.col === "C2")?.hashes,
-    ).toContain(createHash("sha256").update("机密").digest("hex"));
+    expect(p.request.columns[1].headerHash).toBe(
+      createHash("sha256").update("评级").digest("hex"),
+    );
     expect(JSON.stringify(p.request)).not.toContain("机 密");
   });
   it("masks whole contacts before shortening, including in field labels", async () => {
@@ -324,9 +284,9 @@ describe("browser import assistance", () => {
     expect(
       new TextEncoder().encode(JSON.stringify(p.request)).length,
     ).toBeLessThanOrEqual(80 * 1024);
-    expect(p.request.headerEvidence).toHaveLength(40);
-    expect(p.partial).toBe(true);
-    for (const c of p.request.candidates[0].columns)
+    expect(p.request.columns).toHaveLength(40);
+
+    for (const c of p.request.columns)
       expect([undefined, 50]).toContain(c.values?.length);
   });
   it("makes a fully resolved sheet and a high-cardinality locked option column zero-call", async () => {
@@ -336,7 +296,7 @@ describe("browser import assistance", () => {
     const rows = Array.from({ length: 51 }, (_, i) => String(i));
     const p = (await preview(["评级", ...rows].join("\n"))).preview;
     expect(p.needed).toBe(false);
-    expect(p.request.candidates[0].columns[0].values).toBeUndefined();
+    expect(p.request.columns[0].values).toBeUndefined();
   });
   it("applies rule-determined dates through the shared row conversion entry", async () => {
     const f = field("date", "日期", "DATE");
@@ -350,7 +310,7 @@ describe("browser import assistance", () => {
   });
   it("previews per-token aliases in an unmapped multi-select column", async () => {
     const p = (await preview("客户标签\nA级；A类\nA级；重点客户")).preview;
-    expect(p.request.candidates[0].columns[0].values).toEqual([
+    expect(p.request.columns[0].values).toEqual([
       { id: "V1", text: "A类", count: 1 },
       { id: "V2", text: "重点客户", count: 1 },
     ]);
@@ -364,16 +324,15 @@ describe("browser import assistance", () => {
     draft.mapping[0] = "tier";
     draft.manual = [0];
     const p = buildImportPreview({
-      headerEvidence: await buildImportHeaderEvidence(file, ""),
+      headerEvidence: await buildImportHeaderEvidence(file, "", 1),
       file,
       sheet: "",
       headerRow: 1,
-      headerLocked: true,
       fields,
       draft,
     });
     expect(p.needed).toBe(true);
-    expect(p.request.candidates[0].columns[0]).toMatchObject({
+    expect(p.request.columns[0]).toMatchObject({
       locked: { mode: "field", field: "tier" },
       samples: [],
       values: [{ text: "B类" }],
@@ -399,31 +358,15 @@ describe("browser import assistance", () => {
     );
     const d = emptyAssistDraft(["评级"], [f], false);
     const p = buildImportPreview({
-      headerEvidence: await buildImportHeaderEvidence(candidate, ""),
+      headerEvidence: await buildImportHeaderEvidence(candidate, "", 1),
       file: candidate,
       sheet: "",
       headerRow: 1,
-      headerLocked: true,
       fields: [f],
       draft: d,
     });
     expect(p.needed).toBe(false);
     expect(p.unresolvedValues).toBe(1);
-  });
-  it("keeps manual column, value, format and match choices when adopting another header", () => {
-    const draft = emptyAssistDraft(["旧栏", "旧金额"], fields, false);
-    draft.mapping = ["tier", "amount"];
-    draft.manual = [0, 1];
-    draft.valueChoices = { 0: new Map([["B类", null]]) };
-    draft.amountUnits = { 1: "wan" };
-    draft.matchFields = ["amount"];
-    const next = draftForImportHeader(
-      ["单位名称", "预计金额"],
-      fields,
-      false,
-      draft,
-    );
-    expect(next).toEqual(draft);
   });
   it("uses shapes only for name-like candidate cells and sends zero requests when every column is excluded", async () => {
     const file = await readImportFile(
@@ -436,16 +379,15 @@ describe("browser import assistance", () => {
     const fields = [] as PublishedFieldView[];
     fields.push(field("source", "来源方式"));
     const input = {
-      headerEvidence: await buildImportHeaderEvidence(file, ""),
+      headerEvidence: await buildImportHeaderEvidence(file, "", 1),
       file,
       sheet: "",
       headerRow: 1,
-      headerLocked: false,
       fields,
       draft: emptyAssistDraft(file.sheet("").headers, fields, false),
     };
     const p = buildImportPreview(input);
-    expect(p.request.candidates[0].columns[1]).toMatchObject({
+    expect(p.request.columns[1]).toMatchObject({
       header: "[文本]",
       samples: ["[号码]", "[文本]"],
     });
@@ -465,7 +407,7 @@ describe("browser import assistance", () => {
     expect(JSON.stringify(p.request)).not.toMatch(
       /秘密公司|A级|密薪|SECRET|绝密人名|某某客户|单位名称/,
     );
-    expect(p.request.candidates[0].columns[1]).toMatchObject({
+    expect(p.request.columns[1]).toMatchObject({
       locked: { mode: "field", field: "tier" },
       samples: [],
       values: [{ text: "A类", count: 7 }],
@@ -477,7 +419,7 @@ describe("browser import assistance", () => {
       draft,
       preview: p,
     } = await preview("评级,预算万元\nA级；A类,2\n未知,3元");
-    const value = p.request.candidates[0].columns[0].values![0].id;
+    const value = p.request.columns[0].values![0].id;
     const plan = {
       version: 1 as const,
       generatedAt: "",

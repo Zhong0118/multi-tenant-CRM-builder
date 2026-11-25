@@ -6,7 +6,6 @@ import {
   applyImportAdvice,
   buildImportPreview,
   emptyAssistDraft,
-  draftForImportHeader,
   reviewImportPlan,
   remainingImportValues,
   setRemainingImportValues,
@@ -68,7 +67,7 @@ it.each([
   ["MONEY", "￥3,210.50", "金额"],
   ["NUMBER", "1.2e3", "数值"],
 ] as const)(
-  "checks the actual alternate header's %s columns before showing or applying a high suggestion",
+  "checks the manually selected header's %s columns before showing or applying a high suggestion",
   async (type, value, label) => {
     const fields = [
       { ...tier, fieldKey: "first", label: "首项", type },
@@ -88,26 +87,19 @@ it.each([
       ),
       "auto",
     );
-    const draft = emptyAssistDraft(file.sheet("", 1).headers, fields, false);
+    const draft = emptyAssistDraft(file.sheet("", 2).headers, fields, false);
     const preview = buildImportPreview({
       file,
       sheet: "",
       fields,
       draft,
       headerEvidence: [],
-      headerRow: 1,
-      headerLocked: false,
+      headerRow: 2,
     });
-    const base = draftForImportHeader(
-      file.sheet("", 2).headers,
-      fields,
-      false,
-      draft,
-    );
+    const base = draft;
     const raw: ImportAssistPlan = {
       version: 1,
       generatedAt: "",
-      headerRow: 2,
       matchFields: [],
       columns: ["first", "second"].map((field, i) => ({
         col: "C" + (i + 1),
@@ -144,7 +136,6 @@ it.each([
       draft,
       headerEvidence: [],
       headerRow: 1,
-      headerLocked: false,
     });
     expect(
       reviewImportPlan(raw, locked, file, "", fields, "Asia/Shanghai")

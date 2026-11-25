@@ -164,12 +164,11 @@ describe("RecordImportDrawer", () => {
       }),
     );
   });
-  it("changes physical header only on confirmation, applies the returned plan and restores the original header", async () => {
+  it("asks for header confirmation when the width fallback selects the header, then applies and restores mappings", async () => {
     const call = vi
       .spyOn(assistApi, "requestImportAssist")
       .mockResolvedValueOnce({
         version: 1,
-        headerRow: 3,
         generatedAt: "2026-11-24T00:00:00Z",
         matchFields: ["name"],
         columns: [
@@ -188,11 +187,10 @@ describe("RecordImportDrawer", () => {
         ],
       });
     const { api } = setup(recordApi(), schema, false, undefined, true);
-    chooseFile("清单,原件\n\n单位名称,客户状态\n第三行测试客户,待联系");
+    chooseFile("文件标题\n\n单位名称,客户状态\n第三行测试客户,待联系");
     fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
-    await screen.findByText("建议第 3 行为表头");
-    expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "预览并改用第 3 行" }));
+    await screen.findByText("请确认表头在第几行，当前使用第 3 行");
+    expect(call.mock.calls[0][2]).not.toHaveProperty("candidates");
     await screen.findByText("1 行 · 2 列");
     expect(screen.getByRole("button", { name: "检查数据" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: /采\s*用/ }));
@@ -215,7 +213,7 @@ describe("RecordImportDrawer", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "恢复到 AI 之前的对照" }),
     );
-    await screen.findByText("2 行 · 2 列");
+    await screen.findByText("1 行 · 2 列");
     expect(
       screen.queryByRole("button", { name: "确认导入 1 行" }),
     ).not.toBeInTheDocument();
@@ -274,7 +272,6 @@ describe("RecordImportDrawer", () => {
     expect(call.mock.calls[0][3].aborted).toBe(true);
     finish({
       version: 1,
-      headerRow: 1,
       generatedAt: "",
       matchFields: [],
       columns: [
@@ -310,7 +307,6 @@ describe("RecordImportDrawer", () => {
       })
       .mockResolvedValueOnce({
         version: 1,
-        headerRow: 1,
         generatedAt: "",
         columns: [],
         matchFields: [],
@@ -363,7 +359,6 @@ describe("RecordImportDrawer", () => {
     finish({
       version: 1,
       generatedAt: "",
-      headerRow: 1,
       columns: [],
       matchFields: [],
     });
