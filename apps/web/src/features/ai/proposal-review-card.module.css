@@ -89,6 +89,26 @@
 .item [role="alert"] {
   color: var(--color-danger);
 }
+/* "旧值 old → new": the old value struck through, the new one in ink. */
+.item .change {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.change > span:first-child {
+  text-decoration: line-through;
+}
+.change > span:last-child {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.fieldLabel {
+  display: grid;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -110,13 +130,29 @@
 .dialog :global(.ant-checkbox-wrapper) {
   display: inline-flex;
 }
+.dialog > label {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
 .dialog details {
   color: var(--text-secondary);
+  font-size: 13px;
 }
 .dialog summary {
+  width: fit-content;
   cursor: pointer;
 }
+.dialog summary:hover {
+  color: var(--text-primary);
+}
 .dialog details p {
+  max-height: 160px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: var(--radius-control);
+  background: var(--bg-surface-subtle);
+  line-height: 20px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -153,9 +189,11 @@
 
 .saved {
   margin: 0;
-  border-inline-start: 3px solid var(--color-primary);
-  padding: 4px 12px;
-  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   animation: appear 160ms ease both;
 }

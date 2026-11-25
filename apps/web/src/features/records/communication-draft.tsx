@@ -318,7 +318,7 @@ export function CommunicationDraftDialog({
             : undefined,
         render: (edit, disabled) => (
           <>
-            <label>
+            <label className={styles.fieldLabel}>
               跟进标题
               <Input
                 value={title}
@@ -368,7 +368,7 @@ export function CommunicationDraftDialog({
             : undefined,
         render: (edit, disabled) => (
           <>
-            <p>
+            <p className={styles.change}>
               旧值 <span>{displayValue(field, change.oldValue, members)}</span>{" "}
               → <span>{displayValue(field, value, members)}</span>
             </p>
@@ -457,7 +457,7 @@ export function CommunicationDraftDialog({
                 onChange={(event) => setSource(event.target.value)}
               />
             </label>
-            <div>
+            <div className={styles.actions}>
               <Button
                 type="primary"
                 loading={busy}
@@ -582,9 +582,6 @@ function SavedCommunication({
         {summary}
       </p>
       <div className={styles.actions}>
-        <Button type="primary" onClick={onClose}>
-          完成
-        </Button>
         <Button
           onClick={() => {
             onClose();
@@ -592,6 +589,9 @@ function SavedCommunication({
           }}
         >
           查看客户
+        </Button>
+        <Button type="primary" onClick={onClose}>
+          完成
         </Button>
       </div>
     </>

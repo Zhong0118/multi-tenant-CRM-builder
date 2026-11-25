@@ -18,6 +18,7 @@ import {
   type BriefList,
   type BriefRecord,
 } from "./brief-api";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { GenerationWait } from "@/features/ai/generation-wait";
 import styles from "./brief.module.css";
 
@@ -88,7 +89,10 @@ export function BriefSuggestions({
   return (
     <section className={styles.box} aria-label="今日建议">
       <div className={styles.header}>
-        <h3>今日建议</h3>
+        <h3>
+          <AiSparkIcon aria-hidden className={styles.aiMark} />
+          今日建议
+        </h3>
         <Button
           type="text"
           size="small"
@@ -131,6 +135,7 @@ export function BriefSuggestions({
                     </span>
                   )}
                   <Button
+                    size="small"
                     disabled={
                       !hasCandidates || !data.remaining || data.busy || pending
                     }
@@ -146,7 +151,10 @@ export function BriefSuggestions({
                   </Button>
                   {generating && <GenerationWait feature="daily_brief" />}
                   {pending && (
-                    <Button onClick={() => controller.current?.abort()}>
+                    <Button
+                      size="small"
+                      onClick={() => controller.current?.abort()}
+                    >
                       取消
                     </Button>
                   )}
@@ -175,13 +183,19 @@ export function BriefSuggestions({
                     );
                     return (
                       <article key={i.recordId} className={styles.item}>
-                        <div>
-                          <strong>{i.suggestedTitle}</strong> · {i.title}（
-                          {i.objectName}）
+                        <div className={styles.itemBody}>
+                          <p className={styles.itemTitle}>
+                            <strong>{i.suggestedTitle}</strong>
+                            <span>
+                              {i.title} · {i.objectName}
+                            </span>
+                          </p>
                           {i.explanation && <p>{i.explanation}</p>}
-                          {i.reason && <p>依据 · {i.reason}</p>}
+                          {i.reason && (
+                            <p className={styles.reason}>依据：{i.reason}</p>
+                          )}
                         </div>
-                        <div className={styles.actions}>
+                        <div className={styles.itemActions}>
                           <Link href={href}>打开记录</Link>
                           {writing && (
                             <Link href={href + "?writing=1"}>帮我写</Link>

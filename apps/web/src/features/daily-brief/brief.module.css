@@ -1,27 +1,36 @@
+/* 今日建议 and 需要关注: quiet boxes on the workbench. Each suggestion is a
+   row — what to do, on which record, why — with its actions to the right. */
 .box {
   min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--border-subtle, #dde3ea);
-  border-radius: 8px;
-  background: var(--surface, #fff);
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
 }
 .header,
 .actions,
-.item,
 .records li {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px 14px;
+  gap: 8px 12px;
 }
 .header,
-.item,
 .records li {
   justify-content: space-between;
 }
 .header h3 {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
   margin: 0;
+  color: var(--text-primary);
   font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.aiMark {
+  color: var(--color-ai);
 }
 .content,
 .records,
@@ -32,27 +41,90 @@
 .records {
   margin-top: 8px;
 }
+.actions {
+  padding-bottom: 4px;
+}
 .actions,
 .empty,
 .records li span {
-  font-size: 13px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.content > p {
+  margin: 8px 0 0;
   color: var(--text-secondary);
+  font-size: 13px;
 }
 .item {
-  padding: 10px 0 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-hairline);
   overflow-wrap: anywhere;
 }
-.item p {
-  margin: 4px 0;
+.item:last-child {
+  padding-bottom: 2px;
+}
+.itemBody p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
   font-size: 13px;
+  line-height: 20px;
+}
+.itemBody .itemTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 22px;
+}
+.itemTitle strong {
+  font-weight: 600;
+}
+.itemTitle span {
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+.itemBody .reason {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.itemActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  justify-content: flex-end;
+  padding-top: 1px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.itemActions a {
+  color: var(--text-secondary);
+}
+.itemActions a:last-child {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+.itemActions a:hover {
+  color: var(--color-primary-hover);
 }
 .records {
   padding: 0;
   list-style: none;
 }
 .records li {
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border-subtle, #eee);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 14px;
+}
+.records li:last-child {
+  border-bottom: 0;
 }
 .box button,
 .box a {
@@ -61,6 +133,14 @@
 .box button:active,
 .box a:active {
   transform: scale(0.98);
+}
+@media (max-width: 600px) {
+  .item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .itemActions {
+    justify-content: flex-start;
+  }
 }
 .form {
   max-width: 650px;

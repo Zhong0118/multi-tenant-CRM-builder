@@ -11,6 +11,7 @@ import {
   writingDraft,
   type LiveWriting,
 } from "./sales-draft-api";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { GenerationWait } from "./generation-wait";
 import styles from "./sales-writing.module.css";
 const defaults: WritingOptions = {
@@ -169,7 +170,7 @@ export function SalesWriting({
           </div>
         ))}
       </div>
-      <label>
+      <label className={styles.supplement}>
         补充
         <Input.TextArea
           value={options.supplement ?? ""}
@@ -183,7 +184,7 @@ export function SalesWriting({
       </label>
       <Space wrap>
         <Button
-          type="primary"
+          type={draft ? "default" : "primary"}
           icon={<EditOutlined aria-hidden />}
           aria-label={
             pending === "writing" ? "生成中" : draft ? "按当前选项生成" : "生成"
@@ -202,10 +203,11 @@ export function SalesWriting({
       {error && <Alert showIcon type="error" title={error} />}
       {draft && (
         <div className={styles.result} aria-live="polite">
-          <strong>
+          <strong className={styles.resultTitle}>
             {choices.kind[draft.kind]} · {draft.title}
           </strong>
-          <small>
+          <small className={styles.resultMeta}>
+            <AiSparkIcon aria-hidden className={styles.aiMark} />
             AI 生成 ·{" "}
             {new Date(draft.generatedAt).toLocaleString("zh-CN", {
               timeZone: draft.timeZone,
@@ -226,8 +228,9 @@ export function SalesWriting({
               {regenerate}
             </Space>
           )}
-          <Space wrap>
+          <div className={styles.resultActions}>
             <Button
+              type="primary"
               icon={<CopyOutlined aria-hidden />}
               disabled={busy}
               onClick={async () => {
@@ -242,32 +245,45 @@ export function SalesWriting({
               {copied ? "已复制" : "复制"}
             </Button>
             {!missingTopics && regenerate}
-            {draft.kind !== "visit" && (
-              <>
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    generate({ ...draftOptions, length: "short" }, "shorter")
-                  }
-                >
-                  更短一些
-                </Button>
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    generate({ ...draftOptions, tone: "formal" }, "formal")
-                  }
-                >
-                  更正式一些
-                </Button>
-                {draft.canLog && (
-                  <Button disabled={busy} onClick={openLog}>
-                    已发送，记一笔沟通
-                  </Button>
-                )}
-              </>
-            )}
-          </Space>
+          </div>
+          {draft.kind !== "visit" && (
+            <div className={styles.tweaks}>
+              <span>调整</span>
+              <Button
+                size="small"
+                className={styles.tweak}
+                disabled={busy}
+                onClick={() =>
+                  generate({ ...draftOptions, length: "short" }, "shorter")
+                }
+              >
+                更短一些
+              </Button>
+              <Button
+                size="small"
+                className={styles.tweak}
+                disabled={busy}
+                onClick={() =>
+                  generate({ ...draftOptions, tone: "formal" }, "formal")
+                }
+              >
+                更正式一些
+              </Button>
+            </div>
+          )}
+          {draft.kind !== "visit" && draft.canLog && (
+            <div className={styles.logRow}>
+              <span>发出去了？</span>
+              <Button
+                type="link"
+                size="small"
+                disabled={busy}
+                onClick={openLog}
+              >
+                已发送，记一笔沟通
+              </Button>
+            </div>
+          )}
         </div>
       )}
       <Drawer
