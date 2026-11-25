@@ -13,7 +13,7 @@ it.each([429, 503, 400])(
       runImportRequest(generate, new AbortController().signal, observe),
     ).rejects.toThrow();
     expect(generate).toHaveBeenCalledTimes(statusCode === 400 ? 1 : 2);
-    expect(observe.mock.lastCall?.[0]).toMatchObject({
+    expect(observe).toHaveBeenLastCalledWith({
       attempt: generate.mock.calls.length,
       statusCode,
       isRetryable: statusCode !== 400,

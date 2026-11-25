@@ -49,8 +49,9 @@ function classify(
     statusCode === null
       ? !!networkCode
       : statusCode === 429 || (statusCode >= 500 && statusCode < 600);
+  const abortReason: unknown = signal.reason;
   const message = signal.aborted
-    ? signal.reason?.name === 'TimeoutError'
+    ? abortReason instanceof Error && abortReason.name === 'TimeoutError'
       ? 'TIMEOUT'
       : 'CANCELLED'
     : statusCode !== null
