@@ -53,6 +53,13 @@ Compose explicitly passes only the API settings needed at runtime; the API and W
 
 Attachments use private API-mediated disk storage at `/var/lib/crm/attachments`, persisted in `attachments_data`; metadata remains in PostgreSQL. Back up both database and this volume together. This is single-host private storage, not verified private object storage, and requires a single API instance or shared storage before scaling.
 
+头像保存在 API 使用的独立卷 `avatars_data:/var/lib/crm/avatars`。限制宿主机访问权限，多 API 实例必须挂载同一共享目录。暂停头像写入后，同时备份数据库、附件卷和头像卷。恢复时使用同一批次的数据库和卷。
+
+先执行数据库迁移，再部署 API 和 Web。确认账号页可用后，根据 [腾讯云发信开通说明](email-tencent-ses.md) 填写 SMTP 配置，在受控环境执行 `openssl rand -hex 32` 生成 `MAIL_SECRET`，单独备份该密钥。设置 `MAIL_PROVIDER=smtp` 并重启 API。生产 `WEB_ORIGIN` 必须包含 `https://crm.baijiehub.com`。用平台管理员本人的已验证邮箱试发并查看近七天统计。清空 `MAIL_PROVIDER` 可停用发信，回滚应用时保留数据库结构和头像卷。轮换密钥后，用户需要重新申请验证码。
+
+本地运行 `docker compose --profile mail up -d mailpit`。开发 API 依照示例设置发件人和密钥，并配置 `SMTP_HOST=127.0.0.1`、`SMTP_PORT=1025`、`MAIL_PROVIDER=smtp` 和 `WEB_ORIGIN=http://localhost:3000`。在 `http://127.0.0.1:8025` 查看本机捕获的邮件。
+
+
 Compose fixes edge subnet `172.30.26.0/24`, Caddy `.2`, API `.3`, Web `.4`. API trusts only exact Caddy peer `172.30.26.2`; Caddy replaces incoming `X-Forwarded-For` with the actual client address. Never use unconditional proxy trust or arbitrary trusted subnets. Check subnet conflicts before a separately authorized startup. Real client containers `.10`/`.11` sending the same forged XFF were observed upstream with distinct real client addresses and remote peer `.2`; bounded-proxy tests passed 8 cases including untrusted spoof, default deny and safe exact IP. Actual Nest controller/service/limiter tests also passed (3 suites/11 tests, 63 HTTP requests): each of two clients independently accepts20/hour then429, untrusted spoof cannot avoid the limit, and rejected requests do not create challenges/send SMS. Repository/sender boundaries are fake in that test; it does not verify external SMS delivery or the public deployment.
 
 ## Review-only checks

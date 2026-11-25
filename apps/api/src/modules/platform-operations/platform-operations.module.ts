@@ -1,3 +1,4 @@
+import { MailModule } from '../mail/mail.module';
 import { CompanyAuditController } from './company-audit.controller';
 import { CompanyAuditService } from './company-audit.service';
 import { MembershipsModule } from '../memberships/memberships.module';
@@ -14,7 +15,7 @@ import {
 } from './platform-operations.service';
 
 @Module({
-  imports: [AuthModule, MembershipsModule],
+  imports: [AuthModule, MailModule, MembershipsModule],
   controllers: [PlatformOperationsController, CompanyAuditController],
   providers: [
     CompanyAuditService,

@@ -206,6 +206,7 @@ model User {
   targetInvitations   TenantInvitation[]            @relation("InvitationTargetUser")
   createdInvitations  TenantInvitation[]            @relation("InvitationCreatedBy")
   acceptedInvitations TenantInvitation[]            @relation("InvitationAcceptedBy")
+  mailDeliveries        MailDelivery[]                  @ignore
   createdTemplates    BusinessTemplate[]            @relation("BusinessTemplateCreator")
   publishedTemplates  BusinessTemplateVersion[]     @relation("BusinessTemplateVersionPublisher")
   appliedTemplates    BusinessTemplateApplication[] @relation("BusinessTemplateApplicationApplier")
@@ -751,6 +752,36 @@ model RecordActivity {
   @@index([tenantId, recordId, createdAt(sort: Desc)])
   @@index([tenantId, actorMemberId, createdAt], map: "record_activities_tenant_actor_created_idx")
   @@map("record_activities")
+}
+
+// Queue payloads are accessible to the runtime role only through fenced SQL functions.
+model MailDelivery {
+  id            String    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  dedupeKey     String    @unique @map("dedupe_key")
+  kind          String
+  userId        String    @map("user_id") @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId      String?   @map("tenant_id") @db.Uuid
+  memberId      String?   @map("member_id") @db.Uuid
+  emailVersion  Int       @map("email_version")
+  maskedEmail   String    @map("masked_email")
+  oldEmail      String?   @map("old_email")
+  device        String?
+  network       String?
+  occurredAt    DateTime  @map("occurred_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  status        String
+  attempts      Int       @default(0)
+  token         String?   @db.Uuid
+  leaseUntil    DateTime? @map("lease_until") @db.Timestamptz(6)
+  errorCode     String?   @map("error_code")
+  providerId    String?   @map("provider_id") @db.VarChar(64)
+  finishedAt    DateTime? @map("finished_at") @db.Timestamptz(6)
+
+  @@index([status,nextAttemptAt], map: "mail_deliveries_due")
+  @@map("mail_deliveries")
+  @@ignore
 }
 
 model AuditLog {
