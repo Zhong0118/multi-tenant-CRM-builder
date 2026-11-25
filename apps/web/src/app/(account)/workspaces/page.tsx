@@ -34,7 +34,15 @@ export default async function WorkspacesPage({
   }
 
   return (
-    <AccountShell current="workspaces" platformAdmin={user.isPlatformAdmin}>
+    <AccountShell
+      current="workspaces"
+      user={{
+        displayName: user.displayName,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl,
+        isPlatformAdmin: user.isPlatformAdmin,
+      }}
+    >
       <PageHeader
         title="选择工作空间"
         description={`${user.displayName}，选择要进入的公司。开通中的公司会显示为等待平台启用。`}

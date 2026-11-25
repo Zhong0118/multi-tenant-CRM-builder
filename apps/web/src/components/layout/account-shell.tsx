@@ -1,50 +1,93 @@
-import Link from "next/link";
+"use client";
+
+import {
+  AppstoreOutlined,
+  ArrowLeftOutlined,
+  HomeOutlined,
+  MailOutlined,
+  SafetyOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 import type { ReactNode } from "react";
 
-import { FilingLinks } from "@/components/legal/filing-links";
-import { WorkspaceThemeScope } from "@/components/theme/workspace-theme-scope";
-import { LogoutButton } from "@/features/auth/logout-button";
-import { LogoMark } from "@/features/landing/logo-mark";
-
-import styles from "./account-shell.module.css";
+import { AppShell, type ShellNavGroup, type ShellUser } from "./app-shell";
+import { Page } from "./page";
 
 /**
  * The frame for pages that belong to the person rather than a company: the
- * workspace chooser, waiting for an invitation, an invitation and account
- * security. A slim bar with the way back to work and out, then one 720px
- * column — the same width, palette and header grammar as the settings pages.
+ * workspace chooser, waiting for an invitation, an invitation, the profile
+ * and account security. It is the same sidebar as the workspace — brand at
+ * the top, the person at the foot — so moving between work and account never
+ * feels like leaving the product.
  */
 export function AccountShell({
   current,
-  platformAdmin = false,
+  user,
   children,
 }: {
   current?: "workspaces" | "profile" | "security";
-  /** Platform administrators get their way back to the 管理中心. */
-  platformAdmin?: boolean;
+  user: ShellUser;
   children: ReactNode;
 }) {
+  const inAccount = current === "profile" || current === "security";
+  const navGroups: ShellNavGroup[] = [
+    inAccount
+      ? {
+          ariaLabel: "返回",
+          hideLabel: true,
+          items: [
+            {
+              href: "/workspaces",
+              label: "返回工作区",
+              icon: <ArrowLeftOutlined />,
+              subtle: true,
+            },
+          ],
+        }
+      : {
+          ariaLabel: "开始",
+          hideLabel: true,
+          items: [
+            {
+              href: "/workspaces",
+              label: "我的工作区",
+              icon: <HomeOutlined />,
+            },
+            { href: "/waiting", label: "公司邀请", icon: <MailOutlined /> },
+          ],
+        },
+    {
+      ariaLabel: "账号",
+      items: [
+        { href: "/account/profile", label: "个人资料", icon: <UserOutlined /> },
+        {
+          href: "/account/security",
+          label: "账号安全",
+          icon: <SafetyOutlined />,
+        },
+      ],
+    },
+  ];
   return (
-    <WorkspaceThemeScope className={styles.shell}>
-      <header className={styles.bar}>
-        <Link href="/workspaces" className={styles.brand}>
-          <LogoMark className={styles.mark} />
-          <span>百杰 CRM</span>
-        </Link>
-        <nav className={styles.nav} aria-label="账号">
-          {platformAdmin ? <Link href="/platform">管理中心</Link> : null}
-          <Link href="/workspaces" aria-current={current === "workspaces" ? "page" : undefined}>
-            我的工作区
-          </Link>
-          <Link href="/account/profile" aria-current={current === "profile" ? "page" : undefined}>个人资料</Link>
-          <Link href="/account/security" aria-current={current === "security" ? "page" : undefined}>
-            账号安全
-          </Link>
-          <LogoutButton />
-        </nav>
-      </header>
-      <main className={styles.main}>{children}</main>
-      <footer className={styles.filing}><FilingLinks /></footer>
-    </WorkspaceThemeScope>
+    <AppShell
+      brand="百杰 CRM"
+      brandHref="/workspaces"
+      navGroups={navGroups}
+      footerItems={
+        user.isPlatformAdmin
+          ? [
+              {
+                href: "/platform",
+                label: "管理中心",
+                icon: <AppstoreOutlined />,
+              },
+            ]
+          : []
+      }
+      user={user}
+      roleLabel={user.isPlatformAdmin ? "平台超级管理员" : "个人账号"}
+    >
+      <Page width="form">{children}</Page>
+    </AppShell>
   );
 }

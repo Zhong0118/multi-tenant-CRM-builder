@@ -14,7 +14,15 @@ export default async function AccountProfilePage() {
     throw Object.assign(new Error(failure.message), failure);
   }
   return (
-    <AccountShell current="profile" platformAdmin={user.isPlatformAdmin}>
+    <AccountShell
+      current="profile"
+      user={{
+        displayName: user.displayName,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl,
+        isPlatformAdmin: user.isPlatformAdmin,
+      }}
+    >
       <PageHeader title="个人资料" />
       <AccountProfile
         name={user.displayName}

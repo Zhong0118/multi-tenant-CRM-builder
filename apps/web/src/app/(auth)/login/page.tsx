@@ -12,7 +12,10 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ returnTo?: string | string[] }>;
+  searchParams: Promise<{
+    returnTo?: string | string[];
+    reset?: string | string[];
+  }>;
 }) {
   const params = await searchParams;
   const returnTo = Array.isArray(params.returnTo)
@@ -28,7 +31,12 @@ export default async function LoginPage({
         </>
       }
     >
-      <LoginForm returnTo={returnTo} />
+      <LoginForm
+        returnTo={returnTo}
+        notice={
+          params.reset === "done" ? "密码已重置，请用新密码登录。" : undefined
+        }
+      />
     </AuthShell>
   );
 }

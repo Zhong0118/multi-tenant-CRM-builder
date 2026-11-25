@@ -27,7 +27,14 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
   }
 
   return (
-    <AccountShell platformAdmin={user.isPlatformAdmin}>
+    <AccountShell
+      user={{
+        displayName: user.displayName,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl,
+        isPlatformAdmin: user.isPlatformAdmin,
+      }}
+    >
       <PageHeader
         breadcrumb={<Link href="/waiting">我的邀请</Link>}
         title="确认公司邀请"

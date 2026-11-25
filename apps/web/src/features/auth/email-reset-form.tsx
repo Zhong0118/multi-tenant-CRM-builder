@@ -66,7 +66,7 @@ export function EmailResetForm() {
           newPassword,
           challengeId: challenge,
         });
-        router.push("/login");
+        router.push("/login?reset=done");
       }
     } catch (e) {
       setError(normalizeFormError(e).message);

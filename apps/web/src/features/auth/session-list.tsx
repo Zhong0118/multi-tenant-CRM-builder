@@ -13,12 +13,12 @@ import {
   Popconfirm,
   Segmented,
 } from "antd";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useToast } from "@/components/feedback/use-toast";
-import { PageSection, SettingRow, SettingRows } from "@/components/layout/page";
+import { PageSection, SettingRow } from "@/components/layout/page";
 import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
@@ -84,15 +84,36 @@ function formatDate(value?: string) {
   }).format(new Date(value));
 }
 
+const PLATFORMS: [RegExp, string][] = [
+  [/^MacIntel$|^Macintosh$|^MacPPC$/i, "macOS"],
+  [/^Win(32|64|dows)/i, "Windows"],
+  [/^iPhone$/i, "iPhone"],
+  [/^iPad$/i, "iPad"],
+  [/Android/i, "Android"],
+  [/^Linux/i, "Linux"],
+];
+
+/** Older sessions were named after `navigator.platform` ("浏览器 · MacIntel"). */
+export function deviceLabel(summary?: string | null) {
+  if (!summary) return "未知设备";
+  const [kind, platform] = summary.split(" · ");
+  if (!platform) return summary;
+  const known = PLATFORMS.find(([pattern]) => pattern.test(platform));
+  return known ? `${kind} · ${known[1]}` : summary;
+}
+
 export function SessionList({
   initialSessions,
   initialActive,
   initialHistory,
+  verification,
   api = securityApi,
 }: {
   initialSessions?: SecuritySession[];
   initialActive?: SecuritySessionPage;
   initialHistory?: SecuritySessionPage;
+  /** Rows shown above the password in 登录与验证, such as phone and email. */
+  verification?: ReactNode;
   api?: SecurityApi;
 }) {
   const legacySessions = initialSessions ?? [];
@@ -110,9 +131,13 @@ export function SessionList({
     },
   );
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyError, setHistoryError] = useState<{ page: number; text: string }>();
+  const [historyError, setHistoryError] = useState<{
+    page: number;
+    text: string;
+  }>();
   const toast = useToast();
   const [view, setView] = useState<"active" | "history">("active");
+  const [changing, setChanging] = useState(false);
   const [summary, setSummary] = useState<{
     type: "error" | "success";
     text: string;
@@ -182,6 +207,7 @@ export function SessionList({
     onSuccess: () => {
       setSessions((current) => current.filter((session) => session.isCurrent));
       reset();
+      setChanging(false);
       setSummary({
         type: "success",
         text: "密码已更新，其他设备的会话已撤销。",
@@ -207,65 +233,102 @@ export function SessionList({
         />
       )}
 
-      <PageSection title="修改密码" description="更新后保留当前会话，其他设备将自动退出。">
-        <form
-          onSubmit={handleSubmit((values) => {
-            setSummary(undefined);
-            passwordMutation.mutate(values);
-          })}
-          noValidate
-        >
-          <SettingRows
-            footer={
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={passwordMutation.isPending}
-              >
-                更新密码
-              </Button>
+      <PageSection
+        title="登录与验证"
+        description="用于登录、找回密码和接收安全提醒。"
+      >
+        <div className={styles.group}>
+          {verification}
+          <SettingRow
+            label="密码"
+            help={
+              changing
+                ? "10–72 位，同时包含字母和数字。"
+                : "更新后保留当前会话，其他设备将自动退出。"
             }
           >
-            <SettingRow label="当前密码" htmlFor="security-current-password">
-              <Form.Item
-                className={styles.rowField}
-                validateStatus={errors.currentPassword ? "error" : undefined}
-                help={errors.currentPassword?.message}
+            {changing ? (
+              <form
+                className={styles.inlineForm}
+                onSubmit={handleSubmit((values) => {
+                  setSummary(undefined);
+                  passwordMutation.mutate(values);
+                })}
+                noValidate
               >
-                <Controller
-                  name="currentPassword"
-                  control={control}
-                  render={({ field }) => (
-                    <Input.Password
-                      id="security-current-password"
-                      autoComplete="current-password"
-                      {...field}
-                    />
-                  )}
-                />
-              </Form.Item>
-            </SettingRow>
-            <SettingRow label="新密码" htmlFor="security-new-password" help="10–72 位，同时包含字母和数字。">
-              <Form.Item
-                className={styles.rowField}
-                validateStatus={errors.newPassword ? "error" : undefined}
-                help={errors.newPassword?.message}
-              >
-                <Controller
-                  name="newPassword"
-                  control={control}
-                  render={({ field }) => (
-                    <Input.Password
-                      id="security-new-password"
-                      autoComplete="new-password"
-                      {...field}
-                    />
-                  )}
-                />
-              </Form.Item>
-            </SettingRow>
-          </SettingRows>
-        </form>
+                <Form.Item
+                  className={styles.rowField}
+                  label="当前密码"
+                  htmlFor="security-current-password"
+                  validateStatus={errors.currentPassword ? "error" : undefined}
+                  help={errors.currentPassword?.message}
+                >
+                  <Controller
+                    name="currentPassword"
+                    control={control}
+                    render={({ field }) => (
+                      <Input.Password
+                        id="security-current-password"
+                        autoComplete="current-password"
+                        autoFocus
+                        {...field}
+                      />
+                    )}
+                  />
+                </Form.Item>
+                <Form.Item
+                  className={styles.rowField}
+                  label="新密码"
+                  htmlFor="security-new-password"
+                  validateStatus={errors.newPassword ? "error" : undefined}
+                  help={errors.newPassword?.message}
+                >
+                  <Controller
+                    name="newPassword"
+                    control={control}
+                    render={({ field }) => (
+                      <Input.Password
+                        id="security-new-password"
+                        autoComplete="new-password"
+                        {...field}
+                      />
+                    )}
+                  />
+                </Form.Item>
+                <div className={styles.inlineActions}>
+                  <Button
+                    disabled={passwordMutation.isPending}
+                    onClick={() => {
+                      reset();
+                      setChanging(false);
+                    }}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={passwordMutation.isPending}
+                  >
+                    更新密码
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className={styles.rowValue}>
+                <span>已设置</span>
+                <Button
+                  onClick={() => {
+                    setSummary(undefined);
+                    setChanging(true);
+                  }}
+                >
+                  修改密码
+                </Button>
+              </div>
+            )}
+          </SettingRow>
+        </div>
       </PageSection>
 
       <PageSection
@@ -284,46 +347,51 @@ export function SessionList({
           />
         }
       >
-        {view === "active" ? (
-          <SessionRows
-            sessions={sessions}
-            empty="当前没有活跃设备"
-            revokeMutation={revokeMutation}
-          />
-        ) : (
-          <>
-            {historyError ? (
-              <Alert
-                className={styles.securityAlert}
-                type="error"
-                showIcon
-                title={historyError.text}
-                action={
-                  <Button
-                    size="small"
-                    loading={historyLoading}
-                    onClick={() => void loadHistory(historyError.page)}
-                  >
-                    重试
-                  </Button>
-                }
+        <div className={styles.group}>
+          {view === "active" ? (
+            <SessionRows
+              sessions={sessions}
+              empty="当前没有活跃设备"
+              revokeMutation={revokeMutation}
+            />
+          ) : (
+            <>
+              {historyError ? (
+                <Alert
+                  className={styles.securityAlert}
+                  type="error"
+                  showIcon
+                  title={historyError.text}
+                  action={
+                    <Button
+                      size="small"
+                      loading={historyLoading}
+                      onClick={() => void loadHistory(historyError.page)}
+                    >
+                      重试
+                    </Button>
+                  }
+                />
+              ) : null}
+              <SessionRows
+                sessions={history.items}
+                empty="近 90 天没有历史记录"
               />
-            ) : null}
-            <SessionRows sessions={history.items} empty="近 90 天没有历史记录" />
-            {history.total > history.limit ? (
-              <Pagination
-                className={styles.sessionPagination}
-                size="small"
-                current={history.page}
-                pageSize={history.limit}
-                total={history.total}
-                showSizeChanger={false}
-                disabled={historyLoading}
-                onChange={(page) => void loadHistory(page)}
-              />
-            ) : null}
-          </>
-        )}
+              {history.total > history.limit ? (
+                <Pagination
+                  className={styles.sessionPagination}
+                  size="small"
+                  current={history.page}
+                  pageSize={history.limit}
+                  total={history.total}
+                  showSizeChanger={false}
+                  disabled={historyLoading}
+                  onChange={(page) => void loadHistory(page)}
+                />
+              ) : null}
+            </>
+          )}
+        </div>
       </PageSection>
     </div>
   );
@@ -350,8 +418,10 @@ function SessionRows({
         <article className={styles.sessionRow} key={session.id}>
           <div>
             <div className={styles.sessionTitle}>
-              <strong>{session.deviceSummary || "未知设备"}</strong>
-              {session.isCurrent && <StatusTag tone="info">当前会话</StatusTag>}
+              <strong>{deviceLabel(session.deviceSummary)}</strong>
+              {session.isCurrent && (
+                <StatusTag tone="success">当前会话</StatusTag>
+              )}
               {session.revokedAt && <StatusTag>已撤销</StatusTag>}
               {!session.revokedAt &&
               new Date(session.expiresAt) <= new Date() ? (

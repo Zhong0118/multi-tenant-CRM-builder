@@ -18,10 +18,19 @@ export default async function WaitingPage() {
   const client = await createServerApiClient();
   const { data, error, response } = await client.GET("/api/v1/me/invitations");
   const initialError = data ? null : toApiError(error, response.status).message;
-  const invited = (data ?? []).some((invitation) => invitation.status === "PENDING");
+  const invited = (data ?? []).some(
+    (invitation) => invitation.status === "PENDING",
+  );
 
   return (
-    <AccountShell platformAdmin={user.isPlatformAdmin}>
+    <AccountShell
+      user={{
+        displayName: user.displayName,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl,
+        isPlatformAdmin: user.isPlatformAdmin,
+      }}
+    >
       <PageHeader
         title={`你好，${user.displayName}`}
         description="个人账号已经准备好，下一步是加入你的公司。"
@@ -42,14 +51,21 @@ export default async function WaitingPage() {
           </span>
           <div>
             <strong>等待公司邀请</strong>
-            <p>请公司管理员在「设置 · 成员」里按这个手机号邀请你，邀请会出现在下方。</p>
+            <p>
+              请公司管理员在「设置 ·
+              成员」里按这个手机号邀请你，邀请会出现在下方。
+            </p>
           </div>
         </li>
         <li data-state={invited ? "current" : "pending"}>
-          <span className={styles.stepMark} aria-hidden>3</span>
+          <span className={styles.stepMark} aria-hidden>
+            3
+          </span>
           <div>
             <strong>接受邀请，进入工作区</strong>
-            <p>如果公司还在开通中，接受后需等平台启用才能进入，这不是权限问题。</p>
+            <p>
+              如果公司还在开通中，接受后需等平台启用才能进入，这不是权限问题。
+            </p>
           </div>
         </li>
       </ol>

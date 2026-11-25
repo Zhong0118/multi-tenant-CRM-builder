@@ -99,6 +99,9 @@ describe("SessionList", () => {
     };
     renderSecurity(api);
 
+    // The form stays folded until the person asks to change the password.
+    expect(screen.queryByLabelText("当前密码")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "修改密码" }));
     fireEvent.change(screen.getByLabelText("当前密码"), {
       target: { value: "current-password" },
     });
@@ -117,6 +120,7 @@ describe("SessionList", () => {
       await screen.findByText("密码已更新，其他设备的会话已撤销。"),
     ).toBeInTheDocument();
     expect(screen.getByText("当前会话")).toBeInTheDocument();
+    expect(screen.queryByLabelText("当前密码")).not.toBeInTheDocument();
   });
 
   it("shows a history read failure beside the history with a retry", async () => {

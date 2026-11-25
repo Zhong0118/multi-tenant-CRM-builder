@@ -1,5 +1,8 @@
-.emailSection {
-  padding-bottom: 24px;
-  margin-bottom: 28px;
-  border-bottom: 1px solid var(--border-hairline);
+.value {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }

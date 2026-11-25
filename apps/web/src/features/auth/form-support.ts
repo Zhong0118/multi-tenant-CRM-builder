@@ -14,6 +14,37 @@ const fallbackDevice: DeviceIdentity = {
   summary: "浏览器 · 未知系统",
 };
 
+/** "Chrome · macOS" — what a person recognises in their device list. */
+export function describeDevice(userAgent: string, platform = "") {
+  const browser = /Edg\//.test(userAgent)
+    ? "Edge"
+    : /MicroMessenger/i.test(userAgent)
+      ? "微信"
+      : /Firefox\//.test(userAgent)
+        ? "Firefox"
+        : /Chrome\/|CriOS\//.test(userAgent)
+          ? "Chrome"
+          : /Safari\//.test(userAgent)
+            ? "Safari"
+            : /Mobile/.test(userAgent)
+              ? "移动设备"
+              : "浏览器";
+  const system = /iPhone/.test(userAgent)
+    ? "iPhone"
+    : /iPad/.test(userAgent)
+      ? "iPad"
+      : /Android/.test(userAgent)
+        ? "Android"
+        : /Mac OS X|Macintosh/.test(userAgent) || /^Mac/.test(platform)
+          ? "macOS"
+          : /Windows/.test(userAgent) || /^Win/.test(platform)
+            ? "Windows"
+            : /Linux/.test(userAgent)
+              ? "Linux"
+              : platform || "未知系统";
+  return `${browser} · ${system}`;
+}
+
 export function getDeviceIdentity(): DeviceIdentity {
   if (typeof navigator === "undefined") return fallbackDevice;
 
@@ -32,7 +63,7 @@ export function getDeviceIdentity(): DeviceIdentity {
   }
   return {
     key,
-    summary: `${navigator.userAgent.includes("Mobile") ? "移动设备" : "浏览器"} · ${navigator.platform || "未知系统"}`,
+    summary: describeDevice(navigator.userAgent ?? "", navigator.platform),
   };
 }
 

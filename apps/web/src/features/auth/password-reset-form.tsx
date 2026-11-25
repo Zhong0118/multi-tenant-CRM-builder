@@ -84,7 +84,7 @@ export function PasswordResetForm({
     mutationFn: (input: ResetPasswordInput) => api.resetPassword(input),
     onSuccess: () => {
       setSummary({ type: "success", text: "密码已重置" });
-      (navigate ?? router.push)("/login");
+      (navigate ?? router.push)("/login?reset=done");
     },
     onError: (error) => {
       const apiError = normalizeFormError(error);

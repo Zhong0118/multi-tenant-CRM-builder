@@ -58,7 +58,7 @@ describe("PasswordResetForm", () => {
       code: "123456",
       newPassword: "new-password1",
     });
-    expect(navigate).toHaveBeenCalledWith("/login");
+    expect(navigate).toHaveBeenCalledWith("/login?reset=done");
   });
 
   it("offers an explicit password visibility control", () => {

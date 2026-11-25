@@ -297,11 +297,126 @@
   }
 }
 
-/* Account security inside the account shell: sections of rows, no cards. */
+/* Account security inside the account shell: two groups — how you sign in,
+   and where you are signed in — each a card of hairline rows. */
 .securityStack {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+}
+
+.securityStack > .securityAlert {
+  margin-bottom: 16px;
+}
+
+.group {
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+}
+
+/* Setting rows in a group: a narrower label column than a full page. */
+.group > div:not(.sessionList) {
+  grid-template-columns: 196px minmax(0, 1fr);
+}
+
+.group > div:last-child {
+  border-bottom: 0;
+}
+
+/* A value on the left of the control column, its actions on the right. */
+.rowValue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.rowValue > span:first-child {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.rowActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.emailValue {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rowMuted {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+/* A change opens in place, under the row's label. */
+.inlineForm {
+  display: grid;
+  gap: 12px;
+  max-width: 360px;
+}
+
+.inlineForm :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+/* Labels above their fields, whether the form is an antd Form or not. */
+.inlineForm :global(.ant-form-item .ant-form-item-row) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.inlineForm :global(.ant-form-item .ant-form-item-row > *) {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+}
+
+.inlineForm :global(.ant-form-item .ant-form-item-label) {
+  padding-bottom: 4px;
+  text-align: start;
+}
+
+.inlineForm :global(.ant-form-item .ant-form-item-label > label) {
+  height: auto;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.inlineForm :global(.ant-form-item .ant-form-item-label > label::after) {
+  display: none;
+}
+
+.inlineTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.inlineActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.rowNotice {
+  margin-top: 10px;
 }
 
 .rowField {
@@ -309,15 +424,65 @@
   margin-bottom: 0;
 }
 
-.securityStack .sessionList {
-  border-top: 1px solid var(--border-hairline);
-}
-
 .securityStack .sessionRow {
   display: flex;
   gap: 16px;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border-hairline);
+}
+
+.securityStack .sessionRow:last-child {
+  border-bottom: 0;
+}
+
+.securityStack .sessionTitle strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Where, when and until when, on one quiet line. */
+.securityStack .sessionMeta {
+  gap: 4px 16px;
+  margin-top: 4px;
+}
+
+.securityStack .sessionMeta div {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.securityStack .sessionMeta dt {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.securityStack .sessionMeta dd {
+  margin: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.securityStack .sessionPagination {
+  margin: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.group :global(.ant-empty) {
+  margin: 20px 0;
+}
+
+@media (max-width: 767px) {
+  .group > div:not(.sessionList) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inlineForm {
+    max-width: none;
+  }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Modal, Popconfirm, Space } from "antd";
+import { Alert, Button, Modal, Popconfirm, Slider, Space } from "antd";
 import { useEffect, useRef, useState } from "react";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiOrigin } from "@/lib/api/api-origin";
@@ -96,6 +96,8 @@ export function AvatarEditor({
   );
 }
 
+const STAGE = 256;
+
 function CropAvatar({
   file,
   onClose,
@@ -106,6 +108,11 @@ function CropAvatar({
   onSaved: (url: string | null) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const large = useRef<HTMLCanvasElement>(null);
+  const small = useRef<HTMLCanvasElement>(null);
+  const drag = useRef<{ px: number; py: number; x: number; y: number }>(
+    undefined,
+  );
   const [source, setSource] = useState<ImageBitmap>();
   const [zoom, setZoom] = useState(1);
   const [x, setX] = useState(50);
@@ -134,7 +141,7 @@ function CropAvatar({
     const ctx = canvas.current?.getContext("2d");
     if (!source || !ctx) return;
     const side = Math.min(source.width, source.height) / zoom;
-    ctx.clearRect(0, 0, 256, 256);
+    ctx.clearRect(0, 0, STAGE, STAGE);
     ctx.drawImage(
       source,
       ((source.width - side) * x) / 100,
@@ -143,10 +150,28 @@ function CropAvatar({
       side,
       0,
       0,
-      256,
-      256,
+      STAGE,
+      STAGE,
     );
+    // The two sizes the avatar is actually seen at, drawn from the stage.
+    for (const preview of [large.current, small.current]) {
+      const target = preview?.getContext("2d");
+      if (!preview || !target) continue;
+      target.clearRect(0, 0, preview.width, preview.height);
+      target.drawImage(canvas.current!, 0, 0, preview.width, preview.height);
+    }
   }, [source, x, y, zoom]);
+  /** Moves the crop by a pointer or key delta measured on the stage. */
+  function pan(from: { x: number; y: number }, dx: number, dy: number) {
+    if (!source || !canvas.current) return;
+    const side = Math.min(source.width, source.height) / zoom;
+    const scale = side / canvas.current.getBoundingClientRect().width;
+    const clamp = (value: number) => Math.min(100, Math.max(0, value));
+    if (source.width > side)
+      setX(clamp(from.x - ((dx * scale) / (source.width - side)) * 100));
+    if (source.height > side)
+      setY(clamp(from.y - ((dy * scale) / (source.height - side)) * 100));
+  }
   async function save() {
     if (!canvas.current || !source || busy) return;
     const surface = canvas.current;
@@ -171,6 +196,7 @@ function CropAvatar({
     <Modal
       open
       title="裁剪头像"
+      width={480}
       onOk={() => void save()}
       onCancel={onClose}
       confirmLoading={busy}
@@ -182,47 +208,66 @@ function CropAvatar({
       okText="保存头像"
       cancelText="取消"
     >
-      <canvas
-        className={styles.preview}
-        ref={canvas}
-        width={256}
-        height={256}
-        aria-label="方形头像预览"
-      />
+      <div className={styles.crop}>
+        <div className={styles.stage}>
+          <canvas
+            className={styles.preview}
+            ref={canvas}
+            width={STAGE}
+            height={STAGE}
+            tabIndex={0}
+            role="img"
+            aria-label="头像裁剪区，拖动图片或用方向键调整位置"
+            onPointerDown={(e) => {
+              if (busy) return;
+              e.currentTarget.setPointerCapture?.(e.pointerId);
+              drag.current = { px: e.clientX, py: e.clientY, x, y };
+            }}
+            onPointerMove={(e) => {
+              if (!drag.current) return;
+              pan(
+                drag.current,
+                e.clientX - drag.current.px,
+                e.clientY - drag.current.py,
+              );
+            }}
+            onPointerUp={() => (drag.current = undefined)}
+            onPointerCancel={() => (drag.current = undefined)}
+            onKeyDown={(e) => {
+              const step = {
+                ArrowLeft: [-8, 0],
+                ArrowRight: [8, 0],
+                ArrowUp: [0, -8],
+                ArrowDown: [0, 8],
+              }[e.key];
+              if (!step || busy) return;
+              e.preventDefault();
+              pan({ x, y }, step[0], step[1]);
+            }}
+          />
+        </div>
+        <div className={styles.previews} aria-hidden>
+          <canvas ref={large} width={96} height={96} />
+          <canvas ref={small} width={64} height={64} />
+          <span>预览</span>
+        </div>
+      </div>
       <label className={styles.slider}>
-        缩放
-        <input
-          type="range"
+        <span>缩放</span>
+        <Slider
           min={1}
           max={4}
           step={0.05}
           value={zoom}
-          disabled={busy}
-          onChange={(e) => setZoom(Number(e.target.value))}
+          disabled={busy || !source}
+          tooltip={{ open: false }}
+          ariaLabelForHandle="缩放"
+          onChange={(value) => setZoom(value)}
         />
       </label>
-      <label className={styles.slider}>
-        水平位置
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={x}
-          disabled={busy}
-          onChange={(e) => setX(Number(e.target.value))}
-        />
-      </label>
-      <label className={styles.slider}>
-        垂直位置
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={y}
-          disabled={busy}
-          onChange={(e) => setY(Number(e.target.value))}
-        />
-      </label>
+      <p className={styles.cropHint}>
+        拖动图片调整位置，圆圈内的部分就是头像。
+      </p>
       {error && <Alert type="error" title={error} />}
     </Modal>
   );

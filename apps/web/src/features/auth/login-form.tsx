@@ -25,11 +25,14 @@ export function LoginForm({
   navigate,
   returnTo,
   device,
+  notice,
 }: {
   api?: AuthApi;
   navigate?: (path: string) => void;
   returnTo?: string | null;
   device?: DeviceIdentity;
+  /** A success line carried over from the previous step, such as a reset. */
+  notice?: string;
 }) {
   const router = useRouter();
   const identity = useDeviceIdentity(device);
@@ -107,7 +110,11 @@ export function LoginForm({
       onSubmit={handleSubmit(submitLogin, showValidationSummary)}
       noValidate
     >
-      {summary && <Alert type="error" showIcon title={summary} />}
+      {summary ? (
+        <Alert type="error" showIcon title={summary} />
+      ) : notice ? (
+        <Alert type="success" showIcon title={notice} />
+      ) : null}
       <Form.Item
         label="手机号"
         htmlFor="login-phone"

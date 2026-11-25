@@ -1,4 +1,5 @@
 import { AccountShell } from "@/components/layout/account-shell";
+import { SettingRow } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
 import { AccountEmail } from "@/features/auth/account-email";
 import styles from "./security.module.css";
@@ -6,6 +7,13 @@ import { SessionList } from "@/features/auth/session-list";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 import { requireUser } from "@/lib/auth/require-user";
+import { maskPhone } from "@/features/tenants/mask-phone";
+
+/** "+8618800001002" → "+86 188****1002". */
+function formatPhone(phone: string) {
+  const masked = maskPhone(phone);
+  return phone.startsWith("+86") && masked !== phone ? `+86 ${masked}` : masked;
+}
 
 export default async function AccountSecurityPage() {
   const user = await requireUser("/account/security");
@@ -29,23 +37,36 @@ export default async function AccountSecurityPage() {
   }
 
   return (
-    <AccountShell current="security" platformAdmin={user.isPlatformAdmin}>
+    <AccountShell
+      current="security"
+      user={{
+        displayName: user.displayName,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl,
+        isPlatformAdmin: user.isPlatformAdmin,
+      }}
+    >
       <PageHeader
         title="账号安全"
-        description={`${user.displayName} · ${user.phone}`}
+        description="管理登录方式、验证邮箱，以及登录过这个账号的设备。"
       />
-      <div className={styles.emailSection}>
-        <AccountEmail
-          key={user.emailStatus + user.maskedEmail}
-          status={user.emailStatus}
-          maskedEmail={user.maskedEmail}
-          available={user.mailAvailable}
-          newDevice={settings?.data?.newDeviceMailEnabled ?? null}
-        />
-      </div>
       <SessionList
         initialActive={activeResult.data}
         initialHistory={historyResult.data}
+        verification={
+          <>
+            <SettingRow label="手机号" help="用于登录和找回密码">
+              <span className={styles.value}>{formatPhone(user.phone)}</span>
+            </SettingRow>
+            <AccountEmail
+              key={user.emailStatus + user.maskedEmail}
+              status={user.emailStatus}
+              maskedEmail={user.maskedEmail}
+              available={user.mailAvailable}
+              newDevice={settings?.data?.newDeviceMailEnabled ?? null}
+            />
+          </>
+        }
       />
     </AccountShell>
   );

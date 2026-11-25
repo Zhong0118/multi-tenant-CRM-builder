@@ -1,127 +1,175 @@
+/* 个人资料: the account (avatar, name) and each company (display name,
+   number, title) as cards of hairline rows, the same grammar as 账号安全. */
 .profile {
-  display: grid;
-  gap: 32px;
   overflow-wrap: anywhere;
   color: var(--text-primary);
 }
-.profile h2 {
-  font-size: 18px;
-  line-height: 1.4;
-  font-weight: 600;
-  margin: 0 0 18px;
+.group {
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
 }
-.card,
-.company {
-  padding: 24px;
-  border: 1px solid var(--border-default, #dce2eb);
-  border-radius: 12px;
-  background: var(--surface-primary, #fff);
+.group > div {
+  grid-template-columns: 196px minmax(0, 1fr);
 }
-.company + .company {
-  margin-top: 12px;
+.group > div:last-child {
+  border-bottom: 0;
 }
-.identity,
-.company header,
-.field {
-  display: flex;
+.companies {
+  display: grid;
   gap: 12px;
+}
+.companyHead {
+  display: flex;
+  gap: 8px;
   align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 12px;
+  border-bottom: 1px solid var(--border-hairline);
 }
-.identity {
-  flex-wrap: wrap;
-  margin: 0 0 20px;
+.companyHead h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
 }
-.identityText {
-  flex: 1;
-  min-width: 90px;
+.value {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: 14px;
 }
-.identityText strong {
-  font-size: 19px;
+.empty {
+  color: var(--text-tertiary);
+  font-size: 14px;
 }
-.identityText p,
-.company dt {
-  color: var(--text-secondary);
-  margin: 4px 0;
+.avatarRow {
+  display: flex;
+  gap: 14px;
+  align-items: center;
 }
 .actions {
   display: grid;
   gap: 8px;
 }
 .field {
-  align-items: end;
+  display: flex;
   flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  max-width: 420px;
 }
-.field label {
+.field :global(.ant-input) {
   flex: 1;
-  min-width: 140px;
-  display: grid;
-  gap: 6px;
+  min-width: 160px;
 }
 .field [role="status"] {
   width: 100%;
-  font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--color-success);
+  font-size: 12px;
 }
 .field [data-error="true"] {
-  color: var(--danger, #a61d24);
+  color: var(--color-danger);
 }
-.company header {
-  justify-content: space-between;
-  align-items: start;
-}
-.company header span {
-  flex: none;
-  color: var(--text-secondary);
-}
-.company h3 {
-  font-size: 17px;
-  margin: 0;
-}
-.company dl {
+
+/* Crop: the stage with a round window, the two sizes it will be seen at, and
+   one zoom slider. */
+.crop {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px 40px;
-  margin: 14px 0 18px;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0 4px;
 }
-.company dd {
-  margin: 0;
+.stage {
+  position: relative;
+  flex: none;
+  width: min(256px, 100%);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface-subtle);
+}
+.stage::after {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgb(15 23 42 / 45%);
+  outline: 2px solid rgb(255 255 255 / 85%);
+  outline-offset: -1px;
+  content: "";
+  pointer-events: none;
 }
 .preview {
   display: block;
-  border-radius: 8px;
-  margin: auto;
-  max-width: 100%;
-  height: auto;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+.preview:active {
+  cursor: grabbing;
+}
+.preview:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.previews {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+.previews canvas {
+  border-radius: 50%;
+  background: var(--bg-surface-subtle);
+}
+.previews canvas:first-child {
+  width: 64px;
+  height: 64px;
+}
+.previews canvas:nth-child(2) {
+  width: 32px;
+  height: 32px;
+}
+.previews span {
+  color: var(--text-tertiary);
+  font-size: 12px;
 }
 .slider {
   display: grid;
-  grid-template-columns: 5em 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
-  margin: 12px 0;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
-@media (max-width: 500px) {
-  .card,
-  .company {
-    padding: 16px;
+.cropHint {
+  margin: 4px 0 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+@media (max-width: 767px) {
+  .group > div {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .actions {
-    width: 100%;
+  .field {
+    max-width: none;
   }
-  .company dl {
-    display: grid;
-    gap: 6px;
+}
+@media (max-width: 480px) {
+  .crop {
+    flex-direction: column;
+  }
+  .previews {
+    grid-auto-flow: column;
+    align-items: center;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .card,
-  .company {
+  .group {
     animation: appear 0.2s ease-out;
-  }
-  .profile button {
-    transition: transform 0.15s;
-  }
-  .profile button:hover:not(:disabled) {
-    transform: scale(1.02);
   }
   .profile button:active:not(:disabled) {
     transform: scale(0.98);
