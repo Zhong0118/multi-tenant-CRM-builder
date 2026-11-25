@@ -8,11 +8,12 @@ import { normalizeFormError, useCountdown } from "./form-support";
 import { PasswordField } from "./password-field";
 import { PasswordResetForm } from "./password-reset-form";
 import { passwordSchema, verificationCodeSchema } from "./schemas";
+import styles from "./auth.module.css";
 
 export function ResetMethods({ mailAvailable }: { mailAvailable: boolean }) {
   const [method, setMethod] = useState("手机号");
   return (
-    <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+    <div className={styles.resetMethods}>
       {mailAvailable && (
         <Segmented
           aria-label="找回方式"
@@ -26,7 +27,7 @@ export function ResetMethods({ mailAvailable }: { mailAvailable: boolean }) {
       ) : (
         <PasswordResetForm />
       )}
-    </Space>
+    </div>
   );
 }
 
@@ -75,7 +76,12 @@ export function EmailResetForm() {
     }
   }
   return (
-    <Form layout="vertical" onFinish={() => void submit()} disabled={busy}>
+    <Form
+      className={styles.authForm}
+      layout="vertical"
+      onFinish={() => void submit()}
+      disabled={busy}
+    >
       <Form.Item label="邮箱" htmlFor="recovery-email">
         <Input
           id="recovery-email"

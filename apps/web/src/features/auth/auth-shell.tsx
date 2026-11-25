@@ -1,13 +1,18 @@
 "use client";
 
-import { SafetyCertificateOutlined } from "@ant-design/icons";
-import { Typography } from "antd";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { FilingLinks } from "@/components/legal/filing-links";
 
+import { AuthPreview } from "./auth-preview";
 import styles from "./auth.module.css";
 
+/**
+ * Sign-in, registration and password recovery: a picture of the workspace on
+ * the left, one column of form on a white sheet on the right. Below 1100px the
+ * picture steps aside and the form stands alone under the brand.
+ */
 export function AuthShell({
   title,
   description,
@@ -23,33 +28,48 @@ export function AuthShell({
 }) {
   return (
     <main className={styles.authPage}>
-      <section className={styles.statement} aria-label="产品说明">
-        <div className={styles.statementBody}>
-          <span className={styles.trackDot} aria-hidden="true" />
-          <Typography.Title level={1}>
-            把分散的表格 <br />
-            变成可协作的业务流程
-          </Typography.Title>
-          <Typography.Paragraph className={styles.statementDescription}>
-            从个人账号进入受授权的公司工作区。数据、权限和操作记录始终归属于正确的公司。
-          </Typography.Paragraph>
-        </div>
-        <div className={styles.trustLine}>
-          <SafetyCertificateOutlined aria-hidden="true" />
-          手机验证 · 独立账号 · 公司级权限隔离
+      <section className={styles.showcase} aria-label="产品介绍">
+        <Brand />
+        <div className={styles.showcaseBody}>
+          <div className={styles.showcaseCopy}>
+            <p className={styles.showcaseTitle}>
+              客户、商机和 AI 建议，在同一个工作台里
+            </p>
+            <p className={styles.showcaseText}>
+              导入现有表格就能开始；AI 提出的每一处改动，都等你确认后才写入。
+            </p>
+          </div>
+          <AuthPreview />
         </div>
       </section>
       <section className={styles.formPanel}>
+        <div className={styles.formBrand}>
+          <Brand />
+        </div>
         <div className={styles.formCard}>
-          <Typography.Title level={2}>{title}</Typography.Title>
-          <Typography.Paragraph type="secondary">
-            {description}
-          </Typography.Paragraph>
+          <h1 className={styles.formTitle}>{title}</h1>
+          <p className={styles.formDescription}>{description}</p>
           {children}
           <div className={styles.formFooter}>{footer}</div>
-          <footer className={styles.filing}><FilingLinks /></footer>
         </div>
+        <footer className={styles.filing}>
+          <p className={styles.trustLine}>
+            手机验证 · 独立账号 · 公司级权限隔离
+          </p>
+          <FilingLinks />
+        </footer>
       </section>
     </main>
+  );
+}
+
+function Brand() {
+  return (
+    <Link href="/" className={styles.authBrand}>
+      <span className={styles.authMark} aria-hidden>
+        百
+      </span>
+      百杰 CRM
+    </Link>
   );
 }
