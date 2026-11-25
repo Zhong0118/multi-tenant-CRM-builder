@@ -4,6 +4,8 @@
 > **适用范围：平台超级管理员、公司管理员、公司员工，以及登录/邀请/工作空间等公共页面。**  
 > **目标：合并 V1 与 V2，消除冲突、去重，并保留两版中有价值的 UX 与工程实现规则。**  
 > 后续开发、设计、AI 编码、代码审查均以本文件为准。V1、V2 仅保留归档，不再作为实现依据。
+>
+> **2026-11-26 更新：方向 A「安静工作台」。** 用户在 2026-11-25 的风格对比页上选定方向 A（用户确认）：中性锌灰表面、百杰 logo 的青绿作为唯一强调色、AI 内容用一种安静的紫色标记。第 3 节色值、5.2 圆角、6.1 / 7.2 / 7.3 / 37 节尺寸与状态、13.1 主按钮、17.3 行状态、Tabs 激活色已按它改写；具体数值取自代码（Agent 推断），以 `apps/web/src/app/globals.css` 和 `apps/web/src/components/theme/workspace-theme.ts` 为准，两处由 `providers.test.ts` 保持一致。改动记录见 [UI 审查：AI 功能与个人中心](./2026-11-25-ui-audit-ai-account.md) 第 7 节。
 
 ---
 
@@ -187,15 +189,15 @@ Long-session friendly
 
 ## 3.1 主色
 
-统一采用 Work Blue：
+统一采用百杰 logo 的青绿（方向 A，用户确认）。整个产品只有这一种强调色：登录、工作区、管理中心、账号中心一致。
 
 | Token | Value | Usage |
 |---|---|---|
-| `--color-primary` | `#2563EB` | 主按钮、链接、焦点、选中 |
-| `--color-primary-hover` | `#1D4ED8` | Hover |
-| `--color-primary-active` | `#1E40AF` | Active |
-| `--color-primary-soft` | `#EFF6FF` | 轻选中背景 |
-| `--color-primary-border` | `#BFDBFE` | 选中/Focus 边框 |
+| `--color-primary` | `#167568` | 主按钮、链接、焦点、选中 |
+| `--color-primary-hover` | `#115F55` | Hover |
+| `--color-primary-active` | `#0D5149` | Active |
+| `--color-primary-soft` | `#E8F3F0` | 轻选中背景 |
+| `--color-primary-border` | `#B5DBD2` | 选中/Focus 边框 |
 
 ---
 
@@ -203,32 +205,23 @@ Long-session friendly
 
 | Token | Value | Usage |
 |---|---|---|
-| `--text-primary` | `#0F172A` | 页面标题、主文本 |
-| `--text-secondary` | `#475569` | 次级说明 |
-| `--text-tertiary` | `#64748B` | 辅助信息 |
-| `--text-disabled` | `#94A3B8` | Disabled |
-| `--border-default` | `#E2E8F0` | 普通边框 |
-| `--border-strong` | `#CBD5E1` | 强边框 |
-| `--bg-page` | `#F8FAFC` | 页面背景 |
+| `--text-primary` | `#18181B` | 页面标题、主文本 |
+| `--text-secondary` | `#52525B` | 次级说明 |
+| `--text-tertiary` | `#71717A` | 辅助信息 |
+| `--text-disabled` | `#A1A1AA` | Disabled |
+| `--border-default` | `#E4E4E7` | 普通边框、卡片边框 |
+| `--border-strong` | `#D4D4D8` | 强边框 |
+| `--border-hairline` | `#ECECEE` | 卡片内的行分隔线 |
+| `--bg-page` | `#F7F7F8` | 页面背景 |
+| `--bg-sidebar` | `#F2F2F3` | 侧栏（比工作区暗一级） |
 | `--bg-surface` | `#FFFFFF` | Table / Form / Card |
-| `--bg-hover` | `#F1F5F9` | Hover |
-| `--bg-selected` | `#EFF6FF` | Selected |
+| `--bg-surface-subtle` | `#FAFAFA` | 卡片内的次级区块、空文件区 |
+| `--bg-hover` | `#F4F4F5` | Hover |
+| `--bg-selected` | `#E8F3F0` | Selected |
 
 ### 取舍说明
 
-V1 的 `#F4F7F9` 与 V2 的 `#F8FAFC` 存在冲突。  
-V3 统一采用：
-
-```text
-#F8FAFC
-```
-
-原因：
-
-- 更干净；
-- 减少灰蒙感；
-- 与 `#FFFFFF` Surface 区分足够；
-- 更适合长时间后台系统。
+方向 A 用锌灰（zinc）替换原来的冷蓝灰（slate），去掉中性色里的蓝色倾向，让青绿成为画面里唯一的颜色。侧栏比白色工作区暗一级，内容区向前、导航退后。
 
 ---
 
@@ -238,10 +231,12 @@ V3 统一采用：
 
 | Token | Value | Semantic |
 |---|---|---|
-| `--color-success` | `#0F766E` | 已完成、已验证、成功 |
+| `--color-success` | `#15803D` | 已完成、已验证、成功 |
 | `--color-warning` | `#B45309` | 待审核、临期、风险 |
 | `--color-danger` | `#B42318` | 错误、危险、逾期 |
-| `--color-info` | `#2563EB` | 信息、处理中 |
+| `--color-info` | `#167568` | 信息、处理中 |
+
+成功色改为绿色 `#15803D`，与青绿主色分开，避免「已验证」看起来像可点击。
 
 状态必须同时包含：
 
@@ -249,7 +244,23 @@ V3 统一采用：
 颜色 + 文本
 ```
 
-不能只有绿色点或红色点。
+不能只有绿色点或红色点。状态标签统一用 `StatusTag`（`neutral / info / success / warning / danger`），不在页面里另配颜色。
+
+## 3.4 AI 内容色
+
+AI 生成、待人确认的内容（今日建议、帮我写、日报草稿、导入列对照建议、AI 建表理由）用一种安静的紫色标记，与青绿的「操作」区分（用户确认方向，取值 Agent 推断）：
+
+| Token | Value | Usage |
+|---|---|---|
+| `--color-ai` | `#6D5BD0` | AI 标记图标、AI 卡片标题前的火花 |
+| `--color-ai-soft` | `#F3F1FC` | AI 卡片背景 |
+| `--color-ai-border` | `#DDD8F5` | AI 卡片边框 |
+
+规则：
+
+- 紫色只用于「这段内容是 AI 写的」，不用于按钮和链接；采用、保存等动作仍用主色；
+- AI 卡片统一为：火花图标 + 标题 + 内容 + 「待确认」时的操作行，不在各页面另做样式；
+- 不使用渐变、发光、彩虹色表达 AI。
 
 ---
 
@@ -346,10 +357,10 @@ font-variant-numeric: tabular-nums;
 
 | Element | Radius |
 |---|---:|
-| Input / Button | 6px |
-| Card / Container | 8px |
-| Status Tag | 4px |
-| Drawer / Modal | 8–10px |
+| Input / Button | 6px（`--radius-control`） |
+| Card / Container | 10px（`--radius-reading`） |
+| Status Tag | 4px（`--radius-status`） |
+| Drawer / Modal / Dropdown | 12px（`--radius-overlay`） |
 | Avatar | 50% |
 
 不使用大面积 16–24px 圆角 SaaS 风格。
@@ -402,17 +413,19 @@ V3 最终统一：
 
 | Element | Size |
 |---|---:|
-| Sidebar Expanded | **240px** |
+| Sidebar Expanded | **224px** |
 | Sidebar Collapsed | **64px** |
-| Top Header | **64px** |
+| Top Header | **52px** |
 | Page Padding ≥1440 | **24px** |
 | Page Padding 1024–1439 | **20px** |
 | Page Padding <1024 | **16px** |
 | Section Gap | **24px** |
 | Card Padding | **20px** |
-| Compact Control | **32px** |
-| Default Control | **36px** |
-| Primary Touch Target | **≥40px** |
+| Compact Control | **26px** |
+| Default Control | **32px** |
+| Primary Touch Target | **≥40px**（移动端） |
+
+方向 A 采用 Linear / Attio 的密度：默认控件 32px，侧栏 224px，顶栏 52px。工作区、管理中心、账号中心用同一个 `AppShell`（品牌在顶、本人在底）。
 
 ---
 
@@ -462,12 +475,12 @@ Logo 区：
 
 | Property | Value |
 |---|---:|
-| Height | 40px |
-| Horizontal Padding | 12px |
-| Icon | 18px |
-| Gap | 10px |
+| Height | 32px |
+| Horizontal Padding | 8px |
+| Icon | 16px |
+| Gap | 8px |
 | Radius | 6px |
-| Item Gap | 4px |
+| Item Gap | 1px |
 | Sidebar Horizontal Margin | 8px |
 
 ---
@@ -477,32 +490,34 @@ Logo 区：
 ### Default
 
 ```text
-icon #64748B
-text #334155
+icon #71717A
+text #52525B
 background transparent
 ```
 
 ### Hover
 
 ```text
-background #F1F5F9
-text #0F172A
+background #E7E7EA
+text #18181B
 transition 120ms
 ```
 
 ### Active
 
+当前页是一行抬起的白底，和它打开的页面同一种表面：
+
 ```text
-background #EFF6FF
-icon #2563EB
-text #1D4ED8
+background #FFFFFF
+text #18181B
 font-weight 500
+box-shadow 0 1px 2px rgba(24,24,27,.05) + 1px hairline
 ```
 
 ### Pressed
 
 ```text
-background #DBEAFE
+background #E7E7EA
 ```
 
 不缩放、不弹跳。
@@ -827,22 +842,22 @@ Toast：已转为客户
 ## 13.1 Primary
 
 ```text
-height 36px
-padding 0 14px
+height 32px
+padding 0 15px
 radius 6px
-background #2563EB
+background #167568
 ```
 
 Hover：
 
 ```text
-#1D4ED8
+#115F55
 ```
 
 Active：
 
 ```text
-#1E40AF
+#0D5149
 ```
 
 ---
@@ -1093,13 +1108,13 @@ CRM 最核心组件。
 Hover：
 
 ```text
-#F8FAFC
+#FAFAFA
 ```
 
 Selected：
 
 ```text
-#EFF6FF
+#E8F3F0
 ```
 
 Disabled：
@@ -1529,7 +1544,7 @@ Underline Tabs
 规则：
 
 - Height 40px；
-- Active `#2563EB`；
+- Active `#167568`；
 - 不使用大胶囊；
 - 不用不同 Tab 色彩；
 - Tab 数量 >7 时考虑二级导航或 Dropdown。
@@ -2450,29 +2465,30 @@ List + Drawer
 
 | Item | Final |
 |---|---|
-| Sidebar Expanded | `240px` |
+| Sidebar Expanded | `224px` |
 | Sidebar Collapsed | `64px` |
-| Header | `64px` |
+| Header | `52px` |
 | Page Padding | `24px` |
 | Medium Page Padding | `20px` |
-| Sidebar Item | `40px` |
-| Compact Control | `32px` |
-| Default Control / Primary Button | `36px` |
+| Sidebar Item | `32px` |
+| Compact Control | `26px` |
+| Default Control / Primary Button | `32px` |
 | Primary Touch Target | `≥40px` |
 | Table Header | `40px` |
 | Table Row | `44px` |
 | Dense Table Row | `40px` |
 | Control Radius | `6px` |
-| Container Radius | `8px` |
+| Container Radius | `10px` |
 | Tag Radius | `4px` |
 | Drawer | `560 / 720px` |
-| Primary | `#2563EB` |
-| Primary Soft | `#EFF6FF` |
-| Page BG | `#F8FAFC` |
+| Primary | `#167568` |
+| Primary Soft | `#E8F3F0` |
+| Page BG | `#F7F7F8` |
 | Surface | `#FFFFFF` |
-| Border | `#E2E8F0` |
-| Text | `#0F172A` |
-| Success | `#0F766E` |
+| Border | `#E4E4E7` |
+| Text | `#18181B` |
+| AI | `#6D5BD0` |
+| Success | `#15803D` |
 | Warning | `#B45309` |
 | Danger | `#B42318` |
 
