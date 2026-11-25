@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+import { runImportRequest, type ImportAttemptFailure } from './import-retry';
 import { TABLE_BUILDER_GENERATION_TIMEOUT_MS } from '../table-builder-payload';
 import { modelClient } from './model-client';
 import type { FlexibleSchema } from 'ai';
@@ -50,6 +52,7 @@ import type {
 export class VercelOpenAiProvider implements AiProvider {
   readonly providerKey: string;
   readonly modelKey: string;
+  private readonly onImportAttempt: (failure: ImportAttemptFailure) => void;
   private readonly apiKey: string;
   private readonly baseURL?: string;
 
@@ -64,9 +67,17 @@ export class VercelOpenAiProvider implements AiProvider {
     providerKey?: string;
     protocol?: 'responses' | 'chat';
     onUsage?: (usage: Usage) => void;
+    onImportAttempt?: (failure: ImportAttemptFailure) => void;
   }) {
     this.protocol = input.protocol ?? 'responses';
     this.onUsage = input.onUsage;
+    this.onImportAttempt =
+      input.onImportAttempt ??
+      ((failure) =>
+        Logger.warn(
+          { ...failure, retries: failure.attempt - 1 },
+          'ImportAssistProvider',
+        ));
     this.meter = input.meter;
     this.apiKey = input.apiKey;
     this.modelKey = input.modelKey;
@@ -104,13 +115,18 @@ export class VercelOpenAiProvider implements AiProvider {
       }),
     );
     if (bytes > 48 * 1024) throw new Error('IMPORT_PREVIEW_TOO_LARGE');
-    return this.generateStructured(input, signal, actor, {
-      feature: 'import_assist',
-      name: 'import_plan',
-      schema: importWireSchema,
-      system: importSystem,
-      disableReasoning: true,
-    }).then(expandImportMapping);
+    return runImportRequest(
+      (attemptSignal) =>
+        this.generateStructured(input, attemptSignal, actor, {
+          feature: 'import_assist',
+          name: 'import_plan',
+          schema: importWireSchema,
+          system: importSystem,
+          disableReasoning: true,
+        }),
+      signal,
+      this.onImportAttempt,
+    ).then(expandImportMapping);
   }
 
   generateSalesDaily(input: SalesDailyInput) {

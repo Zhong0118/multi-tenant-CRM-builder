@@ -482,8 +482,6 @@ it('disables reasoning for every DeepSeek Responses import request', async () =>
     provider.generateImportAssist(
       {
         sheet: '商机',
-        currentHeader: 1,
-        headerLocked: true,
         fields: [
           {
             ref: 'F17',
@@ -493,7 +491,7 @@ it('disables reasoning for every DeepSeek Responses import request', async () =>
             options: [],
           },
         ],
-        candidates: [],
+        columns: [],
       },
       {} as never,
       new AbortController().signal,
