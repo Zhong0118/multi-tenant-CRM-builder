@@ -99,21 +99,25 @@
 .fileSummary > span:last-child {
   color: var(--color-primary);
 }
-.hint,
-.note,
-.settingNote {
-  margin: 0;
-  color: var(--text-tertiary);
-  font-size: 12px;
-  line-height: 18px;
-}
 .note {
+  margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 20px;
 }
-.hint {
-  margin-top: -4px;
+
+/* The limits sit inside the drop target instead of a sentence below it. */
+.dropPrompt small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* An explanation kept behind an icon beside its label. */
+.info {
+  margin-inline-start: 4px;
+  color: var(--text-tertiary);
+  cursor: help;
 }
 
 /* Settings: one label column, one control column. */
@@ -135,10 +139,6 @@
 .setting :global(.ant-select) {
   justify-self: start;
   width: min(360px, 100%);
-}
-.settingNote {
-  padding-left: 124px;
-  margin-top: -4px;
 }
 
 .mapping {
@@ -285,9 +285,6 @@
   .setting :global(.ant-select) {
     width: 100%;
   }
-  .settingNote {
-    padding-left: 0;
-  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .assist {
@@ -345,12 +342,6 @@
 }
 
 /* What happens to unmatched columns, said once above the table. */
-.mappingNote {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 20px;
-}
 
 /* The check verdict: counts in one line, then what to do next. */
 .verdictCounts {
@@ -369,6 +360,10 @@
   font-weight: 600;
 }
 
+.verdictCounts [data-tone="danger"] b {
+  color: var(--color-danger);
+}
+
 /* "采用" inside an AI note: a text action on the note's own line, spaced
    from the reason, never taller than the line it sits in. */
 .inlineAdopt:global(.ant-btn) {
@@ -382,18 +377,22 @@
 
 /* A skipped column that names members: one line and one button, under the
    owner setting it would replace. */
+/* A suggestion under the owner select, in its control column: what was
+   noticed and the one click that uses it, without a box around it. */
 .ownerHint {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 4px 10px;
   align-items: center;
-  padding: 8px 12px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-surface-subtle);
+  padding-left: 124px;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 20px;
+}
+@media (max-width: 680px) {
+  .ownerHint {
+    padding-left: 0;
+  }
 }
 
 /* What the first rows will be stored as, before anything is written. */

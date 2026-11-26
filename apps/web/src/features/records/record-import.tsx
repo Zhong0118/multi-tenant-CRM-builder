@@ -10,9 +10,10 @@ import {
   Popconfirm,
   Progress,
   Select,
+  Tooltip,
   Typography,
 } from "antd";
-import { InboxOutlined } from "@ant-design/icons";
+import { InboxOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { AiBadge } from "@/components/ai/ai-badge";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -358,9 +359,6 @@ export function RecordImportDrawer({
       !mappedFields.some((item) => item.field.fieldKey === field.fieldKey) &&
       !mapping.includes(APPEND + field.fieldKey),
   );
-  const skippedColumns =
-    parsed?.headers.filter((_, index) => mapping[index] === SKIP) ?? [];
-
   const completedRows = new Set(
     result?.items
       .filter((item) => item.status === "CREATED" || item.status === "SKIPPED")
@@ -1082,6 +1080,7 @@ export function RecordImportDrawer({
               <span className={importStyles.dropPrompt}>
                 <InboxOutlined aria-hidden />
                 <span>选择或拖入 Excel / CSV 文件</span>
+                <small>最多 1 万行、40 列、10 MB</small>
               </span>
             )}
           </Button>
@@ -1098,38 +1097,37 @@ export function RecordImportDrawer({
               if (file) void onFile(file, "auto");
             }}
           />
-          {!selectedFile && (
-            <p className={importStyles.hint}>
-              支持 Excel（.xlsx / .xls）和 CSV。单个工作表最多 1 万行、40
-              列，文件不超过 10 MB。
-            </p>
-          )}
           <div className={importStyles.settings}>
-            <label className={importStyles.setting}>
-              <span>文件编码</span>
-              <Select
-                aria-label="文件编码"
-                value={encoding}
-                disabled={
-                  !!busy ||
-                  loadingFile ||
-                  importStarted ||
-                  !!source?.sheetNames.length
-                }
-                onChange={(next: CsvEncoding) =>
-                  void onFile(selectedFile, next)
-                }
-                options={[
-                  { value: "auto", label: "自动识别" },
-                  { value: "utf-8", label: "UTF-8" },
-                  { value: "gb18030", label: "GBK / GB18030（中文 Windows）" },
-                ]}
-              />
-            </label>
-            {decodedEncoding ? (
-              <p className={importStyles.settingNote}>
-                当前按 {decodedEncoding} 读取
-              </p>
+            {selectedFile && !source?.sheetNames.length ? (
+              <label className={importStyles.setting}>
+                <span>文件编码</span>
+                <Select
+                  aria-label="文件编码"
+                  value={encoding}
+                  disabled={
+                    !!busy ||
+                    loadingFile ||
+                    importStarted ||
+                    !!source?.sheetNames.length
+                  }
+                  onChange={(next: CsvEncoding) =>
+                    void onFile(selectedFile, next)
+                  }
+                  options={[
+                    {
+                      value: "auto",
+                      label: decodedEncoding
+                        ? `自动识别（${decodedEncoding}）`
+                        : "自动识别",
+                    },
+                    { value: "utf-8", label: "UTF-8" },
+                    {
+                      value: "gb18030",
+                      label: "GBK / GB18030（中文 Windows）",
+                    },
+                  ]}
+                />
+              </label>
             ) : null}
             {source?.sheetNames.length ? (
               <label className={importStyles.setting}>
@@ -1201,7 +1199,7 @@ export function RecordImportDrawer({
           ) : null}
           {importStarted && !allDone ? (
             <Typography.Paragraph type="secondary">
-              已导入的行会保留。剩余的行改好后请重新检查；重试时请用原文件和同一工作表。
+              已导入的行会保留。改好剩余的行后，用原文件重新检查。
             </Typography.Paragraph>
           ) : null}
         </section>
@@ -1218,7 +1216,7 @@ export function RecordImportDrawer({
                   {preview.unresolvedColumns && preview.unresolvedValues
                     ? `还有列和 ${preview.unresolvedValues} 个取值没对上`
                     : preview.unresolvedColumns
-                      ? "还有列没对上，见下表「未对照」"
+                      ? "还有列没对上"
                       : preview.unresolvedValues
                         ? `还有 ${preview.unresolvedValues} 个取值没对上`
                         : preview.needed
@@ -1335,19 +1333,7 @@ export function RecordImportDrawer({
                     type="warning"
                     showIcon
                     title={`还没对上必填字段：${missingRequired.map((field) => field.label).join("、")}`}
-                    description={
-                      skippedColumns.length
-                        ? `在下表给对应的列选择「导入到」。标着「未对照」的 ${skippedColumns.length} 列导入时会跳过。`
-                        : "在下表给对应的列选择「导入到」。"
-                    }
                   />
-                ) : skippedColumns.length ? (
-                  <p className={importStyles.mappingNote}>
-                    标着「未对照」的 {skippedColumns.length} 列导入时会跳过：
-                    {skippedColumns
-                      .map((header) => header || "空表头")
-                      .join("、")}
-                  </p>
                 ) : null}
                 <div className={importStyles.mapping} aria-label="文件列对照">
                   <div className={importStyles.mappingHead} aria-hidden>
@@ -1514,35 +1500,23 @@ export function RecordImportDrawer({
                               }
                             />
                           )}
-                          {advice && (
+                          {/* Only an unsure suggestion needs a line: what AI
+                              thinks it is, and one click to take it. A sure one
+                              is already in the select; its reason is on the tag. */}
+                          {advice && needsReview && (
                             <small>
-                              {needsReview ? "把握不大 · " : "AI 建议 · "}
                               {targetField
-                                ? (target?.mode === "append" ? "追加到" : "") +
-                                  targetField.label
-                                : "跳过此列"}{" "}
-                              {advice.dateOrder &&
-                              dateInferences[index] === "ambiguous"
-                                ? advice.dateOrder === "DMY"
-                                  ? "按日/月/年 "
-                                  : "按月/日/年 "
-                                : ""}
-                              {advice.bareAmountUnit === "wan"
-                                ? "没写单位的数按万 "
-                                : ""}{" "}
-                              ·{" "}
-                              {Array.from(advice.reason).slice(0, 20).join("")}
-                              {needsReview && (
-                                <Button
-                                  type="link"
-                                  size="small"
-                                  className={styles.inlineAdopt}
-                                  disabled={!!busy || mappingLocked}
-                                  onClick={() => adopt({ column: advice.col })}
-                                >
-                                  采用
-                                </Button>
-                              )}
+                                ? `可能是「${targetField.label}」`
+                                : "建议跳过"}
+                              <Button
+                                type="link"
+                                size="small"
+                                className={styles.inlineAdopt}
+                                disabled={!!busy || mappingLocked}
+                                onClick={() => adopt({ column: advice.col })}
+                              >
+                                采用
+                              </Button>
                             </small>
                           )}
                         </div>
@@ -1556,13 +1530,21 @@ export function RecordImportDrawer({
                               : mapping[index] === SKIP
                                 ? ["未对照", "unmatched"]
                                 : ["自动", "auto"];
-                          return (
+                          const tag = (
                             <span
                               className={importStyles.state}
                               data-tone={tone}
+                              tabIndex={advice ? 0 : undefined}
                             >
                               {label}
                             </span>
+                          );
+                          return advice ? (
+                            <Tooltip title={`AI：${advice.reason}`}>
+                              {tag}
+                            </Tooltip>
+                          ) : (
+                            tag
                           );
                         })()}
                       </div>
@@ -1640,10 +1622,7 @@ export function RecordImportDrawer({
           ) : null}
           {ownerCandidate && !importToPool && !mappingLocked ? (
             <div className={importStyles.ownerHint} role="note">
-              <span>
-                文件里的「{ownerCandidate.header}
-                」列都能对上成员，可以按这一列分别指定负责人。
-              </span>
+              <span>「{ownerCandidate.header}」列都是成员姓名</span>
               <Button
                 size="small"
                 disabled={!!busy || loadingFile}
@@ -1653,23 +1632,30 @@ export function RecordImportDrawer({
               </Button>
             </div>
           ) : null}
-          <p className={importStyles.note}>
-            {ownerColumn >= 0
-              ? "新增记录按文件中的负责人分别归属"
-              : importToPool
-                ? "新记录进入初始公共池，允许有权限成员领取"
-                : canChooseOwner
-                  ? "整批新增记录使用所选负责人"
-                  : "本次新增记录归你负责"}
-          </p>
+          {/* The select and the pool checkbox say what they do; a line is
+              only needed where there is no control to read. */}
+          {ownerColumn >= 0 || !canChooseOwner ? (
+            <p className={importStyles.note}>
+              {ownerColumn >= 0
+                ? "新增记录按文件中的负责人分别归属"
+                : "本次新增记录归你负责"}
+            </p>
+          ) : null}
         </section>
         {parsed ? (
           <section className={importStyles.step}>
-            <h3 className={importStyles.stepTitle}>
-              查重规则<small>可选，最多 3 个字段</small>
-            </h3>
+            <h3 className={importStyles.stepTitle}>查重</h3>
             <label className={importStyles.setting}>
-              <span>查重字段</span>
+              <span>
+                查重字段
+                <Tooltip title="选手机号、编号这类能认出同一条记录的字段，最多 3 个；所选字段全部相同的行会跳过，按你能看到的数据查。不选时只防同一文件重复导入，不同文件里的重复数据会新增。">
+                  <InfoCircleOutlined
+                    className={importStyles.info}
+                    aria-label="查重说明"
+                    tabIndex={0}
+                  />
+                </Tooltip>
+              </span>
               <Select
                 mode="multiple"
                 aria-label="查重字段"
@@ -1677,7 +1663,7 @@ export function RecordImportDrawer({
                 value={matchFields}
                 maxCount={3}
                 disabled={!!busy || loadingFile || mappingLocked}
-                placeholder="选择手机号、编号等业务唯一标识"
+                placeholder="不查重"
                 options={matchableFields.map(({ field }) => ({
                   value: field.fieldKey,
                   label: field.label,
@@ -1696,11 +1682,6 @@ export function RecordImportDrawer({
                 title={`文件中有 ${sheetSummary.duplicateRows} 行与其他行完全相同${recommendedMatch ? "，建议使用「" + recommendedMatch.label + "」查重" : ""}`}
               />
             )}
-            <p className={importStyles.note}>
-              {matchFields.length
-                ? "所选字段全部相同时跳过。查重字段不能为空；按当前账号可见的数据查重，文件内重复也会跳过。"
-                : "未选择查重字段：只防止同一文件重复导入。不同文件的重复数据会新增，请选择能标识一条业务记录的字段。"}
-            </p>
           </section>
         ) : null}
         {!busy && (checked || (result && importStarted)) ? (
@@ -1718,51 +1699,47 @@ export function RecordImportDrawer({
                   <span>
                     可导入 <b>{eligible}</b>
                   </span>
-                  <span>
-                    重复或已导入 <b>{duplicateCount}</b>
-                  </span>
-                  <span>
-                    主动跳过 <b>{manualSkipCount}</b>
-                  </span>
-                  <span>
-                    错误 <b>{checked.failed}</b>
-                  </span>
+                  {duplicateCount ? (
+                    <span title="和已有记录或文件里的其他行重复">
+                      重复 <b>{duplicateCount}</b>
+                    </span>
+                  ) : null}
+                  {manualSkipCount ? (
+                    <span>
+                      跳过 <b>{manualSkipCount}</b>
+                    </span>
+                  ) : null}
+                  {checked.failed ? (
+                    <span data-tone="danger">
+                      错误 <b>{checked.failed}</b>
+                    </span>
+                  ) : null}
                 </p>
                 {eligible === 0 ? (
                   <Alert
                     type="warning"
                     showIcon
-                    title="这次没有可以导入的行"
-                    description={[
-                      duplicateCount
-                        ? `${duplicateCount} 行和已有记录或文件里的其他行重复，按查重规则跳过。`
-                        : "",
-                      manualSkipCount
-                        ? `${manualSkipCount} 行设为了跳过。`
-                        : "",
-                      checked.failed
-                        ? `${checked.failed} 行有错误，明细见下方。`
-                        : "",
-                      "修改文件或查重字段后，重新检查。",
-                    ]
-                      .filter(Boolean)
-                      .join("")}
+                    title="没有可导入的行"
+                    description={
+                      [
+                        duplicateCount
+                          ? `${duplicateCount} 行和已有记录或文件里的其他行重复`
+                          : "",
+                        manualSkipCount ? `${manualSkipCount} 行设为跳过` : "",
+                        checked.failed ? `${checked.failed} 行有错误` : "",
+                      ]
+                        .filter(Boolean)
+                        .join("，") + "。"
+                    }
                   />
                 ) : (
                   <>
-                    <p className={importStyles.note}>
-                      检查通过，可以导入 {eligible} 行
-                      {checked.failed
-                        ? `；另有 ${checked.failed} 行有错误，不会导入`
-                        : ""}
-                      。
-                    </p>
                     {unassigned ? (
                       <Alert
                         type="warning"
                         showIcon
                         title={`这 ${eligible} 行导入后没有负责人`}
-                        description="只看自己负责记录的成员看不到它们，也不会有人收到跟进提醒。可以在「新记录归属」里选负责人后重新检查。"
+                        description="只看自己负责记录的成员看不到它们，也不会有人收到跟进提醒。"
                         action={
                           ownerCandidate ? (
                             <Button

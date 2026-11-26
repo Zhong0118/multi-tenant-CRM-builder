@@ -512,7 +512,7 @@ describe("RecordImportDrawer", () => {
   it("keeps a visible filename on cancel and reads a reselected file with the same name", async () => {
     const { api } = setup();
     expect(
-      screen.getByRole("button", { name: "选择或拖入 Excel / CSV 文件" }),
+      screen.getByRole("button", { name: /^选择或拖入 Excel \/ CSV 文件/ }),
     ).toBeVisible();
     chooseFile("姓名\n张三", "客户.csv");
     await screen.findByText("1 行 · 1 列");
@@ -647,7 +647,7 @@ describe("RecordImportDrawer", () => {
     await screen.findByText("1 行 · 3 列");
     fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
     const verdict = await screen.findByRole("region", { name: "检查结果" });
-    expect(verdict).toHaveTextContent("这次没有可以导入的行");
+    expect(verdict).toHaveTextContent("没有可导入的行");
     expect(verdict).toHaveTextContent("1 行和已有记录或文件里的其他行重复");
     expect(
       screen.queryByRole("button", { name: /确认导入/ }),
@@ -792,7 +792,7 @@ describe("RecordImportDrawer", () => {
     const { api } = setup();
     chooseFile(new Uint8Array([110, 97, 109, 101, 10, 0xd5, 0xc5, 0xc8, 0xfd]));
     await screen.findByText("张三");
-    expect(screen.getByText(/当前按 GBK/)).toBeInTheDocument();
+    expect(screen.getByText(/自动识别（GBK/)).toBeInTheDocument();
     chooseFile("姓名\n����");
     await screen.findByText(/乱码替代字符/);
     expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
@@ -915,7 +915,8 @@ it("requires manual mapping for same-name fields and displays their types", asyn
     ],
   });
   chooseFile("姓名,线索状态\n张三,待联系");
-  await screen.findByText(/1 列导入时会跳过：线索状态/);
+  // The ambiguous column stays unmatched, marked in its own row.
+  await screen.findByText("未对照");
   fireEvent.mouseDown(screen.getByLabelText("映射 线索状态"));
   expect(
     screen.getByText("线索状态 · 单选（lead_status）"),
