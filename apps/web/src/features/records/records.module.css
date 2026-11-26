@@ -810,6 +810,9 @@
   align-items: center;
   gap: 6px;
 }
+.poolActions > :global(.ant-alert) {
+  flex-basis: 100%;
+}
 .poolActions :global(.ant-btn) {
   transition:
     transform 160ms ease,
@@ -1196,12 +1199,13 @@
   }
 }
 
-/* Inside the record page's 动态 section: hint on the left, the add button on the right. */
+/* Inside the record page's 动态 section: its actions on the right. Each entry
+   offers only 删除, which already says entries are not edited. */
 .timelineHeading {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
 }
 
 .activityType {

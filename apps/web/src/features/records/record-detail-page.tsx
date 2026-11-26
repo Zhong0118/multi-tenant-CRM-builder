@@ -383,18 +383,22 @@ export function RecordDetailPage({
 
   const ownership = (
     <section className={styles.railBlock} aria-label="负责人与流转">
-      <h2 className={styles.sectionTitle}>归属</h2>
+      {/* The actions sit on the heading's line, which is as wide as the
+          rail: next to the owner they wrapped as soon as there were two. */}
+      <div className={styles.railHead}>
+        <h2 className={styles.sectionTitle}>归属</h2>
+        {ownershipActions}
+      </div>
       <dl className={styles.facts}>
         <div>
           <dt>负责人</dt>
-          <dd className={styles.ownerValue}>
+          <dd>
             <RecordOwner
               ownerMemberId={record.ownerMemberId}
               members={members}
               currentMemberId={currentMemberId}
               size="md"
             />
-            {ownershipActions}
           </dd>
         </div>
         {poolConfig?.enabled || record.inPublicPool ? (

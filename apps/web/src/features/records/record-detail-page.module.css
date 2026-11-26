@@ -302,13 +302,19 @@
   line-height: 20px;
 }
 
-/* The owner and what can be done with the record share one line. */
-.facts dd.ownerValue {
+/* A rail heading with its actions on the right, such as 归属 with 转交. */
+.railHead {
   display: flex;
   flex-wrap: wrap;
+  gap: 6px 8px;
   align-items: center;
   justify-content: space-between;
-  gap: 6px 8px;
+  min-height: 24px;
+}
+
+.railHead > :last-child:not(h2) {
+  justify-content: flex-end;
+  margin-inline-start: auto;
 }
 
 .tabs :global(.ant-tabs-nav) {
