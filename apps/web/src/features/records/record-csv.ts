@@ -52,7 +52,7 @@ export function decodeRecordCsv(bytes: Uint8Array, encoding: CsvEncoding) {
   };
 }
 
-function normalizeHeader(value: string) {
+export function normalizeHeader(value: string) {
   return value
     .normalize("NFKC")
     .replace(/\s+/gu, "")
@@ -79,6 +79,7 @@ type ImportOption = { key: string; label: string };
 export interface ImportValueContext {
   timeZone?: string;
   dateOrder?: ImportDateOrder;
+  valueChoices?: ReadonlyMap<string, string | null>;
   bareAmountUnit?: "yuan" | "wan";
 }
 
@@ -86,25 +87,50 @@ function normalizeOption(value: string) {
   return value.normalize("NFKC").replace(/\s+/gu, "");
 }
 
-export function matchImportOption(
-  value: string,
-  options: ImportOption[],
-): string | undefined {
+export function matchingImportOptions(value: string, options: ImportOption[]) {
   const normalized = normalizeOption(value);
-  if (!normalized) return undefined;
-  const matches = options.filter(
+  if (!normalized) return [];
+  return options.filter(
     (option) =>
       normalizeOption(option.key) === normalized ||
       normalizeOption(option.label) === normalized,
   );
+}
+export function matchImportOption(
+  value: string,
+  options: ImportOption[],
+): string | undefined {
+  const matches = matchingImportOptions(value, options);
   return matches.length === 1 ? matches[0].key : undefined;
 }
 
 export function splitImportOptions(value: string): string[] {
   return value
-    .split(/[;；,，]/)
+    .split(/[;；,，、]/)
     .map((part) => part.trim())
     .filter(Boolean);
+}
+
+const nullableImportTypes = new Set([
+  "NUMBER",
+  "MONEY",
+  "DATE",
+  "DATETIME",
+  "SINGLE_SELECT",
+  "MULTI_SELECT",
+]);
+
+export function isImportNullMarker(type: string, raw: string) {
+  return (
+    nullableImportTypes.has(type) && /^(?:nan|#?n\/a|null)$/i.test(raw.trim())
+  );
+}
+
+export function isImportFormulaError(type: string, value: string) {
+  return (
+    nullableImportTypes.has(type) &&
+    /^#(?:REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!)$/i.test(value)
+  );
 }
 
 export function coerceImportValue(
@@ -114,7 +140,8 @@ export function coerceImportValue(
   context: ImportValueContext = {},
 ): unknown {
   const value = raw.trim();
-  if (value === "") return null;
+  if (value === "" || isImportNullMarker(type, value)) return null;
+  if (isImportFormulaError(type, value)) throw new Error(`公式错误 ${value}`);
   switch (type) {
     case "BOOLEAN":
       if (
@@ -134,11 +161,18 @@ export function coerceImportValue(
       const parts =
         type === "SINGLE_SELECT" ? [value] : splitImportOptions(value);
       const keys = parts.map((part) => {
-        const key = matchImportOption(part, options);
-        if (key === undefined) throw new Error("取值未对应唯一选项");
-        return key;
+        const exact = matchImportOption(part, options);
+        if (exact !== undefined) return exact;
+        const choice = context.valueChoices?.get(part);
+        return choice === null ||
+          options.some((option) => option.key === choice)
+          ? choice
+          : undefined;
       });
-      return type === "SINGLE_SELECT" ? keys[0] : [...new Set(keys)];
+      if (keys.includes(undefined)) throw new Error("取值未对应唯一选项");
+      if (type === "SINGLE_SELECT") return keys[0];
+      const selected = [...new Set(keys.filter((key) => key != null))];
+      return selected.length ? selected : null;
     }
     case "DATE":
     case "DATETIME":

@@ -1,0 +1,1167 @@
+{
+  "id": "d26-boundary51",
+  "scenario": "boundary51",
+  "source": "development/d26-boundary51.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "单位名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "等级批号1",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号2",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号3",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号4",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号5",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号6",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号7",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号8",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号9",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号10",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号11",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号12",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号13",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号14",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号15",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号16",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号17",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号18",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号19",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号20",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号21",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号22",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号23",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号24",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号25",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号26",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号27",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号28",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号29",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号30",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号31",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号32",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号33",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号34",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号35",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号36",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号37",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号38",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号39",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号40",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号41",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号42",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号43",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号44",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号45",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号46",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号47",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号48",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号49",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号50",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "等级批号51",
+          "option": null,
+          "confidence": "review"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d26-boundary51-1",
+        "等级批号1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-1",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d26-boundary51-2",
+        "等级批号2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-2",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d26-boundary51-3",
+        "等级批号3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-3",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d26-boundary51-4",
+        "等级批号4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-4",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d26-boundary51-5",
+        "等级批号5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-5",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "松川商社-d26-boundary51-6",
+        "等级批号6"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-6",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "松川商社-d26-boundary51-7",
+        "等级批号7"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-7",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "松川商社-d26-boundary51-8",
+        "等级批号8"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-8",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "松川商社-d26-boundary51-9",
+        "等级批号9"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-9",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 11,
+      "cells": [
+        "松川商社-d26-boundary51-10",
+        "等级批号10"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-10",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 12,
+      "cells": [
+        "松川商社-d26-boundary51-11",
+        "等级批号11"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-11",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 13,
+      "cells": [
+        "松川商社-d26-boundary51-12",
+        "等级批号12"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-12",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 14,
+      "cells": [
+        "松川商社-d26-boundary51-13",
+        "等级批号13"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-13",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 15,
+      "cells": [
+        "松川商社-d26-boundary51-14",
+        "等级批号14"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-14",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 16,
+      "cells": [
+        "松川商社-d26-boundary51-15",
+        "等级批号15"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-15",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 17,
+      "cells": [
+        "松川商社-d26-boundary51-16",
+        "等级批号16"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-16",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 18,
+      "cells": [
+        "松川商社-d26-boundary51-17",
+        "等级批号17"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-17",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 19,
+      "cells": [
+        "松川商社-d26-boundary51-18",
+        "等级批号18"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-18",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 20,
+      "cells": [
+        "松川商社-d26-boundary51-19",
+        "等级批号19"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-19",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 21,
+      "cells": [
+        "松川商社-d26-boundary51-20",
+        "等级批号20"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-20",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 22,
+      "cells": [
+        "松川商社-d26-boundary51-21",
+        "等级批号21"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-21",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 23,
+      "cells": [
+        "松川商社-d26-boundary51-22",
+        "等级批号22"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-22",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 24,
+      "cells": [
+        "松川商社-d26-boundary51-23",
+        "等级批号23"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-23",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 25,
+      "cells": [
+        "松川商社-d26-boundary51-24",
+        "等级批号24"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-24",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 26,
+      "cells": [
+        "松川商社-d26-boundary51-25",
+        "等级批号25"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-25",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 27,
+      "cells": [
+        "松川商社-d26-boundary51-26",
+        "等级批号26"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-26",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 28,
+      "cells": [
+        "松川商社-d26-boundary51-27",
+        "等级批号27"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-27",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 29,
+      "cells": [
+        "松川商社-d26-boundary51-28",
+        "等级批号28"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-28",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 30,
+      "cells": [
+        "松川商社-d26-boundary51-29",
+        "等级批号29"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-29",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 31,
+      "cells": [
+        "松川商社-d26-boundary51-30",
+        "等级批号30"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-30",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 32,
+      "cells": [
+        "松川商社-d26-boundary51-31",
+        "等级批号31"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-31",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 33,
+      "cells": [
+        "松川商社-d26-boundary51-32",
+        "等级批号32"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-32",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 34,
+      "cells": [
+        "松川商社-d26-boundary51-33",
+        "等级批号33"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-33",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 35,
+      "cells": [
+        "松川商社-d26-boundary51-34",
+        "等级批号34"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-34",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 36,
+      "cells": [
+        "松川商社-d26-boundary51-35",
+        "等级批号35"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-35",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 37,
+      "cells": [
+        "松川商社-d26-boundary51-36",
+        "等级批号36"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-36",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 38,
+      "cells": [
+        "松川商社-d26-boundary51-37",
+        "等级批号37"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-37",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 39,
+      "cells": [
+        "松川商社-d26-boundary51-38",
+        "等级批号38"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-38",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 40,
+      "cells": [
+        "松川商社-d26-boundary51-39",
+        "等级批号39"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-39",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 41,
+      "cells": [
+        "松川商社-d26-boundary51-40",
+        "等级批号40"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-40",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 42,
+      "cells": [
+        "松川商社-d26-boundary51-41",
+        "等级批号41"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-41",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 43,
+      "cells": [
+        "松川商社-d26-boundary51-42",
+        "等级批号42"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-42",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 44,
+      "cells": [
+        "松川商社-d26-boundary51-43",
+        "等级批号43"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-43",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 45,
+      "cells": [
+        "松川商社-d26-boundary51-44",
+        "等级批号44"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-44",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 46,
+      "cells": [
+        "松川商社-d26-boundary51-45",
+        "等级批号45"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-45",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 47,
+      "cells": [
+        "松川商社-d26-boundary51-46",
+        "等级批号46"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-46",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 48,
+      "cells": [
+        "松川商社-d26-boundary51-47",
+        "等级批号47"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-47",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 49,
+      "cells": [
+        "松川商社-d26-boundary51-48",
+        "等级批号48"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-48",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 50,
+      "cells": [
+        "松川商社-d26-boundary51-49",
+        "等级批号49"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-49",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 51,
+      "cells": [
+        "松川商社-d26-boundary51-50",
+        "等级批号50"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-50",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 52,
+      "cells": [
+        "松川商社-d26-boundary51-51",
+        "等级批号51"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d26-boundary51-51",
+        "grade": null
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

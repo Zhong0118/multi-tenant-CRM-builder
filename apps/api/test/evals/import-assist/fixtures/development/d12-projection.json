@@ -1,0 +1,243 @@
+{
+  "id": "d12-projection",
+  "scenario": "projection",
+  "source": "development/d12-projection.xlsx",
+  "sheetName": "来件-synth.d@demo.invalid",
+  "profile": "admin",
+  "headerRow": 3,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "单位名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "非公开列",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    },
+    {
+      "col": "C3",
+      "header": "拜访日",
+      "target": {
+        "mode": "field",
+        "field": "contact_day"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d12-projection-1",
+        "RESTRICT-d12-projection-C2-0",
+        "2024-08-01"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d12-projection-1",
+        "contact_day": "2024-08-01"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d12-projection-2",
+        "RESTRICT-d12-projection-C2-1",
+        "2024-08-02"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d12-projection-2",
+        "contact_day": "2024-08-02"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d12-projection-3",
+        "RESTRICT-d12-projection-C2-2",
+        "2024-08-03"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d12-projection-3",
+        "contact_day": "2024-08-03"
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "松川商社-d12-projection-4",
+        "RESTRICT-d12-projection-C2-3",
+        "2024-08-04"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d12-projection-4",
+        "contact_day": "2024-08-04"
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "松川商社-d12-projection-5",
+        "RESTRICT-d12-projection-C2-4",
+        "2024-08-05"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d12-projection-5",
+        "contact_day": "2024-08-05"
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "松川商社-d12-projection-6",
+        "RESTRICT-d12-projection-C2-5",
+        "2024-08-06"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d12-projection-6",
+        "contact_day": "2024-08-06"
+      }
+    },
+    {
+      "rowNumber": 10,
+      "cells": [
+        "松川商社-d12-projection-7",
+        "RESTRICT-d12-projection-C2-6",
+        "2024-08-07"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d12-projection-7",
+        "contact_day": "2024-08-07"
+      }
+    },
+    {
+      "rowNumber": 11,
+      "cells": [
+        "松川商社-d12-projection-8",
+        "RESTRICT-d12-projection-C2-7",
+        "2024-08-08"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d12-projection-8",
+        "contact_day": "2024-08-08"
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "freeText",
+      "value": "造册说明 d12-projection 合成姓名陶森样"
+    },
+    {
+      "kind": "personalName",
+      "value": "陶森样"
+    },
+    {
+      "kind": "sheetEmail",
+      "value": "synth.d@demo.invalid"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "内部底价"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d12-projection-C2-0"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d12-projection-C2-1"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d12-projection-C2-2"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d12-projection-C2-3"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d12-projection-C2-4"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d12-projection-C2-5"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d12-projection-C2-6"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-d12-projection-C2-7"
+    }
+  ]
+}

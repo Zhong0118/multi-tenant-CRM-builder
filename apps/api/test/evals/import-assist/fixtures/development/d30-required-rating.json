@@ -1,0 +1,149 @@
+{
+  "id": "d30-required-rating",
+  "scenario": "required-rating",
+  "source": "development/d30-required-rating.xlsx",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "户名",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "A类",
+          "option": "A",
+          "confidence": "high"
+        },
+        {
+          "raw": "B档",
+          "option": "B",
+          "confidence": "high"
+        },
+        {
+          "raw": "重点客户",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "未评级",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "C级",
+          "option": "C",
+          "confidence": "high"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "",
+        "A类"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "requiredName"
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d30-required-rating-2",
+        "B档"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d30-required-rating-2",
+        "grade": "B"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d30-required-rating-3",
+        "重点客户"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d30-required-rating-3",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d30-required-rating-4",
+        "未评级"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "requiredGrade"
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d30-required-rating-5",
+        "C级"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d30-required-rating-5",
+        "grade": "C"
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [
+    "grade"
+  ],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

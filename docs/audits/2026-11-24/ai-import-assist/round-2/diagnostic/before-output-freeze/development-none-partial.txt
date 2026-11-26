@@ -1,0 +1,15 @@
+implementation f6a92d19aeff844f6f5cebd0031838b85db67babe57766270c63bc6c92470e38
+d01-literal 0 0 ok null null null
+d02-rule-title 0 0 ok null null null
+d03-synonyms 1 1 ok 2832 2095 177
+d04-english 1 1 ok 1763 2135 149
+d05-wrong-neighbours 1 1 ok 2388 2044 101
+d06-rating 1 1 ok 1728 2083 105
+d07-notes 1 1 ok 1325 2044 93
+d08-european 1 1 ok 1388 2170 104
+d09-american 1 1 ok 1341 2151 62
+d10-wan 1 1 ok 1899 2089 56
+d11-privacy 1 1 ok 1752 2312 230
+d12-projection 1 1 ok 1428 2447 104
+d13-clean-pair 1 1 ok 2429 2141 234
+d14-inject-pair 1 1 ok 2202 2141 234

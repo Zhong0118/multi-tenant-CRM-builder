@@ -79,6 +79,11 @@ export interface PublishedField {
   isSystem: boolean;
 }
 
+export function manualImportField(schema: PublishedObjectSchema, key: string) {
+  const access = schema.employeeAccess?.fields[key];
+  return access === 'HIDDEN' || access === 'READ_ONLY';
+}
+
 export interface PublishedObjectSchema {
   publication: {
     id: string;

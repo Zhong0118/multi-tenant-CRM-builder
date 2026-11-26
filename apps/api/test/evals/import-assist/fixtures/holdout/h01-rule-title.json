@@ -1,0 +1,148 @@
+{
+  "id": "h01-rule-title",
+  "scenario": "rule-title",
+  "source": "holdout/h01-rule-title.xlsx",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 3,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "已签约",
+      "target": {
+        "mode": "field",
+        "field": "enabled"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 4,
+      "cells": [
+        "是",
+        "K-h01-rule-title-1",
+        "苇原商社-h01-rule-title-1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "enabled": true,
+        "acct_code": "K-h01-rule-title-1",
+        "acct_name": "苇原商社-h01-rule-title-1"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "N",
+        "K-h01-rule-title-2",
+        "苇原商社-h01-rule-title-2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "enabled": false,
+        "acct_code": "K-h01-rule-title-2",
+        "acct_name": "苇原商社-h01-rule-title-2"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "√",
+        "K-h01-rule-title-3",
+        "苇原商社-h01-rule-title-3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "enabled": true,
+        "acct_code": "K-h01-rule-title-3",
+        "acct_name": "苇原商社-h01-rule-title-3"
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "无",
+        "K-h01-rule-title-4",
+        "苇原商社-h01-rule-title-4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "enabled": false,
+        "acct_code": "K-h01-rule-title-4",
+        "acct_name": "苇原商社-h01-rule-title-4"
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "true",
+        "K-h01-rule-title-5",
+        "苇原商社-h01-rule-title-5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "enabled": true,
+        "acct_code": "K-h01-rule-title-5",
+        "acct_name": "苇原商社-h01-rule-title-5"
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": 0,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

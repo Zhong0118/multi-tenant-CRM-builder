@@ -1,0 +1,159 @@
+{
+  "id": "d19-staff",
+  "scenario": "staff",
+  "source": "development/d19-staff.xlsx",
+  "sheetName": "名单",
+  "profile": "employee",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "跟进人",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "owner"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d19-staff-1",
+        "K-d19-staff-1",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d19-staff-1",
+        "acct_code": "K-d19-staff-1"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d19-staff-2",
+        "K-d19-staff-2",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d19-staff-2",
+        "acct_code": "K-d19-staff-2"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d19-staff-3",
+        "K-d19-staff-3",
+        "待分配样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d19-staff-3",
+        "acct_code": "K-d19-staff-3"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d19-staff-4",
+        "K-d19-staff-4",
+        "退件样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d19-staff-4",
+        "acct_code": "K-d19-staff-4"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d19-staff-5",
+        "K-d19-staff-5",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d19-staff-5",
+        "acct_code": "K-d19-staff-5"
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "待分配样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "退件样员"
+    }
+  ]
+}

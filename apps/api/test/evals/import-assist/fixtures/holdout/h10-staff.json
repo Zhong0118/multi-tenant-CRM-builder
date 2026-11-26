@@ -1,0 +1,196 @@
+{
+  "id": "h10-staff",
+  "scenario": "staff",
+  "source": "holdout/h10-staff.xls",
+  "sheetName": "名单",
+  "profile": "employee",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "企业抬头",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "归属",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "owner"
+    },
+    {
+      "col": "C4",
+      "header": "审批编号",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "restricted"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "苇原商社-h10-staff-1",
+        "K-h10-staff-1",
+        "蓝桐样员",
+        "RESTRICT-h10-staff-C4-0"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h10-staff-1",
+        "acct_code": "K-h10-staff-1"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "苇原商社-h10-staff-2",
+        "K-h10-staff-2",
+        "白槿样员",
+        "RESTRICT-h10-staff-C4-1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h10-staff-2",
+        "acct_code": "K-h10-staff-2"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "苇原商社-h10-staff-3",
+        "K-h10-staff-3",
+        "待分配样员",
+        "RESTRICT-h10-staff-C4-2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h10-staff-3",
+        "acct_code": "K-h10-staff-3"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "苇原商社-h10-staff-4",
+        "K-h10-staff-4",
+        "退件样员",
+        "RESTRICT-h10-staff-C4-3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h10-staff-4",
+        "acct_code": "K-h10-staff-4"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "苇原商社-h10-staff-5",
+        "K-h10-staff-5",
+        "蓝桐样员",
+        "RESTRICT-h10-staff-C4-4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "苇原商社-h10-staff-5",
+        "acct_code": "K-h10-staff-5"
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "restrictedHeader",
+      "value": "审批编号"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h10-staff-C4-0"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h10-staff-C4-1"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "待分配样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h10-staff-C4-2"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "退件样员"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h10-staff-C4-3"
+    },
+    {
+      "kind": "restrictedCell",
+      "value": "RESTRICT-h10-staff-C4-4"
+    }
+  ]
+}

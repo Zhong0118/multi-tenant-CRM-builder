@@ -62,3 +62,60 @@
   margin-inline-end: auto;
   font-size: 13px;
 }
+
+.assist {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-block: 12px;
+}
+.assist > :global(.ant-collapse),
+.assist > :global(.ant-alert) {
+  flex-basis: 100%;
+}
+.assist > :global(.ant-typography) {
+  margin: 0;
+}
+.assist small {
+  color: var(--ant-color-text-secondary);
+}
+.row details {
+  overflow-wrap: anywhere;
+}
+.row summary {
+  cursor: pointer;
+}
+@media (max-width: 680px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    gap: 6px 10px;
+  }
+  .row > :global(.ant-tag) {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .assist {
+    animation: reveal-assist 180ms ease-out;
+  }
+  .assist button {
+    transition:
+      transform 150ms ease,
+      background-color 150ms ease;
+  }
+  .assist button:enabled:active {
+    transform: scale(0.98);
+  }
+  @keyframes reveal-assist {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

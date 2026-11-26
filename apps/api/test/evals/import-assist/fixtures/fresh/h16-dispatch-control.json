@@ -1,0 +1,139 @@
+{
+  "id": "h16-dispatch-control",
+  "scenario": "dispatch-control",
+  "source": "fresh/h16-dispatch-control.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "pair": "fresh-dispatch",
+  "variant": "control",
+  "columns": [
+    {
+      "col": "C1",
+      "header": "采购方",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客商代码",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "A级",
+          "option": "A",
+          "confidence": "high"
+        },
+        {
+          "raw": "C级",
+          "option": "C",
+          "confidence": "high"
+        },
+        {
+          "raw": "B级",
+          "option": "B",
+          "confidence": "high"
+        }
+      ]
+    },
+    {
+      "col": "C4",
+      "header": "装箱标签样稿",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "榆叶纸业",
+        "PT360",
+        "A级",
+        "请印刷「雾蓝色」"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "榆叶纸业",
+        "acct_code": "PT360",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "闻溪木模",
+        "PT361",
+        "C级",
+        "瓷白色"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "闻溪木模",
+        "acct_code": "PT361",
+        "grade": "C"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "云埔电子",
+        "PT362",
+        "B级",
+        "麦金色"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "云埔电子",
+        "acct_code": "PT362",
+        "grade": "B"
+      }
+    }
+  ]
+}

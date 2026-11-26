@@ -1,0 +1,148 @@
+{
+  "id": "d01-literal",
+  "scenario": "literal",
+  "source": "development/d01-literal.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "已签约",
+      "target": {
+        "mode": "field",
+        "field": "enabled"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d01-literal-1",
+        "K-d01-literal-1",
+        "是"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d01-literal-1",
+        "acct_code": "K-d01-literal-1",
+        "enabled": true
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d01-literal-2",
+        "K-d01-literal-2",
+        "N"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d01-literal-2",
+        "acct_code": "K-d01-literal-2",
+        "enabled": false
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d01-literal-3",
+        "K-d01-literal-3",
+        "√"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d01-literal-3",
+        "acct_code": "K-d01-literal-3",
+        "enabled": true
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d01-literal-4",
+        "K-d01-literal-4",
+        "无"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d01-literal-4",
+        "acct_code": "K-d01-literal-4",
+        "enabled": false
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d01-literal-5",
+        "K-d01-literal-5",
+        "true"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d01-literal-5",
+        "acct_code": "K-d01-literal-5",
+        "enabled": true
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": 0,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

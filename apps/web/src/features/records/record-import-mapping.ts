@@ -1,3 +1,4 @@
+import { ownerHeading } from "@crm/contracts/import-heading";
 import {
   selectOptions,
   type PublishedFieldView,
@@ -5,6 +6,8 @@ import {
 import {
   coerceImportValue,
   suggestFieldKey,
+  inferImportDateOrder,
+  isImportNullMarker,
   type ParsedCsv,
 } from "./record-csv";
 import type {
@@ -15,10 +18,7 @@ import type {
 export const SKIP = ":skip";
 export const OWNER = ":owner";
 export const APPEND = ":append:";
-export const ownerHeader = (header: string) =>
-  /负责人|跟进人|销售|业务员|归属/.test(
-    header.normalize("NFKC").replace(/\s/g, ""),
-  );
+export const ownerHeader = ownerHeading;
 export function initialMapping(
   headers: string[],
   fields: PublishedFieldView[],
@@ -40,10 +40,19 @@ export function buildImportRows(input: {
   fields: PublishedFieldView[];
   timeZone?: string;
   dateOrders: Record<number, "DMY" | "MDY" | undefined>;
+  amountUnits?: Record<number, "wan" | "yuan">;
+  valueChoices?: Record<number, ReadonlyMap<string, string | null>>;
   destination: (row: string[]) => ImportDestination;
 }): PlannedImportRow[] {
   const { parsed, mapping, timeZone, dateOrders, destination } = input;
   const fields = new Map(input.fields.map((field) => [field.fieldKey, field]));
+  const orders = mapping.map((key, i) => {
+    if (dateOrders[i]) return dateOrders[i];
+    const field = fields.get(key);
+    if (field?.type !== "DATE" && field?.type !== "DATETIME") return;
+    const inferred = inferImportDateOrder(parsed.rows.map((r) => r[i] ?? ""));
+    if (inferred === "DMY" || inferred === "MDY") return inferred;
+  });
   return parsed.rows.map((row, i) => {
     const planned: PlannedImportRow = {
       rowNumber: parsed.rowNumbers?.[i] ?? i + 2,
@@ -51,16 +60,29 @@ export function buildImportRows(input: {
       destination: destination(row),
     };
     if (planned.destination.kind === "skip") return planned;
-    const errors: string[] = [];
+    const formulaErrors = parsed.formulaErrors?.[planned.rowNumber] ?? [];
+    const errors = formulaErrors.map(
+      (column) =>
+        `${parsed.headers[column] || `第 ${column + 1} 列`}：公式错误 ${row[column]}`,
+    );
+
     for (const [column, key] of mapping.entries()) {
       const field = fields.get(key);
-      if (!field) continue;
+      if (!field || formulaErrors.includes(column)) continue;
+      if (isImportNullMarker(field.type, row[column] ?? "")) {
+        planned.emptyMarkerCount = (planned.emptyMarkerCount ?? 0) + 1;
+      }
       try {
         planned.values[key] = coerceImportValue(
           field.type,
           row[column] ?? "",
           selectOptions(field).filter((option) => option.status === "ACTIVE"),
-          { timeZone, dateOrder: dateOrders[column] },
+          {
+            timeZone,
+            dateOrder: orders[column],
+            bareAmountUnit: input.amountUnits?.[column],
+            valueChoices: input.valueChoices?.[column],
+          },
         );
       } catch (e) {
         errors.push(

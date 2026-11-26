@@ -23,3 +23,16 @@ describe('published AI plan capabilities', () => {
     }
   });
 });
+
+it('offers import assistance independently as a metered data-processing feature', () => {
+  expect(feature.parse('import_assist')).toBe('import_assist');
+  expect(featureCatalog).toContainEqual({
+    key: 'import_assist',
+    label: 'AI 导入',
+    purpose: 'text',
+    group: '数据处理',
+    requires: null,
+    released: true,
+    outputLimit: 4000,
+  });
+});

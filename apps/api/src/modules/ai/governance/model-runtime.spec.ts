@@ -469,3 +469,43 @@ it.each([
     expect(body.input[0].role).toBe('system');
   },
 );
+
+it('disables reasoning for every DeepSeek Responses import request', async () => {
+  const send = mockUpstream(() => new Response(null, { status: 400 }));
+  const provider = new VercelOpenAiProvider({
+    apiKey: 'fixture',
+    modelKey: 'deepseek-flash',
+    baseURL: 'https://api.deepseek.com',
+    protocol: 'responses',
+  });
+  await expect(
+    provider.generateImportAssist(
+      {
+        sheet: '商机',
+        fields: [
+          {
+            ref: 'F17',
+            name: '合同名称',
+            type: 'TEXT',
+            required: true,
+            options: [],
+          },
+        ],
+        columns: [],
+      },
+      {} as never,
+      new AbortController().signal,
+    ),
+  ).rejects.toBeDefined();
+  expect(send).toHaveBeenCalledTimes(1);
+  const body = JSON.parse(send.mock.calls[0][1]?.body as string) as {
+    reasoning?: unknown;
+    max_output_tokens: number;
+    text: { format: { schema: { properties: { matchFields: unknown } } } };
+  };
+  expect(body.reasoning).toEqual({ effort: 'none' });
+  expect(body.max_output_tokens).toBe(4000);
+  expect(body.text.format.schema.properties.matchFields).toMatchObject({
+    items: { enum: ['F17'] },
+  });
+});

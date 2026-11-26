@@ -12,6 +12,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { RuntimeObjectSchema } from "@/features/objects/object-types";
 
 import type { RecordApi } from "./record-api";
+import { importBatchId } from "./record-import-file";
+import * as assistApi from "./record-import-assist-api";
 import { RecordImportDrawer } from "./record-import";
 
 const schema = {
@@ -108,6 +110,7 @@ function setup(
   objectSchema = schema,
   admin = false,
   poolConfig?: import("./record-pool-api").RecordPoolConfig,
+  assistEnabled = false,
 ) {
   const onCompleted = vi.fn();
   const onClose = vi.fn();
@@ -120,6 +123,7 @@ function setup(
         tenantCode="northwind"
         schema={objectSchema}
         canChooseOwner={admin}
+        assistEnabled={assistEnabled}
         poolConfig={poolConfig}
         members={[
           { id: "m1", displayName: "员工甲" },
@@ -143,6 +147,271 @@ async function checkAndImport() {
   fireEvent.click(await screen.findByRole("button", { name: /确认导入/ }));
 }
 describe("RecordImportDrawer", () => {
+  it("uses admin-only fields for local header detection and mapping while excluding them from AI", async () => {
+    const call = vi
+      .spyOn(assistApi, "requestImportAssist")
+      .mockResolvedValueOnce({
+        version: 1,
+        generatedAt: "2026-11-25T00:00:00Z",
+        columns: [],
+        matchFields: [],
+      });
+    const privateField = {
+      ...schema.fields[0],
+      fieldKey: "internal_price",
+      label: "内部底价",
+      importManualOnly: true,
+    };
+    setup(
+      recordApi(),
+      { ...schema, fields: [...schema.fields, privateField] },
+      true,
+      undefined,
+      true,
+    );
+    chooseFile("报价台账\n\n内部底价,客户别称\n987654,样例客户");
+    await screen.findByText("已识别第 3 行为表头，可手动调整");
+    expect(
+      screen.getByLabelText("映射 内部底价").closest(".ant-select"),
+    ).toHaveTextContent("内部底价（仅手动对照）");
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    await waitFor(() => expect(call).toHaveBeenCalled());
+    const request = call.mock.lastCall![2];
+    expect(request.columns[0]).toMatchObject({
+      excluded: true,
+      header: "",
+      samples: [],
+    });
+    expect(JSON.stringify(request)).not.toMatch(
+      /内部底价|internal_price|987654/,
+    );
+    call.mockRestore();
+  });
+
+  it("counts only typed cells treated as empty in the checked plan", async () => {
+    const { api } = setup(recordApi(), schema);
+    chooseFile("姓名,线索状态\nNaN,#N/A\n普通姓名,null");
+    await screen.findByText("2 行 · 2 列");
+    fireEvent.click(await screen.findByRole("button", { name: "检查数据" }));
+    await screen.findByText("已把 2 格 NaN/#N/A 按空值处理");
+    expect(api.importRows).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      expect.objectContaining({
+        rows: [
+          { rowNumber: 2, values: { name: "NaN", lead_status: null } },
+          { rowNumber: 3, values: { name: "普通姓名", lead_status: null } },
+        ],
+      }),
+    );
+  });
+  it("asks for header confirmation when the width fallback selects the header, then applies and restores mappings", async () => {
+    const call = vi
+      .spyOn(assistApi, "requestImportAssist")
+      .mockResolvedValueOnce({
+        version: 1,
+        generatedAt: "2026-11-24T00:00:00Z",
+        matchFields: ["name"],
+        columns: [
+          {
+            col: "C1",
+            target: { mode: "field", field: "name" },
+            confidence: "high",
+            reason: "名称写法相近",
+          },
+          {
+            col: "C2",
+            target: { mode: "field", field: "lead_status" },
+            confidence: "review",
+            reason: "需要核对",
+          },
+        ],
+      });
+    const { api } = setup(recordApi(), schema, false, undefined, true);
+    chooseFile("文件标题\n\n单位名称,客户状态\n第三行测试客户,待联系");
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    await screen.findByText("请确认表头在第几行，当前使用第 3 行");
+    expect(call.mock.calls[0][2]).not.toHaveProperty("candidates");
+    await screen.findByText("1 行 · 2 列");
+    expect(screen.getByRole("button", { name: "检查数据" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: /采\s*用/ }));
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    await screen.findByRole("button", { name: "确认导入 1 行" });
+    expect(api.importRows).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      expect.objectContaining({
+        dryRun: true,
+        matchFields: ["name"],
+        rows: [
+          {
+            rowNumber: 4,
+            values: { name: "第三行测试客户", lead_status: "new" },
+          },
+        ],
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "恢复到 AI 之前的对照" }),
+    );
+    await screen.findByText("1 行 · 2 列");
+    expect(
+      screen.queryByRole("button", { name: "确认导入 1 行" }),
+    ).not.toBeInTheDocument();
+    expect(call).toHaveBeenCalledTimes(1);
+    call.mockRestore();
+  });
+  it.each([
+    ["OBJECT_ACTION_FORBIDDEN", true],
+    ["AI_FEATURE_NOT_ENTITLED", false],
+  ] as const)(
+    "handles 403 %s at the original import gate",
+    async (code, revoked) => {
+      const call = vi
+        .spyOn(assistApi, "requestImportAssist")
+        .mockRejectedValueOnce({
+          status: 403,
+          code,
+          message: "权限已变更",
+          requestId: "r",
+        });
+      setup(recordApi(), schema, false, undefined, true);
+      chooseFile("姓名,客户等级\n" + code + ",B级");
+      fireEvent.click(
+        await screen.findByRole("button", { name: "AI 帮我对列" }),
+      );
+      await screen.findByText(
+        revoked ? "当前已无导入权限，请关闭抽屉" : "权限已变更 手动对照已保留",
+      );
+      expect(screen.queryByLabelText("映射 姓名") === null).toBe(revoked);
+      if (revoked)
+        expect(
+          screen.queryByRole("button", { name: "检查数据" }),
+        ).not.toBeInTheDocument();
+      else
+        expect(screen.getByRole("button", { name: "检查数据" })).toBeEnabled();
+      call.mockRestore();
+    },
+  );
+  it("keeps a manual mapping made while a late response is in flight", async () => {
+    let finish!: (
+      p: Awaited<ReturnType<typeof assistApi.requestImportAssist>>,
+    ) => void;
+    const call = vi
+      .spyOn(assistApi, "requestImportAssist")
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+    const { api } = setup(recordApi(), schema, false, undefined, true);
+    chooseFile("姓名,客户状态\n本地客户,待联系");
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    fireEvent.mouseDown(screen.getByLabelText("映射 客户状态"));
+    fireEvent.click(await screen.findByText("线索状态 · 单选"));
+    expect(call.mock.calls[0][3].aborted).toBe(true);
+    finish({
+      version: 1,
+      generatedAt: "",
+      matchFields: [],
+      columns: [
+        {
+          col: "C2",
+          target: { mode: "skip" },
+          confidence: "high",
+          reason: "跳过",
+        },
+      ],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    await screen.findByRole("button", { name: "确认导入 1 行" });
+    expect(api.importRows).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      expect.objectContaining({
+        rows: [
+          { rowNumber: 2, values: { name: "本地客户", lead_status: "new" } },
+        ],
+      }),
+    );
+    call.mockRestore();
+  });
+  it("preserves a manual choice after a timeout and retries only on click", async () => {
+    const call = vi
+      .spyOn(assistApi, "requestImportAssist")
+      .mockRejectedValueOnce({
+        status: 504,
+        code: "AI_PROVIDER_TIMEOUT",
+        message: "超时",
+        requestId: "test",
+      })
+      .mockResolvedValueOnce({
+        version: 1,
+        generatedAt: "",
+        columns: [],
+        matchFields: [],
+      });
+    setup(recordApi(), schema, false, undefined, true);
+    chooseFile("姓名,客户状态,企业名称\n时限测试,待联系,一家企业");
+    fireEvent.mouseDown(await screen.findByLabelText("映射 客户状态"));
+    fireEvent.click(await screen.findByText("线索状态 · 单选"));
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    await screen.findByText("AI 这次没来得及给出建议，可以手动对照或再试一次");
+    expect(call).toHaveBeenCalledTimes(1);
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    await waitFor(() => expect(call).toHaveBeenCalledTimes(2));
+    expect(call.mock.calls[1][2]).toEqual(call.mock.calls[0][2]);
+    call.mockRestore();
+  });
+  it("honors a file attempt from before this tab was reloaded", async () => {
+    const csv = "姓名,客户状态\n回到导入页,待联系";
+    const identity = await importBatchId(new TextEncoder().encode(csv), "");
+    sessionStorage.setItem(
+      "crm.importAssist." + JSON.stringify(["northwind", null, identity]),
+      "1",
+    );
+    setup(recordApi(), schema, false, undefined, true);
+    chooseFile(csv);
+    await screen.findByText("1 行 · 2 列");
+    expect(
+      screen.queryByRole("button", { name: "AI 帮我对列" }),
+    ).not.toBeInTheDocument();
+  });
+  it("calls once per file after cancellation and ignores the late plan", async () => {
+    let finish!: (
+      plan: Awaited<ReturnType<typeof assistApi.requestImportAssist>>,
+    ) => void;
+    const call = vi
+      .spyOn(assistApi, "requestImportAssist")
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+    setup(recordApi(), schema, false, undefined, true);
+    const csv = "姓名,客户等级\n客户甲,A类";
+    chooseFile(csv);
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    expect(call).toHaveBeenCalledTimes(1);
+    fireEvent.click(await screen.findByRole("button", { name: "取消生成" }));
+    expect(call.mock.calls[0][3].aborted).toBe(true);
+    finish({
+      version: 1,
+      generatedAt: "",
+      columns: [],
+      matchFields: [],
+    });
+    chooseFile(csv, "renamed.csv");
+    await screen.findByText("1 行 · 2 列");
+    expect(
+      screen.queryByRole("button", { name: "AI 帮我对列" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "检查数据" })).toBeEnabled();
+    expect(call).toHaveBeenCalledTimes(1);
+    call.mockRestore();
+  });
   it("lists every conversion error on the physical source row", async () => {
     const { api } = setup(recordApi(), {
       ...schema,
@@ -306,7 +575,9 @@ describe("RecordImportDrawer", () => {
       screen.getByText(/已成功导入 100 行，数据已保留/),
     ).toBeInTheDocument();
     expect(screen.queryByText(/请求中断/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "检查剩余行" })).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: "检查剩余行" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not offer employees an owner override", () => {
@@ -583,7 +854,7 @@ it("uses physical row three, appends two columns after the original note and kee
     ],
   });
   chooseFile(
-    "业务底表\n\n姓名,备注,来源渠道,客户评价,销售\n张三,待联系,展会,满意,员工乙",
+    "业务底表\n\n姓名,备注,来源渠道,客户评价,销售员\n张三,待联系,展会,满意,员工乙",
   );
   await screen.findByText(/已识别第 3 行为表头/);
   expect(screen.getByText(/仅公司管理员可按行指定负责人/)).toBeInTheDocument();

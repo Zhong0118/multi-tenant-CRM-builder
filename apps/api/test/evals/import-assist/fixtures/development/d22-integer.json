@@ -1,0 +1,124 @@
+{
+  "id": "d22-integer",
+  "scenario": "integer",
+  "source": "development/d22-integer.xlsx",
+  "sheetName": "名单",
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "户名",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "订购数量",
+      "target": {
+        "mode": "field",
+        "field": "units"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d22-integer-1",
+        "3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d22-integer-1",
+        "units": 3
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d22-integer-2",
+        "1,000"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d22-integer-2",
+        "units": 1000
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d22-integer-3",
+        "12,00"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "FAILED",
+      "reason": "invalidNumber"
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d22-integer-4",
+        "0"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d22-integer-4",
+        "units": 0
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d22-integer-5",
+        "5.5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d22-integer-5",
+        "units": 5.5
+      }
+    }
+  ],
+  "matchFields": [],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

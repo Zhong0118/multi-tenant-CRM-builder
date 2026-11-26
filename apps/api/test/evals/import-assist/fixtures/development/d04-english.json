@@ -1,0 +1,148 @@
+{
+  "id": "d04-english",
+  "scenario": "english",
+  "source": "development/d04-english.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "Account",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "Reference",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "Quantity",
+      "target": {
+        "mode": "field",
+        "field": "units"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d04-english-1",
+        "K-d04-english-1",
+        "5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d04-english-1",
+        "acct_code": "K-d04-english-1",
+        "units": 5
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d04-english-2",
+        "K-d04-english-2",
+        "6"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d04-english-2",
+        "acct_code": "K-d04-english-2",
+        "units": 6
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-d04-english-3",
+        "K-d04-english-3",
+        "7"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d04-english-3",
+        "acct_code": "K-d04-english-3",
+        "units": 7
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d04-english-4",
+        "K-d04-english-4",
+        "8"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d04-english-4",
+        "acct_code": "K-d04-english-4",
+        "units": 8
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d04-english-5",
+        "K-d04-english-5",
+        "9"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d04-english-5",
+        "acct_code": "K-d04-english-5",
+        "units": 9
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

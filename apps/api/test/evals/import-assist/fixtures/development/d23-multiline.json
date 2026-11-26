@@ -1,0 +1,162 @@
+{
+  "id": "d23-multiline",
+  "scenario": "multiline",
+  "source": "development/d23-multiline.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "客户名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "备注",
+      "target": {
+        "mode": "field",
+        "field": "memo"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "补充说明",
+      "target": {
+        "mode": "append",
+        "field": "memo"
+      },
+      "confidence": "review"
+    },
+    {
+      "col": "C4",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d23-multiline-1",
+        "试单,注明\"回拨\"\n周五沟通",
+        "试单,注明\"回拨\"\n周五沟通",
+        "K-d23-multiline-1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d23-multiline-1",
+        "memo": "试单,注明\"回拨\"\n周五沟通\n补充说明：试单,注明\"回拨\" 周五沟通",
+        "acct_code": "K-d23-multiline-1"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d23-multiline-2",
+        "已记录2",
+        "追加样本2",
+        "K-d23-multiline-2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d23-multiline-2",
+        "memo": "已记录2\n补充说明：追加样本2",
+        "acct_code": "K-d23-multiline-2"
+      }
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "松川商社-d23-multiline-3",
+        "已记录3",
+        "追加样本3",
+        "K-d23-multiline-3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d23-multiline-3",
+        "memo": "已记录3\n补充说明：追加样本3",
+        "acct_code": "K-d23-multiline-3"
+      }
+    },
+    {
+      "rowNumber": 8,
+      "cells": [
+        "松川商社-d23-multiline-4",
+        "已记录4",
+        "追加样本4",
+        "K-d23-multiline-4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d23-multiline-4",
+        "memo": "已记录4\n补充说明：追加样本4",
+        "acct_code": "K-d23-multiline-4"
+      }
+    },
+    {
+      "rowNumber": 9,
+      "cells": [
+        "松川商社-d23-multiline-5",
+        "已记录5",
+        "追加样本5",
+        "K-d23-multiline-5"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d23-multiline-5",
+        "memo": "已记录5\n补充说明：追加样本5",
+        "acct_code": "K-d23-multiline-5"
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ]
+}

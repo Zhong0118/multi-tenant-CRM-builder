@@ -444,6 +444,7 @@ export function RecordList({
       ? `搜索${searchFieldLabels.join("、")}`
       : `搜索${schema.object.name}标题`;
 
+  const importAssist = useAiFeature("import_assist", false);
   const communication = useAiFeature("communication");
   const canCommunicate = (row: RecordSummary) =>
     communication && canEditRecord(schema, row, currentMemberId, canFilterByOwner);
@@ -1330,8 +1331,13 @@ export function RecordList({
           </div>
         </footer>
 
+        {importOpen && !canImport && (
+          <Alert type="warning" showIcon title="当前已无导入权限" />
+        )}
         {canImport && importOpen ? (
           <RecordImportDrawer
+            assistEnabled={importAssist}
+            memberKey={currentMemberId}
             timeZone={page.timeZone ?? undefined}
             tenantCode={tenantCode}
             schema={schema}

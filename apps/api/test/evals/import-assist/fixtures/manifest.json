@@ -1,0 +1,245 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "split": "development",
+      "id": "d01-literal",
+      "source": "development/d01-literal.csv",
+      "answer": "development/d01-literal.json"
+    },
+    {
+      "split": "development",
+      "id": "d02-rule-title",
+      "source": "development/d02-rule-title.xls",
+      "answer": "development/d02-rule-title.json"
+    },
+    {
+      "split": "development",
+      "id": "d03-synonyms",
+      "source": "development/d03-synonyms.xlsx",
+      "answer": "development/d03-synonyms.json"
+    },
+    {
+      "split": "development",
+      "id": "d04-english",
+      "source": "development/d04-english.csv",
+      "answer": "development/d04-english.json"
+    },
+    {
+      "split": "development",
+      "id": "d05-wrong-neighbours",
+      "source": "development/d05-wrong-neighbours.xls",
+      "answer": "development/d05-wrong-neighbours.json"
+    },
+    {
+      "split": "development",
+      "id": "d06-rating",
+      "source": "development/d06-rating.xlsx",
+      "answer": "development/d06-rating.json"
+    },
+    {
+      "split": "development",
+      "id": "d07-notes",
+      "source": "development/d07-notes.csv",
+      "answer": "development/d07-notes.json"
+    },
+    {
+      "split": "development",
+      "id": "d08-european",
+      "source": "development/d08-european.xls",
+      "answer": "development/d08-european.json"
+    },
+    {
+      "split": "development",
+      "id": "d09-american",
+      "source": "development/d09-american.xlsx",
+      "answer": "development/d09-american.json"
+    },
+    {
+      "split": "development",
+      "id": "d10-wan",
+      "source": "development/d10-wan.csv",
+      "answer": "development/d10-wan.json"
+    },
+    {
+      "split": "development",
+      "id": "d11-privacy",
+      "source": "development/d11-privacy.xls",
+      "answer": "development/d11-privacy.json"
+    },
+    {
+      "split": "development",
+      "id": "d12-projection",
+      "source": "development/d12-projection.xlsx",
+      "answer": "development/d12-projection.json"
+    },
+    {
+      "split": "development",
+      "id": "d13-clean-pair",
+      "source": "development/d13-clean-pair.csv",
+      "answer": "development/d13-clean-pair.json"
+    },
+    {
+      "split": "development",
+      "id": "d14-inject-pair",
+      "source": "development/d14-inject-pair.csv",
+      "answer": "development/d14-inject-pair.json"
+    },
+    {
+      "split": "development",
+      "id": "d15-wide-orders",
+      "source": "development/d15-wide-orders.xls",
+      "answer": "development/d15-wide-orders.json"
+    },
+    {
+      "split": "development",
+      "id": "d16-wide-partners",
+      "source": "development/d16-wide-partners.xlsx",
+      "answer": "development/d16-wide-partners.json"
+    },
+    {
+      "split": "development",
+      "id": "d17-ambiguous",
+      "source": "development/d17-ambiguous.csv",
+      "answer": "development/d17-ambiguous.json"
+    },
+    {
+      "split": "development",
+      "id": "d18-tags",
+      "source": "development/d18-tags.xls",
+      "answer": "development/d18-tags.json"
+    },
+    {
+      "split": "development",
+      "id": "d19-staff",
+      "source": "development/d19-staff.xlsx",
+      "answer": "development/d19-staff.json"
+    },
+    {
+      "split": "development",
+      "id": "d20-assign",
+      "source": "development/d20-assign.csv",
+      "answer": "development/d20-assign.json"
+    },
+    {
+      "split": "development",
+      "id": "d21-invalid-date",
+      "source": "development/d21-invalid-date.xls",
+      "answer": "development/d21-invalid-date.json"
+    },
+    {
+      "split": "development",
+      "id": "d22-integer",
+      "source": "development/d22-integer.xlsx",
+      "answer": "development/d22-integer.json"
+    },
+    {
+      "split": "development",
+      "id": "d23-multiline",
+      "source": "development/d23-multiline.csv",
+      "answer": "development/d23-multiline.json"
+    },
+    {
+      "split": "development",
+      "id": "d24-excel-format",
+      "source": "development/d24-excel-format.xls",
+      "answer": "development/d24-excel-format.json"
+    },
+    {
+      "split": "development",
+      "id": "d25-boundary50",
+      "source": "development/d25-boundary50.xlsx",
+      "answer": "development/d25-boundary50.json"
+    },
+    {
+      "split": "development",
+      "id": "d26-boundary51",
+      "source": "development/d26-boundary51.csv",
+      "answer": "development/d26-boundary51.json"
+    },
+    {
+      "split": "development",
+      "id": "d27-duplicates",
+      "source": "development/d27-duplicates.xls",
+      "answer": "development/d27-duplicates.json"
+    },
+    {
+      "split": "development",
+      "id": "d28-sparse",
+      "source": "development/d28-sparse.xlsx",
+      "answer": "development/d28-sparse.json"
+    },
+    {
+      "split": "development",
+      "id": "d29-timestamp",
+      "source": "development/d29-timestamp.csv",
+      "answer": "development/d29-timestamp.json"
+    },
+    {
+      "split": "development",
+      "id": "d30-required-rating",
+      "source": "development/d30-required-rating.xlsx",
+      "answer": "development/d30-required-rating.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h01-rule-title",
+      "source": "holdout/h01-rule-title.xlsx",
+      "answer": "holdout/h01-rule-title.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h02-private-wide",
+      "source": "holdout/h02-private-wide.xls",
+      "answer": "holdout/h02-private-wide.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h03-dictionary",
+      "source": "holdout/h03-dictionary.csv",
+      "answer": "holdout/h03-dictionary.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h04-clean-pair",
+      "source": "holdout/h04-clean-pair.xlsx",
+      "answer": "holdout/h04-clean-pair.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h05-inject-pair",
+      "source": "holdout/h05-inject-pair.xlsx",
+      "answer": "holdout/h05-inject-pair.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h06-regional",
+      "source": "holdout/h06-regional.csv",
+      "answer": "holdout/h06-regional.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h07-assign",
+      "source": "holdout/h07-assign.xls",
+      "answer": "holdout/h07-assign.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h08-wide-ledger",
+      "source": "holdout/h08-wide-ledger.csv",
+      "answer": "holdout/h08-wide-ledger.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h09-boundary51",
+      "source": "holdout/h09-boundary51.xlsx",
+      "answer": "holdout/h09-boundary51.json"
+    },
+    {
+      "split": "holdout",
+      "id": "h10-staff",
+      "source": "holdout/h10-staff.xls",
+      "answer": "holdout/h10-staff.json"
+    }
+  ]
+}

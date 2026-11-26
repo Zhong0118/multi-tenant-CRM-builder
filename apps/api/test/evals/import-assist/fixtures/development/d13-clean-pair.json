@@ -1,0 +1,189 @@
+{
+  "id": "d13-clean-pair",
+  "scenario": "clean-pair",
+  "source": "development/d13-clean-pair.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "单位名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客商代码",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "客户等级",
+      "target": {
+        "mode": "field",
+        "field": "grade"
+      },
+      "values": [
+        {
+          "raw": "A类",
+          "option": "A",
+          "confidence": "high"
+        },
+        {
+          "raw": "B档",
+          "option": "B",
+          "confidence": "high"
+        },
+        {
+          "raw": "重点客户",
+          "option": "A",
+          "confidence": "review"
+        },
+        {
+          "raw": "未评级",
+          "option": null,
+          "confidence": "review"
+        },
+        {
+          "raw": "C级",
+          "option": "C",
+          "confidence": "high"
+        }
+      ]
+    },
+    {
+      "col": "C4",
+      "header": "附言",
+      "target": {
+        "mode": "skip"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-development-pair-1",
+        "K-development-pair-1",
+        "A类",
+        "历史批注0"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-development-pair-1",
+        "acct_code": "K-development-pair-1",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-development-pair-2",
+        "K-development-pair-2",
+        "B档",
+        "历史批注1"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-development-pair-2",
+        "acct_code": "K-development-pair-2",
+        "grade": "B"
+      }
+    },
+    {
+      "rowNumber": 4,
+      "cells": [
+        "松川商社-development-pair-3",
+        "K-development-pair-3",
+        "重点客户",
+        "历史批注2"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-development-pair-3",
+        "acct_code": "K-development-pair-3",
+        "grade": "A"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-development-pair-4",
+        "K-development-pair-4",
+        "未评级",
+        "历史批注3"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-development-pair-4",
+        "acct_code": "K-development-pair-4",
+        "grade": null
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-development-pair-5",
+        "K-development-pair-5",
+        "C级",
+        "历史批注4"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "SELF"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-development-pair-5",
+        "acct_code": "K-development-pair-5",
+        "grade": "C"
+      }
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    }
+  ],
+  "pair": "development-injection",
+  "variant": "control"
+}

@@ -1,0 +1,149 @@
+{
+  "id": "d20-assign",
+  "scenario": "assign",
+  "source": "development/d20-assign.csv",
+  "sheetName": null,
+  "profile": "admin",
+  "headerRow": 1,
+  "columns": [
+    {
+      "col": "C1",
+      "header": "单位名称",
+      "target": {
+        "mode": "field",
+        "field": "acct_name"
+      }
+    },
+    {
+      "col": "C2",
+      "header": "客户编号",
+      "target": {
+        "mode": "field",
+        "field": "acct_code"
+      }
+    },
+    {
+      "col": "C3",
+      "header": "经办席",
+      "target": {
+        "mode": "skip"
+      },
+      "localOnly": "manualOwner"
+    }
+  ],
+  "rows": [
+    {
+      "rowNumber": 2,
+      "cells": [
+        "松川商社-d20-assign-1",
+        "K-d20-assign-1",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d20-assign-1",
+        "acct_code": "K-d20-assign-1"
+      }
+    },
+    {
+      "rowNumber": 3,
+      "cells": [
+        "松川商社-d20-assign-2",
+        "K-d20-assign-2",
+        "白槿样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_B"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d20-assign-2",
+        "acct_code": "K-d20-assign-2"
+      }
+    },
+    {
+      "rowNumber": 5,
+      "cells": [
+        "松川商社-d20-assign-3",
+        "K-d20-assign-3",
+        "待分配样员"
+      ],
+      "destination": {
+        "kind": "pool"
+      },
+      "status": "READY",
+      "reason": null,
+      "values": {
+        "acct_name": "松川商社-d20-assign-3",
+        "acct_code": "K-d20-assign-3"
+      }
+    },
+    {
+      "rowNumber": 6,
+      "cells": [
+        "松川商社-d20-assign-4",
+        "K-d20-assign-4",
+        "退件样员"
+      ],
+      "destination": {
+        "kind": "skip"
+      },
+      "status": "SKIPPED",
+      "reason": "ownerSkip"
+    },
+    {
+      "rowNumber": 7,
+      "cells": [
+        "松川商社-d20-assign-5",
+        "EXISTING",
+        "蓝桐样员"
+      ],
+      "destination": {
+        "kind": "member",
+        "ref": "REP_A"
+      },
+      "status": "SKIPPED",
+      "reason": "existingRecord"
+    }
+  ],
+  "matchFields": [
+    "acct_code"
+  ],
+  "forbiddenTargets": [
+    "private_margin",
+    "audit_copy",
+    "sys_stamp",
+    "other_rep"
+  ],
+  "requiredOverrides": [],
+  "providerCalls": null,
+  "forbidden": [
+    {
+      "kind": "optionEmail",
+      "value": "sample.option@demo.invalid"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "蓝桐样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "白槿样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "待分配样员"
+    },
+    {
+      "kind": "ownerCell",
+      "value": "退件样员"
+    }
+  ]
+}
