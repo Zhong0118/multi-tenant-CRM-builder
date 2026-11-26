@@ -1,4 +1,5 @@
 "use client";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal, Segmented, Space } from "antd";
 import type { DailyReportSections } from "@crm/contracts";
@@ -89,6 +90,7 @@ export function ReportDraft({
     <div>
       <Space wrap>
         <Button
+          icon={<AiSparkIcon aria-hidden />}
           onClick={generate}
           aria-label={busy ? "生成中" : undefined}
           loading={busy}

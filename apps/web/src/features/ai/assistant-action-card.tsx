@@ -1,5 +1,6 @@
 "use client";
 
+import { AiBadge } from "@/components/ai/ai-badge";
 import { SalesWriting } from "./sales-writing";
 import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import { useContext, useState } from "react";
@@ -49,7 +50,10 @@ function CommunicationCard({
   });
   return (
     <section className={styles.card}>
-      <h3>本次沟通草稿</h3>
+      <h3 className={styles.batchHeading}>
+        <AiBadge>AI 生成</AiBadge>
+        <span>本次沟通草稿</span>
+      </h3>
       {card.isError ? (
         <Button onClick={() => void card.refetch()}>重新读取草稿</Button>
       ) : card.data ? (
@@ -109,7 +113,10 @@ export function AssistantActionCard({
   const rule = preview.kind === "rule" ? preview.rule : choice?.value;
   return (
     <section className={styles.card} aria-label="筛选预览">
-      <h3>筛选预览</h3>
+      <h3 className={styles.batchHeading}>
+        <AiBadge>AI 生成</AiBadge>
+        <span>筛选预览</span>
+      </h3>
       {preview.kind === "unavailable" && <p>无法生成可用条件，请调整描述</p>}
       {preview.kind === "clarify" && (
         <PreviewChoices

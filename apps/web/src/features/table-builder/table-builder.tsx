@@ -286,7 +286,9 @@ export function TableBuilder({
     !blueprint?.tables.length;
   const manual = draft ? base + "/" + draft.object.id : base + "/new";
   return (
-    <Page width="editor">
+    // Same 1040px column as the other company-admin pages, so the shell
+    // keeps one left edge; the plan fits without the editor width.
+    <Page width="settings">
       <div className={styles.builder}>
         <PageHeader
           title={draft ? "用 AI 补充字段" : "AI 建表"}

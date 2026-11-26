@@ -4,6 +4,7 @@ import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useTenantTimezone } from "@/features/follow-ups/use-tenant-timezone";
 import { savedFollowUpLabel } from "@/features/records/draft-follow-up-date";
+import { CheckCircleFilled, ClockCircleOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import Link from "next/link";
 import { AiBadge } from "@/components/ai/ai-badge";
@@ -161,9 +162,31 @@ export function AssistantBatchCard({
     >
       <h3 className={styles.batchHeading}>
         <AiBadge>AI 提议</AiBadge>
-        <span>{heading}</span>
+        {/* A settled batch shows its outcome as a mark too, so open, done and
+            lapsed cards differ even at a glance. */}
+        <span
+          className={styles.batchOutcome}
+          data-outcome={open ? "open" : executed ? "executed" : "none"}
+        >
+          {!open &&
+            (executed ? (
+              <CheckCircleFilled aria-hidden />
+            ) : (
+              <ClockCircleOutlined aria-hidden />
+            ))}
+          {heading}
+        </span>
       </h3>
       {sharedTarget && <p className={styles.batchTarget}>{sharedTarget}</p>}
+      {!open && (
+        // The answer above was written before the decision and may still
+        // say "待确认"; the card is the current state.
+        <p className={styles.batchTarget}>
+          {executed
+            ? "上面的回答写于你确认之前，修改已按这张卡写入。"
+            : "上面的回答写于提议时，这些修改没有写入。"}
+        </p>
+      )}
       {!canWrite && batch.items.some(item=>item.status==="PROPOSED") && <AccessReason />}
       <ProposalReviewCard
         selectedKeys={selected}
@@ -224,6 +247,7 @@ export function AssistantBatchCard({
               ? operationLabels[item.operation]
               : item.targetSummary || item.title,
             locked: !actionable,
+            settled: result?.status === "EXECUTED",
             render: () => (
               <>
                 <div className={styles.meta}>

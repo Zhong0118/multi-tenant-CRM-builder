@@ -155,7 +155,7 @@ describe("AiProposalCard", () => {
           }}
         />,
       );
-      const label = screen.getByText("关联 Record");
+      const label = screen.getByText("关联记录");
       const row = label.closest("div");
       expect(row).not.toBeNull();
       expect(

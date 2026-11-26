@@ -196,3 +196,19 @@ it("ignores an old file that finishes after a newer selection", async () => {
     expect(screen.getByLabelText("第 1 列字段名称")).toHaveValue("新字段"),
   );
 });
+
+it("puts a taken code under its input without a second banner", async () => {
+  const { api } = setupFileCreate();
+  vi.mocked(api.createDraft).mockRejectedValue({
+    code: "VALIDATION_FAILED",
+    message: "业务表创建失败",
+    fieldErrors: { code: ["业务表代码已被占用。"] },
+    requestId: "req_taken",
+    status: 400,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "创建业务表草稿" }));
+  expect(await screen.findByText("业务表代码已被占用。")).toBeInTheDocument();
+  expect(screen.getByLabelText("业务表代码")).toHaveFocus();
+  expect(screen.queryByText(/req_taken/)).not.toBeInTheDocument();
+  expect(screen.queryByText("业务表创建失败")).not.toBeInTheDocument();
+});

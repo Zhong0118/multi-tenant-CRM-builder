@@ -11,6 +11,8 @@ export interface ReviewItem {
   evidence?: string;
   error?: string;
   locked?: boolean;
+  /** Just written in this session: the row plays its "done" transition. */
+  settled?: boolean;
   render: (edit: (value: unknown) => void, disabled: boolean) => ReactNode;
 }
 
@@ -131,7 +133,11 @@ export function ProposalReviewCard({
               </details>
             );
           return (
-            <div key={item.key} className={onSelect ? styles.item : undefined}>
+            <div
+              key={item.key}
+              className={onSelect ? styles.item : undefined}
+              data-settled={item.settled || undefined}
+            >
               {controls}
             </div>
           );

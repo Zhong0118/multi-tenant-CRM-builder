@@ -1,5 +1,7 @@
 "use client";
 
+import { AiBadge } from "@/components/ai/ai-badge";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { useAiFeature } from "@/features/ai-governance/access";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Input, Modal } from "antd";
@@ -470,6 +472,7 @@ export function CommunicationDraftDialog({
             <div className={styles.actions}>
               <Button
                 type="primary"
+                icon={<AiSparkIcon aria-hidden />}
                 loading={busy}
                 aria-label={busy ? "正在整理…" : "生成草稿"}
                 disabled={busy || !source.trim()}
@@ -515,6 +518,14 @@ export function CommunicationDraftDialog({
               <summary>沟通原文</summary>
               <p>{draft.text}</p>
             </details>
+            {/* What AI drafted, marked the same way as proposals in the
+                assistant; a fallback is the user's own text, so no mark. */}
+            {draft.status !== "FALLBACK" && (
+              <h3 className={styles.draftHeading}>
+                <AiBadge>AI 提议</AiBadge>
+                <span>核对 {items.length} 项建议，可以只保存其中几项</span>
+              </h3>
+            )}
             <ProposalReviewCard
               items={items}
               selectedKeys={selected}

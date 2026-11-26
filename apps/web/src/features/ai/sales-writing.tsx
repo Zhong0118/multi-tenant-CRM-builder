@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useId, useRef } from "react";
 import { Alert, Button, Drawer, Input, Select, Space } from "antd";
-import { CopyOutlined, EditOutlined } from "@ant-design/icons";
+import { CopyOutlined } from "@ant-design/icons";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import type { WritingOptions } from "@crm/contracts";
 import { recordApi } from "@/features/records/record-api";
 import { RecordActivityTimeline } from "@/features/records/record-activity-timeline";
@@ -185,7 +186,7 @@ export function SalesWriting({
       <Space wrap>
         <Button
           type={draft ? "default" : "primary"}
-          icon={<EditOutlined aria-hidden />}
+          icon={<AiSparkIcon aria-hidden />}
           aria-label={
             pending === "writing" ? "生成中" : draft ? "按当前选项生成" : "生成"
           }

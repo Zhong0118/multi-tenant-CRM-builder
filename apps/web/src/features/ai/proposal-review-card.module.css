@@ -119,6 +119,17 @@
   font-size: 12px;
   line-height: 18px;
 }
+.draftHeading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -170,6 +181,19 @@
 .item {
   animation: appear 160ms ease both;
 }
+/* Confirm -> written: the row the user just confirmed glows success once and
+   fades back, while its badge settles in (see .statusBadge). */
+.item[data-settled] {
+  animation: settled 1400ms ease-out both;
+}
+@keyframes settled {
+  0% {
+    background: var(--color-success-soft);
+  }
+  100% {
+    background: transparent;
+  }
+}
 .dialog button {
   transition:
     transform 150ms,
@@ -191,6 +215,7 @@
 @media (prefers-reduced-motion: reduce) {
   .dialog,
   .item,
+  .item[data-settled],
   .dialog button {
     animation: none;
     transition: none;

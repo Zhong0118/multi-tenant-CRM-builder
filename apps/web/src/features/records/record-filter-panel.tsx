@@ -6,7 +6,6 @@ import {
   FilterOutlined,
   PlusOutlined,
   UndoOutlined,
-  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { Button, Popover, Select } from "antd";
 import {
@@ -31,6 +30,8 @@ import {
   selectOptions,
   type RuntimeObjectSchema,
 } from "@/features/objects/object-types";
+import { AiBadge } from "@/components/ai/ai-badge";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { usePublishEditorDraft } from "@/features/ai/assistant-filter-draft";
 import { PreviewChoices } from "@/components/forms/preview-choices";
 import type { DynamicFieldMember } from "./dynamic-field";
@@ -397,7 +398,7 @@ function FilterEditor(props: RecordFilterPanelProps) {
             }}
           />
           <Button
-            icon={<ThunderboltOutlined aria-hidden />}
+            icon={<AiSparkIcon aria-hidden />}
             loading={pending}
             disabled={nested || !ready || !text.trim()}
             onClick={() => void generate()}
@@ -533,7 +534,18 @@ function FilterEditor(props: RecordFilterPanelProps) {
       )}
       {before && (
         <div className={styles.previewStatus}>
-          <span role="status">{edited ? "已编辑" : "已生成"} · 尚未应用</span>
+          {/* Conditions AI wrote carry the AI mark until the user edits
+              them; either way nothing is applied yet. */}
+          <span role="status" className={styles.previewState}>
+            {edited ? (
+              <span>已编辑 · 尚未应用</span>
+            ) : (
+              <>
+                <AiBadge>AI 生成</AiBadge>
+                <span>尚未应用</span>
+              </>
+            )}
+          </span>
           <Button
             type="text"
             size="small"

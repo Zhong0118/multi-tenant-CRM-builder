@@ -208,6 +208,20 @@
   gap: 8px;
   align-items: center;
 }
+.batchOutcome {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.batchOutcome[data-outcome="executed"] :global(.anticon) {
+  color: var(--color-success);
+}
+.batchOutcome[data-outcome="none"] {
+  color: var(--text-secondary);
+}
+.batchOutcome[data-outcome="none"] :global(.anticon) {
+  color: var(--text-tertiary);
+}
 .batchTarget {
   margin-top: -4px;
   color: var(--text-secondary);

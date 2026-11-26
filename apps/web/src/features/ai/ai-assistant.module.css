@@ -521,6 +521,7 @@
 
 .proposalHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .proposalHeader strong { color: var(--text-primary); font-weight: 600; }
+.proposalTitle { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .proposalOperation { display: block; margin-top: 2px; color: var(--text-tertiary); font-size: 12px; }
 .proposalTarget { margin: 0; color: var(--text-secondary); font-size: 13px; }
 .proposalChanges { margin: 0; padding: 0; }
@@ -559,6 +560,37 @@
 .statusBadge[data-status="EXECUTED"] {
   background: var(--color-success-soft);
   color: var(--color-success);
+}
+
+.statusBadge[data-status="EXECUTED"]::before {
+  content: "✓";
+  margin-inline-end: 3px;
+  font-weight: 700;
+}
+
+/* Just confirmed: the badge swaps in with a small settle, not a cut. */
+[data-settled] .statusBadge[data-status="EXECUTED"] {
+  animation: badgeSettle 360ms cubic-bezier(0.2, 0.8, 0.2, 1.2) both;
+}
+
+@keyframes badgeSettle {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-settled] .statusBadge[data-status="EXECUTED"] {
+    animation: none;
+  }
 }
 
 .statusBadge[data-status="FAILED"],

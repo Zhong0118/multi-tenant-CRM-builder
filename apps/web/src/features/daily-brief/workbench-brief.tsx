@@ -137,6 +137,7 @@ export function BriefSuggestions({
                   )}
                   <Button
                     size="small"
+                    icon={<AiSparkIcon aria-hidden />}
                     disabled={
                       !hasCandidates || !data.remaining || data.busy || pending
                     }

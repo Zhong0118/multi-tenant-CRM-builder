@@ -99,18 +99,28 @@ export function RecordForm({
     },
     onError: (caught) => {
       const apiError = toApiError(caught);
-      setSummary(`${apiError.message}（请求编号：${apiError.requestId}）`);
-      setConflicted(
-        apiError.code === "RECORD_VERSION_CONFLICT" || apiError.status === 409,
+      const conflict =
+        apiError.code === "RECORD_VERSION_CONFLICT" || apiError.status === 409;
+      const errors = Object.fromEntries(
+        Object.entries(apiError.fieldErrors).map(([key, messages]) => [
+          key,
+          messages.join("；"),
+        ]),
       );
-      setFieldErrors(
-        Object.fromEntries(
-          Object.entries(apiError.fieldErrors).map(([key, messages]) => [
-            key,
-            messages.join("；"),
-          ]),
-        ),
-      );
+      const marked = fields.filter((field) => errors[field.fieldKey]);
+      setConflicted(conflict);
+      setFieldErrors(errors);
+      if (!conflict && marked.length > 0) {
+        // The reasons sit under each field; up here only say which ones, so
+        // a long form can be scanned without a request id to decode.
+        setSummary(
+          `有 ${marked.length} 个字段需要修改：${marked
+            .map((field) => field.label)
+            .join("、")}。原因已标在字段下方。`,
+        );
+        focusField(marked[0].fieldKey);
+      } else
+        setSummary(`${apiError.message}（请求编号：${apiError.requestId}）`);
     },
   });
 
@@ -154,6 +164,12 @@ export function RecordForm({
     });
   }
 
+  function focusField(fieldKey: string) {
+    const control = document.getElementById(`dynamic-field-${fieldKey}`);
+    control?.scrollIntoView?.({ block: "center" });
+    control?.focus({ preventScroll: true });
+  }
+
   function submit() {
     if (!canSave || committed || save.isPending) return;
     const missing = editable.filter(
@@ -165,8 +181,12 @@ export function RecordForm({
           missing.map((field) => [field.fieldKey, `请填写${field.label}。`]),
         ),
       );
-      setSummary("请补全标记为错误的字段。");
-      document.getElementById(`dynamic-field-${missing[0].fieldKey}`)?.focus();
+      setSummary(
+        `还有 ${missing.length} 个必填字段没填：${missing
+          .map((field) => field.label)
+          .join("、")}。`,
+      );
+      focusField(missing[0].fieldKey);
       return;
     }
     setFieldErrors({});

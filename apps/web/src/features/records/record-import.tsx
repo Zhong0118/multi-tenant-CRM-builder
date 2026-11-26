@@ -1137,7 +1137,11 @@ export function RecordImportDrawer({
                 ) : (
                   !attempted &&
                   preview.needed && (
-                    <Button disabled={!!busy} onClick={() => void generate()}>
+                    <Button
+                      icon={<AiSparkIcon aria-hidden />}
+                      disabled={!!busy}
+                      onClick={() => void generate()}
+                    >
                       AI 帮我对列
                     </Button>
                   )

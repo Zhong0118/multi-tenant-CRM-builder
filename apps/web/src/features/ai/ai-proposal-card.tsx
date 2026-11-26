@@ -1,5 +1,6 @@
 "use client";
 
+import { AiBadge } from "@/components/ai/ai-badge";
 import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import Link from "next/link";
 import { Button } from "antd";
@@ -117,7 +118,10 @@ export function AiProposalCard({
     >
       <header className={styles.proposalHeader}>
         <div>
-          <strong>{proposal.title}</strong>
+          <span className={styles.proposalTitle}>
+            <AiBadge>AI 提议</AiBadge>
+            <strong>{proposal.title}</strong>
+          </span>
           <span className={styles.proposalOperation}>
             {operationLabels[proposal.operation]}
           </span>
@@ -150,7 +154,7 @@ export function AiProposalCard({
                 <dl className={styles.proposalChanges}>
                   {proposal.operation !== "UPDATE_RECORD" ? (
                     <div>
-                      <dt>关联 Record</dt>
+                      <dt>关联记录</dt>
                       <dd>{proposal.targetSummary}</dd>
                     </div>
                   ) : null}

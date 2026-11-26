@@ -246,6 +246,11 @@
 .previewStatus button {
   color: var(--color-primary);
 }
+.previewState {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
 .rowWrap {
   display: grid;
   gap: 4px;

@@ -112,6 +112,21 @@ export function RecordBatchEditDrawer({
           title={`成功 ${result.updated} 条，失败 ${result.failed} 条。失败行会保留原值。`}
         />
       ) : null}
+      {/* Which records did not change and why, right under the counts —
+          the same as batch assign and delete. */}
+      {result && result.failed > 0 ? (
+        <ul className={styles.batchErrors} aria-label="没有修改的记录">
+          {result.items
+            .filter((item) => item.status === "FAILED")
+            .map((item) => (
+              <li key={item.recordId}>
+                {records.find((record) => record.id === item.recordId)?.title ??
+                  item.recordId}
+                ：{item.error?.message ?? "修改失败"}
+              </li>
+            ))}
+        </ul>
+      ) : null}
 
       <Typography.Paragraph type="secondary">
         只改勾选的字段。未勾选的字段保持原值。版本冲突或无权的行会单独失败，不会整批回滚。
@@ -155,20 +170,6 @@ export function RecordBatchEditDrawer({
           ))}
         </div>
       </Form>
-
-      {result && result.failed > 0 ? (
-        <ul className={styles.batchErrors}>
-          {result.items
-            .filter((item) => item.status === "FAILED")
-            .map((item) => (
-              <li key={item.recordId}>
-                {records.find((record) => record.id === item.recordId)?.title ??
-                  item.recordId}
-                ：{item.error?.message ?? "修改失败"}
-              </li>
-            ))}
-        </ul>
-      ) : null}
     </Drawer>
   );
 }
