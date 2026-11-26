@@ -47,11 +47,31 @@
   font-weight: 600;
   line-height: 22px;
 }
-.value {
+/* Number and display name: set by the company, read here in one small line. */
+.companyHead p {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.titleInfo {
   display: inline-flex;
+  gap: 4px;
   align-items: center;
-  min-height: 32px;
-  font-size: 14px;
+}
+.info {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: help;
+}
+.info:hover,
+.info:focus-visible {
+  color: var(--text-secondary);
 }
 .empty {
   color: var(--text-tertiary);
@@ -163,9 +183,13 @@
   color: var(--text-tertiary);
   font-size: 12px;
 }
+/* On a phone the label stays on the left and the value on the right, as in
+   iOS Settings; the column is wide enough for the four-character labels. */
 @media (max-width: 767px) {
   .group > div {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: center;
   }
   .field {
     max-width: none;

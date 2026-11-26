@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Input } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
+import { Button, Input, Tooltip } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -158,6 +159,9 @@ function EditableField({
   );
 }
 
+const COMPANY_NOTE =
+  "职位只在对应公司内显示；公司内显示名和工号由公司管理员设置。";
+
 export function AccountProfile({
   name,
   avatarUrl,
@@ -206,7 +210,22 @@ export function AccountProfile({
           </SettingRow>
         </div>
       </PageSection>
-      <PageSection title="所在公司">
+      <PageSection
+        title={
+          <span className={styles.titleInfo}>
+            所在公司
+            <Tooltip title={COMPANY_NOTE}>
+              <button
+                type="button"
+                className={styles.info}
+                aria-label={COMPANY_NOTE}
+              >
+                <InfoCircleOutlined aria-hidden />
+              </button>
+            </Tooltip>
+          </span>
+        }
+      >
         {!memberships.length && (
           <p className={styles.empty}>
             还没有加入公司 · <Link href="/waiting">查看公司邀请</Link>
@@ -220,19 +239,21 @@ export function AccountProfile({
               aria-label={m.tenantName}
             >
               <header className={styles.companyHead}>
-                <h3>{m.tenantName}</h3>
+                <div>
+                  <h3>{m.tenantName}</h3>
+                  <p>
+                    {[
+                      m.employeeNo,
+                      "显示为 " + (m.memberDisplayName ?? displayName),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
                 <StatusTag>
                   {m.role === "TENANT_ADMIN" ? "公司管理员" : "员工"}
                 </StatusTag>
               </header>
-              <SettingRow label="公司内显示名">
-                <span className={styles.value}>
-                  {m.memberDisplayName ?? "使用账号姓名"}
-                </span>
-              </SettingRow>
-              <SettingRow label="工号">
-                <span className={styles.value}>{m.employeeNo || "—"}</span>
-              </SettingRow>
               <SettingRow label="职位">
                 <EditableField
                   placeholder="例如：销售经理"

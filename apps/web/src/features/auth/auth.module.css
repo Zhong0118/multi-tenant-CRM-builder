@@ -560,8 +560,16 @@
   margin: 20px 0;
 }
 
+/* On a phone the label stays on the left and the value on the right, as in
+   iOS Settings; a row drops to one column only while its form is open. */
 @media (max-width: 767px) {
   .group > div:not(.sessionList) {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 16px;
+    align-items: center;
+  }
+
+  .group > div:has(.inlineForm) {
     grid-template-columns: minmax(0, 1fr);
   }
 

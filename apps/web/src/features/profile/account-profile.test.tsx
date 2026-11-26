@@ -115,3 +115,38 @@ it("keeps a value that could not be saved after a sign-out and fills it back aft
     screen.getByRole("button", { name: "保存甲公司职位" }),
   ).toBeInTheDocument();
 });
+
+it("reads the company number and display name in one line under the company", () => {
+  const api = { name: vi.fn(), title: vi.fn() };
+  const member = {
+    memberId: "1",
+    tenantId: "1",
+    tenantCode: "1",
+    tenantName: "甲公司",
+    role: "TENANT_ADMIN" as const,
+    displayName: "刘洋",
+    jobTitle: null,
+  };
+  render(
+    <AccountProfile
+      name="刘洋"
+      avatarUrl={null}
+      memberships={[
+        { ...member, memberDisplayName: null, employeeNo: "ADM002" },
+        {
+          ...member,
+          memberId: "2",
+          tenantName: "乙公司",
+          memberDisplayName: "小刘",
+          employeeNo: null,
+        },
+      ]}
+      api={api}
+    />,
+  );
+  expect(screen.getByText("ADM002 · 显示为 刘洋")).toBeInTheDocument();
+  expect(screen.getByText("显示为 小刘")).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: /职位只在对应公司内显示/ }),
+  ).toBeInTheDocument();
+});
