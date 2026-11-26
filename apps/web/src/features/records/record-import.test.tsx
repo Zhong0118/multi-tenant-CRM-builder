@@ -442,6 +442,37 @@ describe("RecordImportDrawer", () => {
     expect(api.importRows).not.toHaveBeenCalled();
   });
 
+  it("shows the file's own text only where the written value reads differently", async () => {
+    setup(recordApi(), {
+      ...schema,
+      fields: [
+        ...schema.fields,
+        {
+          ...schema.fields[0],
+          label: "预计金额",
+          fieldKey: "amount",
+          type: "MONEY",
+        },
+        {
+          ...schema.fields[0],
+          label: "预计成交日",
+          fieldKey: "close",
+          type: "DATE",
+        },
+      ],
+    });
+    chooseFile('姓名,预计金额,预计成交日\n客户甲,"128,000",2026/12/15');
+    await screen.findByText("1 行 · 3 列");
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    const verdict = await screen.findByRole("region", { name: "检查结果" });
+    const preview = within(verdict).getByRole("table", { name: "导入预览" });
+    expect(preview).toHaveTextContent("128,000.00");
+    // The same amount written with a thousands separator is not a change.
+    expect(preview).not.toHaveTextContent("128,000.00128,000");
+    // A date written another way is.
+    expect(preview).toHaveTextContent("2026/12/15");
+  });
+
   it.each([
     ["PHONE", "联系电话"],
     ["TEXT", "客户编号"],

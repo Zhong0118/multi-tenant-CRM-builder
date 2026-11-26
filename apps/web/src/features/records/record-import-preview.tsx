@@ -93,7 +93,11 @@ export function ImportCheckPreview({
                           members,
                           timeZone,
                         )}
-                        plain={plainText(field, row.values[field.fieldKey])}
+                        plain={plainText(
+                          field,
+                          row.values[field.fieldKey],
+                          source[column] ?? "",
+                        )}
                         raw={source[column] ?? ""}
                       />
                     </td>
@@ -110,8 +114,13 @@ export function ImportCheckPreview({
 }
 
 // The stored value as words, to tell whether it reads the same as the file.
-function plainText(field: PublishedFieldView, value: unknown) {
+function plainText(field: PublishedFieldView, value: unknown, raw: string) {
   if (value === null || value === undefined) return "";
+  // "128,000" stored as 128000.00 is the same amount, not a change to point at.
+  if (field.type === "MONEY" || field.type === "NUMBER") {
+    const typed = Number(raw.replace(/[\s,，¥￥]/g, ""));
+    return raw.trim() && typed === Number(value) ? raw.trim() : undefined;
+  }
   const label = (key: unknown) =>
     selectOptions(field).find((option) => option.key === key)?.label ??
     String(key);
@@ -131,7 +140,7 @@ function Cell({
   raw: string;
 }) {
   const text = raw.trim();
-  const shown = typeof written === "string" ? written : plain;
+  const shown = plain ?? (typeof written === "string" ? written : undefined);
   const same = shown !== undefined && shown === text;
   return (
     <>
