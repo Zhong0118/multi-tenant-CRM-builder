@@ -45,6 +45,49 @@
   display: grid;
   gap: 10px;
 }
+/* Before anything is generated: one large box in the middle of the page,
+   with three businesses to start from. */
+.composer[data-stage="input"] {
+  width: min(100%, 720px);
+  margin: 6vh auto 0;
+  padding: 16px;
+  gap: 12px;
+}
+.composer[data-stage="input"] textarea {
+  font-size: 15px;
+  line-height: 24px;
+}
+.composer[data-stage="input"] .actions {
+  justify-content: space-between;
+}
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.examples button {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.examples button:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 /* The way out to the manual designer: a quiet secondary button. */
 .manualLink {
   display: inline-flex;
@@ -271,13 +314,10 @@ details.section ul {
   gap: 12px;
 }
 
-/* Why the model proposed this table / field. */
-/* The AI's reason for a table or field: AI-written, so it sits on the AI
-   surface, not on the grey box system hints use. */
-.reason {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
+/* The AI's reason for a table: one folded line; opened, the text sits on
+   the AI surface, not on the grey box system hints use. */
+.reason > p {
+  margin-top: 6px;
   padding: 8px 10px;
   border: 1px solid var(--color-ai-border);
   border-radius: var(--radius-control);
@@ -398,13 +438,40 @@ details.section ul {
 .preset > button {
   justify-self: start;
 }
-.preset > p {
+.presetsTitle,
+.presetLabel {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+.presetLabel label {
+  display: inline;
+}
+.info {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  cursor: help;
+}
+.info:hover {
+  color: var(--text-secondary);
+}
+/* What changes once applied: the parts that open up carry the accent. */
+.effect {
   color: var(--text-tertiary);
   font-size: 12px;
   line-height: 18px;
 }
-.preset > p:first-of-type {
-  margin-top: 2px;
+.effect [data-changed] {
+  color: var(--color-primary);
 }
 
 /* Problems: blocking ones in red, hints quiet. */
@@ -448,10 +515,18 @@ details.section ul {
 }
 .footer ul {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   margin-top: 10px;
-  padding-left: 18px;
+  padding-left: 4px;
   font-size: 13px;
+  list-style: none;
+}
+/* Each item reads as one line; why, and what to do instead, on opening. */
+.footer li summary {
+  color: var(--text-primary);
+}
+.footer li details > :not(summary) {
+  margin: 4px 0 0 14px;
 }
 .footer .row > span[role="status"] {
   color: var(--color-danger);

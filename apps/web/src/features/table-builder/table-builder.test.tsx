@@ -135,7 +135,13 @@ it("previews an intent recommendation without granting it, shows the effective g
   fireEvent.click(screen.getByRole("button", { name: /采用推荐/ }));
   expect(screen.getByLabelText("客户的员工权限")).toHaveValue("CREATE_OWN");
   expect(screen.getByLabelText("合同的员工权限")).toHaveValue("CLOSED");
-  expect(screen.getByText(/应用后 · 可新建 · 查看范围 本人负责/)).toBeVisible();
+  expect(
+    screen
+      .getAllByText(/应用后/)
+      .some((p) =>
+        /应用后 · 可新建 · 查看范围 本人负责/.test(p.textContent ?? ""),
+      ),
+  ).toBe(true);
   expect(api.confirm).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText("客户的员工权限"), {
     target: { value: "CLOSED" },
@@ -143,7 +149,11 @@ it("previews an intent recommendation without granting it, shows the effective g
   fireEvent.change(screen.getByLabelText("合同的员工权限"), {
     target: { value: "READ_ALL_UPDATE_OWN" },
   });
-  expect(screen.getByText(/应用后 · 可新建 · 查看范围 全部/)).toBeVisible();
+  expect(
+    screen
+      .getAllByText(/应用后/)
+      .some((p) => /应用后 · 可新建 · 查看范围 全部/.test(p.textContent ?? "")),
+  ).toBe(true);
   fireEvent.click(
     screen.getByRole("button", { name: "确认员工权限并创建 2 张草稿" }),
   );

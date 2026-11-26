@@ -313,7 +313,7 @@ export function validateBlueprint(
       else if (isFallbackCode(t.code, t.id, 'object'))
         add(
           'CODE_FALLBACK',
-          '编码建议无效或已占用，已使用备用表编码，可在此修改。',
+          '已换成备用编码',
           'code',
           t.id,
           undefined,
@@ -360,7 +360,7 @@ export function validateBlueprint(
       else if (isFallbackCode(f.fieldKey, f.id, 'field'))
         add(
           'CODE_FALLBACK',
-          '编码建议无效或已占用，已使用备用字段键，可在此修改。',
+          '已换成备用字段键',
           'fieldKey',
           t.id,
           f.id,

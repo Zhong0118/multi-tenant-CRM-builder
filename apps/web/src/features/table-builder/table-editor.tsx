@@ -162,11 +162,14 @@ export function TableEditor({
                 onChange={(e) => patch({ description: e.target.value })}
               />
             </label>
+            {/* Folded to one line; the full reason is a click away. */}
             {table.reason && (
-              <p className={styles.reason}>
-                <AiBadge>AI 理由</AiBadge>
-                <span>{table.reason}</span>
-              </p>
+              <details className={styles.reason}>
+                <summary>
+                  <AiBadge>AI 理由</AiBadge>
+                </summary>
+                <p>{table.reason}</p>
+              </details>
             )}
           </>
         )}

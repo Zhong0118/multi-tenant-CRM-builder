@@ -32,6 +32,23 @@ import { Issues, TableEditor } from "./table-editor";
 import styles from "./table-builder.module.css";
 
 type Question = Extract<TableBuilderResult, { kind: "question" }>;
+
+/** Three businesses to start from, one click each. */
+const EXAMPLES = [
+  [
+    "设备租赁",
+    "我们做设备租赁，需要管理客户、合同、设备和回款。销售只能看自己负责的客户。",
+  ],
+  [
+    "培训机构",
+    "我们是培训机构，需要管理学员、课程、报名和缴费。课程顾问只能看自己跟进的学员。",
+  ],
+  [
+    "装修工程",
+    "我们做装修工程，需要管理客户、项目、施工进度和收款。项目经理可以查看全部项目，只改自己负责的。",
+  ],
+] as const;
+
 export function TableBuilder({
   tenantCode,
   draft,
@@ -296,7 +313,7 @@ export function TableBuilder({
           description={
             draft
               ? `为「${draft.object.name}」建议新字段，确认后写入草稿。`
-              : "描述业务，核对表和字段，再将选中的方案保存为草稿。"
+              : undefined
           }
           extra={
             !result && (
@@ -326,11 +343,21 @@ export function TableBuilder({
               </div>
             )}
             <fieldset disabled={busy} className={styles.canvas}>
-              <section className={styles.composer}>
-                <label htmlFor="builder-description">业务描述</label>
+              <section
+                className={styles.composer}
+                data-stage={!blueprint && !question ? "input" : undefined}
+              >
+                <label
+                  htmlFor="builder-description"
+                  className={
+                    !blueprint && !question ? styles.srOnly : undefined
+                  }
+                >
+                  业务描述
+                </label>
                 <textarea
                   id="builder-description"
-                  rows={blueprint ? 2 : 4}
+                  rows={blueprint ? 2 : 6}
                   value={description}
                   placeholder={
                     draft
@@ -346,6 +373,20 @@ export function TableBuilder({
                 />
                 {!blueprint && !question && (
                   <div className={styles.actions}>
+                    {!draft && (
+                      <div className={styles.examples} aria-label="示例描述">
+                        {EXAMPLES.map(([label, text]) => (
+                          <button
+                            key={label}
+                            type="button"
+                            title={text}
+                            onClick={() => setDescription(text)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <Button
                       type="primary"
                       loading={busy}
@@ -631,33 +672,36 @@ export function TableBuilder({
                               owner?.fields.some((f) => f.id === manual.id);
                             return (
                               <li key={n}>
-                                <strong>{o.request}</strong> · {o.reason}
-                                {o.alternative && <p>{o.alternative}</p>}
-                                {owner && manual && (
-                                  <p>
-                                    {owner.name} · {manual.label}{" "}
-                                    <Button
-                                      size="small"
-                                      disabled={
-                                        !!added ||
-                                        owner.fields.length >= 40 ||
-                                        !!candidate
-                                      }
-                                      onClick={() => {
-                                        updateTable({
-                                          ...owner,
-                                          fields: [...owner.fields, manual],
-                                        });
-                                        setSelected(owner.id);
-                                        setInstruction("");
-                                      }}
-                                    >
-                                      {added
-                                        ? "已添加手填字段"
-                                        : "作为手填字段添加"}
-                                    </Button>
-                                  </p>
-                                )}
+                                <details>
+                                  <summary>{o.request}</summary>
+                                  <p>{o.reason}</p>
+                                  {o.alternative && <p>{o.alternative}</p>}
+                                  {owner && manual && (
+                                    <p>
+                                      {owner.name} · {manual.label}{" "}
+                                      <Button
+                                        size="small"
+                                        disabled={
+                                          !!added ||
+                                          owner.fields.length >= 40 ||
+                                          !!candidate
+                                        }
+                                        onClick={() => {
+                                          updateTable({
+                                            ...owner,
+                                            fields: [...owner.fields, manual],
+                                          });
+                                          setSelected(owner.id);
+                                          setInstruction("");
+                                        }}
+                                      >
+                                        {added
+                                          ? "已添加手填字段"
+                                          : "作为手填字段添加"}
+                                      </Button>
+                                    </p>
+                                  )}
+                                </details>
                               </li>
                             );
                           })}
