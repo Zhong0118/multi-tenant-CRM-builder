@@ -1,4 +1,5 @@
 export const API_ERROR_CODES = [
+  'MAIL_SERVICE_UNAVAILABLE',
   'AUTH_REQUIRED',
   'INVALID_CREDENTIALS',
   'VERIFICATION_INVALID',
@@ -93,6 +94,7 @@ export const API_ERROR_CODES = [
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
 
 export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
+  MAIL_SERVICE_UNAVAILABLE: '邮件服务暂未开通。',
   AUTH_REQUIRED: '请先登录。',
   INVALID_CREDENTIALS: '手机号或密码不正确。',
   VERIFICATION_INVALID: '验证码不正确。',

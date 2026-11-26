@@ -34,9 +34,9 @@ import {
   ResetPasswordDto,
   SessionPageQueryDto,
   SessionPageResponseDto,
-  UserResponseDto,
   VerificationChallengeDto,
 } from './dto';
+import { DEVICE_COOKIE, DEVICE_LIFETIME } from './login-device';
 import { SESSION_COOKIE_NAME, SessionAuthGuard } from './session-auth.guard';
 import type { SessionPrincipal } from './session.service';
 
@@ -62,6 +62,14 @@ function publicAuthResult(
     expires: result.expiresAt,
     path: '/',
   });
+  if (result.deviceCookie)
+    response.cookie(DEVICE_COOKIE, result.deviceCookie, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: true,
+      maxAge: DEVICE_LIFETIME,
+      path: '/',
+    });
   return { accepted: result.accepted, user: result.user };
 }
 
@@ -91,7 +99,12 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     return this.auth
-      .register({ ...dto, ip: requestIp(request) })
+      .register({
+        ...dto,
+        ip: requestIp(request),
+        deviceCookie: request.cookies?.[DEVICE_COOKIE] as string | undefined,
+        userAgent: request.get('user-agent'),
+      })
       .then((result) => publicAuthResult(response, result));
   }
 
@@ -104,7 +117,12 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     return this.auth
-      .login({ ...dto, ip: requestIp(request) })
+      .login({
+        ...dto,
+        ip: requestIp(request),
+        deviceCookie: request.cookies?.[DEVICE_COOKIE] as string | undefined,
+        userAgent: request.get('user-agent'),
+      })
       .then((result) => publicAuthResult(response, result));
   }
 
@@ -147,18 +165,6 @@ export class AuthController {
 @Controller('me')
 export class MeController {
   constructor(private readonly auth: AuthService) {}
-
-  @Get()
-  @ApiOkResponse({ type: UserResponseDto })
-  async me(@CurrentSession() current: SessionPrincipal) {
-    const user = await this.auth.getUser(current.user.id);
-    return {
-      id: user.id,
-      displayName: user.displayName,
-      phone: user.phone,
-      isPlatformAdmin: user.isPlatformAdmin,
-    };
-  }
 
   @Get('sessions')
   @ApiOkResponse({ type: SessionPageResponseDto })

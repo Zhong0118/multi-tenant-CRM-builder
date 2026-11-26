@@ -58,8 +58,9 @@ export interface PlatformOperationItem {
 
 export interface RuntimeStatus {
   environment: string;
+  mail: { ready: boolean; issues: string[] };
   services: Array<{
-    key: 'database' | 'redis' | 'sms' | 'webOrigin';
+    key: 'database' | 'redis' | 'sms' | 'mail' | 'webOrigin';
     label: string;
     status: 'READY' | 'DEVELOPMENT' | 'ACTION_REQUIRED';
     detail: string;

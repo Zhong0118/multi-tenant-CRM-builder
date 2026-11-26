@@ -8,6 +8,9 @@ export const verificationCodeSchema = z
   .string()
   .regex(/^\d{6}$/u, "请输入 6 位数字验证码。");
 
+/** Shown under a new-password field once typing starts. */
+export const PASSWORD_RULE = "10–72 位，同时包含字母和数字";
+
 export const passwordSchema = z
   .string()
   .refine((value) => Array.from(value).length >= 10, "密码至少需要 10 位。")

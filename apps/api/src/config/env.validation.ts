@@ -28,10 +28,17 @@ const productionSchema = z
         (value) =>
           protocol(value) && ['redis:', 'rediss:'].includes(protocol(value)!),
       ),
-    WEB_ORIGIN: z
-      .string()
-      .url()
-      .refine((value) => protocol(value) === 'https:'),
+    WEB_ORIGIN: z.string().refine((value) =>
+      value.split(',').every((item) => {
+        try {
+          const origin = item.trim();
+          const url = new URL(origin);
+          return url.protocol === 'https:' && url.origin === origin;
+        } catch {
+          return false;
+        }
+      }),
+    ),
     API_ORIGIN: z
       .string()
       .url()

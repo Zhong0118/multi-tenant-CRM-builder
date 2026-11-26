@@ -14,7 +14,6 @@ export default function RegisterPage() {
     <AuthShell
       eyebrow="ACCOUNT / 01"
       title="创建个人账号"
-      description="账号先独立存在；公司管理员邀请后，你即可进入对应工作区。"
       footer={
         <>
           已有账号？ <Link href="/login">直接登录</Link>

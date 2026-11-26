@@ -20,11 +20,19 @@ async function checked(result: { error?: unknown; response: Response }) {
     throw toApiError(result.error, result.response.status);
 }
 export const memberEditApi = {
-  async name(tenantCode: string, memberId: string, displayName: string) {
+  async name(
+    tenantCode: string,
+    memberId: string,
+    displayName?: string,
+    jobTitle?: string,
+  ) {
     await checked(
       await browserApiClient.PATCH(
         "/api/v1/workspaces/{tenantCode}/members/{memberId}/name",
-        { params: { path: { tenantCode, memberId } }, body: { displayName } },
+        {
+          params: { path: { tenantCode, memberId } },
+          body: { displayName, jobTitle },
+        },
       ),
     );
   },
@@ -93,16 +101,28 @@ export function MemberNameDialog({
   api?: typeof memberEditApi;
 }) {
   const [name, setName] = useState(member.displayName ?? "");
+  const [title, setTitle] = useState(member.jobTitle ?? "");
+  const changedName = name.trim() !== (member.displayName ?? "");
+  const changedTitle = title.trim() !== (member.jobTitle ?? "");
+  const valid =
+    (!changedName || Boolean(name.trim())) && (changedName || changedTitle);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const running = useRef(false);
   async function save() {
-    if (running.current || !name.trim()) return;
+    if (running.current || !valid) return;
     running.current = true;
     setBusy(true);
     setError(undefined);
     try {
-      await api.name(tenantCode, member.id, name.trim());
+      if (changedTitle)
+        await api.name(
+          tenantCode,
+          member.id,
+          changedName ? name.trim() : undefined,
+          title.trim(),
+        );
+      else await api.name(tenantCode, member.id, name.trim());
       onClose();
       onChanged();
     } catch (caught) {
@@ -114,7 +134,7 @@ export function MemberNameDialog({
   }
   return (
     <Modal
-      title="修改公司内姓名"
+      title="编辑成员资料"
       open
       width={OVERLAY_SIZE.confirm}
       onCancel={() => {
@@ -124,21 +144,35 @@ export function MemberNameDialog({
       okText="保存"
       cancelText="取消"
       confirmLoading={busy}
-      okButtonProps={{ disabled: !name.trim() }}
+      okButtonProps={{ disabled: !valid }}
       cancelButtonProps={{ disabled: busy }}
       closable={!busy}
       mask={{ closable: !busy }}
       keyboard={!busy}
     >
-      <p>仅更新本公司名册及业务记录中的姓名。</p>
-      <Input
-        aria-label="公司内姓名"
-        maxLength={100}
-        value={name}
-        disabled={busy}
-        onChange={(event) => setName(event.target.value)}
-        onPressEnter={() => void save()}
-      />
+      <p>修改仅应用于本公司</p>
+      <label>
+        公司内姓名
+        <Input
+          aria-label="公司内姓名"
+          maxLength={100}
+          value={name}
+          disabled={busy}
+          onChange={(event) => setName(event.target.value)}
+          onPressEnter={() => void save()}
+        />
+      </label>
+      <label>
+        职位
+        <Input
+          aria-label="职位"
+          maxLength={50}
+          value={title}
+          disabled={busy}
+          onChange={(e) => setTitle(e.target.value)}
+          onPressEnter={() => void save()}
+        />
+      </label>
       {error && <Alert type="error" title={error} />}
     </Modal>
   );
@@ -189,7 +223,8 @@ export function BulkMemberActions({
           setOpen(true);
         }}
       >
-        {buttonLabel ?? `批量管理${selected.length ? `（${selected.length}）` : ""}`}
+        {buttonLabel ??
+          `批量管理${selected.length ? `（${selected.length}）` : ""}`}
       </Button>
       <Modal
         title={`批量管理 ${rows.length} 位成员`}

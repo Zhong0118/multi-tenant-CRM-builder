@@ -72,6 +72,20 @@ describe("operation records", () => {
     expect(within(drawer).queryByText("提问原文")).toBeNull();
     expect(within(drawer).queryByRole("link")).toBeNull();
   });
+  it("keeps member and status in view and the other filters behind 更多筛选", async () => {
+    vi.spyOn(workspaceAi, "operations").mockResolvedValue({
+      items: [row],
+      nextCursor: null,
+    });
+    show();
+    await screen.findByRole("button", { name: "写入提议" });
+    expect(screen.getByLabelText("全部成员")).toBeInTheDocument();
+    expect(screen.getByLabelText("全部状态")).toBeInTheDocument();
+    expect(screen.queryByLabelText("写入类型")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "更多筛选" }));
+    expect(screen.getByLabelText("写入类型")).toBeInTheDocument();
+    expect(screen.getByLabelText("起始日期")).toBeInTheDocument();
+  });
   it("requests the next page using the server cursor", async () => {
     const fetchList = vi
       .spyOn(workspaceAi, "operations")

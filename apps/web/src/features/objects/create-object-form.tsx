@@ -77,17 +77,28 @@ export function CreateObjectForm({
       ),
     onError: (caught) => {
       const apiError = toApiError(caught);
-      setSummary(
-        `${apiError.message}${Object.entries(apiError.fieldErrors)
-          .filter(([field]) => field !== "name" && field !== "code")
-          .flatMap(([, messages]) => messages)
-          .join("；")}（请求编号：${apiError.requestId}）`,
+      const entries = Object.entries(apiError.fieldErrors);
+      const own = entries.filter(
+        (entry): entry is ["name" | "code", string[]] =>
+          entry[0] === "name" || entry[0] === "code",
       );
-      for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
-        if (field === "name" || field === "code") {
-          setError(field, { message: messages.join("；") });
-        }
-      }
+      const other = entries
+        .filter(([field]) => field !== "name" && field !== "code")
+        .flatMap(([, messages]) => messages);
+      own.forEach(([field, messages], index) =>
+        setError(
+          field,
+          { message: messages.join("；") },
+          { shouldFocus: index === 0 },
+        ),
+      );
+      // A taken name or code is already said under its input; a banner is
+      // only for what has no field of its own here.
+      setSummary(
+        own.length > 0 && other.length === 0
+          ? undefined
+          : `${apiError.message}${other.length ? "：" + other.join("；") : ""}（请求编号：${apiError.requestId}）`,
+      );
     },
   });
 

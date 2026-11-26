@@ -104,10 +104,9 @@ export function PlatformSettingsView({
       <PageHeader
         title="系统设置"
         status={governance ? undefined : <StatusTag>只读</StatusTag>}
+        // Only the read-only view needs a line: why nothing here is editable.
         description={
-          governance
-            ? "查看运行状态，管理新公司的 AI 默认套餐与平台 AI 服务"
-            : "服务由服务器环境配置，账号策略随系统版本发布。"
+          governance ? undefined : "服务由服务器环境配置，账号策略随系统版本发布。"
         }
       />
 
@@ -141,9 +140,12 @@ export function PlatformSettingsView({
                 {service.status === "READY" &&
                 (service.key === "sms" || service.key === "webOrigin")
                   ? "已配置"
-                  : statusLabel(service.status)}
+                  : service.key === "mail" && service.status === "ACTION_REQUIRED" ? "需要配置" : statusLabel(service.status)}
               </StatusTag>
-              <span className={styles.serviceDetail}>{service.detail}</span>
+              {/* A healthy service needs no sentence; a problem says why. */}
+              {service.status !== "READY" && (
+                <span className={styles.serviceDetail}>{service.detail}</span>
+              )}
             </li>
           ))}
         </ul>

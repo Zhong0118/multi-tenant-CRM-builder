@@ -182,12 +182,19 @@ enum AiMessageStatus {
 }
 
 model User {
+  avatarVersion String? @map("avatar_version") @db.Uuid
   modelTests AiModelTest[]
   id                  String                        @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   displayName         String                        @map("display_name") @db.VarChar(100)
   email               String?                       @unique @db.VarChar(320)
   phone               String                        @unique @db.VarChar(32)
   phoneVerifiedAt     DateTime                      @map("phone_verified_at") @db.Timestamptz(3)
+  emailVerifiedAt      DateTime?       @map("email_verified_at") @db.Timestamptz(3)
+  emailUndeliverableAt DateTime?       @map("email_undeliverable_at") @db.Timestamptz(3)
+  emailVersion         Int             @default(0) @map("email_version")
+  newDeviceMailEnabled Boolean         @default(true) @map("new_device_mail_enabled")
+  emailChallenges      EmailChallenge[]
+  loginDevices         LoginDevice[]
   passwordHash        String                        @map("password_hash")
   isPlatformAdmin     Boolean                       @default(false) @map("is_platform_admin")
   status              UserStatus                    @default(ACTIVE)
@@ -199,6 +206,7 @@ model User {
   targetInvitations   TenantInvitation[]            @relation("InvitationTargetUser")
   createdInvitations  TenantInvitation[]            @relation("InvitationCreatedBy")
   acceptedInvitations TenantInvitation[]            @relation("InvitationAcceptedBy")
+  mailDeliveries        MailDelivery[]                  @ignore
   createdTemplates    BusinessTemplate[]            @relation("BusinessTemplateCreator")
   publishedTemplates  BusinessTemplateVersion[]     @relation("BusinessTemplateVersionPublisher")
   appliedTemplates    BusinessTemplateApplication[] @relation("BusinessTemplateApplicationApplier")
@@ -305,6 +313,7 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  jobTitle String? @map("job_title") @db.VarChar(50)
   aiUsageMonths AiMemberMonth[]
   aiOperationRecords AiOperationRecord[] @relation("AiRecordActor")
   confirmedAiOperationRecords AiOperationRecord[] @relation("AiRecordConfirmer")
@@ -743,6 +752,36 @@ model RecordActivity {
   @@index([tenantId, recordId, createdAt(sort: Desc)])
   @@index([tenantId, actorMemberId, createdAt], map: "record_activities_tenant_actor_created_idx")
   @@map("record_activities")
+}
+
+// Queue payloads are accessible to the runtime role only through fenced SQL functions.
+model MailDelivery {
+  id            String    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  dedupeKey     String    @unique @map("dedupe_key")
+  kind          String
+  userId        String    @map("user_id") @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId      String?   @map("tenant_id") @db.Uuid
+  memberId      String?   @map("member_id") @db.Uuid
+  emailVersion  Int       @map("email_version")
+  maskedEmail   String    @map("masked_email")
+  oldEmail      String?   @map("old_email")
+  device        String?
+  network       String?
+  occurredAt    DateTime  @map("occurred_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  status        String
+  attempts      Int       @default(0)
+  token         String?   @db.Uuid
+  leaseUntil    DateTime? @map("lease_until") @db.Timestamptz(6)
+  errorCode     String?   @map("error_code")
+  providerId    String?   @map("provider_id") @db.VarChar(64)
+  finishedAt    DateTime? @map("finished_at") @db.Timestamptz(6)
+
+  @@index([status,nextAttemptAt], map: "mail_deliveries_due")
+  @@map("mail_deliveries")
+  @@ignore
 }
 
 model AuditLog {
@@ -1470,4 +1509,38 @@ model AiFeatureCatalog {
   dependents AiFeatureCatalog[] @relation("AiFeatureDependencies")
   calls AiModelCall[]
   @@map("ai_feature_catalog")
+}
+
+model EmailChallenge {
+  id           String    @id @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose      String    @db.VarChar(12)
+  emailDigest  String    @map("email_digest") @db.Char(64)
+  emailVersion Int       @map("email_version")
+  codeHash     String    @map("code_hash") @db.Char(64)
+  status       String    @db.VarChar(12)
+  attemptCount Int       @default(0) @map("attempt_count")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt   DateTime? @map("consumed_at") @db.Timestamptz(3)
+
+  @@index([userId, purpose, emailDigest], map: "email_challenges_owner_target_idx")
+  @@index([expiresAt])
+  @@map("email_challenges")
+}
+
+model LoginDevice {
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @map("token_hash") @db.Char(64)
+  device     String?  @db.VarChar(64)
+  network    String?  @db.VarChar(64)
+  lastUsedAt DateTime @map("last_used_at") @db.Timestamptz(3)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@id([userId, tokenHash])
+  @@index([userId, lastUsedAt], map: "login_devices_last_used_at_idx")
+  @@index([expiresAt])
+  @@map("login_devices")
 }

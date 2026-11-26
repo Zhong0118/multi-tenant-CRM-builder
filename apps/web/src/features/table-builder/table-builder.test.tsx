@@ -135,7 +135,13 @@ it("previews an intent recommendation without granting it, shows the effective g
   fireEvent.click(screen.getByRole("button", { name: /采用推荐/ }));
   expect(screen.getByLabelText("客户的员工权限")).toHaveValue("CREATE_OWN");
   expect(screen.getByLabelText("合同的员工权限")).toHaveValue("CLOSED");
-  expect(screen.getByText(/应用后 · 可新建 · 查看范围 本人负责/)).toBeVisible();
+  expect(
+    screen
+      .getAllByText(/应用后/)
+      .some((p) =>
+        /应用后 · 可新建 · 查看范围 本人负责/.test(p.textContent ?? ""),
+      ),
+  ).toBe(true);
   expect(api.confirm).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText("客户的员工权限"), {
     target: { value: "CLOSED" },
@@ -143,7 +149,11 @@ it("previews an intent recommendation without granting it, shows the effective g
   fireEvent.change(screen.getByLabelText("合同的员工权限"), {
     target: { value: "READ_ALL_UPDATE_OWN" },
   });
-  expect(screen.getByText(/应用后 · 可新建 · 查看范围 全部/)).toBeVisible();
+  expect(
+    screen
+      .getAllByText(/应用后/)
+      .some((p) => /应用后 · 可新建 · 查看范围 全部/.test(p.textContent ?? "")),
+  ).toBe(true);
   fireEvent.click(
     screen.getByRole("button", { name: "确认员工权限并创建 2 张草稿" }),
   );
@@ -337,6 +347,34 @@ it("restores a manual substitute to its owning table only after explicit selecti
   expect(submitted.tables[0]).toEqual(value.tables[0]);
   expect(submitted.tables[1].fields).toEqual([...owner.fields, manual]);
   expect(screen.getByLabelText("表名称")).toHaveValue(owner.name);
+});
+
+it("puts a taken table name under the name input and marks the table in the list", async () => {
+  const api = setup();
+  const value = structuredClone(blueprint);
+  const table = value.tables[0];
+  api.preview.mockResolvedValue({
+    ...preview(value),
+    issues: [
+      {
+        code: "NAME_IN_USE",
+        path: "name",
+        tableId: table.id,
+        blocking: true,
+        message: "业务表名称已占用。",
+      },
+    ],
+  });
+  describeBusiness();
+  generate();
+  const name = await screen.findByLabelText("表名称");
+  expect(name).toHaveAttribute("aria-invalid", "true");
+  // Said once, beside the input, not again in the list of hints.
+  expect(screen.getAllByText("业务表名称已占用。")).toHaveLength(1);
+  expect(screen.getByText("1 项需修正")).toBeInTheDocument();
+  expect(
+    screen.getByText(`还有 1 项需修正：${table.name}`),
+  ).toBeInTheDocument();
 });
 
 it("keeps all over-limit candidates available while validating only the checked tables", async () => {

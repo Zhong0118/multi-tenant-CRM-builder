@@ -162,7 +162,7 @@ export class PlatformOperationPageDto {
 }
 
 export class RuntimeServiceStatusDto {
-  @ApiProperty({ enum: ['database', 'redis', 'sms', 'webOrigin'] })
+  @ApiProperty({ enum: ['database', 'redis', 'sms', 'mail', 'webOrigin'] })
   key!: string;
   @ApiProperty() label!: string;
   @ApiProperty({ enum: ['READY', 'DEVELOPMENT', 'ACTION_REQUIRED'] })
@@ -177,7 +177,26 @@ export class RuntimePoliciesDto {
   @ApiProperty() verificationRetentionDays!: number;
 }
 
+export class MailReadinessDto {
+  @ApiProperty() ready!: boolean;
+  @ApiProperty({ type: [String] }) issues!: string[];
+}
+export class MailTestResultDto {
+  @ApiProperty({ enum: ['sent', 'failed', 'unknown'] }) status!: string;
+  @ApiProperty({ type: String, nullable: true }) errorCode!: string | null;
+}
+export class MailStatisticDto {
+  @ApiProperty() kind!: string;
+  @ApiProperty() status!: string;
+  @ApiProperty() count!: number;
+}
+export class MailStatisticsDto {
+  @ApiProperty() days!: number;
+  @ApiProperty({ type: [MailStatisticDto] }) items!: MailStatisticDto[];
+}
+
 export class RuntimeStatusDto {
+  @ApiProperty({ type: MailReadinessDto }) mail!: MailReadinessDto;
   @ApiProperty() environment!: string;
   @ApiProperty({ type: RuntimeServiceStatusDto, isArray: true })
   services!: RuntimeServiceStatusDto[];

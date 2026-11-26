@@ -1,5 +1,7 @@
 "use client";
 
+import { AiBadge } from "@/components/ai/ai-badge";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { useAiFeature } from "@/features/ai-governance/access";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Input, Modal } from "antd";
@@ -120,6 +122,8 @@ export function CommunicationDraftDialog({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [needsRecovery, setNeedsRecovery] = useState(false);
+  const [modal, modalHolder] = Modal.useModal();
+  const asking = useRef(false);
   const request = useRef<{ requestId: string; text: string } | undefined>(
     undefined,
   );
@@ -190,6 +194,16 @@ export function CommunicationDraftDialog({
     if (!source.trim()) return;
     if (request.current?.text !== source)
       request.current = { requestId: crypto.randomUUID(), text: source };
+    const body = request.current;
+    void run(async () => {
+      const next = await api.create(tenantCode, objectCode, recordId, body);
+      if (active.current) initialize(next);
+    }, "暂时无法生成草稿，原文已保留，请重试");
+  }
+  // A fallback draft keeps the user's words: try the same text once more.
+  function regenerate(text: string) {
+    request.current = { requestId: crypto.randomUUID(), text };
+    setSource(text);
     const body = request.current;
     void run(async () => {
       const next = await api.create(tenantCode, objectCode, recordId, body);
@@ -309,16 +323,14 @@ export function CommunicationDraftDialog({
       items.push({
         key: "followUp",
         label: "下次跟进",
-        evidence: draft.followUp.evidence
-          ? `依据：${draft.followUp.evidence}`
-          : undefined,
+        evidence: draft.followUp.evidence || undefined,
         error:
           !title.trim() || !dueAt
             ? "请填写跟进标题，并选择有效的日期和时间"
             : undefined,
         render: (edit, disabled) => (
           <>
-            <label>
+            <label className={styles.fieldLabel}>
               跟进标题
               <Input
                 value={title}
@@ -357,7 +369,7 @@ export function CommunicationDraftDialog({
         key,
         operationKey: "fields",
         label: field.label,
-        evidence: change.evidence,
+        evidence: change.evidence || undefined,
         locked: byKey("fields")?.status === "EXECUTED",
         error:
           field.required &&
@@ -366,19 +378,24 @@ export function CommunicationDraftDialog({
             (Array.isArray(value) && !value.length))
             ? `请填写${field.label}`
             : undefined,
+        // The new value lives in the control; the old one sits under it as
+        // "原为 …", the same as proposal cards in the assistant.
         render: (edit, disabled) => (
           <>
-            <p>
-              旧值 <span>{displayValue(field, change.oldValue, members)}</span>{" "}
-              → <span>{displayValue(field, value, members)}</span>
-            </p>
-            <DynamicField
-              field={field}
-              value={value}
-              members={fieldMembers}
-              disabled={disabled}
-              onChange={edit}
-            />
+            <div className={styles.bareField}>
+              <DynamicField
+                field={field}
+                value={value}
+                members={fieldMembers}
+                disabled={disabled}
+                onChange={edit}
+              />
+            </div>
+            {change.oldValue != null && change.oldValue !== "" && (
+              <p className={styles.change}>
+                原为 {displayValue(field, change.oldValue, members)}
+              </p>
+            )}
           </>
         ),
       });
@@ -431,14 +448,40 @@ export function CommunicationDraftDialog({
     draft.results.some((result) => result.status === "EXECUTED") &&
     selected.length > 0 &&
     selected.every((key) => itemResults[key]?.status === "EXECUTED");
+  // Esc, the mask and × all land here: a typed note or an unsaved draft is
+  // asked about first instead of being thrown away.
+  const unsaved =
+    !saved &&
+    (source.trim() !== "" || (!!draft && draft.status !== "PENDING" && draft !== initialDraft));
+  function requestClose() {
+    if (!unsaved) return onClose();
+    // One Esc can reach both the dialog and the page; ask only once.
+    if (asking.current) return;
+    asking.current = true;
+    void modal.confirm({
+      afterClose: () => {
+        asking.current = false;
+      },
+      title: "放弃这次整理？",
+      content: draft
+        ? "草稿和你的修改还没有保存，关闭后需要重新生成。"
+        : "写好的沟通原文还没有整理，关闭后会丢失。",
+      okText: "放弃",
+      okButtonProps: { danger: true },
+      autoFocusButton: "cancel",
+      cancelText: "继续整理",
+      onOk: onClose,
+    });
+  }
   return (
     <Modal
       open
       title={`整理本次沟通 · ${recordTitle}`}
       width={600}
-      onCancel={onClose}
+      onCancel={requestClose}
       footer={null}
     >
+      {modalHolder}
       <div className={styles.dialog}>
         {error && <Alert type="warning" showIcon role="alert" title={error} />}
         {!draft ? (
@@ -450,16 +493,21 @@ export function CommunicationDraftDialog({
                 aria-label="沟通原文"
                 rows={5}
                 maxLength={4000}
-                showCount
+                // The count only matters close to the limit.
+                showCount={{
+                  formatter: ({ count, maxLength }) =>
+                    count > 3600 ? `${count} / ${maxLength}` : "",
+                }}
                 disabled={busy}
                 placeholder="例如：预算还没批，客户让下周再联系"
                 value={source}
                 onChange={(event) => setSource(event.target.value)}
               />
             </label>
-            <div>
+            <div className={styles.actions}>
               <Button
                 type="primary"
+                icon={<AiSparkIcon aria-hidden />}
                 loading={busy}
                 aria-label={busy ? "正在整理…" : "生成草稿"}
                 disabled={busy || !source.trim()}
@@ -486,16 +534,35 @@ export function CommunicationDraftDialog({
           <>
             {draft.status === "FALLBACK" && (
               <Alert
-                type="info"
+                type="warning"
                 showIcon
-                title="暂时无法生成建议，可将原文直接保存为纪要"
+                title="这次没能整理出建议"
+                description="原文已放进下面的纪要。可以再整理一次，或直接存为纪要。"
+                action={
+                  <Button
+                    size="small"
+                    disabled={busy}
+                    onClick={() => regenerate(draft.text)}
+                  >
+                    再整理一次
+                  </Button>
+                }
               />
             )}
             <details>
               <summary>沟通原文</summary>
               <p>{draft.text}</p>
             </details>
+            {/* What AI drafted, marked the same way as proposals in the
+                assistant; a fallback is the user's own text, so no mark. */}
+            {draft.status !== "FALLBACK" && (
+              <h3 className={styles.draftHeading}>
+                <AiBadge>AI 提议</AiBadge>
+                <span>{items.length} 项建议</span>
+              </h3>
+            )}
             <ProposalReviewCard
+              ai={draft.status !== "FALLBACK"}
               items={items}
               selectedKeys={selected}
               itemResults={itemResults}
@@ -570,7 +637,7 @@ function SavedCommunication({
     note
       ? "已记录本次沟通"
       : results.some((result) => result.itemKey === "fields")
-        ? "已更新客户资料"
+        ? "已更新记录字段"
         : "",
     reminder,
   ]
@@ -582,16 +649,26 @@ function SavedCommunication({
         {summary}
       </p>
       <div className={styles.actions}>
-        <Button type="primary" onClick={onClose}>
-          完成
-        </Button>
         <Button
           onClick={() => {
             onClose();
-            if (pathname !== customerHref) router.push(customerHref);
+            // Open the tab that shows what was just written: the note lives
+            // under 动态, a follow-up alone under 跟进.
+            const section = note ? "activity" : task ? "followups" : undefined;
+            if (!section) {
+              if (pathname !== customerHref) router.push(customerHref);
+              return;
+            }
+            const href = `${customerHref}${customerHref.includes("?") ? "&" : "?"}section=${section}`;
+            if (pathname === customerHref.split("?")[0])
+              router.replace(href, { scroll: false });
+            else router.push(href);
           }}
         >
-          查看客户
+          查看记录
+        </Button>
+        <Button type="primary" onClick={onClose}>
+          完成
         </Button>
       </div>
     </>

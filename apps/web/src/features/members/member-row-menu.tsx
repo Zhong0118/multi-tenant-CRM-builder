@@ -167,7 +167,7 @@ export function MemberRowMenu({
     ? "（需保留至少一位在职管理员）"
     : "";
   const items: MenuProps["items"] = [
-    { key: "name", label: "修改姓名", onClick: () => setNameOpen(true) },
+    { key: "name", label: "编辑成员资料", onClick: () => setNameOpen(true) },
     ...(member.role === "EMPLOYEE" && active
       ? [
           {
@@ -260,7 +260,7 @@ export function MemberRowMenu({
           member={member}
           onClose={() => setNameOpen(false)}
           onChanged={() => {
-            toast.success("姓名已更新");
+            toast.success("成员资料已更新");
             onChanged();
           }}
         />

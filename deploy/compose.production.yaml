@@ -36,13 +36,23 @@ services:
       TENCENT_SMS_REGISTER_TEMPLATE_ID: ${TENCENT_SMS_REGISTER_TEMPLATE_ID:?Set TENCENT_SMS_REGISTER_TEMPLATE_ID}
       TENCENT_SMS_RESET_TEMPLATE_ID: ${TENCENT_SMS_RESET_TEMPLATE_ID:?Set TENCENT_SMS_RESET_TEMPLATE_ID}
       TENCENT_SMS_REGION: ${TENCENT_SMS_REGION:-ap-guangzhou}
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
+      AVATARS_STORAGE_DIR: /var/lib/crm/avatars
       ATTACHMENTS_STORAGE_DIR: /var/lib/crm/attachments
     networks:
       edge:
         ipv4_address: 172.30.26.3
       private: {}
     expose: ["3001"]
-    volumes: [attachments_data:/var/lib/crm/attachments]
+    volumes:
+      - attachments_data:/var/lib/crm/attachments
+      - avatars_data:/var/lib/crm/avatars
     restart: unless-stopped
     depends_on:
       postgres: { condition: service_healthy }
@@ -147,5 +157,6 @@ volumes:
   postgres_data:
   redis_data:
   attachments_data:
+  avatars_data:
   caddy_data:
   caddy_config:

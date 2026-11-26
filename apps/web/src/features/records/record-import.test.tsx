@@ -170,7 +170,7 @@ describe("RecordImportDrawer", () => {
       true,
     );
     chooseFile("报价台账\n\n内部底价,客户别称\n987654,样例客户");
-    await screen.findByText("已识别第 3 行为表头，可手动调整");
+    await screen.findByText(/已识别第 3 行为表头/);
     expect(
       screen.getByLabelText("映射 内部底价").closest(".ant-select"),
     ).toHaveTextContent("内部底价（仅手动对照）");
@@ -186,6 +186,15 @@ describe("RecordImportDrawer", () => {
       /内部底价|internal_price|987654/,
     );
     call.mockRestore();
+  });
+
+  it("keeps a confidently found header row out of the way until asked", async () => {
+    setup(recordApi(), schema);
+    chooseFile("报价台账\n\n姓名,线索状态\n张三,待联系");
+    await screen.findByText(/已识别第 3 行为表头/);
+    expect(screen.queryByLabelText("表头在第几行")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "调整" }));
+    expect(screen.getByLabelText("表头在第几行")).toBeInTheDocument();
   });
 
   it("counts only typed cells treated as empty in the checked plan", async () => {
@@ -230,7 +239,7 @@ describe("RecordImportDrawer", () => {
     const { api } = setup(recordApi(), schema, false, undefined, true);
     chooseFile("文件标题\n\n单位名称,客户状态\n第三行测试客户,待联系");
     fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
-    await screen.findByText("请确认表头在第几行，当前使用第 3 行");
+    await screen.findByText("表头按第 3 行读取，不对可以在上面改");
     expect(call.mock.calls[0][2]).not.toHaveProperty("candidates");
     await screen.findByText("1 行 · 2 列");
     expect(screen.getByRole("button", { name: "检查数据" })).toBeEnabled();
@@ -442,6 +451,37 @@ describe("RecordImportDrawer", () => {
     expect(api.importRows).not.toHaveBeenCalled();
   });
 
+  it("shows the file's own text only where the written value reads differently", async () => {
+    setup(recordApi(), {
+      ...schema,
+      fields: [
+        ...schema.fields,
+        {
+          ...schema.fields[0],
+          label: "预计金额",
+          fieldKey: "amount",
+          type: "MONEY",
+        },
+        {
+          ...schema.fields[0],
+          label: "预计成交日",
+          fieldKey: "close",
+          type: "DATE",
+        },
+      ],
+    });
+    chooseFile('姓名,预计金额,预计成交日\n客户甲,"128,000",2026/12/15');
+    await screen.findByText("1 行 · 3 列");
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    const verdict = await screen.findByRole("region", { name: "检查结果" });
+    const preview = within(verdict).getByRole("table", { name: "导入预览" });
+    expect(preview).toHaveTextContent("128,000.00");
+    // The same amount written with a thousands separator is not a change.
+    expect(preview).not.toHaveTextContent("128,000.00128,000");
+    // A date written another way is.
+    expect(preview).toHaveTextContent("2026/12/15");
+  });
+
   it.each([
     ["PHONE", "联系电话"],
     ["TEXT", "客户编号"],
@@ -481,7 +521,7 @@ describe("RecordImportDrawer", () => {
   it("keeps a visible filename on cancel and reads a reselected file with the same name", async () => {
     const { api } = setup();
     expect(
-      screen.getByRole("button", { name: "选择或拖入 Excel / CSV 文件" }),
+      screen.getByRole("button", { name: /^选择或拖入 Excel \/ CSV 文件/ }),
     ).toBeVisible();
     chooseFile("姓名\n张三", "客户.csv");
     await screen.findByText("1 行 · 1 列");
@@ -515,7 +555,7 @@ describe("RecordImportDrawer", () => {
       screen.queryByRole("button", { name: /确认导入/ }),
     ).not.toBeInTheDocument();
     await checkAndImport();
-    await screen.findByText(/成功 1 行/);
+    await screen.findByText(/已导入 1 行/);
     expect(
       vi.mocked(api.importRows).mock.calls.map((call) => call[2].ownerMemberId),
     ).toEqual(["m1", "m2", "m2"]);
@@ -589,7 +629,7 @@ describe("RecordImportDrawer", () => {
     chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");
     await screen.findByText("1 行 · 3 列");
     await checkAndImport();
-    await screen.findByText(/成功 1 行，跳过 0 行，失败 0 行/);
+    await screen.findByText(/已导入 1 行/);
     expect(api.importRows).toHaveBeenCalledTimes(2);
     const calls = vi.mocked(api.importRows).mock.calls;
     expect(calls[0][2]).toMatchObject({
@@ -603,11 +643,165 @@ describe("RecordImportDrawer", () => {
     expect(screen.getByLabelText("映射 姓名")).toBeDisabled();
     expect(onCompleted).toHaveBeenCalled();
   });
+  it("says in the main area when nothing can be imported, and why", async () => {
+    const api = recordApi();
+    vi.mocked(api.importRows).mockResolvedValue({
+      created: 0,
+      failed: 0,
+      skipped: 1,
+      items: [{ rowNumber: 2, status: "SKIPPED" }],
+    } as never);
+    setup(api);
+    chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");
+    await screen.findByText("1 行 · 3 列");
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    const verdict = await screen.findByRole("region", { name: "检查结果" });
+    expect(verdict).toHaveTextContent("没有可导入的行");
+    expect(verdict).toHaveTextContent("1 行和已有记录或文件里的其他行重复");
+    expect(
+      screen.queryByRole("button", { name: /确认导入/ }),
+    ).not.toBeInTheDocument();
+  });
+  it("still marks AI-mapped columns as AI after the rows are imported", async () => {
+    const call = vi.spyOn(assistApi, "requestImportAssist").mockResolvedValue({
+      version: 1,
+      generatedAt: "",
+      matchFields: [],
+      columns: [
+        {
+          col: "C2",
+          target: { mode: "field", field: "lead_status" },
+          confidence: "high",
+          reason: "表头含义相近",
+        },
+      ],
+    });
+    setup(recordApi(), schema, false, undefined, true);
+    // A file no other test uses: AI runs once per file.
+    chooseFile("姓名,客户状态\n导入后客户,待联系");
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    // The mapping row: the column name sits in the row's first cell.
+    const row = () =>
+      screen.getByText("客户状态", { selector: "strong" }).closest("div")!
+        .parentElement!;
+    await waitFor(() => expect(row()).toHaveTextContent("AI 建议"));
+    await checkAndImport();
+    await screen.findByText(/已导入 1 行/);
+    expect(row()).toHaveTextContent("AI 建议");
+    expect(row()).not.toHaveTextContent("自动");
+    call.mockRestore();
+  });
+  it("keeps AI marks on other columns after one column is changed by hand", async () => {
+    const call = vi.spyOn(assistApi, "requestImportAssist").mockResolvedValue({
+      version: 1,
+      generatedAt: "",
+      matchFields: [],
+      columns: [
+        {
+          col: "C2",
+          target: { mode: "field", field: "lead_status" },
+          confidence: "high",
+          reason: "表头含义相近",
+        },
+      ],
+    });
+    setup(recordApi(), schema, false, undefined, true);
+    chooseFile("姓名,客户进度,说明\n手改后客户,待联系,无");
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    const row = (name: string) =>
+      screen.getByText(name, { selector: "strong" }).closest("div")!
+        .parentElement!;
+    await waitFor(() => expect(row("客户进度")).toHaveTextContent("AI 建议"));
+    fireEvent.mouseDown(screen.getByLabelText("映射 说明"));
+    fireEvent.click(
+      await screen.findByText(/^姓名 · /, {
+        selector: ".ant-select-item-option-content",
+      }),
+    );
+    await waitFor(() => expect(row("说明")).toHaveTextContent("手动"));
+    expect(row("客户进度")).toHaveTextContent("AI 建议");
+    expect(row("客户进度")).not.toHaveTextContent("自动");
+    call.mockRestore();
+  });
+  it("offers a column of member names as the owner and warns before importing with no owner", async () => {
+    const { api } = setup(recordApi(), schema, true);
+    chooseFile(
+      "姓名,销售,线索状态\n客户甲,员工甲,待联系\n客户乙,员工乙,待联系",
+    );
+    await screen.findByText("2 行 · 3 列");
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    const verdict = await screen.findByRole("region", { name: "检查结果" });
+    expect(verdict).toHaveTextContent("这 2 行导入后没有负责人");
+    // What will be written, with the file's own text where it changes.
+    const preview = within(verdict).getByRole("table", { name: "导入预览" });
+    expect(preview).toHaveTextContent("客户甲");
+    expect(preview).toHaveTextContent("未分配");
+    // An option that reads the same as the file is not repeated in grey.
+    expect(preview).not.toHaveTextContent("待联系待联系");
+    fireEvent.click(
+      within(verdict).getByRole("button", { name: "按「销售」分配" }),
+    );
+    expect(
+      screen.queryByText(/这 2 行导入后没有负责人/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("新增记录按文件中的负责人分别归属"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    const next = await screen.findByRole("region", { name: "检查结果" });
+    expect(next).not.toHaveTextContent("没有负责人");
+    const table = within(next).getByRole("table", { name: "导入预览" });
+    expect(table).toHaveTextContent("员工甲");
+    expect(table).toHaveTextContent("员工乙");
+    fireEvent.click(screen.getByRole("button", { name: /确认导入/ }));
+    await screen.findByText(/已导入 2 行/);
+    const owners = vi
+      .mocked(api.importRows)
+      .mock.calls.filter(([, , input]) => !input.dryRun)
+      .map(([, , input]) => input.ownerMemberId)
+      .sort();
+    expect(owners).toEqual(["m1", "m2"]);
+  });
+  it("asks before closing with a chosen file, and closes at once when done", async () => {
+    const { onClose } = setup();
+    chooseFile("姓名\n关闭前客户");
+    await screen.findByText("1 行 · 1 列");
+    fireEvent.click(screen.getByRole("button", { name: /^关\s*闭$/ }));
+    expect(
+      await screen.findByText(
+        "已选的文件和列对照还没有导入，关闭后需要重新选择。",
+      ),
+    ).toBeInTheDocument();
+    // Enter right after Esc keeps the work: the safe button has the focus.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "继续导入" })).toHaveFocus(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "继续导入" }));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText("1 行 · 1 列")).toBeInTheDocument();
+    await checkAndImport();
+    await screen.findByText(/已导入 1 行/);
+    fireEvent.click(screen.getByRole("button", { name: /^完\s*成$/ }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it("offers 完成 once every row is imported", async () => {
+    setup();
+    chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");
+    await screen.findByText("1 行 · 3 列");
+    await checkAndImport();
+    await screen.findByText(/已导入 1 行/);
+    expect(
+      screen.getByRole("button", { name: /^完\s*成$/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "检查剩余行" }),
+    ).not.toBeInTheDocument();
+  });
   it("automatically reads GBK and blocks already damaged text", async () => {
     const { api } = setup();
     chooseFile(new Uint8Array([110, 97, 109, 101, 10, 0xd5, 0xc5, 0xc8, 0xfd]));
     await screen.findByText("张三");
-    expect(screen.getByText(/当前按 GBK/)).toBeInTheDocument();
+    expect(screen.getByText(/自动识别（GBK/)).toBeInTheDocument();
     chooseFile("姓名\n����");
     await screen.findByText(/乱码替代字符/);
     expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
@@ -621,7 +815,7 @@ describe("RecordImportDrawer", () => {
     await screen.findByText(/多个文件列映射到了同一字段/);
     expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
     chooseFile("名字,备注\n张三,未知");
-    await screen.findByText(/尚未映射必填字段：姓名/);
+    await screen.findByText(/还没对上必填字段：姓名/);
     expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
   });
   it("rejects fake Excel and explains read failures", async () => {
@@ -672,7 +866,7 @@ describe("RecordImportDrawer", () => {
     );
     await screen.findByText("201 行 · 1 列");
     await checkAndImport();
-    await screen.findByText(/成功 100 行/);
+    await screen.findByText(/已导入 100 行/);
     await screen.findByText(/请求中断/);
     fireEvent.click(await screen.findByRole("button", { name: "检查剩余行" }));
     await screen.findByRole("button", { name: /确认导入/ });
@@ -683,7 +877,7 @@ describe("RecordImportDrawer", () => {
         .map((row) => row.rowNumber),
     ).toEqual(Array.from({ length: 101 }, (_, i) => i + 102));
     fireEvent.click(screen.getByRole("button", { name: /确认导入/ }));
-    await screen.findByText(/成功 201 行，跳过 0 行，失败 0 行/);
+    await screen.findByText(/已导入 201 行/);
   });
   it("keeps server validation failures visible and offers a failure download", async () => {
     const api = recordApi();
@@ -730,7 +924,8 @@ it("requires manual mapping for same-name fields and displays their types", asyn
     ],
   });
   chooseFile("姓名,线索状态\n张三,待联系");
-  await screen.findByText(/将跳过 1 列：线索状态/);
+  // The ambiguous column stays unmatched, marked in its own row.
+  await screen.findByText("未对照");
   fireEvent.mouseDown(screen.getByLabelText("映射 线索状态"));
   expect(
     screen.getByText("线索状态 · 单选（lead_status）"),
@@ -762,7 +957,7 @@ it("imports into the initial pool only after explicit selection and excludes own
   chooseFile("姓名\n新客户");
   await screen.findByText("1 行 · 1 列");
   await checkAndImport();
-  await screen.findByText(/成功 1 行/);
+  await screen.findByText(/已导入 1 行/);
   const input = vi.mocked(api.importRows).mock.calls.at(-1)![2];
   expect(input.importToPool).toBe(true);
   expect(input).not.toHaveProperty("ownerMemberId");
@@ -974,7 +1169,7 @@ it("keeps a confirmed row locked to its original write when the remaining mappin
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "检查剩余行" }));
   fireEvent.click(await screen.findByRole("button", { name: /确认导入 1 行/ }));
-  await screen.findByText(/成功 2 行/);
+  await screen.findByText(/已导入 2 行/);
   const requests = mock.mock.calls.map(([, , input]) => input);
   expect(requests.slice(-2).map((req) => req.rows)).toEqual(
     Array.from({ length: 2 }, () => [{ rowNumber: 3, values: { name: "乙" } }]),

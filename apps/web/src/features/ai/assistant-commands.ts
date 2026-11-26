@@ -30,6 +30,8 @@ export interface AssistantCommands {
   ) => Promise<FieldErrors | undefined> | undefined;
   cancel: (question: AssistantQuestion) => void;
   regenerate: (proposalId: string) => void;
+  /** Asks the question of a turn again, for proposals that expired. */
+  resend?: (turnId: string) => void;
   confirm: (
     turnId: string,
     input: AssistantBatchConfirmation,

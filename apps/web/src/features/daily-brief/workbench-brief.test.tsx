@@ -122,3 +122,44 @@ it("opens the manageable overdue task and only offers creation when the record h
   );
   expect(screen.queryByText("确认交期。")).toBeNull();
 });
+
+it("opens the record from the row, keeps the reason behind ⓘ and only mentions the limit once it is used up", async () => {
+  suggestions.mockResolvedValueOnce({
+    generatedAt: "2026-11-24T08:00:00Z",
+    remaining: 2,
+    items: [
+      {
+        recordId: "record",
+        objectCode: "deals",
+        title: "远山",
+        objectName: "商机",
+        suggestedTitle: "确认交期",
+        explanation: "",
+        reason: "商机阶段：方案报价",
+        canFollowUp: true,
+        overdueFollowUpId: null,
+      },
+    ],
+  });
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <BriefSuggestions
+        tenantCode="local"
+        memberId="actor"
+        localDate="2026-11-24"
+        timezone="UTC"
+        hasCandidates
+      />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByRole("link", { name: "确认交期" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("/objects/deals/record"),
+  );
+  expect(
+    screen.getByRole("button", { name: "依据：商机阶段：方案报价" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByText("商机阶段：方案报价")).toBeNull();
+  expect(screen.queryByRole("link", { name: "打开记录" })).toBeNull();
+  expect(screen.queryByText(/还可重新生成|已用完/)).toBeNull();
+});

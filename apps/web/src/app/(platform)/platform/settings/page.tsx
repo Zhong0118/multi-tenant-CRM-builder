@@ -1,3 +1,4 @@
+import { PlatformMail } from "@/features/platform/platform-mail";
 import { PlatformAiSettings } from "@/features/platform/ai-governance/settings";
 import { PlatformSettingsView } from "@/features/platform/platform-operations";
 import { toApiError } from "@/lib/api/api-error";
@@ -10,10 +11,23 @@ export default async function PlatformSettingsPage() {
     const apiError = toApiError(result.error, result.response.status);
     throw Object.assign(new Error(apiError.message), apiError);
   }
+  const [stats, me] = await Promise.all([
+    client.GET("/api/v1/platform/mail/statistics"),
+    client.GET("/api/v1/me"),
+  ]);
   return (
     <PlatformSettingsView
       status={result.data}
-      governance={<PlatformAiSettings />}
+      governance={
+        <>
+          <PlatformMail
+            ready={result.data.mail.ready}
+            verified={me.data?.emailStatus === "VERIFIED"}
+            items={stats.data?.items ?? null}
+          />
+          <PlatformAiSettings />
+        </>
+      }
       checkedAt={new Date().toISOString()}
     />
   );

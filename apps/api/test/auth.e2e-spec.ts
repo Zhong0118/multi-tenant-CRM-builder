@@ -1,3 +1,4 @@
+import type { IncomingHttpHeaders } from 'node:http';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
@@ -61,6 +62,38 @@ describe('Auth API (e2e)', () => {
       user: { phone: '+8613911112222', displayName: '测试用户' },
     });
     expect(registration.body).not.toHaveProperty('sessionToken');
+    const headers: IncomingHttpHeaders = registration.headers;
+    const cookies = headers['set-cookie'];
+    expect(cookies).toHaveLength(2);
+    const deviceCookie = cookies?.find((value) =>
+      value.startsWith('crm_device='),
+    );
+    expect(deviceCookie).toMatch(/^crm_device=[\w-]{43};/);
+    for (const attribute of [
+      'HttpOnly',
+      'Secure',
+      'SameSite=Lax',
+      'Max-Age=31536000',
+      'Path=/',
+    ]) {
+      expect(deviceCookie).toContain(attribute);
+    }
+    await first
+      .get('/api/v1/auth/email/status')
+      .expect(200, { mailAvailable: false });
+    await first
+      .post('/api/v1/me/email/challenges')
+      .set('Origin', origin)
+      .send({ purpose: 'BIND', email: 'account@example.org' })
+      .expect(503)
+      .expect((response) =>
+        expect(response.body).toMatchObject({
+          code: 'MAIL_SERVICE_UNAVAILABLE',
+        }),
+      );
+    await request(app.getHttpServer())
+      .get('/api/v1/me/notification-settings')
+      .expect(401);
     await first
       .get('/api/v1/me')
       .expect(200)
@@ -103,7 +136,7 @@ describe('Auth API (e2e)', () => {
     );
     expect(oldSession).toBeDefined();
     const oldSessionId = oldSession?.id;
-    expect(typeof oldSessionId).toBe('string');
+    if (typeof oldSessionId !== 'string') throw new Error('Missing session ID');
     await second
       .delete(`/api/v1/me/sessions/${oldSessionId}`)
       .set('Origin', origin)

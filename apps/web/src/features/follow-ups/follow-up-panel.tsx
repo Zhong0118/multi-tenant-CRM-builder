@@ -45,6 +45,7 @@ export function FollowUpPanel({
   beforeList,
   assignees,
   onCompleted,
+  onOpenCount,
   api = followUpApi,
 }: {
   tenantCode: string;
@@ -58,6 +59,8 @@ export function FollowUpPanel({
   /** Company administrators may hand a new task to one of these members. */
   assignees?: Array<{ id: string; displayName?: string | null }>;
   onCompleted?: () => void | Promise<void>;
+  /** How many tasks are still open, whenever the 待跟进 list loads. */
+  onOpenCount?: (count: number) => void;
   api?: typeof followUpApi;
 }) {
   const client = useQueryClient();
@@ -121,6 +124,10 @@ export function FollowUpPanel({
       }),
     refetchInterval: 60_000,
   });
+  const openTotal = status === "OPEN" ? query.data?.total : undefined;
+  useEffect(() => {
+    if (openTotal !== undefined) onOpenCount?.(openTotal);
+  }, [openTotal, onOpenCount]);
   useEffect(() => {
     if (!followUpId || !recordId) return;
     const targetKey = followUpQueryKeys.root(tenantCode);
@@ -356,7 +363,7 @@ export function FollowUpPanel({
               ? "目前没有逾期事项"
               : status === "OPEN"
                 ? record
-                  ? "这条记录还没有待跟进事项，可以用上方「安排跟进」定下一步。"
+                  ? "暂无待跟进"
                   : "暂无待跟进事项，从业务记录详情安排下一步。"
                 : "暂无记录"
           }

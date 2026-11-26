@@ -11,7 +11,7 @@ import {
   Tabs,
   Tag,
 } from "antd";
-import { CheckCircleOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import { MinusCircleOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Page, PageSection } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
@@ -66,10 +66,7 @@ export function WorkspaceAiSettings({
     mode = draft ?? state?.allocation;
   return (
     <Page width="settings">
-      <PageHeader
-        title="AI 设置"
-        description="管理公司的 AI 用量、成员份额和操作记录"
-      />
+      <PageHeader title="AI 设置" />
       {settings.isError ? (
         <LoadError
           error={settings.error}
@@ -109,67 +106,85 @@ export function WorkspaceAiSettings({
             <Alert showIcon type="warning" title="平台已暂停 AI 服务" />
           )}
           <div className={styles.grid}>
-            <PageSection title="套餐包含的功能">
-              {catalogGroups(state.catalog).map((group) => (
-                <section key={group} aria-label={group}>
-                  <h4>{group}</h4>
-                  <ul className={styles.features}>
-                    {state.catalog
-                      .filter((f) => f.group === group)
-                      .map((f) => (
-                        <li key={f.key}>
-                          {f.released && state.features.includes(f.key) ? (
-                            <CheckCircleOutlined className={styles.check} />
-                          ) : (
-                            <MinusCircleOutlined />
-                          )}
-                          <span>{f.label}</span>
-                          {!f.released ? (
-                            <small>即将上线</small>
-                          ) : (
-                            !state.features.includes(f.key) && (
-                              <small>当前套餐不含，如需开通请联系平台</small>
-                            )
-                          )}
-                        </li>
-                      ))}
-                  </ul>
-                </section>
-              ))}
+            <PageSection title="套餐功能">
+              {/* One line until opened: the groups take ~200px. */}
+              <details className={styles.featureFold}>
+                <summary>
+                  包含{" "}
+                  {
+                    state.catalog.filter(
+                      (f) => f.released && state.features.includes(f.key),
+                    ).length
+                  }{" "}
+                  项功能
+                </summary>
+                {catalogGroups(state.catalog).map((group) => (
+                  <section
+                    key={group}
+                    aria-label={group}
+                    className={styles.featureGroup}
+                  >
+                    <h4>{group}</h4>
+                    <ul className={styles.features}>
+                      {state.catalog
+                        .filter((f) => f.group === group)
+                        .map((f) => (
+                          <li key={f.key}>
+                            {/* Included features are plain labels, the same
+                              tags the platform's plan table shows; a missing
+                              one is muted text that says how to get it. */}
+                            {f.released && state.features.includes(f.key) ? (
+                              <Tag>{f.label}</Tag>
+                            ) : (
+                              <>
+                                <MinusCircleOutlined aria-hidden />
+                                <span>{f.label}</span>
+                                <small>
+                                  {f.released
+                                    ? "当前套餐不含，如需开通请联系平台"
+                                    : "即将上线"}
+                                </small>
+                              </>
+                            )}
+                          </li>
+                        ))}
+                    </ul>
+                  </section>
+                ))}
+              </details>
             </PageSection>
             <PageSection title="额度分配">
-              <Radio.Group
-                aria-label="额度分配"
-                value={mode}
-                onChange={(e) => {
-                  setDraft(e.target.value);
-                  save.reset();
-                }}
-                options={[
-                  { label: "全员共用", value: "shared" },
-                  { label: "按人均分", value: "equal" },
-                ]}
-              />
-              <p className={styles.helper}>
-                {mode === "shared"
-                  ? "全体在职成员共用公司本月额度。"
-                  : "公司本月额度由全部在职成员均分，人数变化后自动重算。"}
-              </p>
-              <p className={styles.secondary}>
-                当前在职 {state.preview.members} 人
-              </p>
-              <div className={styles.saveRow}>
-                {mode === "equal" && <small>{shareText(state.preview)}</small>}
-                <Button
-                  type="primary"
-                  disabled={mode === state.allocation}
-                  onClick={() =>
-                    mode && setConfirmation({ mode, preview: state.preview })
-                  }
-                >
-                  保存
-                </Button>
+              <div className={styles.allocation}>
+                <Radio.Group
+                  aria-label="额度分配"
+                  value={mode}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    save.reset();
+                  }}
+                  options={[
+                    { label: "全员共用", value: "shared" },
+                    { label: "按人均分", value: "equal" },
+                  ]}
+                />
+                <small>
+                  {mode === "equal"
+                    ? shareText(state.preview)
+                    : `${state.preview.members} 人共用本月额度`}
+                </small>
               </div>
+              {mode !== state.allocation && (
+                <div className={styles.saveRow}>
+                  <Button
+                    type="primary"
+                    onClick={() =>
+                      mode && setConfirmation({ mode, preview: state.preview })
+                    }
+                  >
+                    保存
+                  </Button>
+                </div>
+              )}
               {save.isError && (
                 <LoadError
                   error={save.error}
@@ -182,6 +197,7 @@ export function WorkspaceAiSettings({
             </PageSection>
           </div>
           <Tabs
+            className={styles.tabs}
             defaultActiveKey="usage"
             items={[
               {

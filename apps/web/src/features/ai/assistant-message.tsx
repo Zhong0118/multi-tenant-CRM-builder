@@ -1,5 +1,6 @@
 "use client";
 
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { ClockCircleOutlined, CopyOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import { useContext, useState } from "react";
@@ -95,7 +96,7 @@ export function AssistantMessage({
   return (
     <article className={styles.assistantRow}>
       <div className={styles.avatar} aria-hidden>
-        AI
+        <AiSparkIcon />
       </div>
       <div className={styles.assistantSurface}>
         <div className={styles.answerMeta}>
@@ -129,6 +130,13 @@ export function AssistantMessage({
                 : undefined
           }
         />
+        {/* The answer reads first; the cards it introduces ("…等待你确认：")
+            follow it. */}
+        {message.content ? (
+          <div className={styles.answerContent}>
+            <AnswerText content={message.content} links={citationLinks} />
+          </div>
+        ) : null}
         {message.questions?.map((question) => (
           <QuestionCard
             key={question.questionId}
@@ -160,11 +168,6 @@ export function AssistantMessage({
             onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)}
             onReject={() => onRejectProposal?.(message.proposal!.proposalId)}
           />
-        ) : null}
-        {message.content ? (
-          <div className={styles.answerContent}>
-            <AnswerText content={message.content} links={citationLinks} />
-          </div>
         ) : null}
         {message.content && !active && message.status !== "FAILED" ? (
           <div className={styles.answerActions}>
@@ -213,7 +216,7 @@ export function AssistantMessage({
         ) : null}
         {message.sourceSummary.length > 0 ? (
           <div className={styles.sourceBlock}>
-            <div className={styles.sourceLabel}>数据来源</div>
+            <div className={styles.sourceLabel}>来源</div>
             <div className={styles.sources}>
               {message.sourceSummary.map((source, index) => (
                 <SourceCard

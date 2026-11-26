@@ -4,6 +4,10 @@
 > **适用范围：平台超级管理员、公司管理员、公司员工，以及登录/邀请/工作空间等公共页面。**  
 > **目标：合并 V1 与 V2，消除冲突、去重，并保留两版中有价值的 UX 与工程实现规则。**  
 > 后续开发、设计、AI 编码、代码审查均以本文件为准。V1、V2 仅保留归档，不再作为实现依据。
+>
+> **2026-11-26 更新：方向 A「安静工作台」。** 用户在 2026-11-25 的风格对比页上选定方向 A（用户确认）：中性锌灰表面、百杰 logo 的青绿作为唯一强调色、AI 内容用一种安静的紫色标记。第 3 节色值、5.2 圆角、6.1 / 7.2 / 7.3 / 37 节尺寸与状态、13.1 主按钮、17.3 行状态、Tabs 激活色已按它改写；具体数值取自代码（Agent 推断），以 `apps/web/src/app/globals.css` 和 `apps/web/src/components/theme/workspace-theme.ts` 为准，两处由 `providers.test.ts` 保持一致。改动记录见 [UI 审查：AI 功能与个人中心](./2026-11-25-ui-audit-ai-account.md) 第 7 节。
+>
+> **2026-11-26 更新：少字少白。** 用户要求界面少空白、少文字，像苹果的系统设置那样克制（用户确认），并选定把六条减法规则写进本规范（用户确认）。新增 2.3 节；11、16.4、19.4、19.5、29、35.4、38 节已按它改写。同日按代码改正了 6.2、7.1、9、38、39 节残留的旧尺寸和页面底色，31.1 节的找回密码方式，以及 7、9、10 节里侧栏、顶栏和用户菜单的结构（全局搜索、顶栏通知尚未实现，已在 9.4、9.5 注明）。
 
 ---
 
@@ -183,19 +187,41 @@ Long-session friendly
 
 ---
 
+## 2.3 少字少白（减法规则）
+
+参照 macOS / iOS 的系统设置：一屏里只留做决定需要的字。六条规则均为用户确认（2026-11-26）：
+
+| 编号 | 规则 | 例子 |
+| --- | --- | --- |
+| R1 | 页头默认只写标题；只有标题说不清页面用途时，才加一句副标题。 | 「登录」「AI 设置」不加副标题 |
+| R2 | 控件下面默认不写说明。规则在开始输入或出错时出现，解释放进 ⓘ。 | 密码规则开始输入后才出现；「依据：…」放进字段名旁的 ⓘ |
+| R3 | 已经用计数、标签或按钮状态表达的意思，不再用句子重复。 | 有「应用」按钮时不写「尚未应用」；上方有计数时，底栏不再写「已检查 3 行」 |
+| R4 | 空状态只写一行字、给一个动作，不放插画。 | 「暂无待跟进」 |
+| R5 | 内容少的页面：确认类、等待类做成居中面板；设置类在宽屏上两栏并排，不留一条窄列。 | 见 35.4 |
+| R6 | 「Enter 发送」「可选」这类通用约定不写在界面上。 | 输入框下不写快捷键；非必填字段不标「可选」 |
+
+落地做法（Agent 推断，取自已改页面）：
+
+- ⓘ 是一个可聚焦的 `<button type="button">`，里面放 `InfoCircleOutlined`，`aria-label` 写完整说明，悬停或聚焦时用 Tooltip 显示同一段话。它放在 `<label>` 外面，不混进字段的可访问名称。
+- 收起来的内容按长短选位置：一句原因放进 ⓘ；一段解释或一串条目用 `<details>` 折叠，摘要只写一行标题；次要筛选和选项放进「更多筛选」「更多选项」。
+- 去掉可见标签时，读屏仍要读得到：保留视觉隐藏的 `label` 或 `aria-label`。
+- 少字不等于少状态：出错、额度用完、权限不足这类要用户处理的情况，照常用文字说明。
+
+---
+
 # 3. Design Tokens
 
 ## 3.1 主色
 
-统一采用 Work Blue：
+统一采用百杰 logo 的青绿（方向 A，用户确认）。整个产品只有这一种强调色：登录、工作区、管理中心、账号中心一致。
 
 | Token | Value | Usage |
 |---|---|---|
-| `--color-primary` | `#2563EB` | 主按钮、链接、焦点、选中 |
-| `--color-primary-hover` | `#1D4ED8` | Hover |
-| `--color-primary-active` | `#1E40AF` | Active |
-| `--color-primary-soft` | `#EFF6FF` | 轻选中背景 |
-| `--color-primary-border` | `#BFDBFE` | 选中/Focus 边框 |
+| `--color-primary` | `#167568` | 主按钮、链接、焦点、选中 |
+| `--color-primary-hover` | `#115F55` | Hover |
+| `--color-primary-active` | `#0D5149` | Active |
+| `--color-primary-soft` | `#E8F3F0` | 轻选中背景 |
+| `--color-primary-border` | `#B5DBD2` | 选中/Focus 边框 |
 
 ---
 
@@ -203,32 +229,23 @@ Long-session friendly
 
 | Token | Value | Usage |
 |---|---|---|
-| `--text-primary` | `#0F172A` | 页面标题、主文本 |
-| `--text-secondary` | `#475569` | 次级说明 |
-| `--text-tertiary` | `#64748B` | 辅助信息 |
-| `--text-disabled` | `#94A3B8` | Disabled |
-| `--border-default` | `#E2E8F0` | 普通边框 |
-| `--border-strong` | `#CBD5E1` | 强边框 |
-| `--bg-page` | `#F8FAFC` | 页面背景 |
+| `--text-primary` | `#18181B` | 页面标题、主文本 |
+| `--text-secondary` | `#52525B` | 次级说明 |
+| `--text-tertiary` | `#71717A` | 辅助信息 |
+| `--text-disabled` | `#A1A1AA` | Disabled |
+| `--border-default` | `#E4E4E7` | 普通边框、卡片边框 |
+| `--border-strong` | `#D4D4D8` | 强边框 |
+| `--border-hairline` | `#ECECEE` | 卡片内的行分隔线 |
+| `--bg-page` | `#F7F7F8` | 页面背景 |
+| `--bg-sidebar` | `#F2F2F3` | 侧栏（比工作区暗一级） |
 | `--bg-surface` | `#FFFFFF` | Table / Form / Card |
-| `--bg-hover` | `#F1F5F9` | Hover |
-| `--bg-selected` | `#EFF6FF` | Selected |
+| `--bg-surface-subtle` | `#FAFAFA` | 卡片内的次级区块、空文件区 |
+| `--bg-hover` | `#F4F4F5` | Hover |
+| `--bg-selected` | `#E8F3F0` | Selected |
 
 ### 取舍说明
 
-V1 的 `#F4F7F9` 与 V2 的 `#F8FAFC` 存在冲突。  
-V3 统一采用：
-
-```text
-#F8FAFC
-```
-
-原因：
-
-- 更干净；
-- 减少灰蒙感；
-- 与 `#FFFFFF` Surface 区分足够；
-- 更适合长时间后台系统。
+方向 A 用锌灰（zinc）替换原来的冷蓝灰（slate），去掉中性色里的蓝色倾向，让青绿成为画面里唯一的颜色。侧栏比白色工作区暗一级，内容区向前、导航退后。
 
 ---
 
@@ -238,10 +255,12 @@ V3 统一采用：
 
 | Token | Value | Semantic |
 |---|---|---|
-| `--color-success` | `#0F766E` | 已完成、已验证、成功 |
+| `--color-success` | `#15803D` | 已完成、已验证、成功 |
 | `--color-warning` | `#B45309` | 待审核、临期、风险 |
 | `--color-danger` | `#B42318` | 错误、危险、逾期 |
-| `--color-info` | `#2563EB` | 信息、处理中 |
+| `--color-info` | `#167568` | 信息、处理中 |
+
+成功色改为绿色 `#15803D`，与青绿主色分开，避免「已验证」看起来像可点击。
 
 状态必须同时包含：
 
@@ -249,7 +268,26 @@ V3 统一采用：
 颜色 + 文本
 ```
 
-不能只有绿色点或红色点。
+不能只有绿色点或红色点。状态标签统一用 `StatusTag`（`neutral / info / success / warning / danger`），不在页面里另配颜色。
+
+提示条（AntD `Alert`）统一为白底、`--border-default` 细边框、8px 圆角，状态色只出现在图标和 3px 左边线上，不铺底色；说明文字用次要文字色。样式在主题和 `globals.css` 里统一设置，页面不另配颜色。
+
+## 3.4 AI 内容色
+
+AI 生成、待人确认的内容（今日建议、帮我写、日报草稿、导入列对照建议、AI 建表理由）用一种安静的紫色标记，与青绿的「操作」区分（用户确认方向，取值 Agent 推断）：
+
+| Token | Value | Usage |
+|---|---|---|
+| `--color-ai` | `#6D5BD0` | AI 标记图标、AI 卡片标题前的火花 |
+| `--color-ai-soft` | `#F3F1FC` | AI 卡片背景 |
+| `--color-ai-border` | `#DDD8F5` | AI 卡片边框 |
+
+规则：
+
+- 紫色只用于「这段内容是 AI 写的」，不用于按钮和链接；采用、保存等动作仍用主色；
+- AI 没写出内容时（失败、兜底、用户自己的原文）不出现紫色；AI 新增的条目用同一个 AI 标记（如「AI 新增」），不另用青绿「新」标签；
+- AI 卡片统一为：火花图标 + 标题 + 内容 + 「待确认」时的操作行，不在各页面另做样式；
+- 不使用渐变、发光、彩虹色表达 AI。
 
 ---
 
@@ -346,10 +384,10 @@ font-variant-numeric: tabular-nums;
 
 | Element | Radius |
 |---|---:|
-| Input / Button | 6px |
-| Card / Container | 8px |
-| Status Tag | 4px |
-| Drawer / Modal | 8–10px |
+| Input / Button | 6px（`--radius-control`） |
+| Card / Container | 10px（`--radius-reading`） |
+| Status Tag | 4px（`--radius-status`） |
+| Drawer / Modal / Dropdown | 12px（`--radius-overlay`） |
 | Avatar | 50% |
 
 不使用大面积 16–24px 圆角 SaaS 风格。
@@ -402,25 +440,27 @@ V3 最终统一：
 
 | Element | Size |
 |---|---:|
-| Sidebar Expanded | **240px** |
+| Sidebar Expanded | **224px** |
 | Sidebar Collapsed | **64px** |
-| Top Header | **64px** |
+| Top Header | **52px** |
 | Page Padding ≥1440 | **24px** |
 | Page Padding 1024–1439 | **20px** |
 | Page Padding <1024 | **16px** |
 | Section Gap | **24px** |
 | Card Padding | **20px** |
-| Compact Control | **32px** |
-| Default Control | **36px** |
-| Primary Touch Target | **≥40px** |
+| Compact Control | **26px** |
+| Default Control | **32px** |
+| Primary Touch Target | **≥40px**（移动端） |
+
+方向 A 采用 Linear / Attio 的密度：默认控件 32px，侧栏 224px，顶栏 52px。工作区、管理中心、账号中心用同一个 `AppShell`（品牌在顶、本人在底）。
 
 ---
 
 ## 6.2 Layout
 
 ```text
-┌──────────── Sidebar 240 ────────────┬────────── Header 64 ──────────────┐
-│ Logo / Workspace                    │ Breadcrumb     Search     User     │
+┌──────────── Sidebar 224 ────────────┬──────── Header 52（可选）────────┐
+│ 品牌 / 公司名              [收起]   │ Breadcrumb（仅管理中心）          │
 │                                     ├───────────────────────────────────┤
 │ Navigation                          │                                   │
 │                                     │ Page Header                       │
@@ -429,8 +469,8 @@ V3 最终统一：
 │                                     │                                   │
 │                                     │ Main Content                      │
 │                                     │                                   │
-│ Collapse                            │                                   │
-│ Logout                              │                                   │
+│ 设置                                │                                   │
+│ 本人（用户菜单）                    │                                   │
 └─────────────────────────────────────┴───────────────────────────────────┘
 ```
 
@@ -441,19 +481,22 @@ V3 最终统一：
 ## 7.1 结构
 
 ```text
-Logo / Workspace
+品牌 / 公司名              [收起]
 ──────────────────
 Navigation
 ...
 ──────────────────
-Collapse
-Logout
+设置等固定入口
+本人（头像、姓名、角色）→ 用户菜单
+备案信息
 ```
+
+工作区的品牌行显示公司名，管理中心显示「管理中心」，账号中心显示「百杰 CRM」。
 
 Logo 区：
 
 ```text
-64px 高
+56px 高（品牌项 40px）
 ```
 
 ---
@@ -462,12 +505,12 @@ Logo 区：
 
 | Property | Value |
 |---|---:|
-| Height | 40px |
-| Horizontal Padding | 12px |
-| Icon | 18px |
-| Gap | 10px |
+| Height | 32px |
+| Horizontal Padding | 8px |
+| Icon | 16px |
+| Gap | 8px |
 | Radius | 6px |
-| Item Gap | 4px |
+| Item Gap | 1px |
 | Sidebar Horizontal Margin | 8px |
 
 ---
@@ -477,32 +520,34 @@ Logo 区：
 ### Default
 
 ```text
-icon #64748B
-text #334155
+icon #71717A
+text #52525B
 background transparent
 ```
 
 ### Hover
 
 ```text
-background #F1F5F9
-text #0F172A
+background #E7E7EA
+text #18181B
 transition 120ms
 ```
 
 ### Active
 
+当前页是一行抬起的白底，和它打开的页面同一种表面：
+
 ```text
-background #EFF6FF
-icon #2563EB
-text #1D4ED8
+background #FFFFFF
+text #18181B
 font-weight 500
+box-shadow 0 1px 2px rgba(24,24,27,.05) + 1px hairline
 ```
 
 ### Pressed
 
 ```text
-background #DBEAFE
+background #E7E7EA
 ```
 
 不缩放、不弹跳。
@@ -519,12 +564,15 @@ width 64px
 
 规则：
 
+- 收起按钮在品牌行右侧，收起后排到品牌图形下方；
 - 只显示 Icon；
 - Hover 显示 Tooltip；
 - 当前页面仍显示 Active；
 - Logo 只显示图形；
-- Logout 只显示 Icon；
+- 本人只显示头像，Hover 显示姓名；
 - 不改变菜单顺序。
+
+宽度可调：拖动侧栏右边缘，范围 200–320px；拖到 176px 以内即收起；双击边缘恢复 224px 并展开。宽度和收起状态记在本机。
 
 ---
 
@@ -533,20 +581,13 @@ width 64px
 固定：
 
 ```text
-[ ← 收起菜单 ]
-[ ↪ 退出登录 ]
+[ ⚙ 设置 ]            （有固定入口时）
+[ 头像  张三          ]
+[       公司管理员    ]  → 点击向上弹出用户菜单（10.2）
+备案信息
 ```
 
-Logout：
-
-- 默认中性色；
-- Hover 变 Danger；
-- 无未保存内容时可直接退出；
-- 有未保存内容时提示：
-
-```text
-当前页面存在未保存内容，退出后将丢失。
-```
+不单独放「收起菜单」和「退出登录」按钮：收起在品牌行（7.4），退出登录在用户菜单里。
 
 ---
 
@@ -583,20 +624,21 @@ Logout：
 高度：
 
 ```text
-64px
+52px
 ```
+
+桌面端只有需要面包屑或标题的页面才显示顶栏；手机上始终保留一条紧凑顶栏，放菜单按钮和少量操作（以 `apps/web/src/components/layout/app-shell.tsx` 为准）。
 
 ---
 
 ## 9.1 结构
 
 ```text
-Breadcrumb / Workspace
-                 Global Search
-                              Notification
-                              Help
-                              User Menu
+桌面端（仅管理中心）：Breadcrumb
+手机：[☰]  当前公司或页面名                 少量操作
 ```
+
+公司名和本人都在侧栏（7.1）；工作区和账号中心在桌面端没有顶栏，页面直接从内容开始。
 
 ---
 
@@ -616,13 +658,13 @@ Breadcrumb 最多 3 层。
 
 ## 9.3 Workspace
 
-公司管理员 / 员工页面顶部持续显示：
+公司管理员 / 员工页面在侧栏品牌行持续显示公司名：
 
 ```text
 ABC贸易
 ```
 
-如用户属于多个公司，可提供切换。
+如用户属于多个公司，在用户菜单里提供「切换工作空间」。
 
 切换工作空间后必须：
 
@@ -635,6 +677,8 @@ ABC贸易
 ---
 
 ## 9.4 Global Search
+
+尚未实现。工作区桌面端没有顶栏，做的时候先定入口位置（例如侧栏顶部或 ⌘K 浮层），下面的范围和文案照用。
 
 Desktop：
 
@@ -679,11 +723,7 @@ Ctrl K
 
 ## 9.5 Notification
 
-顺序：
-
-```text
-通知 → 帮助 → 用户
-```
+现在的入口是侧栏导航里的「消息」，未读数显示在菜单项右侧；没有顶栏通知按钮，也没有「帮助」入口。
 
 Badge：
 
@@ -707,18 +747,23 @@ Badge：
 
 ## 10.1 Trigger
 
+在侧栏底部（7.5），点击打开，菜单向上弹出。
+
 公司角色：
 
 ```text
 [Avatar 32]  张三
-             公司管理员 ▾
+             公司管理员
 ```
 
 超级管理员：
 
 ```text
-[Avatar 32] 平台超级管理员 ▾
+[Avatar 32]  张三
+             平台超级管理员
 ```
+
+账号中心里第二行写「个人账号」（平台超级管理员仍写「平台超级管理员」）。
 
 Avatar：
 
@@ -750,12 +795,23 @@ Avatar：
 
 ```text
 姓名
+138****1234
 平台超级管理员
 ────────────
 个人资料
 账号与安全
 ────────────
 退出登录
+```
+
+退出登录：
+
+- 默认中性色；
+- 无未保存内容时直接退出；
+- 有未保存内容时提示（待实现：目前只有个人资料等页面在关闭或刷新标签页时提醒）：
+
+```text
+当前页面存在未保存内容，退出后将丢失。
 ```
 
 ---
@@ -766,11 +822,11 @@ Avatar：
 
 ```text
 页面标题                         [Secondary] [Primary]
-一句话说明 / 数据更新时间
 ```
 
 规则：
 
+- 默认只写标题，不写副标题；只有标题说不清页面用途时，才加一句（2.3 R1）。数据型页面需要时，可以在标题下写数据更新时间；
 - 页面最多一个 Primary；
 - Secondary 不抢主操作；
 - Danger 不常驻 Header；
@@ -827,22 +883,22 @@ Toast：已转为客户
 ## 13.1 Primary
 
 ```text
-height 36px
-padding 0 14px
+height 32px
+padding 0 15px
 radius 6px
-background #2563EB
+background #167568
 ```
 
 Hover：
 
 ```text
-#1D4ED8
+#115F55
 ```
 
 Active：
 
 ```text
-#1E40AF
+#0D5149
 ```
 
 ---
@@ -1039,10 +1095,10 @@ Icon：
 
 ```text
 暂无客户
-创建第一条客户记录后可开始管理
-
 [+ 新增客户]
 ```
+
+只写一行字、给一个动作（2.3 R4）。
 
 ### Filtered Empty
 
@@ -1093,13 +1149,13 @@ CRM 最核心组件。
 Hover：
 
 ```text
-#F8FAFC
+#FAFAFA
 ```
 
 Selected：
 
 ```text
-#EFF6FF
+#E8F3F0
 ```
 
 Disabled：
@@ -1264,23 +1320,21 @@ Label 永远在 Input 上方。
 
 ## 19.4 Helper Text
 
-字段帮助文案只解释：
+控件下面默认不写说明（2.3 R2）：
 
-- 输入格式；
-- 业务约束；
-- 示例；
-- 权限原因。
-
-不要机械重复字段 Label。
+- 输入格式、长度这类规则，在开始输入或出错时出现；出错时由错误信息代替；
+- 业务约束、权限原因这类解释，放进字段名旁的 ⓘ；
+- 示例和不填时的结果写进占位，例如负责人的占位写「暂不指定」；
+- 不要机械重复字段 Label。
 
 例如：
 
 ```text
-联系电话
+联系电话 ⓘ
 [________________]
-
-用于客户回访，不会对外公开。
 ```
+
+ⓘ 里写「用于客户回访，不会对外公开。」
 
 而不是：
 
@@ -1311,6 +1365,8 @@ Label 永远在 Input 上方。
 ```text
 必填
 ```
+
+非必填字段不标「可选」（2.3 R6）。
 
 ---
 
@@ -1529,7 +1585,7 @@ Underline Tabs
 规则：
 
 - Height 40px；
-- Active `#2563EB`；
+- Active `#167568`；
 - 不使用大胶囊；
 - 不用不同 Tab 色彩；
 - Tab 数量 >7 时考虑二级导航或 Dropdown。
@@ -2035,6 +2091,10 @@ Drawer ≤70vw
 - 保留搜索、筛选、新增、活动录入；
 - Bottom Navigation 可考虑。
 
+账号与设置页：
+
+- 设置行保持左标签、右值，和 iOS 设置一致；打开表单（改密码、绑定邮箱）时，那一行才改成上下排（用户确认）。
+
 平台复杂配置：
 
 ```text
@@ -2084,20 +2144,19 @@ Drawer ≤70vw
 
 ## 31.1 登录方式
 
-MVP：
+登录：
 
 ```text
 手机号 + 密码
 ```
 
-不显示：
+不提供邮箱登录，除非产品需求明确增加。
 
-```text
-邮箱登录
-邮箱找回
-```
+找回密码：
 
-除非产品需求明确增加。
+- 默认用手机号验证码；
+- 平台邮件服务可用时，多一个「邮箱」方式，验证码只发到已绑定且验证过的邮箱；
+- 两种方式都用中性响应（见 31.3）；重置成功后所有设备退出登录，在成功提示里说明。
 
 ---
 
@@ -2268,6 +2327,8 @@ Loading
 5 导入结果
 ```
 
+界面上的步骤标题不加数字，顺序看位置就知道；表头识别有把握时不显示「选择表头」，只写一行「已识别第 N 行为表头」和一个「调整」（用户确认）。
+
 Validation Preview 分：
 
 ```text
@@ -2426,6 +2487,15 @@ List + Drawer
 
 ---
 
+## 35.4 Sparse Page（内容少的页面）
+
+2.3 R5：
+
+- 确认类、等待类（等待邀请、邀请详情）：一块居中面板，里面是标题、一行状态、一个主操作；
+- 设置类（个人资料、账号安全）：宽屏（≥1200px）两组并排，不留一条窄列；窄屏改为上下排。
+
+---
+
 # 36. AI Coding / Frontend Implementation Rules
 
 后续 AI 或前端开发禁止：
@@ -2450,29 +2520,30 @@ List + Drawer
 
 | Item | Final |
 |---|---|
-| Sidebar Expanded | `240px` |
+| Sidebar Expanded | `224px` |
 | Sidebar Collapsed | `64px` |
-| Header | `64px` |
+| Header | `52px` |
 | Page Padding | `24px` |
 | Medium Page Padding | `20px` |
-| Sidebar Item | `40px` |
-| Compact Control | `32px` |
-| Default Control / Primary Button | `36px` |
+| Sidebar Item | `32px` |
+| Compact Control | `26px` |
+| Default Control / Primary Button | `32px` |
 | Primary Touch Target | `≥40px` |
 | Table Header | `40px` |
 | Table Row | `44px` |
 | Dense Table Row | `40px` |
 | Control Radius | `6px` |
-| Container Radius | `8px` |
+| Container Radius | `10px` |
 | Tag Radius | `4px` |
 | Drawer | `560 / 720px` |
-| Primary | `#2563EB` |
-| Primary Soft | `#EFF6FF` |
-| Page BG | `#F8FAFC` |
+| Primary | `#167568` |
+| Primary Soft | `#E8F3F0` |
+| Page BG | `#F7F7F8` |
 | Surface | `#FFFFFF` |
-| Border | `#E2E8F0` |
-| Text | `#0F172A` |
-| Success | `#0F766E` |
+| Border | `#E4E4E7` |
+| Text | `#18181B` |
+| AI | `#6D5BD0` |
+| Success | `#15803D` |
 | Warning | `#B45309` |
 | Danger | `#B42318` |
 
@@ -2486,9 +2557,9 @@ List + Drawer
 
 ## Layout
 
-- [ ] Sidebar Expanded = 240px
+- [ ] Sidebar Expanded = 224px
 - [ ] Sidebar Collapsed = 64px
-- [ ] Header = 64px
+- [ ] Header = 52px
 - [ ] Page Padding 使用 Token
 - [ ] Mobile / Tablet 行为符合规范
 
@@ -2506,6 +2577,11 @@ List + Drawer
 
 - [ ] 页面最多一个 Primary Action
 - [ ] Danger Action 不抢主视觉
+- [ ] 页头只有标题；有副标题时，标题确实说不清用途
+- [ ] 控件下面没有常驻说明；规则在输入或出错时出现，解释在 ⓘ 里
+- [ ] 计数、标签、按钮状态已经说明的意思，没有再写成句子
+- [ ] 空状态一行字、一个动作
+- [ ] 没有「Enter 发送」「可选」这类通用约定的文字
 - [ ] Loading 状态存在
 - [ ] Empty 状态存在
 - [ ] Filtered Empty 状态存在
@@ -2586,9 +2662,9 @@ List + Drawer
 
 | Item | V1 | V2 | V3 |
 |---|---|---|---|
-| Sidebar | 224px | 240px | **240px** |
-| Header | 56px | 64px | **64px** |
-| Page BG | #F4F7F9 | #F8FAFC | **#F8FAFC** |
+| Sidebar | 224px | 240px | **224px**（方向 A） |
+| Header | 56px | 64px | **52px**（方向 A） |
+| Page BG | #F4F7F9 | #F8FAFC | **#F7F7F8**（方向 A） |
 | 字体 | Noto + IBM Plex | Inter + Noto | **Inter + Noto** |
 | Status 色 | Ledger 系列 | 标准绿色/橙/红 | **保留 V1 克制语义色** |
 | Operational Ledger | 有 | 弱化 | **保留** |

@@ -1,0 +1,20 @@
+.badge {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  color: var(--color-ai);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  vertical-align: middle;
+  background: var(--color-ai-soft);
+  border-radius: 4px;
+}
+
+.badge :global(.anticon) {
+  font-size: 12px;
+}

@@ -16,8 +16,9 @@ import type {
 import type { PublishedFieldView } from "@/features/objects/object-types";
 
 const push = vi.hoisted(() => vi.fn());
+const replace = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace }),
   usePathname: () => window.location.pathname,
 }));
 
@@ -25,6 +26,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-22T12:00:00Z"));
   push.mockClear();
+  replace.mockClear();
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -150,7 +152,9 @@ it("sends edited tenant wall time and just the selected fields in one operation"
   expect(screen.getByLabelText("选择下次跟进")).toBeChecked();
   expect(screen.getByLabelText("选择关注点")).not.toBeChecked();
   expect(screen.queryByText("敏感值")).toBeNull();
-  expect(screen.getByText("依据：下周再联系")).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "依据：下周再联系" }),
+  ).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("纪要内容"), {
     target: { value: "预算暂未获批" },
   });
@@ -188,8 +192,11 @@ it("sends edited tenant wall time and just the selected fields in one operation"
   expect(
     screen.queryByText(/审计|audit-note|audit-task|Asia\/Shanghai/),
   ).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "查看客户" }));
-  expect(push).toHaveBeenCalledWith("/workspace/t/objects/customers/r");
+  fireEvent.click(screen.getByRole("button", { name: "查看记录" }));
+  // The note was written: open the 动态 tab where it shows.
+  expect(push).toHaveBeenCalledWith(
+    "/workspace/t/objects/customers/r?section=activity",
+  );
   expect(onClose).toHaveBeenCalledTimes(1);
   expect(invalidate.mock.calls.map(([options]) => options?.queryKey)).toEqual(
     expect.arrayContaining([
@@ -285,6 +292,30 @@ it("recovers lost creation and confirmation responses with a stable key and a re
     { itemKey: "note", editedValue: text },
   ]);
   expect(read).toHaveBeenCalledWith("t", "customers", "r", "d");
+});
+
+it("says a fallback is a failure and can try the same words again", async () => {
+  const fallback = {
+    ...draft,
+    status: "FALLBACK",
+    note: text,
+    followUp: undefined,
+    fieldChanges: [],
+  };
+  const create = vi
+    .fn()
+    .mockResolvedValueOnce(fallback)
+    .mockResolvedValue(draft);
+  setup({ create });
+  await screen.findByText("这次没能整理出建议");
+  fireEvent.click(screen.getByRole("button", { name: "再整理一次" }));
+  await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+  expect(create.mock.calls[1][3].text).toBe(fallback.text);
+  expect(create.mock.calls[1][3].requestId).not.toBe(
+    create.mock.calls[0][3].requestId,
+  );
+  await screen.findByLabelText("纪要内容");
+  expect(screen.queryByText("这次没能整理出建议")).toBeNull();
 });
 
 it("resumes pending generation after a read with the original request ID", async () => {
@@ -411,7 +442,7 @@ it("shows the year across New Year and keeps company-local dates when the browse
   expect(picker).toHaveValue("2027年1月4日 周一 09:00");
 });
 
-it("shows generation and save progress and closes 查看客户 on the customer's current route", async () => {
+it("shows generation and save progress and closes 查看记录 on the customer's current route", async () => {
   window.history.replaceState(
     null,
     "",
@@ -442,9 +473,13 @@ it("shows generation and save progress and closes 查看客户 on the customer's
       ],
     }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "查看客户" }));
+  fireEvent.click(screen.getByRole("button", { name: "查看记录" }));
   expect(onClose).toHaveBeenCalledTimes(1);
   expect(push).not.toHaveBeenCalled();
+  expect(replace).toHaveBeenCalledWith(
+    "/workspace/t/objects/customers/r?section=activity",
+    { scroll: false },
+  );
 });
 
 it("retries a failed item independently when two operations fail", async () => {
@@ -567,4 +602,25 @@ it("keeps an unsubmitted item with missing inputs collapsed when another item fa
   expect(screen.getByLabelText("纪要内容").closest("details")).toBeNull();
   fireEvent.click(screen.getByText("下次跟进 · 待补充"));
   expect(pending).toHaveAttribute("open");
+});
+
+it("asks before Esc throws away an unsaved draft", async () => {
+  const { onClose } = setup();
+  await screen.findByRole("button", { name: "确认所选项" });
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+  expect(
+    await screen.findByRole("button", { name: "继续整理" }),
+  ).toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: "继续整理" })).toHaveLength(1);
+  expect(
+    screen.getByText("草稿和你的修改还没有保存，关闭后需要重新生成。"),
+  ).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "继续整理" }));
+  expect(
+    screen.getByRole("button", { name: "确认所选项" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  fireEvent.click(await screen.findByRole("button", { name: "放弃" }));
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
 });

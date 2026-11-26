@@ -5,6 +5,7 @@ node_modules/
 dist/
 coverage/
 .playwright-mcp/
+.local/avatars/
 packages/database/src/generated/prisma/
 .env
 .env.*

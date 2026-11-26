@@ -37,6 +37,19 @@ describe('validateProductionConfig', () => {
     expect(validateProductionConfig(valid)).toEqual(valid);
   });
 
+  it('accepts an HTTPS origin list and rejects invalid members', () => {
+    const origins = 'https://app.example.test,https://crm.baijiehub.com';
+    expect(
+      validateProductionConfig({ ...valid, WEB_ORIGIN: origins }).WEB_ORIGIN,
+    ).toBe(origins);
+    expect(() =>
+      validateProductionConfig({
+        ...valid,
+        WEB_ORIGIN: origins + ',http://app.example.test',
+      }),
+    ).toThrow(/WEB_ORIGIN/);
+  });
+
   it('preserves validated provider and runtime configuration', () => {
     const env = {
       ...valid,

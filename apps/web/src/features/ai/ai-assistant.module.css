@@ -29,11 +29,14 @@
   min-height: 0;
 }
 
+/* Two left anchors in the rail: boxes (button, search, row highlight) and
+   the brand line sit on the 12px edge; text inside the list (group names,
+   session titles) sits 12px in, past the row's 2px left border. */
 .railHeader {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 14px 10px;
+  padding: 16px 12px 10px;
 }
 
 .railBrand {
@@ -52,13 +55,13 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0 8px 20px;
+  padding: 0 12px 20px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--text-tertiary) 35%, transparent) transparent;
 }
 
 .groupLabel {
-  margin: 12px 8px 4px;
+  margin: 12px 10px 4px 12px;
   color: var(--text-tertiary);
   font-size: 11px;
   font-weight: 500;
@@ -188,13 +191,6 @@
   line-height: 1.3;
 }
 
-.headerHint {
-  margin: 2px 0 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 .canvas {
   display: flex;
   flex: 1;
@@ -204,12 +200,34 @@
   margin: 0 auto;
 }
 
+/* Nothing said yet: the question, the suggestions and the input are one
+   block — centred on the page, sitting on the input in the narrow panel —
+   instead of a question floating far above an input at the foot. */
+.canvas[data-empty] {
+  justify-content: center;
+  padding-bottom: 8vh;
+}
+.canvas[data-empty][data-layout="panel"] {
+  justify-content: flex-end;
+  padding-bottom: 0;
+}
+.canvas[data-empty] .empty {
+  flex: none;
+  padding-bottom: 12px;
+}
+
 .messages {
   position: relative;
   flex: 1;
   min-height: 0;
   overflow: auto;
   padding: 24px 24px 12px;
+}
+
+/* Holds its children's margins, so its measured height is the whole column
+   and a minimum height on it never lets a margin slip out. */
+.messageColumn {
+  display: flow-root;
 }
 
 .userRow {
@@ -251,12 +269,10 @@
   width: 28px;
   height: 28px;
   margin-top: 2px;
-  border-radius: var(--radius-control);
-  background: var(--color-primary);
-  color: var(--bg-surface);
-  font-family: var(--font-label);
-  font-size: 11px;
-  font-weight: 600;
+  border-radius: 999px;
+  background: var(--color-ai-soft);
+  color: var(--color-ai);
+  font-size: 15px;
 }
 
 .assistantSurface {
@@ -273,26 +289,24 @@
   margin-bottom: 0;
 }
 
-.assistantSurface p,
-.assistantSurface ul,
-.assistantSurface ol,
-.assistantSurface blockquote {
+/* Answer prose. :where() keeps these at class weight so cards inside an
+   answer (proposals, questions) keep their own type. */
+.assistantSurface :where(p, ul, ol, blockquote) {
   margin: 0 0 10px;
 }
 
-.assistantSurface h3,
-.assistantSurface h4 {
+.assistantSurface :where(h3, h4) {
   margin: 18px 0 6px;
   color: var(--text-primary);
   font-weight: 600;
   line-height: 1.45;
 }
 
-.assistantSurface h3 {
+.assistantSurface :where(h3) {
   font-size: 16px;
 }
 
-.assistantSurface h4 {
+.assistantSurface :where(h4) {
   font-size: 15px;
 }
 
@@ -440,96 +454,151 @@
   font-size: 13px;
 }
 
+/* Where the answer came from: one line of small links under it. */
 .sourceBlock {
-  margin: 16px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 20px;
 }
 
 .sourceLabel {
-  margin: 0 0 8px;
   color: var(--text-tertiary);
-  font-size: 12px;
 }
 
 .sources {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  display: contents;
 }
 
 .sourceCard {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--bg-surface);
-  color: inherit;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-default) 80%, transparent);
-  transition: background 160ms ease, box-shadow 160ms ease;
-}
-
-.sourceCard:hover,
-.sourceCard:focus-visible {
-  background: var(--bg-hover);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--shell-ink) 6%, transparent);
-}
-
-.sourceGlyph {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--color-primary-soft);
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  min-width: 0;
+  max-width: 100%;
   color: var(--color-primary);
-  font-size: 12px;
-  font-weight: 700;
+}
+
+.sourceCard:hover .sourceTitle {
+  text-decoration: underline;
+}
+
+.sourceGlyph,
+.sourceArrow {
+  display: none;
 }
 
 .sourceTitle {
-  display: block;
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sourceDetail {
-  display: block;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.sourceArrow {
   color: var(--text-tertiary);
 }
 
+.sourceDetail::before {
+  margin-inline: 4px;
+  content: "·";
+}
+
+/* An AI proposal: what will change, and a status. Neutral card, status badge
+   in the header, label → value rows, the decision bottom-right. */
 .proposalCard {
+  display: grid;
+  gap: 10px;
   margin: 14px 0 16px;
-  padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--border-default));
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--bg-surface) 92%, var(--color-primary-soft));
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--shell-ink) 5%, transparent);
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .proposalHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.proposalHeader strong { color: var(--text-primary); }
-.proposalOperation { display: block; margin-top: 3px; color: var(--text-tertiary); font-size: 12px; }
-.proposalTarget { margin: 10px 0; color: var(--text-secondary); font-size: 13px; }
+.proposalHeader strong { color: var(--text-primary); font-weight: 600; }
+.proposalTitle { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.proposalOperation { display: block; margin-top: 2px; color: var(--text-tertiary); font-size: 12px; }
+.proposalTarget { margin: 0; color: var(--text-secondary); font-size: 13px; }
 .proposalChanges { margin: 0; padding: 0; }
-.proposalChanges > div { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 8px; padding: 5px 0; }
-.proposalChanges dt { color: var(--text-tertiary); font-size: 12px; }
-.proposalChanges dd { margin: 0; color: var(--text-primary); font-size: 13px; overflow-wrap: anywhere; }
+.proposalChanges > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 4px 0; }
+.proposalChanges dt { color: var(--text-tertiary); font-size: 13px; }
+.proposalChanges dd { margin: 0; color: var(--text-primary); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
 .proposalActions { display: flex; gap: 8px; margin-top: 12px; }
-.proposalStatus, .proposalWarning, .proposalFailure, .proposalSuccess { margin: 10px 0 0; font-size: 13px; }
+.proposalStatus, .proposalWarning, .proposalFailure, .proposalSuccess { margin: 0; font-size: 13px; }
 .proposalWarning { color: var(--text-secondary); }
-.proposalFailure { color: var(--color-danger, #b42318); }
+.proposalFailure { color: var(--color-danger); }
 .proposalSuccess { color: var(--text-secondary); }
-.proposalSuccess p { margin: 0 0 5px; }
-.proposalSuccess a { color: var(--color-primary); font-weight: 600; }
+.proposalSuccess p { margin: 0 0 4px; }
+.proposalSuccess a { color: var(--color-primary); font-weight: 500; }
+
+/* Proposal status, shared by the single card and the batch card. */
+.statusBadge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-status);
+  background: var(--color-neutral-soft);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.statusBadge[data-status="PROPOSED"] {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.statusBadge[data-status="EXECUTED"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.statusBadge[data-status="EXECUTED"]::before {
+  content: "✓";
+  margin-inline-end: 3px;
+  font-weight: 700;
+}
+
+/* Just confirmed: the badge swaps in with a small settle, not a cut. */
+[data-settled] .statusBadge[data-status="EXECUTED"] {
+  animation: badgeSettle 360ms cubic-bezier(0.2, 0.8, 0.2, 1.2) both;
+}
+
+@keyframes badgeSettle {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-settled] .statusBadge[data-status="EXECUTED"] {
+    animation: none;
+  }
+}
+
+.statusBadge[data-status="FAILED"],
+.statusBadge[data-status="CONFLICTED"] {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
 
 .proposalActions button:focus-visible,
 .proposalCard a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
@@ -582,7 +651,6 @@
   gap: 12px;
 }
 
-.composerHint,
 .composerStatus {
   color: var(--text-tertiary);
   font-size: 12px;
@@ -603,87 +671,84 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 24px 16px 8px;
-  text-align: center;
-}
-
-.emptyMark {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 16px;
-  border-radius: var(--radius-reading);
-  background: var(--color-primary);
-  color: var(--bg-surface);
-  font-family: var(--font-label);
-  font-size: 15px;
-  font-weight: 600;
+  width: 100%;
+  /* Same edges as the composer below, and the same text inset, so the
+     question, the suggestions and the input start on one line. */
+  padding: 24px 24px 8px;
 }
 
 .empty h2 {
-  margin: 0;
+  margin: 0 0 12px;
+  padding-inline: 16px;
   color: var(--text-primary);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  line-height: 26px;
 }
 
 .empty p {
-  margin: 8px 0 20px;
+  margin: 6px 0 20px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .promptGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
+  border-top: 1px solid var(--border-hairline);
 }
 
 .promptChip {
-  padding: 11px 14px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
-  background: var(--bg-surface);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border-hairline);
+  background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 13.5px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 20px;
   text-align: left;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background 160ms ease;
+}
+
+.promptChip :global(.anticon) {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  transition: color 160ms ease, translate 160ms ease;
 }
 
 .promptChip:hover,
 .promptChip:focus-visible {
-  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-default));
-  background: var(--color-primary-soft);
+  background: var(--bg-hover);
+}
+
+.promptChip:hover :global(.anticon) {
+  color: var(--color-primary);
+  translate: 2px 0;
 }
 
 .jumpLatest {
-  position: sticky;
+  position: absolute;
+  right: 6px;
   bottom: 12px;
+  z-index: 1;
   display: flex;
-  justify-content: center;
+}
+
+.jumpLatest :global(.ant-btn) {
+  box-shadow: 0 2px 6px rgba(24, 24, 27, 0.08);
 }
 
 .mobileRailButton {
   display: none !important;
-}
-
-.header :global(.ant-tag) {
-  margin-inline-end: 0;
-  border: 0;
-  border-radius: 999px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  font-weight: 500;
 }
 
 .toolToggle:focus-visible,
@@ -745,7 +810,8 @@
 
   .messages,
   .composerDock,
-  .turnError {
+  .turnError,
+  .empty {
     padding-inline: 12px;
   }
 
@@ -759,15 +825,6 @@
 
   .userBubble {
     max-width: 90%;
-  }
-
-  .sources,
-  .promptGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .composerHint {
-    display: none;
   }
 }
 
@@ -842,15 +899,15 @@
 }
 .answerContent { margin-bottom: 16px; }
 .tools {
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-hairline);
   border-radius: var(--radius-control);
-  background: var(--bg-page);
+  background: var(--bg-surface-subtle);
   overflow: hidden;
 }
 .toolToggle {
   display: flex;
   width: 100%;
-  padding: 10px 12px;
+  padding: 7px 12px;
   text-align: left;
   line-height: 1.5;
   transition: background 160ms ease;
@@ -858,29 +915,26 @@
 .toolToggle:hover { background: var(--bg-hover); }
 .toolChevron { margin-left: auto; font-size: 10px; transition: transform 180ms ease; }
 .toolChevronOpen { transform: rotate(90deg); }
-.toolStatus { flex: 0 0 auto; color: var(--color-primary); }
-.toolFailed { flex: 0 0 auto; color: var(--color-danger, #b42318); }
+.toolStatus { flex: 0 0 auto; color: var(--text-tertiary); }
+/* Some lookups failing is a note about the answer, not an error to fix. */
+.toolFailed { flex: 0 0 auto; color: var(--color-warning); }
 .toolReveal { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows 180ms ease, visibility 180ms; }
 .toolRevealOpen { grid-template-rows: 1fr; visibility: visible; }
 .toolReveal > div { min-height: 0; overflow: hidden; }
 .assistantSurface .toolList { padding: 0 12px 8px; margin: 0; }
-.assistantSurface .toolItem { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; padding: 8px 0; margin: 0; border-top: 1px solid var(--border-default); }
+.assistantSurface .toolItem { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; padding: 7px 0; margin: 0; border-top: 1px solid var(--border-hairline); }
 .toolBody { flex: 1; min-width: 0; }
 .toolName { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; line-height: 1.6; }
 .toolOutcome, .toolDuration { font-size: 12px; color: var(--text-secondary); }
 .toolDuration { margin-left: auto; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 .toolDetail { margin-top: 3px; font-size: 12px; line-height: 1.6; color: var(--text-secondary); overflow-wrap: anywhere; }
-.sourceBlock { padding-top: 12px; border-top: 1px solid var(--border-default); }
-.sourceCard { border-radius: var(--radius-control); box-shadow: none; border: 1px solid var(--border-default); }
-.sourceCard:hover { box-shadow: none; border-color: var(--color-primary); }
 .row { border-left: 2px solid transparent; }
 .rowActive, .rowActive:hover { border-left-color: var(--color-primary); box-shadow: none; background: var(--color-primary-soft); }
-.sessionTitle, .sessionPreview { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sessionPreview { margin-top: 4px; font-size: 11px; color: var(--text-tertiary); font-weight: 400; }
+.sessionTitle { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .composer { border-radius: 14px; }
 .composerActions button, .railNew, .promptChip { transition: transform 160ms ease, background 160ms ease, border-color 160ms ease; }
-.composerActions button:hover, .railNew:hover { transform: scale(1.025); }
-.composerActions button:active, .railNew:active, .promptChip:active { transform: scale(.98); }
+.composerActions button:hover { transform: scale(1.025); }
+.composerActions button:active, .railNew:active { transform: scale(.98); }
 .assistantRow, .userRow { animation: answerAppear 180ms ease-out; }
 @keyframes answerAppear { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
@@ -896,8 +950,18 @@
 
 .messages {
   padding-right: 40px;
+  padding-bottom: 20px;
   overscroll-behavior: contain;
   scrollbar-width: none;
+  /* Lines scrolling under the header or the composer fade out instead of
+     being cut in half. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent
+  );
 }
 
 .messages::-webkit-scrollbar,
@@ -921,7 +985,8 @@
   right: 4px;
   top: 50%;
   transform: translateY(-50%);
-  max-height: calc(100% - 32px);
+  /* Leaves the bottom of the gutter to the 回到最新 button. */
+  max-height: calc(100% - 96px);
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 4px;

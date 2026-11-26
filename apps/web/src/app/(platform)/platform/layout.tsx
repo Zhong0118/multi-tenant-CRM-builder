@@ -16,6 +16,7 @@ export default async function PlatformLayout({
       user={{
         displayName: user.displayName,
         phone: user.phone,
+        avatarUrl: user.avatarUrl,
         isPlatformAdmin: user.isPlatformAdmin,
       }}
     >

@@ -1,5 +1,6 @@
 "use client";
 
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import type {
   TableBlueprint,
   TableBuilderAnswer,
@@ -8,11 +9,7 @@ import type {
   TablePlan,
   TableEmployeePreset,
 } from "@crm/contracts";
-import {
-  DeleteOutlined,
-  TableOutlined,
-  ThunderboltOutlined,
-} from "@ant-design/icons";
+import { DeleteOutlined, TableOutlined } from "@ant-design/icons";
 import { Alert, Button, Modal } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -35,6 +32,23 @@ import { Issues, TableEditor } from "./table-editor";
 import styles from "./table-builder.module.css";
 
 type Question = Extract<TableBuilderResult, { kind: "question" }>;
+
+/** Three businesses to start from, one click each. */
+const EXAMPLES = [
+  [
+    "设备租赁",
+    "我们做设备租赁，需要管理客户、合同、设备和回款。销售只能看自己负责的客户。",
+  ],
+  [
+    "培训机构",
+    "我们是培训机构，需要管理学员、课程、报名和缴费。课程顾问只能看自己跟进的学员。",
+  ],
+  [
+    "装修工程",
+    "我们做装修工程，需要管理客户、项目、施工进度和收款。项目经理可以查看全部项目，只改自己负责的。",
+  ],
+] as const;
+
 export function TableBuilder({
   tenantCode,
   draft,
@@ -289,7 +303,9 @@ export function TableBuilder({
     !blueprint?.tables.length;
   const manual = draft ? base + "/" + draft.object.id : base + "/new";
   return (
-    <Page width="editor">
+    // Same 1040px column as the other company-admin pages, so the shell
+    // keeps one left edge; the plan fits without the editor width.
+    <Page width="settings">
       <div className={styles.builder}>
         <PageHeader
           title={draft ? "用 AI 补充字段" : "AI 建表"}
@@ -297,11 +313,13 @@ export function TableBuilder({
           description={
             draft
               ? `为「${draft.object.name}」建议新字段，确认后写入草稿。`
-              : "描述业务，核对表和字段，再将选中的方案保存为草稿。"
+              : undefined
           }
           extra={
             !result && (
-              <Link href={manual}>{draft ? "返回设计器" : "手动建表"}</Link>
+              <Link href={manual} className={styles.manualLink}>
+                {draft ? "返回设计器" : "手动建表"}
+              </Link>
             )
           }
         />
@@ -316,17 +334,30 @@ export function TableBuilder({
         ) : (
           <>
             {operation === "generating" && (
-              <div className={styles.actions}>
+              <div className={styles.generating}>
+                <AiSparkIcon aria-hidden className={styles.aiMark} />
                 <span role="status">正在生成方案，通常需要半分钟左右</span>
-                <Button onClick={cancelGeneration}>取消生成</Button>
+                <Button size="small" onClick={cancelGeneration}>
+                  取消生成
+                </Button>
               </div>
             )}
             <fieldset disabled={busy} className={styles.canvas}>
-              <section className={styles.composer}>
-                <label htmlFor="builder-description">业务描述</label>
+              <section
+                className={styles.composer}
+                data-stage={!blueprint && !question ? "input" : undefined}
+              >
+                <label
+                  htmlFor="builder-description"
+                  className={
+                    !blueprint && !question ? styles.srOnly : undefined
+                  }
+                >
+                  业务描述
+                </label>
                 <textarea
                   id="builder-description"
-                  rows={blueprint ? 2 : 4}
+                  rows={blueprint ? 2 : 6}
                   value={description}
                   placeholder={
                     draft
@@ -342,11 +373,25 @@ export function TableBuilder({
                 />
                 {!blueprint && !question && (
                   <div className={styles.actions}>
+                    {!draft && (
+                      <div className={styles.examples} aria-label="示例描述">
+                        {EXAMPLES.map(([label, text]) => (
+                          <button
+                            key={label}
+                            type="button"
+                            title={text}
+                            onClick={() => setDescription(text)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <Button
                       type="primary"
                       loading={busy}
                       disabled={!description.trim()}
-                      icon={<ThunderboltOutlined />}
+                      icon={<AiSparkIcon aria-hidden />}
                       onClick={() => generate(answers)}
                     >
                       生成预览
@@ -437,14 +482,12 @@ export function TableBuilder({
                             <TableOutlined aria-hidden />
                             <span>
                               <strong>{t.name || "未命名表"}</strong>
-                              <small>
-                                {t.fields.length} 个字段 ·{" "}
-                                {
-                                  issues.filter((i) => i.tableId === t.id)
-                                    .length
-                                }{" "}
-                                项提示
-                              </small>
+                              <TableIssueCount
+                                fields={t.fields.length}
+                                issues={issues.filter(
+                                  (i) => i.tableId === t.id,
+                                )}
+                              />
                             </span>
                           </button>
                           {batchChoices.length > 0 && (
@@ -629,33 +672,36 @@ export function TableBuilder({
                               owner?.fields.some((f) => f.id === manual.id);
                             return (
                               <li key={n}>
-                                <strong>{o.request}</strong> · {o.reason}
-                                {o.alternative && <p>{o.alternative}</p>}
-                                {owner && manual && (
-                                  <p>
-                                    {owner.name} · {manual.label}{" "}
-                                    <Button
-                                      size="small"
-                                      disabled={
-                                        !!added ||
-                                        owner.fields.length >= 40 ||
-                                        !!candidate
-                                      }
-                                      onClick={() => {
-                                        updateTable({
-                                          ...owner,
-                                          fields: [...owner.fields, manual],
-                                        });
-                                        setSelected(owner.id);
-                                        setInstruction("");
-                                      }}
-                                    >
-                                      {added
-                                        ? "已添加手填字段"
-                                        : "作为手填字段添加"}
-                                    </Button>
-                                  </p>
-                                )}
+                                <details>
+                                  <summary>{o.request}</summary>
+                                  <p>{o.reason}</p>
+                                  {o.alternative && <p>{o.alternative}</p>}
+                                  {owner && manual && (
+                                    <p>
+                                      {owner.name} · {manual.label}{" "}
+                                      <Button
+                                        size="small"
+                                        disabled={
+                                          !!added ||
+                                          owner.fields.length >= 40 ||
+                                          !!candidate
+                                        }
+                                        onClick={() => {
+                                          updateTable({
+                                            ...owner,
+                                            fields: [...owner.fields, manual],
+                                          });
+                                          setSelected(owner.id);
+                                          setInstruction("");
+                                        }}
+                                      >
+                                        {added
+                                          ? "已添加手填字段"
+                                          : "作为手填字段添加"}
+                                      </Button>
+                                    </p>
+                                  )}
+                                </details>
                               </li>
                             );
                           })}
@@ -670,9 +716,7 @@ export function TableBuilder({
                           ? "正在校验…"
                           : needsCheck
                             ? "等待重新校验"
-                            : issues.some((i) => i.blocking)
-                              ? "请先修正阻塞项"
-                              : ""}
+                            : blockingSummary(issues, blueprint?.tables)}
                       </span>
                       <Button
                         disabled={!description.trim() || checking}
@@ -726,4 +770,42 @@ export function TableBuilder({
       </div>
     </Page>
   );
+}
+
+/** "4 个字段 · 1 项需修正": a table that blocks creation says so in the list. */
+function TableIssueCount({
+  fields,
+  issues,
+}: {
+  fields: number;
+  issues: TableBuilderIssue[];
+}) {
+  const blocking = issues.filter((i) => i.blocking).length;
+  return (
+    <small>
+      {fields} 个字段 ·{" "}
+      {blocking ? (
+        <span className={styles.blockingCount}>{blocking} 项需修正</span>
+      ) : (
+        `${issues.length} 项提示`
+      )}
+    </small>
+  );
+}
+
+/** Footer status: how many fixes are left, and in which tables. */
+function blockingSummary(
+  issues: TableBuilderIssue[],
+  tables: { id: string; name: string }[] = [],
+) {
+  const blocking = issues.filter((i) => i.blocking);
+  if (!blocking.length) return "";
+  const names = [
+    ...new Set(
+      blocking.map(
+        (i) => tables.find((t) => t.id === i.tableId)?.name || "方案",
+      ),
+    ),
+  ];
+  return `还有 ${blocking.length} 项需修正：${names.join("、")}`;
 }

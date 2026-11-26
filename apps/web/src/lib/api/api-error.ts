@@ -6,6 +6,8 @@ export interface ApiError {
   fieldErrors: FieldErrors;
   requestId: string;
   status: number;
+  /** Set on 429s: seconds until the same request can succeed. */
+  retryAfterSeconds?: number;
 }
 
 const FALLBACK_ERROR: Omit<ApiError, "status"> = {
@@ -29,12 +31,16 @@ export function toApiError(body: unknown, fallbackStatus = 500): ApiError {
     return { ...FALLBACK_ERROR, status: fallbackStatus };
   }
 
+  const retry = body.retryAfterSeconds;
   return {
     code,
     message,
     fieldErrors: toFieldErrors(body.fieldErrors),
     requestId,
     status,
+    ...(typeof retry === "number" && Number.isFinite(retry) && retry > 0
+      ? { retryAfterSeconds: Math.ceil(retry) }
+      : {}),
   };
 }
 

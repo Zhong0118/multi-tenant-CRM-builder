@@ -32,13 +32,29 @@ export default async function WorkspacesPage({
   if (active.length === 1 && !unavailable) {
     redirect(`/workspace/${encodeURIComponent(active[0].tenantCode)}`);
   }
+  // No company at all: the waiting page is where invitations arrive, so an
+  // empty chooser would only point there. Platform admins stay to reach the
+  // management centre.
+  if (
+    workspaces &&
+    workspaces.length === 0 &&
+    !unavailable &&
+    !user.isPlatformAdmin
+  ) {
+    redirect("/waiting");
+  }
 
   return (
-    <AccountShell current="workspaces" platformAdmin={user.isPlatformAdmin}>
-      <PageHeader
-        title="选择工作空间"
-        description={`${user.displayName}，选择要进入的公司。开通中的公司会显示为等待平台启用。`}
-      />
+    <AccountShell
+      current="workspaces"
+      user={{
+        displayName: user.displayName,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl,
+        isPlatformAdmin: user.isPlatformAdmin,
+      }}
+    >
+      <PageHeader title="选择工作空间" />
       <div>
         {unavailable ? (
           <Alert
@@ -46,7 +62,7 @@ export default async function WorkspacesPage({
             type="warning"
             showIcon
             title="无法进入该工作空间"
-            description="若公司仍是草稿，请等待平台启用。其他不可用的成员关系会保留显示，但不能进入。"
+            description="公司还在开通中或你的成员身份已停用。"
           />
         ) : null}
         {active.length === 0 && (workspaces ?? []).length === 0 ? (
@@ -54,8 +70,8 @@ export default async function WorkspacesPage({
             title="还没有加入公司"
             description={
               user.isPlatformAdmin
-                ? "你的账号是平台管理员，可以在管理中心开通和管理公司；被公司邀请后，工作空间会出现在这里。"
-                : "公司管理员按你的手机号发出邀请后，接受邀请即可进入工作空间。"
+                ? "可以在管理中心开通公司；被公司邀请后，工作空间会出现在这里。"
+                : "接受公司邀请后，工作空间会出现在这里。"
             }
             action={
               user.isPlatformAdmin ? (

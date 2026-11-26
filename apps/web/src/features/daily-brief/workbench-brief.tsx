@@ -5,8 +5,21 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Alert, Button, Drawer, Segmented, Skeleton } from "antd";
-import { DownOutlined, UpOutlined } from "@ant-design/icons";
+import {
+  Alert,
+  Button,
+  Drawer,
+  Dropdown,
+  Segmented,
+  Skeleton,
+  Tooltip,
+} from "antd";
+import {
+  DownOutlined,
+  InfoCircleOutlined,
+  MoreOutlined,
+  UpOutlined,
+} from "@ant-design/icons";
 import Link from "next/link";
 import { useAiFeature } from "@/features/ai-governance/access";
 import { sourceRecordHref } from "@/features/records/source-navigation";
@@ -18,6 +31,8 @@ import {
   type BriefList,
   type BriefRecord,
 } from "./brief-api";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
+import { AiBadge } from "@/components/ai/ai-badge";
 import { GenerationWait } from "@/features/ai/generation-wait";
 import styles from "./brief.module.css";
 
@@ -88,7 +103,10 @@ export function BriefSuggestions({
   return (
     <section className={styles.box} aria-label="今日建议">
       <div className={styles.header}>
-        <h3>今日建议</h3>
+        <h3>
+          <AiSparkIcon aria-hidden className={styles.aiMark} />
+          今日建议
+        </h3>
         <Button
           type="text"
           size="small"
@@ -115,8 +133,8 @@ export function BriefSuggestions({
               <>
                 <div className={styles.actions}>
                   {data.generatedAt ? (
-                    <span>
-                      AI 生成 ·{" "}
+                    <span className={styles.generatedAt}>
+                      <AiBadge />
                       {new Date(data.generatedAt).toLocaleTimeString("zh-CN", {
                         timeZone: timezone,
                         hour: "2-digit",
@@ -131,6 +149,8 @@ export function BriefSuggestions({
                     </span>
                   )}
                   <Button
+                    size="small"
+                    icon={<AiSparkIcon aria-hidden />}
                     disabled={
                       !hasCandidates || !data.remaining || data.busy || pending
                     }
@@ -146,15 +166,15 @@ export function BriefSuggestions({
                   </Button>
                   {generating && <GenerationWait feature="daily_brief" />}
                   {pending && (
-                    <Button onClick={() => controller.current?.abort()}>
+                    <Button
+                      size="small"
+                      onClick={() => controller.current?.abort()}
+                    >
                       取消
                     </Button>
                   )}
-                  {(data.generatedAt || data.remaining < 3) && (
-                    <span>
-                      今天还可重新生成 {data.remaining} 次
-                      {data.remaining === 0 ? "，明天恢复" : ""}
-                    </span>
+                  {data.remaining === 0 && (
+                    <span>今天的次数已用完，明天恢复</span>
                   )}
                 </div>
                 {data.generatedAt && !data.items.length && (
@@ -175,17 +195,30 @@ export function BriefSuggestions({
                     );
                     return (
                       <article key={i.recordId} className={styles.item}>
-                        <div>
-                          <strong>{i.suggestedTitle}</strong> · {i.title}（
-                          {i.objectName}）
+                        <div className={styles.itemBody}>
+                          <p className={styles.itemTitle}>
+                            {/* The whole row opens the record. */}
+                            <Link href={href} className={styles.rowLink}>
+                              <strong>{i.suggestedTitle}</strong>
+                            </Link>
+                            <span>
+                              {i.title} · {i.objectName}
+                            </span>
+                            {i.reason && (
+                              <Tooltip title={`依据：${i.reason}`}>
+                                <button
+                                  type="button"
+                                  className={styles.reason}
+                                  aria-label={`依据：${i.reason}`}
+                                >
+                                  <InfoCircleOutlined aria-hidden />
+                                </button>
+                              </Tooltip>
+                            )}
+                          </p>
                           {i.explanation && <p>{i.explanation}</p>}
-                          {i.reason && <p>依据 · {i.reason}</p>}
                         </div>
-                        <div className={styles.actions}>
-                          <Link href={href}>打开记录</Link>
-                          {writing && (
-                            <Link href={href + "?writing=1"}>帮我写</Link>
-                          )}
+                        <div className={styles.itemActions}>
                           {i.canFollowUp && (
                             <Link
                               href={
@@ -204,6 +237,31 @@ export function BriefSuggestions({
                                 ? "去处理这条跟进"
                                 : "加跟进"}
                             </Link>
+                          )}
+                          {writing && (
+                            <Dropdown
+                              trigger={["click"]}
+                              placement="bottomRight"
+                              menu={{
+                                items: [
+                                  {
+                                    key: "writing",
+                                    label: (
+                                      <Link href={href + "?writing=1"}>
+                                        帮我写
+                                      </Link>
+                                    ),
+                                  },
+                                ],
+                              }}
+                            >
+                              <Button
+                                type="text"
+                                size="small"
+                                aria-label={`更多：${i.suggestedTitle}`}
+                                icon={<MoreOutlined />}
+                              />
+                            </Dropdown>
                           )}
                         </div>
                       </article>

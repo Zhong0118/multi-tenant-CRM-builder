@@ -1,48 +1,160 @@
+/* Items to review read as one group — a single outline, rows split by
+   hairlines — and the decision sits bottom-right with the primary last. */
 .review {
   display: grid;
   gap: 12px;
   min-width: 0;
 }
+.items {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+/* Every item here was proposed by AI: the group carries the AI outline. */
+.items:has(> .item) {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-ai-border);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+}
+/* The person's own words kept after AI gave nothing: a plain outline. */
+.review[data-ai="false"] .items:has(> .item) {
+  border-color: var(--border-default);
+}
 .item {
   display: grid;
-  gap: 9px;
-  padding: 14px;
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  background: var(--bg-surface);
-  transition:
-    background 150ms,
-    border-color 150ms;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-hairline);
+  transition: background 150ms;
+}
+.item:first-child {
+  border-top: 0;
+}
+.item > * {
+  grid-column: 1 / -1;
+}
+.itemHead {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.itemTitle {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 22px;
 }
 .item:focus-within {
-  border-color: var(--color-primary);
+  background: var(--bg-surface-subtle);
 }
 .item :global(.ant-checkbox-wrapper) {
+  font-size: 13px;
   font-weight: 600;
 }
 .item :global(.ant-form-item) {
   margin: 0;
 }
-.item :global(.ant-form-item-label) {
+/* Editable values stack label over control, like every other form here.
+   AntD lays Form.Item out as a row of label and control columns; turning it
+   into a column needs both columns back to their natural size. */
+.item :global(.ant-form-item .ant-form-item-row) {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+.item :global(.ant-form-item .ant-form-item-row) > * {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+}
+.item :global(.ant-form-item .ant-form-item-label) {
+  padding-bottom: 4px;
   text-align: start;
 }
-.item p,
-.item blockquote {
+.item :global(.ant-form-item .ant-form-item-label > label) {
+  height: auto;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.item :global(.ant-form-item .ant-form-item-label > label::after) {
+  display: none;
+}
+.item p {
   margin: 0;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
-.item blockquote {
-  border-inline-start: 2px solid var(--border-default);
-  padding-inline-start: 8px;
+/* Evidence: the user's own words the suggestion came from, behind an ⓘ
+   beside the item's name. Not AI-written, so it stays neutral grey. */
+.evidence {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: help;
+}
+.evidence:hover,
+.evidence:focus-visible {
   color: var(--text-secondary);
 }
+.evidence:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+/* The item's name above already says which field this is; the control's own
+   label stays for screen readers only. */
+.bareField :global(.ant-form-item .ant-form-item-label) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .item [role="alert"] {
-  color: var(--color-danger, #b42318);
+  color: var(--color-danger);
+}
+/* "旧值 old → new": the old value struck through, the new one in ink. */
+.item .change {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.fieldLabel {
+  display: grid;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.draftHeading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
 }
 .actions {
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
 }
@@ -61,19 +173,52 @@
 .dialog :global(.ant-checkbox-wrapper) {
   display: inline-flex;
 }
+.dialog > label {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+/* The character count hangs below the box; keep it clear of the button. */
+.dialog > label:has(:global(.ant-input-data-count)) {
+  padding-bottom: 20px;
+}
 .dialog details {
   color: var(--text-secondary);
+  font-size: 13px;
 }
 .dialog summary {
+  width: fit-content;
   cursor: pointer;
 }
+.dialog summary:hover {
+  color: var(--text-primary);
+}
 .dialog details p {
+  max-height: 160px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: var(--radius-control);
+  background: var(--bg-surface-subtle);
+  line-height: 20px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .dialog,
 .item {
   animation: appear 160ms ease both;
+}
+/* Confirm -> written: the row the user just confirmed glows success once and
+   fades back, while its badge settles in (see .statusBadge). */
+.item[data-settled] {
+  animation: settled 1400ms ease-out both;
+}
+@keyframes settled {
+  0% {
+    background: var(--color-success-soft);
+  }
+  100% {
+    background: transparent;
+  }
 }
 .dialog button {
   transition:
@@ -96,6 +241,7 @@
 @media (prefers-reduced-motion: reduce) {
   .dialog,
   .item,
+  .item[data-settled],
   .dialog button {
     animation: none;
     transition: none;
@@ -104,9 +250,11 @@
 
 .saved {
   margin: 0;
-  border-inline-start: 3px solid var(--color-primary);
-  padding: 4px 12px;
-  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   animation: appear 160ms ease both;
 }
@@ -127,9 +275,32 @@
 .savedItem span {
   color: var(--text-secondary);
 }
+.dateLabel label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.shortcuts {
+  gap: 6px;
+}
+/* In a narrow card the six date shortcuts sit as two even rows of three,
+   not four and a stray two. */
+.shortcutsFrame {
+  container-type: inline-size;
+}
+@container (max-width: 360px) {
+  .shortcuts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 .savedItem {
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-default);
   margin: 0;
-  padding: 8px 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-hairline);
+  font-size: 13px;
+}
+.savedItem:first-child {
+  border-top: 0;
 }

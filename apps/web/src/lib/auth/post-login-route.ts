@@ -54,7 +54,9 @@ function isAuthorizedPath(
   const pathname = new URL(value, "http://internal.invalid").pathname;
 
   if (pathname === "/waiting" || pathname === "/workspaces") return true;
-  if (pathname === "/account/security") return true;
+  // Every signed-in person has the account pages.
+  if (pathname === "/account/security" || pathname === "/account/profile")
+    return true;
   if (/^\/invitations\/[^/]+$/u.test(pathname)) {
     return canAccessReturnTo?.(pathname) ?? false;
   }

@@ -7,7 +7,7 @@ import {
   LinkOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Tag } from "antd";
+import { Button, Drawer } from "antd";
 import {
   hashKey,
   useInfiniteQuery,
@@ -15,7 +15,14 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 import { toApiError } from "@/lib/api/api-error";
@@ -61,6 +68,8 @@ export function AiAssistantPage({
     conversationId?: string;
     select: (id?: string) => void;
     close: () => void;
+    /** Extra header actions for this page, such as 帮我写 on a record. */
+    actions?: ReactNode;
   };
 }) {
   const router = useRouter();
@@ -477,16 +486,26 @@ export function AiAssistantPage({
     confirm: (id, input) =>
       mutateCard(async () => {
         const result = await aiApi.confirmBatch(tenantCode, id, input);
-        if (result.items.some((item) => item.status === "EXECUTED"))
+        if (result.items.some((item) => item.status === "EXECUTED")) {
           await client.invalidateQueries({
             predicate: (q) =>
               q.queryKey[0] === "workspace" &&
               q.queryKey[1] === tenantCode &&
               !q.queryKey.includes("ai"),
           });
+          // The record beside the docked panel is a server render: refresh it
+          // so the fields it shows match the "已执行" card right away.
+          router.refresh();
+        }
         return result;
       }),
     reject: (id) => mutateCard(() => aiApi.rejectProposal(tenantCode, id)),
+    resend(turnId) {
+      const question = fullHistory.find(
+        (row) => row.turnId === turnId && row.role === "USER",
+      );
+      if (question?.content) send(question.content);
+    },
     describeRule: bound?.describeRule,
     apply(action, rule) {
       const empty = { version: 1, match: "all", conditions: [] };
@@ -539,6 +558,14 @@ export function AiAssistantPage({
     );
     router.push(`/workspace/${encodeURIComponent(tenantCode)}/ai?${params}`);
   }
+  // Nothing said yet in a new conversation: the question, the suggestions
+  // and the input are shown as one block.
+  const empty =
+    shown.length === 0 &&
+    state.phase === "IDLE" &&
+    !conversationId &&
+    canSend &&
+    !messages.isError;
   return (
     <AssistantCommandContext.Provider value={commands}>
       <div className={panel ? panelStyles.panel : styles.page}>
@@ -562,17 +589,13 @@ export function AiAssistantPage({
                 {panel ? (
                   title
                 ) : (
-                  <>
-                    AI 助手 <Tag>需确认后执行</Tag>
-                  </>
+                  "AI 助手"
                 )}
               </h1>
-              {!panel && (
-                <p className={styles.headerHint}>基于你当前 CRM 权限回答</p>
-              )}
             </div>
             {panel ? (
               <div className={panelStyles.headerButtons}>
+                {panel.actions}
                 <Button
                   type="text"
                   icon={<UnorderedListOutlined />}
@@ -629,11 +652,13 @@ export function AiAssistantPage({
               )}
             </div>
           )}
-          <div className={styles.canvas} data-testid="ai-conversation-canvas">
-            {shown.length === 0 &&
-            state.phase === "IDLE" &&
-            !conversationId && canSend &&
-            !messages.isError ? (
+          <div
+            className={styles.canvas}
+            data-testid="ai-conversation-canvas"
+            data-layout={panel ? "panel" : "page"}
+            data-empty={empty || undefined}
+          >
+            {empty ? (
               <AiEmptyState
                 objects={businessObjects}
                 objectName={bound?.objectName}

@@ -333,6 +333,8 @@ describe("RecordForm creating a record", () => {
     fireEvent.click(screen.getByRole("button", { name: "创建记录" }));
 
     expect(await screen.findByText("请填写客户名称。")).toBeInTheDocument();
+    expect(screen.queryByText(/个必填字段没填/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("客户名称")).toHaveFocus();
     expect(api.create).not.toHaveBeenCalled();
   });
 
@@ -460,6 +462,12 @@ describe("RecordForm updating a record", () => {
 
     expect(await screen.findByText("金额最多 2 位小数。")).toBeInTheDocument();
     expect(screen.getByLabelText("合同金额")).toHaveValue("1200.00");
+    // The banner names the field instead of repeating the reason with a
+    // request id.
+    expect(
+      screen.getByText("有 1 个字段需要修改：合同金额。原因已标在字段下方。"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/req_invalid/)).not.toBeInTheDocument();
   });
 });
 

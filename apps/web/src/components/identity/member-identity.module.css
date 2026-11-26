@@ -39,6 +39,11 @@
   font-size: 14px;
 }
 
+.profileAvatar {
+  color: #1e40af;
+  background: #dcebfe;
+}
+
 .avatar img {
   width: 100%;
   height: 100%;

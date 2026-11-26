@@ -1,0 +1,224 @@
+/* 个人资料: the account (avatar, name) and each company (display name,
+   number, title) as cards of hairline rows, the same grammar as 账号安全. */
+.profile {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+.profile.profile > section {
+  margin-top: 0;
+}
+/* The account beside the companies on a wide screen, as in 账号安全. */
+@media (min-width: 1200px) {
+  .profile {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.group {
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+}
+.group > div {
+  grid-template-columns: 104px minmax(0, 1fr);
+  padding: 10px 0;
+}
+.group > div:last-child {
+  border-bottom: 0;
+}
+.companies {
+  display: grid;
+  gap: 12px;
+}
+.companyHead {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 12px;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.companyHead h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+/* Number and display name: set by the company, read here in one small line. */
+.companyHead p {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.titleInfo {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.info {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: help;
+}
+.info:hover,
+.info:focus-visible {
+  color: var(--text-secondary);
+}
+.empty {
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+.avatarRow {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.actions {
+  display: grid;
+  gap: 8px;
+}
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  max-width: 420px;
+}
+.field :global(.ant-input) {
+  flex: 1;
+  min-width: 160px;
+}
+.field [role="status"] {
+  width: 100%;
+  color: var(--color-success);
+  font-size: 12px;
+}
+.field [data-error="true"] {
+  color: var(--color-danger);
+}
+
+/* Crop: the stage with a round window, the two sizes it will be seen at, and
+   one zoom slider. */
+.crop {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+.stage {
+  position: relative;
+  flex: none;
+  width: min(256px, 100%);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface-subtle);
+}
+.stage::after {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgb(15 23 42 / 45%);
+  outline: 2px solid rgb(255 255 255 / 85%);
+  outline-offset: -1px;
+  content: "";
+  pointer-events: none;
+}
+.preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+.preview:active {
+  cursor: grabbing;
+}
+.preview:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.previews {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+.previews canvas {
+  border-radius: 50%;
+  background: var(--bg-surface-subtle);
+}
+.previews canvas:first-child {
+  width: 64px;
+  height: 64px;
+}
+.previews canvas:nth-child(2) {
+  width: 32px;
+  height: 32px;
+}
+.previews span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.slider {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.cropHint {
+  margin: 4px 0 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+/* On a phone the label stays on the left and the value on the right, as in
+   iOS Settings; the column is wide enough for the four-character labels. */
+@media (max-width: 767px) {
+  .group > div {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: center;
+  }
+  .field {
+    max-width: none;
+  }
+}
+@media (max-width: 480px) {
+  .crop {
+    flex-direction: column;
+  }
+  .previews {
+    grid-auto-flow: column;
+    align-items: center;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .group {
+    animation: appear 0.2s ease-out;
+  }
+  .profile button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  @keyframes appear {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

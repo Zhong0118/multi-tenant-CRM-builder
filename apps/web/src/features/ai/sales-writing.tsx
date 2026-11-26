@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useId, useRef } from "react";
-import { Alert, Button, Drawer, Input, Select, Space } from "antd";
-import { CopyOutlined, EditOutlined } from "@ant-design/icons";
+import { Alert, Button, Drawer, Dropdown, Input, Select, Space } from "antd";
+import { CopyOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import type { WritingOptions } from "@crm/contracts";
 import { recordApi } from "@/features/records/record-api";
 import { RecordActivityTimeline } from "@/features/records/record-activity-timeline";
@@ -11,6 +12,7 @@ import {
   writingDraft,
   type LiveWriting,
 } from "./sales-draft-api";
+import { AiBadge } from "@/components/ai/ai-badge";
 import { GenerationWait } from "./generation-wait";
 import styles from "./sales-writing.module.css";
 const defaults: WritingOptions = {
@@ -38,6 +40,9 @@ const choices = {
   length: { short: "短", medium: "中" },
 };
 const labels = { kind: "类型", purpose: "目的", tone: "语气", length: "长度" };
+/** Tone and length stay folded under 更多选项 until asked for. */
+const mainOptions = ["kind", "purpose"] as const;
+const moreOptions = ["tone", "length"] as const;
 export function SalesWriting({
   tenantCode,
   objectCode,
@@ -63,6 +68,7 @@ export function SalesWriting({
   const [log, setLog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [more, setMore] = useState(false);
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
   async function generate(
@@ -150,10 +156,41 @@ export function SalesWriting({
       重新生成
     </Button>
   );
+  // A message or email can be rewritten three ways; one menu holds them.
+  const rewrite = (
+    <Dropdown
+      trigger={["click"]}
+      disabled={busy}
+      menu={{
+        items: [
+          { key: "regenerate", label: "重新生成" },
+          { key: "shorter", label: "更短一些" },
+          { key: "formal", label: "更正式一些" },
+        ],
+        onClick: ({ key }) =>
+          void generate(
+            key === "shorter"
+              ? { ...draftOptions, length: "short" }
+              : key === "formal"
+                ? { ...draftOptions, tone: "formal" }
+                : draftOptions,
+            key as "regenerate" | "shorter" | "formal",
+          ),
+      }}
+    >
+      <Button
+        disabled={busy}
+        icon={<DownOutlined aria-hidden />}
+        iconPlacement="end"
+      >
+        改写
+      </Button>
+    </Dropdown>
+  );
   return (
     <section className={styles.editor} aria-label="帮我写">
       <div className={styles.options}>
-        {(Object.keys(labels) as (keyof typeof labels)[]).map((key) => (
+        {[...mainOptions, ...(more ? moreOptions : [])].map((key) => (
           <div key={key} className={styles.field}>
             <label htmlFor={formId + key}>{labels[key]}</label>
             <Select
@@ -169,7 +206,7 @@ export function SalesWriting({
           </div>
         ))}
       </div>
-      <label>
+      <label className={styles.supplement}>
         补充
         <Input.TextArea
           value={options.supplement ?? ""}
@@ -183,8 +220,8 @@ export function SalesWriting({
       </label>
       <Space wrap>
         <Button
-          type="primary"
-          icon={<EditOutlined aria-hidden />}
+          type={draft ? "default" : "primary"}
+          icon={<AiSparkIcon aria-hidden />}
           aria-label={
             pending === "writing" ? "生成中" : draft ? "按当前选项生成" : "生成"
           }
@@ -198,15 +235,28 @@ export function SalesWriting({
         {pending === "writing" && (
           <Button onClick={() => request.current?.abort()}>取消生成</Button>
         )}
+        {pending !== "writing" && (
+          <Button
+            type="text"
+            aria-expanded={more}
+            icon={
+              more ? <UpOutlined aria-hidden /> : <DownOutlined aria-hidden />
+            }
+            iconPlacement="end"
+            onClick={() => setMore(!more)}
+          >
+            更多选项
+          </Button>
+        )}
       </Space>
       {error && <Alert showIcon type="error" title={error} />}
       {draft && (
         <div className={styles.result} aria-live="polite">
-          <strong>
+          <strong className={styles.resultTitle}>
             {choices.kind[draft.kind]} · {draft.title}
           </strong>
-          <small>
-            AI 生成 ·{" "}
+          <small className={styles.resultMeta}>
+            <AiBadge />
             {new Date(draft.generatedAt).toLocaleString("zh-CN", {
               timeZone: draft.timeZone,
             })}
@@ -226,8 +276,9 @@ export function SalesWriting({
               {regenerate}
             </Space>
           )}
-          <Space wrap>
+          <div className={styles.resultActions}>
             <Button
+              type="primary"
               icon={<CopyOutlined aria-hidden />}
               disabled={busy}
               onClick={async () => {
@@ -241,33 +292,13 @@ export function SalesWriting({
             >
               {copied ? "已复制" : "复制"}
             </Button>
-            {!missingTopics && regenerate}
-            {draft.kind !== "visit" && (
-              <>
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    generate({ ...draftOptions, length: "short" }, "shorter")
-                  }
-                >
-                  更短一些
-                </Button>
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    generate({ ...draftOptions, tone: "formal" }, "formal")
-                  }
-                >
-                  更正式一些
-                </Button>
-                {draft.canLog && (
-                  <Button disabled={busy} onClick={openLog}>
-                    已发送，记一笔沟通
-                  </Button>
-                )}
-              </>
+            {draft.kind === "visit" ? !missingTopics && regenerate : rewrite}
+            {draft.kind !== "visit" && draft.canLog && (
+              <Button disabled={busy} onClick={openLog}>
+                记一笔沟通
+              </Button>
             )}
-          </Space>
+          </div>
         </div>
       )}
       <Drawer

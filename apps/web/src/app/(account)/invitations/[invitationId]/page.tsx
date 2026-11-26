@@ -1,7 +1,4 @@
-import Link from "next/link";
-
 import { AccountShell } from "@/components/layout/account-shell";
-import { PageHeader } from "@/components/layout/page-header";
 
 import { InvitationDetail } from "@/features/invitations/invitation-detail";
 import { createServerApiClient } from "@/lib/api/server-client";
@@ -27,12 +24,14 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
   }
 
   return (
-    <AccountShell platformAdmin={user.isPlatformAdmin}>
-      <PageHeader
-        breadcrumb={<Link href="/waiting">我的邀请</Link>}
-        title="确认公司邀请"
-        description="接受前请核对公司、角色和有效期。"
-      />
+    <AccountShell
+      user={{
+        displayName: user.displayName,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl,
+        isPlatformAdmin: user.isPlatformAdmin,
+      }}
+    >
       <InvitationDetail invitation={data} unavailable={!data} />
     </AccountShell>
   );

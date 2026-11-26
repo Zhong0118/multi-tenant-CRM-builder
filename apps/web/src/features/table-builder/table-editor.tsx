@@ -11,6 +11,7 @@ import {
   fieldTypeLabel,
   type ObjectDraft,
 } from "@/features/objects/object-types";
+import { AiBadge } from "@/components/ai/ai-badge";
 import styles from "./table-builder.module.css";
 
 const validationLabels: Record<string, string> = {
@@ -55,6 +56,11 @@ export function TableEditor({
   const setColumns = (ids: string[]) =>
     patch({ view: { ...table.view, columnIds: ids } });
   const names = new Map(fields.map((f) => [f.id, f.label]));
+  // Table-level problems with the name or code sit under that input.
+  const inputIssue = (path: "name" | "code") =>
+    issues.find((i) => !i.fieldId && i.path === path);
+  const nameIssue = inputIssue("name");
+  const codeIssue = inputIssue("code");
   function moveColumn(from: number, to: number) {
     const ids = [...table.view.columnIds];
     ids.splice(to, 0, ids.splice(from, 1)[0]!);
@@ -85,22 +91,52 @@ export function TableEditor({
         ) : (
           <>
             <div className={styles.two}>
-              <label>
-                表名称
-                <input
-                  value={table.name}
-                  onChange={(e) => patch({ name: e.target.value })}
-                />
-              </label>
-              <label>
-                表编码
-                <input
-                  value={table.code}
-                  maxLength={64}
-                  spellCheck={false}
-                  onChange={(e) => patch({ code: e.target.value })}
-                />
-              </label>
+              <div className={styles.inputWithIssue}>
+                <label>
+                  表名称
+                  <input
+                    value={table.name}
+                    aria-invalid={nameIssue?.blocking || undefined}
+                    aria-describedby={
+                      nameIssue ? "table-name-issue" : undefined
+                    }
+                    onChange={(e) => patch({ name: e.target.value })}
+                  />
+                </label>
+                {nameIssue && (
+                  <span
+                    id="table-name-issue"
+                    className={styles.inputIssue}
+                    data-blocking={nameIssue.blocking}
+                  >
+                    {nameIssue.message}
+                  </span>
+                )}
+              </div>
+              <div className={styles.inputWithIssue}>
+                <label>
+                  表编码
+                  <input
+                    value={table.code}
+                    maxLength={64}
+                    spellCheck={false}
+                    aria-invalid={codeIssue?.blocking || undefined}
+                    aria-describedby={
+                      codeIssue ? "table-code-issue" : undefined
+                    }
+                    onChange={(e) => patch({ code: e.target.value })}
+                  />
+                </label>
+                {codeIssue && (
+                  <span
+                    id="table-code-issue"
+                    className={styles.inputIssue}
+                    data-blocking={codeIssue.blocking}
+                  >
+                    {codeIssue.message}
+                  </span>
+                )}
+              </div>
             </div>
             <label>
               记录标题
@@ -126,11 +162,24 @@ export function TableEditor({
                 onChange={(e) => patch({ description: e.target.value })}
               />
             </label>
-            <p>{table.reason}</p>
+            {/* Folded to one line; the full reason is a click away. */}
+            {table.reason && (
+              <details className={styles.reason}>
+                <summary>
+                  <AiBadge>AI 理由</AiBadge>
+                </summary>
+                <p>{table.reason}</p>
+              </details>
+            )}
           </>
         )}
         <Issues
-          items={issues.filter((i) => !i.fieldId || !names.has(i.fieldId))}
+          items={issues.filter(
+            (i) =>
+              (!i.fieldId || !names.has(i.fieldId)) &&
+              i !== nameIssue &&
+              i !== codeIssue,
+          )}
         />
       </section>
       <section className={styles.section}>
@@ -138,11 +187,18 @@ export function TableEditor({
           <h2>{target ? "建议新增字段" : "字段"}</h2>
           <span>{fields.length} 个</span>
         </div>
+        {fields.length > 0 && (
+          <div className={styles.fieldHead} aria-hidden>
+            <span>字段名称</span>
+            <span>字段键</span>
+            <span>类型</span>
+          </div>
+        )}
         {fields.map((f, index) => (
           <div key={f.id} className={styles.field}>
             <div className={styles.fieldRow}>
               <label>
-                字段名称
+                <span className={styles.cellLabel}>字段名称</span>
                 <input
                   aria-label={`字段名称 ${index + 1}`}
                   value={f.label}
@@ -152,7 +208,19 @@ export function TableEditor({
                 />
               </label>
               <label>
-                类型
+                <span className={styles.cellLabel}>字段键</span>
+                <input
+                  aria-label={`字段键 ${index + 1}`}
+                  value={f.fieldKey}
+                  maxLength={64}
+                  spellCheck={false}
+                  onChange={(e) =>
+                    replaceField(f.id, { fieldKey: e.target.value })
+                  }
+                />
+              </label>
+              <label>
+                <span className={styles.cellLabel}>类型</span>
                 <select
                   aria-label={`字段类型 ${index + 1}`}
                   value={f.type}
@@ -191,19 +259,9 @@ export function TableEditor({
                 }
               />
             </div>
-            <label>
-              字段键
-              <input
-                aria-label={`字段键 ${index + 1}`}
-                value={f.fieldKey}
-                maxLength={64}
-                spellCheck={false}
-                onChange={(e) =>
-                  replaceField(f.id, { fieldKey: e.target.value })
-                }
-              />
-            </label>
-            <small>{f.reason}</small>
+            {f.reason && (
+              <small className={styles.fieldReason}>{f.reason}</small>
+            )}
             {f.options?.length ||
             f.type === "SINGLE_SELECT" ||
             f.type === "MULTI_SELECT" ? (

@@ -9,9 +9,15 @@ export function TrendChart({
   title,
   data,
   formatValue,
+  formatAxis = formatValue,
+  zeroBaseline = false,
 }: {
   title: string;
   formatValue?: (value: number) => string;
+  /** Axis ticks: the unit can live in the caption instead of every tick. */
+  formatAxis?: (value: number) => string;
+  /** Totals such as usage: start at 0 so a dip is not drawn as a collapse. */
+  zeroBaseline?: boolean;
   data: Array<{ date: string; value: number }>;
 }) {
   if (data.length === 1)
@@ -35,15 +41,42 @@ export function TrendChart({
           data={data}
           xField="date"
           yField="value"
+          // Quiet axes: no tick marks, solid hairline grid, small grey labels.
           axis={{
-            x: { title: false },
+            x: {
+              title: false,
+              tick: false,
+              line: true,
+              lineStroke: WORKSPACE_TOKENS.border,
+              lineStrokeOpacity: 1,
+              labelFill: WORKSPACE_TOKENS.textTertiary,
+              labelFillOpacity: 1,
+              labelFontSize: 11,
+            },
             y: {
               title: false,
-              ...(formatValue && {
-                labelFormatter: (v: number | string) => formatValue(Number(v)),
+              tick: false,
+              grid: true,
+              gridLineDash: [0, 0],
+              gridStroke: WORKSPACE_TOKENS.hairline,
+              gridStrokeOpacity: 1,
+              labelFill: WORKSPACE_TOKENS.textTertiary,
+              labelFillOpacity: 1,
+              labelFontSize: 11,
+              ...(formatAxis && {
+                labelFormatter: (v: number | string) => formatAxis(Number(v)),
               }),
             },
           }}
+          {...(zeroBaseline && { scale: { y: { domainMin: 0, nice: true } } })}
+          // A short series shows its points, so two days do not read as a
+          // continuous slide.
+          {...(data.length <= 7 && {
+            point: {
+              sizeField: 3,
+              style: { fill: WORKSPACE_TOKENS.primary, lineWidth: 0 },
+            },
+          })}
           tooltip={
             formatValue && {
               items: [
@@ -52,7 +85,9 @@ export function TrendChart({
             }
           }
           color={WORKSPACE_TOKENS.primary}
-          style={{ lineWidth: 2 }}
+          // A constant colour is a mark style in G2 5; `color` alone left the
+          // line in the default blue.
+          style={{ stroke: WORKSPACE_TOKENS.primary, lineWidth: 2 }}
         />
       </div>
       <table className={styles.screenReaderOnly} aria-label={`${title}数据`}>

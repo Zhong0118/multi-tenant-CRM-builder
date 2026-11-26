@@ -1,51 +1,58 @@
 import type { ThemeConfig } from "antd";
 
 /**
- * The signed-in workspace and platform palette. These hex values are the same
- * ones `globals.css` assigns to the CSS custom properties under
- * `:root:has([data-ui="workspace"])`; AntD components and the CSS modules
- * render side by side, so the two must never drift. Public pages (landing,
- * sign-in, account) keep the default theme from `app/providers.tsx`.
+ * The one product palette (direction A, "安静工作台"): neutral zinc surfaces and
+ * a single teal accent taken from the 百杰 logo. Sign-in, the workspace, the
+ * platform and the account centre all render with it.
+ *
+ * These hex values are the same ones `globals.css` assigns to its custom
+ * properties; AntD components and the CSS modules render side by side, so the
+ * two must never drift (`providers.test.ts` checks it).
  */
 export const WORKSPACE_TOKENS = {
-  primary: "#2563EB",
-  primaryHover: "#1D4ED8",
-  primaryActive: "#1E40AF",
-  primarySoft: "#EEF4FF",
-  primarySoftHover: "#E0EAFF",
-  primaryBorder: "#BFD3FE",
+  primary: "#167568",
+  primaryHover: "#115F55",
+  primaryActive: "#0D5149",
+  primarySoft: "#E8F3F0",
+  primarySoftHover: "#DAEDE8",
+  primaryBorder: "#B5DBD2",
+  primaryBorderHover: "#8CC5B8",
 
-  textPrimary: "#111A2C",
-  textSecondary: "#4B5870",
-  textTertiary: "#64718A",
-  textDisabled: "#98A2B3",
+  ink: "#18181B",
+  inkHover: "#27272A",
+  textPrimary: "#18181B",
+  textSecondary: "#52525B",
+  textTertiary: "#71717A",
+  textDisabled: "#A1A1AA",
 
-  page: "#F3F6FA",
-  sidebar: "#EBEFF5",
-  sidebarActive: "#DFE6F0",
+  page: "#F7F7F8",
+  sidebar: "#F2F2F3",
+  sidebarActive: "#E7E7EA",
   surface: "#FFFFFF",
-  surfaceSubtle: "#F8FAFC",
-  hover: "#F1F4F9",
-  selected: "#EEF4FF",
-  track: "#E4E9F1",
+  surfaceSubtle: "#FAFAFA",
+  hover: "#F4F4F5",
+  selected: "#E8F3F0",
+  track: "#EBEBED",
 
-  border: "#DBE1EA",
-  borderStrong: "#C4CDDA",
-  hairline: "#E6EAF0",
+  border: "#E4E4E7",
+  borderStrong: "#D4D4D8",
+  hairline: "#ECECEE",
 
   success: "#15803D",
   successSoft: "#ECFDF3",
   successBorder: "#ABEFC6",
   warning: "#B45309",
-  warningSoft: "#FFF6E5",
-  warningBorder: "#FBD38D",
-  danger: "#C0262D",
-  dangerSoft: "#FEF1F1",
-  dangerBorder: "#F9C2C2",
-  info: "#2563EB",
+  warningSoft: "#FDF4E7",
+  warningBorder: "#F7D29A",
+  danger: "#B42318",
+  dangerSoft: "#FEF1F0",
+  dangerBorder: "#F5C2BE",
+  info: "#167568",
+  ai: "#6D5BD0",
+  aiSoft: "#F3F1FC",
 
   fontUi:
-    '"IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
+    'var(--font-inter), Inter, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif',
 } as const;
 
 const T = WORKSPACE_TOKENS;
@@ -58,8 +65,10 @@ export const WORKSPACE_THEME: ThemeConfig = {
     colorPrimaryBg: T.primarySoft,
     colorPrimaryBgHover: T.primarySoftHover,
     colorPrimaryBorder: T.primaryBorder,
-    colorPrimaryBorderHover: "#93B4FD",
+    colorPrimaryBorderHover: T.primaryBorderHover,
     colorInfo: T.info,
+    colorInfoBg: T.primarySoft,
+    colorInfoBorder: T.primaryBorder,
     colorLink: T.primary,
     colorLinkHover: T.primaryHover,
     colorSuccess: T.success,
@@ -82,10 +91,12 @@ export const WORKSPACE_THEME: ThemeConfig = {
     colorBorder: T.border,
     colorBorderSecondary: T.hairline,
     colorFillAlter: T.surfaceSubtle,
+    colorFillTertiary: T.hover,
+    colorFillSecondary: T.track,
     controlItemBgHover: T.hover,
     controlItemBgActive: T.selected,
     controlItemBgActiveHover: T.primarySoftHover,
-    controlOutline: "rgba(37, 99, 235, 0.18)",
+    controlOutline: "rgba(22, 117, 104, 0.18)",
     fontFamily: T.fontUi,
     fontSize: 14,
     lineHeight: 1.5714,
@@ -97,7 +108,7 @@ export const WORKSPACE_THEME: ThemeConfig = {
     borderRadiusLG: 10,
     borderRadiusOuter: 6,
     boxShadowSecondary:
-      "0 10px 28px -10px rgba(16, 24, 40, 0.22), 0 2px 6px rgba(16, 24, 40, 0.06)",
+      "0 12px 32px -12px rgba(24, 24, 27, 0.22), 0 2px 6px rgba(24, 24, 27, 0.06)",
     motionDurationFast: "0.12s",
     motionDurationMid: "0.18s",
     motionDurationSlow: "0.24s",
@@ -109,17 +120,17 @@ export const WORKSPACE_THEME: ThemeConfig = {
       cellPaddingBlockSM: 9,
       cellPaddingInlineSM: 12,
       borderColor: T.hairline,
-      headerBg: T.surfaceSubtle,
-      headerColor: T.textSecondary,
+      headerBg: T.surface,
+      headerColor: T.textTertiary,
       headerSplitColor: "transparent",
-      headerSortActiveBg: T.surfaceSubtle,
+      headerSortActiveBg: T.surface,
       headerSortHoverBg: T.hover,
-      rowHoverBg: T.hover,
+      rowHoverBg: T.surfaceSubtle,
       rowSelectedBg: T.selected,
       rowSelectedHoverBg: T.primarySoftHover,
-      fixedHeaderSortActiveBg: T.surfaceSubtle,
+      fixedHeaderSortActiveBg: T.surface,
     },
-    Tag: { defaultBg: T.surfaceSubtle, defaultColor: T.textSecondary },
+    Tag: { defaultBg: T.hover, defaultColor: T.textSecondary },
     Form: { labelColor: T.textSecondary, verticalLabelPadding: 0 },
     Drawer: { paddingLG: 20 },
     Modal: { titleFontSize: 16 },
@@ -139,6 +150,19 @@ export const WORKSPACE_THEME: ThemeConfig = {
       primaryShadow: "none",
       defaultShadow: "none",
       dangerShadow: "none",
+    },
+    Switch: { colorPrimary: T.primary, colorPrimaryHover: T.primaryHover },
+    // Notices are a white box with a hairline border; the status lives in
+    // the icon and a left rule (globals.css), not in a filled background.
+    Alert: {
+      colorInfoBg: T.surface,
+      colorInfoBorder: T.border,
+      colorSuccessBg: T.surface,
+      colorSuccessBorder: T.border,
+      colorWarningBg: T.surface,
+      colorWarningBorder: T.border,
+      colorErrorBg: T.surface,
+      colorErrorBorder: T.border,
     },
   },
 };

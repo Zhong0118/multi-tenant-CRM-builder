@@ -38,7 +38,10 @@ const redisUrl = process.env.TEST_REDIS_URL;
     ).toHaveLength(5);
     for (const result of results) {
       if (result.status === 'rejected') {
-        expect(result.reason).toMatchObject({ code: 'RATE_LIMITED' });
+        expect(result.reason).toMatchObject({
+          code: 'RATE_LIMITED',
+          retryAfterSeconds: expect.any(Number) as number,
+        });
       }
     }
     expect(await redis.ttl(`crm:rate-limit:${request.key}`)).toBeGreaterThan(0);

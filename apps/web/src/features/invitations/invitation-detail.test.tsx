@@ -54,7 +54,7 @@ describe("InvitationDetail", () => {
     ["REVOKED", true],
     ["EXPIRED", true],
   ] as const)(
-    "enables actions only for a %s invitation",
+    "offers the two answers only for a %s invitation that is still pending",
     (status, disabled) => {
       render(
         <InvitationDetail
@@ -64,14 +64,21 @@ describe("InvitationDetail", () => {
         />,
       );
 
-      expect(screen.getByRole("button", { name: "接受邀请" })).toHaveProperty(
-        "disabled",
-        disabled,
-      );
-      expect(screen.getByRole("button", { name: "拒绝邀请" })).toHaveProperty(
-        "disabled",
-        disabled,
-      );
+      // A settled invitation shows no dead buttons, only the way back.
+      if (disabled) {
+        expect(
+          screen.queryByRole("button", { name: "接受邀请" }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "拒绝邀请" }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("link", { name: "返回公司邀请" }),
+        ).toHaveAttribute("href", "/waiting");
+        return;
+      }
+      expect(screen.getByRole("button", { name: "接受邀请" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "拒绝邀请" })).toBeEnabled();
     },
   );
 

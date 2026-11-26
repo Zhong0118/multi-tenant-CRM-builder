@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { ArrowDownOutlined } from "@ant-design/icons";
 import { Button, Skeleton, Tooltip } from "antd";
 
 import styles from "./ai-assistant.module.css";
@@ -49,6 +50,8 @@ export function AiMessageList({
   const [follow, setFollow] = useState(true);
   const live = useRef<HTMLDivElement>(null);
   const prependAnchor = useRef<{ height: number; top: number } | null>(null);
+  const body = useRef<HTMLDivElement>(null);
+  const floor = useRef(0);
   const questionNav = useRef<HTMLElement>(null);
   const [activeQuestion, setActiveQuestion] = useState<string>();
   const questions = messages.filter((message) => message.role === "USER");
@@ -76,6 +79,38 @@ export function AiMessageList({
     });
   }
 
+  // A card that collapses at the bottom (confirmed, rejected) would let the
+  // browser clamp the scroll and pull every line above it down. Within one
+  // conversation the message column only grows: a shrink leaves empty space
+  // under the last message, and the next message grows into it.
+  useLayoutEffect(() => {
+    const inner = body.current;
+    if (!inner) return;
+    const observer = new ResizeObserver(() => {
+      const height = inner.offsetHeight;
+      if (height <= floor.current) return;
+      floor.current = height;
+      inner.style.minHeight = `${height}px`;
+    });
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, []);
+
+  // Another conversation, or fewer messages, starts from its own height.
+  const firstId = messages[0]?.id;
+  const count = useRef(messages.length);
+  useLayoutEffect(() => {
+    const fewer = messages.length < count.current;
+    count.current = messages.length;
+    if (!fewer) return;
+    floor.current = 0;
+    if (body.current) body.current.style.minHeight = "";
+  }, [messages.length]);
+  useLayoutEffect(() => {
+    floor.current = 0;
+    if (body.current) body.current.style.minHeight = "";
+  }, [firstId]);
+
   useLayoutEffect(() => {
     const node = scroller.current;
     if (!node) return;
@@ -100,10 +135,13 @@ export function AiMessageList({
       onScroll={() => {
         const node = scroller.current;
         if (!node) return;
-        const atBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 48;
+        const distance = node.scrollHeight - node.scrollTop - node.clientHeight;
+        const atBottom = distance < 48;
         const scrollingUp = node.scrollTop < lastScrollTop.current;
         lastScrollTop.current = node.scrollTop;
-        setFollow(atBottom && !scrollingUp);
+        // Resting on the last line always follows (a resize can lower
+        // scrollTop without the reader scrolling up).
+        setFollow(distance < 2 || (atBottom && !scrollingUp));
         const anchors = Array.from(node.querySelectorAll<HTMLElement>("[data-ai-question]"));
         const readingTop = node.getBoundingClientRect().top + 72;
         const current = anchors.filter((item) => item.getBoundingClientRect().top <= readingTop).at(-1) ?? anchors[0];
@@ -136,6 +174,7 @@ export function AiMessageList({
           {onRetryMessages ? <Button type="link" onClick={onRetryMessages}>重试</Button> : null}
         </div>
       ) : null}
+      <div ref={body} className={styles.messageColumn}>
       {messages.map((message) =>
         message.role === "USER" ? (
           <div key={message.id} data-ai-question={message.turnId}>
@@ -154,27 +193,38 @@ export function AiMessageList({
           />
         ),
       )}
+      </div>
       <div ref={live} className={styles.srOnly} aria-live="polite">
         {phase === "COMPLETED" || phase === "PARTIAL_COMPLETED"
           ? "回答已完成"
           : ""}
       </div>
-      {!follow ? (
-        <div className={styles.jumpLatest}>
+    </div>
+    {/* Floats in the right gutter, outside the scroll flow: showing it never
+        changes the content height, and it never covers a line of the answer. */}
+    {!follow ? (
+      // The wrapper carries the absolute position: AntD's own button rule
+      // (position: relative) would otherwise win and make it a flex item that
+      // narrows the list each time it shows.
+      <div className={styles.jumpLatest}>
+        <Tooltip title="回到最新" placement="left">
           <Button
+            shape="circle"
+            size="small"
+            icon={<ArrowDownOutlined />}
+            aria-label="回到最新"
             onClick={() => {
               setFollow(true);
               scroller.current?.scrollTo?.({
                 top: scroller.current.scrollHeight,
               });
             }}
-          >
-            回到最新
-          </Button>
-        </div>
-      ) : null}
-    </div>
-    {questions.length > 0 ? (
+          />
+        </Tooltip>
+      </div>
+    ) : null}
+    {/* One question has nowhere to jump to. */}
+    {questions.length > 1 ? (
       <nav className={styles.questionNav} aria-label="按提问定位" ref={questionNav}>
         {questions.map((question) => (
           <Tooltip key={question.turnId} title={question.content.slice(0, 160)} placement="left" trigger={["hover", "focus"]}>
@@ -194,3 +244,4 @@ export function AiMessageList({
     </div>
   );
 }
+

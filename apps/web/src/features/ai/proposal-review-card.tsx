@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Checkbox } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
+import { Button, Checkbox, Tooltip } from "antd";
 import type { ReactNode } from "react";
 import styles from "./proposal-review-card.module.css";
 
@@ -11,6 +12,8 @@ export interface ReviewItem {
   evidence?: string;
   error?: string;
   locked?: boolean;
+  /** Just written in this session: the row plays its "done" transition. */
+  settled?: boolean;
   render: (edit: (value: unknown) => void, disabled: boolean) => ReactNode;
 }
 
@@ -30,6 +33,7 @@ export function ProposalReviewCard({
   onRetry,
   confirmLabel = "确认所选项",
   extraActions,
+  ai = true,
 }: {
   items: ReviewItem[];
   selectedKeys: string[];
@@ -41,6 +45,8 @@ export function ProposalReviewCard({
   onRetry?: (keys: string[]) => void;
   confirmLabel?: string;
   extraActions?: ReactNode;
+  /** False when the items are the person's own words (AI gave nothing): no AI outline. */
+  ai?: boolean;
 }) {
   const operation = (item: ReviewItem) => item.operationKey ?? item.key;
   const selectedItems = items.filter((item) => selectedKeys.includes(item.key));
@@ -64,74 +70,102 @@ export function ProposalReviewCard({
     .filter((item) => !failedItems.has(operation(item)))
     .map((item) => item.key);
   return (
-    <div className={styles.review}>
-      {items.map((item) => {
-        const result = itemResults[item.key];
-        if (result?.status === "EXECUTED")
-          return (
-            <p key={item.key} className={styles.savedItem}>
-              {item.label}
-              <span>{result.message}</span>
-            </p>
-          );
-        const selected = selectedKeys.includes(item.key);
-        const failedItem = failedItems.get(operation(item));
-        if (failedItems.size && !failedItem && !selected) return null;
-        const retryKeys = eligible
-          .filter((entry) => operation(entry) === operation(item))
-          .map((entry) => entry.key);
-        const disabled = busy || !!item.locked;
-        const expanded = !failedItems.size || !!result || selected;
-        const controls = (
-          <>
-            {onSelect && (
-              <Checkbox
-                aria-label={`选择${item.label}`}
-                checked={selected}
-                disabled={disabled}
-                onChange={(event) => onSelect(item.key, event.target.checked)}
-              >
+    <div className={styles.review} data-ai={ai}>
+      <div className={styles.items}>
+        {items.map((item) => {
+          const result = itemResults[item.key];
+          if (result?.status === "EXECUTED")
+            return (
+              <p key={item.key} className={styles.savedItem}>
                 {item.label}
-              </Checkbox>
-            )}
-            {expanded && (
-              <>
-                {item.render((value) => onEdit?.(item.key, value), disabled)}
-                {item.evidence && <blockquote>{item.evidence}</blockquote>}
-                {selected && item.error && <p role="status">{item.error}</p>}
-              </>
-            )}
-            {onRetry && failedItem === item.key && (
-              <>
-                <p role="alert">{result.message}</p>
-                <Button
-                  aria-label={busy ? "正在保存…" : "重试"}
-                  loading={busy}
-                  disabled={busy || !retryKeys.length}
-                  onClick={() => onRetry(retryKeys)}
-                >
-                  {busy ? "正在保存…" : "重试"}
-                </Button>
-              </>
-            )}
-          </>
-        );
-        if (failedItems.size && !failedItem && selected)
-          return (
-            <details key={item.key} className={styles.item}>
-              <summary>
-                {item.label} · {item.error ? "待补充" : "待保存"}
-              </summary>
-              {controls}
-            </details>
+                <span>{result.message}</span>
+              </p>
+            );
+          const selected = selectedKeys.includes(item.key);
+          const failedItem = failedItems.get(operation(item));
+          if (failedItems.size && !failedItem && !selected) return null;
+          const retryKeys = eligible
+            .filter((entry) => operation(entry) === operation(item))
+            .map((entry) => entry.key);
+          const disabled = busy || !!item.locked;
+          const expanded = !failedItems.size || !!result || selected;
+          const controls = (
+            <>
+              {/* A settled item (written, expired, rejected) has nothing to
+                  choose: its name reads as a plain title, not a greyed box. */}
+              {onSelect && (
+                <span className={styles.itemHead}>
+                  {item.locked ? (
+                    <strong className={styles.itemTitle}>{item.label}</strong>
+                  ) : (
+                    <Checkbox
+                      aria-label={`选择${item.label}`}
+                      checked={selected}
+                      disabled={disabled}
+                      onChange={(event) =>
+                        onSelect(item.key, event.target.checked)
+                      }
+                    >
+                      {item.label}
+                    </Checkbox>
+                  )}
+                  {/* The words the suggestion came from, one hover away. */}
+                  {item.evidence && expanded && (
+                    <Tooltip title={`依据：${item.evidence}`}>
+                      <button
+                        type="button"
+                        className={styles.evidence}
+                        aria-label={`依据：${item.evidence}`}
+                      >
+                        <InfoCircleOutlined aria-hidden />
+                      </button>
+                    </Tooltip>
+                  )}
+                </span>
+              )}
+              {expanded && (
+                <>
+                  {item.render((value) => onEdit?.(item.key, value), disabled)}
+                  {selected && item.error && <p role="status">{item.error}</p>}
+                </>
+              )}
+              {onRetry && failedItem === item.key && (
+                <>
+                  <p role="alert">{result.message}</p>
+                  <Button
+                    aria-label={busy ? "正在保存…" : "重试"}
+                    loading={busy}
+                    disabled={busy || !retryKeys.length}
+                    onClick={() => onRetry(retryKeys)}
+                  >
+                    {busy ? "正在保存…" : "重试"}
+                  </Button>
+                </>
+              )}
+            </>
           );
-        return (
-          <div key={item.key} className={onSelect ? styles.item : undefined}>
-            {controls}
-          </div>
-        );
-      })}
+          if (failedItems.size && !failedItem && selected)
+            return (
+              <details key={item.key} className={styles.item}>
+                <summary>
+                  {item.label} · {item.error ? "待补充" : "待保存"}
+                </summary>
+                {controls}
+              </details>
+            );
+          return (
+            <div
+              key={item.key}
+              className={onSelect ? styles.item : undefined}
+              data-settled={item.settled || undefined}
+            >
+              {controls}
+            </div>
+          );
+        })}
+      </div>
       <div className={styles.actions} aria-label="提案操作">
+        {extraActions}
         {onConfirm &&
           (fresh.length > 0 ||
             (!failedItems.size &&
@@ -148,7 +182,6 @@ export function ProposalReviewCard({
               {confirmLabel}
             </Button>
           )}
-        {extraActions}
       </div>
     </div>
   );

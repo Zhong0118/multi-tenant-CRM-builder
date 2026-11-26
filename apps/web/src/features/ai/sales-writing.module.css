@@ -1,3 +1,6 @@
+/* 帮我写 in the assistant panel: type and purpose side by side (tone and
+   length folded under 更多选项), the brief, then the draft as a card — copy
+   first, then one 改写 menu, then 记一笔沟通. */
 .editor,
 .result {
   display: grid;
@@ -5,12 +8,13 @@
   min-width: 0;
 }
 .editor {
-  padding: 12px;
+  gap: 14px;
+  padding: 16px;
 }
 .options {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 10px 12px;
 }
 .editor label,
 .result small {
@@ -21,26 +25,63 @@
   gap: 4px;
   min-width: 0;
 }
+.field > label,
+.supplement {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.supplement :global(.ant-input) {
+  margin-top: 4px;
+}
 .result {
+  gap: 10px;
   padding: 14px;
-  background: #f5f8fc;
-  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
   overflow-wrap: anywhere;
   animation: enter 0.18s ease;
+}
+.resultTitle {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.result small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+/* Title and "AI 生成" read as the card's head, ruled off from the draft. */
+.result .resultMeta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: -8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-hairline);
 }
 .result p,
 .result h4 {
   margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 22px;
   white-space: pre-line;
 }
-.result small {
-  color: #546173;
+.result h4 {
+  margin-top: 4px;
+  font-weight: 600;
+}
+.resultActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding-top: 4px;
 }
 .editor button {
   transition: transform 0.16s ease;
-}
-.editor button:hover {
-  transform: translateY(-1px);
 }
 .editor button:active {
   transform: scale(0.98);

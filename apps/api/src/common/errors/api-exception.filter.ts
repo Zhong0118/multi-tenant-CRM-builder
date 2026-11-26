@@ -8,7 +8,10 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
-import { isModelAdminPath } from '../security/http-logger';
+import {
+  isModelAdminPath,
+  isSensitiveAccountPath,
+} from '../security/http-logger';
 import { API_ERROR_MESSAGES, type ApiErrorCode } from './api-error-code';
 import { ApiException, type FieldErrors } from './api.exception';
 
@@ -34,9 +37,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
     exception: unknown,
     requestId: string,
     modelAdmin = false,
+    sensitiveAccount = false,
   ): ApiErrorBody {
     if (
-      modelAdmin &&
+      (modelAdmin || sensitiveAccount) &&
       exception instanceof Error &&
       'type' in exception &&
       exception.type === 'entity.parse.failed'
@@ -81,7 +85,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
     // An unexpected failure is a defect, not a domain outcome. The client only
     // ever sees the generic envelope, so the cause has to reach the server log
     // against its request id or it is unrecoverable in production.
-    if (modelAdmin)
+    if (sensitiveAccount)
+      this.logger.error(`Account request failed: ${requestId}`);
+    else if (modelAdmin)
       this.logger.error(`Model configuration request failed: ${requestId}`);
     else
       this.logger.error(
@@ -106,6 +112,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       exception,
       request.requestId ?? 'req_unknown',
       isModelAdminPath(request.originalUrl ?? request.url),
+      isSensitiveAccountPath(request.originalUrl ?? request.url),
     );
 
     if (body.retryAfterSeconds)

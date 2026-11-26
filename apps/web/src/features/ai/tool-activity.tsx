@@ -16,14 +16,14 @@ export function ToolActivity({ tools, running = true, now }: { tools: AiToolSumm
   const open = manualOpen ?? active;
   const id = useId();
   if (tools.length === 0) return null;
-  const summary = [completedCount ? `${completedCount} 项成功` : "", failedCount ? `${failedCount} 项失败` : "", interruptedCount ? `${interruptedCount} 项已中断` : ""].filter(Boolean).join("，");
+  const summary = [`查了 ${tools.length} 次`, failedCount ? `${failedCount} 次失败` : "", interruptedCount ? `${interruptedCount} 次中断` : ""].filter(Boolean).join(" · ");
   return (
     <div className={styles.tools}>
       <button type="button" className={styles.toolToggle} aria-expanded={open} aria-controls={id} onClick={() => setManualOpen(!open)}>
         <span aria-hidden className={failedCount ? styles.toolFailed : styles.toolStatus}>
           {active ? <LoadingOutlined spin /> : failedCount ? <CloseCircleOutlined /> : interruptedCount ? <StopOutlined /> : <CheckCircleOutlined />}
         </span>
-        <span>{active ? `正在查询 CRM 数据${summary ? `，${summary}` : ""}` : failedCount || interruptedCount ? summary : `已查询 ${completedCount} 项 CRM 数据`}</span>
+        <span>{active ? "正在查询 CRM 数据…" : failedCount || interruptedCount ? summary : `查了 ${completedCount} 次 CRM 数据`}</span>
         <RightOutlined aria-hidden className={`${styles.toolChevron} ${open ? styles.toolChevronOpen : ""}`} />
       </button>
       <div id={id} className={`${styles.toolReveal} ${open ? styles.toolRevealOpen : ""}`} inert={!open} aria-hidden={!open}>

@@ -1,3 +1,4 @@
+import { ProfileAvatar } from "./profile-avatar";
 import type { ReactNode } from "react";
 
 import styles from "./member-identity.module.css";
@@ -7,7 +8,6 @@ export interface IdentityMember {
   id: string;
   displayName: string | null;
   status?: "ACTIVE" | "DISABLED";
-  /** No API returns one yet; used as soon as one does. */
   avatarUrl?: string | null;
 }
 
@@ -59,13 +59,11 @@ function Avatar({
   seed,
   label,
   size,
-  imageUrl,
   variant = "member",
 }: {
   seed: string;
   label: string;
   size: MemberIdentitySize;
-  imageUrl?: string | null;
   variant?: "member" | "placeholder";
 }) {
   const [background, color] =
@@ -78,14 +76,7 @@ function Avatar({
       style={variant === "member" ? { background, color } : undefined}
       aria-hidden
     >
-      {imageUrl ? (
-        // A 20–32px decorative avatar from any host; next/image would need
-        // every avatar origin configured for no visible gain.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" />
-      ) : (
-        label
-      )}
+      {label}
     </span>
   );
 }
@@ -166,12 +157,20 @@ export function MemberIdentity({
       data-state={disabled ? "disabled" : "member"}
       title={disabled ? `${name}（已停用）` : name}
     >
-      <Avatar
-        seed={member.id}
-        label={memberInitial(member.displayName)}
-        size={size}
-        imageUrl={member.avatarUrl}
-      />
+      {member.avatarUrl !== undefined ? (
+        <ProfileAvatar
+          name={member.displayName}
+          avatarUrl={member.avatarUrl}
+          size={{ sm: 20, md: 24, lg: 32 }[size]}
+        />
+      ) : (
+        <Avatar
+          seed={member.id}
+          label={memberInitial(member.displayName)}
+          size={size}
+        />
+      )}
+
       {stacked(
         <>
           <span className={styles.name}>

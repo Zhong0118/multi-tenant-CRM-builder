@@ -116,9 +116,10 @@ it.each([
       fields,
       "Asia/Shanghai",
     );
-    expect(review.columns.map((c) => [c.confidence, c.reason])).toEqual(
-      Array(2).fill(["review", "文件中还有其他" + label + "列，请确认"]),
-    );
+    expect(review.columns.map((c) => [c.confidence, c.reason])).toEqual([
+      ["review", "「金额列」也像" + label + "，请确认"],
+      ["review", "「报价」也像" + label + "，请确认"],
+    ]);
     expect(applyImportAdvice(base, preview, review, fields).mapping).toEqual([
       SKIP,
       SKIP,
@@ -143,3 +144,49 @@ it.each([
     ).toBe("high");
   },
 );
+
+it("does not count a column of phone numbers as a second amount column", async () => {
+  const fields = [
+    { ...tier, fieldKey: "amount", label: "金额", type: "MONEY" as const },
+  ];
+  const file = await readImportFile(
+    new File(
+      ['合同金额,客户电话\n"128,000",13800000000\n56000,021-62345678'],
+      "phone.csv",
+    ),
+    "auto",
+  );
+  const draft = emptyAssistDraft(file.sheet("", 1).headers, fields, false);
+  const preview = buildImportPreview({
+    file,
+    sheet: "",
+    fields,
+    draft,
+    headerEvidence: [],
+    headerRow: 1,
+  });
+  const review = reviewImportPlan(
+    {
+      version: 1,
+      generatedAt: "",
+      matchFields: [],
+      columns: [
+        {
+          col: "C1",
+          target: { mode: "field", field: "amount" },
+          confidence: "high",
+          reason: "表头含义相近",
+        },
+      ],
+    },
+    preview,
+    file,
+    "",
+    fields,
+    "Asia/Shanghai",
+  );
+  expect(review.columns[0]).toMatchObject({
+    confidence: "high",
+    reason: "表头含义相近",
+  });
+});

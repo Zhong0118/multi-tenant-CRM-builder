@@ -1,3 +1,21 @@
+.features li {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  align-items: center;
+  min-height: 26px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.features li :global(.ant-tag) {
+  margin: 0;
+}
+.features li:has(small) {
+  color: var(--text-tertiary);
+}
+.features small {
+  font-size: 12px;
+}
 .summary {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -58,19 +76,48 @@
   margin: 0;
   padding: 0;
 }
-.features li {
+/* What the plan includes: one row per group, features as read-only tags; a
+   feature the plan lacks is muted text that says how to get it. */
+.featureGroup {
   display: grid;
-  grid-template-columns: 16px 1fr;
-  gap: 1px 8px;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-hairline);
+}
+.featureGroup:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+.featureGroup h4 {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 26px;
+}
+.features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* The tag is the only shape; a missing feature is plain muted text. */
+.features li {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
   align-items: center;
-  padding: 7px 0;
+  min-height: 26px;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.features li:has(small) {
+  color: var(--text-tertiary);
 }
 .features small {
-  grid-column: 2;
   font-size: 12px;
-}
-.check {
-  color: var(--color-primary);
 }
 .helper,
 .secondary {
@@ -79,6 +126,52 @@
 }
 .helper {
   margin: 12px 0;
+}
+/* Plan features fold to one line. */
+.featureFold > summary {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 13px;
+  list-style: none;
+  cursor: pointer;
+}
+.featureFold > summary::-webkit-details-marker {
+  display: none;
+}
+.featureFold > summary::after {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--text-tertiary);
+  border-bottom: 1.5px solid var(--text-tertiary);
+  content: "";
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+.featureFold[open] > summary {
+  margin-bottom: 10px;
+}
+.featureFold[open] > summary::after {
+  transform: rotate(45deg);
+}
+/* The choice and what it means, on one line. */
+.allocation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+}
+.allocation small {
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+.tabs.tabs {
+  margin-top: 20px;
+}
+.showAll:global(.ant-btn) {
+  padding-inline: 0;
+  margin-top: 6px;
 }
 .saveRow {
   display: flex;
@@ -139,6 +232,10 @@
   padding: 14px 0;
 }
 @media (max-width: 680px) {
+  .featureGroup {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
   .summary {
     padding: 16px;
     gap: 10px;

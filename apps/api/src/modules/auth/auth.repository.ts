@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
+import { randomUUID } from 'node:crypto';
+import { MailService } from '../mail/mail.service';
+import { lockAccount, rememberDevice } from './login-device';
 import { DatabaseService } from '../../infrastructure/database/database.service';
 
 export const AUTH_REPOSITORY = Symbol('AUTH_REPOSITORY');
@@ -34,7 +37,14 @@ export interface AuthUser {
   lastLoginAt?: Date;
 }
 
+export interface LoginDeviceInput {
+  deviceCookie?: string;
+  userAgent?: string;
+}
+type PasswordEvent = 'password_reset' | 'password_changed';
+
 export interface AuthSession {
+  deviceCookie?: string;
   id: string;
   userId: string;
   tokenHash: string;
@@ -68,10 +78,17 @@ export interface AuthStore {
   consumeChallenge(id: string, consumedAt: Date): Promise<boolean>;
   findUserByPhone(phone: string): Promise<AuthUser | null>;
   findPendingInvitationByPhone(phone: string, now: Date): Promise<boolean>;
-  findUserById(id: string): Promise<AuthUser | null>;
+  findUserById(id: string, forUpdate?: boolean): Promise<AuthUser | null>;
   createUser(input: Omit<AuthUser, 'id'>): Promise<AuthUser>;
-  updatePassword(userId: string, passwordHash: string): Promise<void>;
-  createSession(input: Omit<AuthSession, 'id'>): Promise<AuthSession>;
+  updatePassword(
+    userId: string,
+    passwordHash: string,
+    event: PasswordEvent,
+  ): Promise<void>;
+  createSession(
+    input: Omit<AuthSession, 'id' | 'deviceCookie'>,
+    device?: LoginDeviceInput,
+  ): Promise<AuthSession>;
   findSessionByTokenHash(tokenHash: string): Promise<SessionWithUser | null>;
   touchSession(sessionId: string, usedAt: Date): Promise<void>;
   listSessionPage(
@@ -102,11 +119,14 @@ export interface AuthRepository extends AuthStore {
 
 @Injectable()
 export class PrismaAuthRepository implements AuthRepository {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    @Inject(MailService) private readonly mail?: MailService,
+  ) {}
 
   transaction<T>(work: (store: AuthStore) => Promise<T>): Promise<T> {
     return this.database.transaction((client) =>
-      work(new PrismaAuthStore(client)),
+      work(new PrismaAuthStore(client, this.mail)),
     );
   }
 
@@ -147,20 +167,31 @@ export class PrismaAuthRepository implements AuthRepository {
     return this.store.findPendingInvitationByPhone(phone, now);
   }
 
-  findUserById(id: string): Promise<AuthUser | null> {
-    return this.store.findUserById(id);
+  findUserById(id: string, forUpdate?: boolean): Promise<AuthUser | null> {
+    return forUpdate
+      ? this.transaction((store) => store.findUserById(id, true))
+      : this.store.findUserById(id);
   }
 
   createUser(input: Omit<AuthUser, 'id'>): Promise<AuthUser> {
     return this.store.createUser(input);
   }
 
-  updatePassword(userId: string, passwordHash: string): Promise<void> {
-    return this.store.updatePassword(userId, passwordHash);
+  updatePassword(
+    userId: string,
+    passwordHash: string,
+    event: PasswordEvent,
+  ): Promise<void> {
+    return this.transaction((store) =>
+      store.updatePassword(userId, passwordHash, event),
+    );
   }
 
-  createSession(input: Omit<AuthSession, 'id'>): Promise<AuthSession> {
-    return this.store.createSession(input);
+  createSession(
+    input: Omit<AuthSession, 'id' | 'deviceCookie'>,
+    device?: LoginDeviceInput,
+  ): Promise<AuthSession> {
+    return this.transaction((store) => store.createSession(input, device));
   }
 
   findSessionByTokenHash(tokenHash: string): Promise<SessionWithUser | null> {
@@ -210,12 +241,15 @@ export class PrismaAuthRepository implements AuthRepository {
   }
 
   private get store(): AuthStore {
-    return new PrismaAuthStore(this.database.client);
+    return new PrismaAuthStore(this.database.client, this.mail);
   }
 }
 
 class PrismaAuthStore implements AuthStore {
-  constructor(private readonly client: Prisma.TransactionClient) {}
+  constructor(
+    private readonly client: Prisma.TransactionClient,
+    private readonly mail?: MailService,
+  ) {}
 
   async createChallenge(
     input: Omit<AuthChallenge, 'id'>,
@@ -288,7 +322,11 @@ class PrismaAuthStore implements AuthStore {
     return rows[0]?.allowed === true;
   }
 
-  async findUserById(id: string): Promise<AuthUser | null> {
+  async findUserById(
+    id: string,
+    forUpdate?: boolean,
+  ): Promise<AuthUser | null> {
+    if (forUpdate) await lockAccount(this.client, id);
     const user = await this.client.user.findUnique({ where: { id } });
     return user ? mapUser(user) : null;
   }
@@ -298,16 +336,51 @@ class PrismaAuthStore implements AuthStore {
     return mapUser(user);
   }
 
-  async updatePassword(userId: string, passwordHash: string): Promise<void> {
-    await this.client.user.update({
+  async updatePassword(
+    userId: string,
+    passwordHash: string,
+    event: PasswordEvent,
+  ): Promise<void> {
+    const user = await this.client.user.update({
       where: { id: userId },
       data: { passwordHash },
+      select: { emailVersion: true },
+    });
+    await this.mail?.enqueue(this.client, {
+      kind: event,
+      userId,
+      emailVersion: user.emailVersion,
+      eventId: randomUUID(),
     });
   }
 
-  async createSession(input: Omit<AuthSession, 'id'>): Promise<AuthSession> {
+  async createSession(
+    input: Omit<AuthSession, 'id' | 'deviceCookie'>,
+    device?: LoginDeviceInput,
+  ): Promise<AuthSession> {
+    const known = await rememberDevice(
+      this.client,
+      input.userId,
+      input.createdAt,
+      { ...device, ip: input.ip },
+    );
     const session = await this.client.session.create({ data: input });
-    return mapSession(session);
+    if (known.notification && this.mail?.available) {
+      const user = await this.client.user.findUniqueOrThrow({
+        where: { id: input.userId },
+        select: { newDeviceMailEnabled: true, emailVersion: true },
+      });
+      if (user.newDeviceMailEnabled)
+        await this.mail.enqueue(this.client, {
+          kind: 'new_device',
+          userId: input.userId,
+          emailVersion: user.emailVersion,
+          eventId: session.id,
+          occurredAt: input.createdAt,
+          ...known.notification,
+        });
+    }
+    return { ...mapSession(session), deviceCookie: known.cookie };
   }
 
   async findSessionByTokenHash(

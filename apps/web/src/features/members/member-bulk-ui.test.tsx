@@ -90,6 +90,31 @@ it("locks a running batch and preserves the action and per-row results on retry"
   ]);
 });
 
+it("edits a job without copying the account name into the company alias", async () => {
+  const name = vi.fn().mockResolvedValue(undefined);
+  render(
+    <MemberNameEditor
+      tenantCode="acme"
+      member={members[0]}
+      onChanged={vi.fn()}
+      api={{ name, action: vi.fn() }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "修改姓名 张三" }));
+  fireEvent.change(screen.getByLabelText("职位"), {
+    target: { value: " 行业经理 " },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /保\s*存/ }));
+  await waitFor(() =>
+    expect(name).toHaveBeenCalledWith(
+      "acme",
+      "member-0",
+      undefined,
+      "行业经理",
+    ),
+  );
+});
+
 it("saves a trimmed company name without changing phone or account fields", async () => {
   const name = vi.fn().mockResolvedValue(undefined);
   render(

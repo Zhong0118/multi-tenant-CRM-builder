@@ -65,6 +65,8 @@ export interface RecordActivityTimelineProps {
   api: RecordApi;
   onCreated?: () => void | Promise<void>;
   onDraftStateChange?: (state: { dirty: boolean; saving: boolean }) => void;
+  /** How many activities the record has, whenever the history loads. */
+  onCount?: (count: number) => void;
 }
 
 export function RecordActivityTimeline({
@@ -78,6 +80,7 @@ export function RecordActivityTimeline({
   api,
   onCreated,
   onDraftStateChange,
+  onCount,
 }: RecordActivityTimelineProps) {
   const queryClient = useQueryClient();
   const [composing, setComposing] = useState(Boolean(initialActivity));
@@ -166,6 +169,10 @@ export function RecordActivityTimeline({
     },
   });
 
+  const total = activities.data?.pages[0]?.total;
+  useEffect(() => {
+    if (total !== undefined) onCount?.(total);
+  }, [total, onCount]);
   useEffect(() => {
     onDraftStateChange?.({
       dirty: content.trim() !== "",
@@ -184,9 +191,6 @@ export function RecordActivityTimeline({
     <section className={styles.timeline} aria-label="活动历史">
       <h2 className={styles.visuallyHidden}>活动历史</h2>
       <div className={styles.timelineHeading}>
-        <Typography.Text type="secondary">
-          按时间追加，已有记录不能修改。
-        </Typography.Text>
         {action}
         {canCreate && !composing ? (
           <Button

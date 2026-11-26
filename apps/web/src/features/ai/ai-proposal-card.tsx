@@ -1,8 +1,9 @@
 "use client";
 
+import { AiBadge } from "@/components/ai/ai-badge";
 import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import Link from "next/link";
-import { Button, Tag } from "antd";
+import { Button } from "antd";
 import { useEffect, useState } from "react";
 import type { AiProposalView } from "./ai-types";
 import styles from "./ai-assistant.module.css";
@@ -117,16 +118,26 @@ export function AiProposalCard({
     >
       <header className={styles.proposalHeader}>
         <div>
-          <strong>{proposal.title}</strong>
+          <span className={styles.proposalTitle}>
+            <AiBadge>AI 提议</AiBadge>
+            <strong>{proposal.title}</strong>
+          </span>
           <span className={styles.proposalOperation}>
             {operationLabels[proposal.operation]}
           </span>
         </div>
-        <Tag>
+        <span
+          className={styles.statusBadge}
+          data-status={
+            expired && proposal.status === "PROPOSED"
+              ? "EXPIRED"
+              : proposal.status
+          }
+        >
           {expired && proposal.status === "PROPOSED"
             ? "已过期"
             : statusLabels[proposal.status]}
-        </Tag>
+        </span>
       </header>
       {proposal.operation === "UPDATE_RECORD" ? (
         <p className={styles.proposalTarget}>{proposal.targetSummary}</p>
@@ -143,7 +154,7 @@ export function AiProposalCard({
                 <dl className={styles.proposalChanges}>
                   {proposal.operation !== "UPDATE_RECORD" ? (
                     <div>
-                      <dt>关联 Record</dt>
+                      <dt>关联记录</dt>
                       <dd>{proposal.targetSummary}</dd>
                     </div>
                   ) : null}

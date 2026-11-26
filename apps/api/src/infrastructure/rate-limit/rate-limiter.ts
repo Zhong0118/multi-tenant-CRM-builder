@@ -54,7 +54,14 @@ export class InMemoryRateLimiter implements CallRateLimiter {
     this.windows.set(input.key, window);
 
     if (window.count > input.limit) {
-      return Promise.reject(new ApiException('RATE_LIMITED', 429));
+      return Promise.reject(
+        new ApiException('RATE_LIMITED', 429, {
+          retryAfterSeconds: Math.max(
+            1,
+            Math.ceil((window.resetAt - now) / 1000),
+          ),
+        }),
+      );
     }
     return Promise.resolve();
   }

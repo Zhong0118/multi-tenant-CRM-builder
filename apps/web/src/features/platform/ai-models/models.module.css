@@ -17,7 +17,7 @@
 }
 .row + .row,
 .provider + .provider {
-  border-top: 1px solid var(--border-subtle, #e6e9ed);
+  border-top: 1px solid var(--border-hairline);
 }
 .copy {
   flex: 1 1 175px;
@@ -26,12 +26,18 @@
   gap: 3px;
   overflow-wrap: anywhere;
 }
+.copy span {
+  font-size: 13px;
+}
+.copy span[data-optional] {
+  color: var(--text-tertiary);
+}
 .copy span,
 .copy small,
 .caption,
 .note,
 .editor p {
-  color: var(--text-secondary, #525d70);
+  color: var(--text-secondary);
 }
 .copy small,
 .note,
@@ -40,8 +46,8 @@
 }
 .icon {
   border-radius: 9px;
-  background: var(--bg-subtle, #f3f6fb);
-  color: var(--color-primary, #2563eb);
+  background: var(--bg-surface-subtle);
+  color: var(--color-primary);
   display: grid;
   place-items: center;
   width: 36px;
@@ -60,13 +66,19 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #386ab1;
+  background: var(--color-info);
 }
 .status[data-tone="success"]::before {
-  background: #38805f;
+  background: var(--color-success);
 }
 .status[data-tone="error"]::before {
-  background: #b64944;
+  background: var(--color-danger);
+}
+.status[data-tone="warning"]::before {
+  background: var(--color-warning);
+}
+.status[data-tone="neutral"]::before {
+  background: var(--text-tertiary);
 }
 .actions {
   margin-left: auto;
@@ -117,12 +129,12 @@
 }
 .modelForm,
 .confirm {
-  border: 1px solid var(--border-subtle, #e6e9ed);
+  border: 1px solid var(--border-hairline);
   border-radius: 9px;
   padding: 15px;
 }
 .confirm {
-  background: var(--bg-subtle, #f3f6fb);
+  background: var(--bg-surface-subtle);
   gap: 6px;
 }
 .check {
@@ -164,4 +176,11 @@
       transform: translateY(0);
     }
   }
+}
+
+/* The key's last four digits, one hover away from the provider line. */
+.keyInfo {
+  margin-inline-start: 6px;
+  color: var(--text-tertiary);
+  cursor: help;
 }

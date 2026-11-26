@@ -68,7 +68,7 @@ describe("LoginForm", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/platform"));
   });
 
-  it("shows a top-level instruction for invalid client input", async () => {
+  it("marks invalid fields in place without a second banner", async () => {
     const api = baseApi();
     renderForm(
       <LoginForm
@@ -80,10 +80,25 @@ describe("LoginForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /登\s*录/ }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "请检查手机号和密码",
-    );
+    expect(await screen.findByText("请输入密码。")).toBeInTheDocument();
+    expect(screen.queryByText(/请检查手机号和密码/)).not.toBeInTheDocument();
     expect(api.login).not.toHaveBeenCalled();
+  });
+
+  it("says the device was signed out in one line, with the reason on demand", () => {
+    renderForm(
+      <LoginForm
+        api={baseApi()}
+        navigate={vi.fn()}
+        signedOut
+        device={{ key: "device-test", summary: "Vitest browser" }}
+      />,
+    );
+
+    expect(screen.getByText("这台设备已退出登录")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /密码在其他设备上修改或重置过/ }),
+    ).toBeInTheDocument();
   });
 
   it("offers an explicit password visibility control", () => {
@@ -101,7 +116,7 @@ describe("LoginForm", () => {
     expect(password).toHaveAttribute("type", "text");
   });
 
-  it("shows field errors and the request id from a failed API response", async () => {
+  it("shows field errors under the fields without a request id", async () => {
     const api = baseApi();
     vi.mocked(api.login).mockRejectedValue({
       code: "VALIDATION_FAILED",
@@ -127,7 +142,8 @@ describe("LoginForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /登\s*录/ }));
 
     expect(await screen.findByText("手机号格式错误")).toBeInTheDocument();
-    expect(screen.getByText(/req_login_123/)).toBeInTheDocument();
+    expect(screen.queryByText(/req_login_123/)).toBeNull();
+    expect(screen.queryByText("提交内容有误，请检查后重试。")).toBeNull();
   });
 
   it("prevents duplicate submit and preserves an authorized return path", async () => {

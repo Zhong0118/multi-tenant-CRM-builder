@@ -4,8 +4,10 @@ import { AccessReason, useAiFeature } from "@/features/ai-governance/access";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useTenantTimezone } from "@/features/follow-ups/use-tenant-timezone";
 import { savedFollowUpLabel } from "@/features/records/draft-follow-up-date";
+import { CheckCircleFilled, ClockCircleOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import Link from "next/link";
+import { AiBadge } from "@/components/ai/ai-badge";
 import type { AssistantBatch, AssistantBatchResult } from "@crm/contracts";
 import { AssistantCommandContext } from "./assistant-commands";
 import { AssistantFieldControl } from "./question-card";
@@ -16,6 +18,7 @@ import {
   resultLink,
   statusLabels,
 } from "./ai-proposal-card";
+import aiStyles from "./ai-assistant.module.css";
 import styles from "./assistant-panel.module.css";
 
 export function AssistantBatchCard({
@@ -125,13 +128,56 @@ export function AssistantBatchCard({
   }, [batch.items, now]);
   const canWrite = useAiFeature("write_proposal");
   const blocked = busy || !!commands?.busy;
+  function statusOf(item: AssistantBatch["items"][number]) {
+    const result = results.find((entry) => entry.proposalId === item.proposalId);
+    return item.status === "PROPOSED"
+      ? (result?.status ??
+          (Date.parse(item.expiresAt) <= now ? "EXPIRED" : item.status))
+      : item.status;
+  }
+  const statuses = batch.items.map(statusOf);
+  const open = statuses.filter((status) => status === "PROPOSED").length;
+  const executed = statuses.filter((status) => status === "EXECUTED").length;
+  const expired = statuses.filter((status) => status === "EXPIRED").length;
+  // The heading follows the cards, so a settled batch never reads as waiting.
+  const heading = open
+    ? batch.coverage
+      ? `共 ${batch.coverage.total} 条，本次提议 ${batch.coverage.targets} 条`
+      : `核对 ${batch.items.length} 项建议`
+    : executed
+      ? `已执行 ${executed} 项${executed < statuses.length ? `，${statuses.length - executed} 项未写入` : ""}`
+      : expired === statuses.length
+        ? "建议已过期，没有写入"
+        : "没有写入任何修改";
+  // One record behind every card: name it once, in the heading.
+  const targets = new Set(batch.items.map((item) => item.targetSummary || ""));
+  const sharedTarget =
+    batch.items.length > 1 && targets.size === 1 && !targets.has("")
+      ? batch.items[0].targetSummary
+      : undefined;
   return (
-    <section className={styles.card} aria-label="待核对的修改">
-      <h3>
-        {batch.coverage
-          ? `共 ${batch.coverage.total} 条，本次提议 ${batch.coverage.targets} 条`
-          : `核对 ${batch.items.length} 项建议`}
+    <section
+      className={`${styles.card} ${styles.batch}`}
+      aria-label="待核对的修改"
+    >
+      <h3 className={styles.batchHeading}>
+        <AiBadge>AI 提议</AiBadge>
+        {/* A settled batch shows its outcome as a mark too, so open, done and
+            lapsed cards differ even at a glance. */}
+        <span
+          className={styles.batchOutcome}
+          data-outcome={open ? "open" : executed ? "executed" : "none"}
+        >
+          {!open &&
+            (executed ? (
+              <CheckCircleFilled aria-hidden />
+            ) : (
+              <ClockCircleOutlined aria-hidden />
+            ))}
+          {heading}
+        </span>
       </h3>
+      {sharedTarget && <p className={styles.batchTarget}>{sharedTarget}</p>}
       {!canWrite && batch.items.some(item=>item.status==="PROPOSED") && <AccessReason />}
       <ProposalReviewCard
         selectedKeys={selected}
@@ -140,11 +186,7 @@ export function AssistantBatchCard({
         items={batch.items.map((item) => {
           const id = item.proposalId;
           const result = results.find((result) => result.proposalId === id);
-          const status =
-            item.status === "PROPOSED"
-              ? (result?.status ??
-                (Date.parse(item.expiresAt) <= now ? "EXPIRED" : item.status))
-              : item.status;
+          const status = statusOf(item);
           function displayValue(label: string, value?: string) {
             const field = item.editableFields?.find(
               (field) => field.label === label || field.key === label,
@@ -170,22 +212,45 @@ export function AssistantBatchCard({
           }
           const accessible = Boolean(item.targetSummary || item.changes.length);
           const actionable = status === "PROPOSED" && accessible;
+          type Change = (typeof item.changes)[number];
+          type Field = NonNullable<typeof item.editableFields>[number];
+          const fieldFor = (field: Field, change: Change) =>
+            field.label === change.label ||
+            field.key === change.label ||
+            (item.operation === "CREATE_FOLLOW_UP" &&
+              change.label === "到期时间" &&
+              field.key === "dueAt");
+          // A change with its own control below is shown once, in the control;
+          // its old value sits under the control as "原为 …".
+          function editedBelow(change: Change) {
+            if (!actionable) return false;
+            return (item.editableFields ?? []).some((field) =>
+              fieldFor(field, change),
+            );
+          }
           const link =
             status === "EXECUTED" ? resultLink(tenantCode, item) : null;
           const message =
             item.status === "PROPOSED" ? result?.message : undefined;
           return {
             key: id,
-            label: item.targetSummary || item.title,
+            label: sharedTarget
+              ? operationLabels[item.operation]
+              : item.targetSummary || item.title,
             locked: !actionable,
+            settled: result?.status === "EXECUTED",
             render: () => (
               <>
                 <div className={styles.meta}>
-                  <span>{operationLabels[item.operation]}</span>
-                  <strong>{statusLabels[status]}</strong>
+                  {!sharedTarget && <span>{operationLabels[item.operation]}</span>}
+                  <strong className={aiStyles.statusBadge} data-status={status}>
+                    {statusLabels[status]}
+                  </strong>
                 </div>
                 <dl>
-                  {item.changes.map((change, index) => (
+                  {item.changes
+                    .filter((change) => !editedBelow(change))
+                    .map((change, index) => (
                     <div key={index}>
                       <dt>{change.label}</dt>
                       <dd>
@@ -204,12 +269,14 @@ export function AssistantBatchCard({
                 ))}
                 {actionable && (
                   <>
-                    <small>
-                      有效至 {new Date(item.expiresAt).toLocaleString("zh-CN")}
-                    </small>
-                    {item.editableFields?.map((field) => (
+                    {item.editableFields?.map((field) => {
+                      const previous = item.changes.find(
+                        (change) =>
+                          change.before !== undefined && fieldFor(field, change),
+                      );
+                      return (
+                      <div key={field.key} className={styles.editedField}>
                       <AssistantFieldControl
-                        key={field.key}
                         field={field}
                         followUpZone={
                           item.operation === "CREATE_FOLLOW_UP" &&
@@ -230,15 +297,33 @@ export function AssistantBatchCard({
                           }))
                         }
                       />
-                    ))}
-                    <Button
-                      type="text"
-                      size="small"
-                      disabled={blocked}
-                      onClick={() => void reject(id)}
-                    >
-                      拒绝
-                    </Button>
+                      {previous && (
+                        <small className={styles.previousValue}>
+                          原为 {displayValue(previous.label, previous.before)}
+                        </small>
+                      )}
+                      </div>
+                      );
+                    })}
+                    <div className={styles.itemFooter}>
+                      <small>
+                        有效至{" "}
+                        {new Date(item.expiresAt).toLocaleString("zh-CN", {
+                          month: "numeric",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </small>
+                      <Button
+                        type="text"
+                        size="small"
+                        disabled={blocked}
+                        onClick={() => void reject(id)}
+                      >
+                        拒绝
+                      </Button>
+                    </div>
                   </>
                 )}
                 {(message || failureMessage({ ...item, status })) && (
@@ -279,6 +364,18 @@ export function AssistantBatchCard({
         onConfirm={canWrite ? (ids) => void confirm(ids) : undefined}
         confirmLabel={batch.items.length === 1 ? "确认执行" : "确认所选项"}
       />
+      {!open && expired > 0 && executed === 0 && commands?.resend && (
+        <div className={styles.batchNext}>
+          <span>建议有效期已过，数据可能已经变化。</span>
+          <Button
+            size="small"
+            disabled={blocked}
+            onClick={() => commands.resend?.(turnId)}
+          >
+            按最新数据重新提议
+          </Button>
+        </div>
+      )}
       {error && <p role="alert">{error}</p>}
     </section>
   );

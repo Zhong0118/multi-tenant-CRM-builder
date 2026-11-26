@@ -5,13 +5,17 @@ import {
   Button,
   Checkbox,
   Collapse,
-  Tag,
   Drawer,
+  Modal,
   Popconfirm,
   Progress,
   Select,
+  Tooltip,
   Typography,
 } from "antd";
+import { InboxOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
+import { AiBadge } from "@/components/ai/ai-badge";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -53,6 +57,7 @@ import {
   buildImportRows,
 } from "./record-import-mapping";
 import { ImportOwners } from "./record-import-owners";
+import { ImportCheckPreview } from "./record-import-preview";
 import importStyles from "./record-import.module.css";
 
 import styles from "./records.module.css";
@@ -138,6 +143,12 @@ export function RecordImportDrawer({
   );
   const [adoptedColumns, setAdoptedColumns] = useState<string[]>([]);
   const [generated, setGenerated] = useState<Generated>();
+  // Which columns AI set, and to what — kept after later hand edits so the
+  // status column still tells AI picks from rule matches.
+  const [aiMapped, setAiMapped] = useState<{
+    scope: string;
+    keys: Record<number, string>;
+  }>();
   const [snapshot, setSnapshot] = useState<AssistSnapshot>();
   const [draftChanged, setDraftChanged] = useState(false);
   const [started, setStarted] = useState<number>();
@@ -192,6 +203,7 @@ export function RecordImportDrawer({
   const [selectedMatchFields, setMatchFields] = useState<string[]>([]);
   const [busy, setBusy] = useState<"check" | "import">();
   const [loadingFile, setLoadingFile] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [checkResult, setChecked] = useState<RecordImportResult>();
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const stopped = useRef(false);
@@ -234,6 +246,8 @@ export function RecordImportDrawer({
     { rowNumber: number; cells: string[] }[]
   >([]);
   const [autoHeader, setAutoHeader] = useState(false);
+  // A confidently found header row hides its picker until asked for.
+  const [pickHeader, setPickHeader] = useState(false);
   const [manual, setManual] = useState<number[]>([]);
   const [ownerChoices, setOwnerChoices] = useState<
     Map<string, ImportDestination>
@@ -253,6 +267,24 @@ export function RecordImportDrawer({
         : [],
     [parsed, ownerColumn, members],
   );
+  // A skipped column whose every name is one member — often titled 销售 or
+  // 归属, which are too ambiguous to map on their own.
+  const ownerCandidate = (() => {
+    if (!canChooseOwner || !parsed || ownerColumn >= 0) return undefined;
+    for (const [index, header] of parsed.headers.entries()) {
+      if (mapping[index] !== SKIP) continue;
+      const names = parsed.rows
+        .map((row) => (row[index] ?? "").trim())
+        .filter(Boolean);
+      if (
+        names.length &&
+        resolveImportOwners(names, members).every(
+          (entry) => entry.matches.length === 1,
+        )
+      )
+        return { index, header: header.trim() || `第 ${index + 1} 列` };
+    }
+  })();
   const resolvedOwners = new Map<string, ImportDestination>();
   const poolEnabled = Boolean(
     poolConfig?.enabled && poolConfig.lifecycleEnabled,
@@ -329,9 +361,6 @@ export function RecordImportDrawer({
       !mappedFields.some((item) => item.field.fieldKey === field.fieldKey) &&
       !mapping.includes(APPEND + field.fieldKey),
   );
-  const skippedColumns =
-    parsed?.headers.filter((_, index) => mapping[index] === SKIP) ?? [];
-
   const completedRows = new Set(
     result?.items
       .filter((item) => item.status === "CREATED" || item.status === "SKIPPED")
@@ -363,11 +392,28 @@ export function RecordImportDrawer({
     Array.from(resolvedOwners),
   ]);
   const checked = readyPlan?.scope === scope ? checkResult : undefined;
+  const unassigned =
+    canChooseOwner &&
+    ownerColumn < 0 &&
+    !(importToPool && poolEnabled) &&
+    !ownerMemberId;
   const emptyMarkerCount = checked
     ? readyPlan!.rows.reduce((n, row) => n + (row.emptyMarkerCount ?? 0), 0)
     : 0;
   const eligible =
     checked?.items.filter((item) => item.status === "READY").length ?? 0;
+  const manualSkipCount =
+    checked?.items.filter((item) => item.reason === IMPORT_MANUAL_SKIP)
+      .length ?? 0;
+  const duplicateCount = (checked?.skipped ?? 0) - manualSkipCount;
+  const allDone = Boolean(
+    importStarted && parsed && completedRows.size === parsed.rows.length,
+  );
+  // A new verdict lands below the fold: bring it into view.
+  const verdictRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    verdictRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [checked, result]);
 
   async function run(dryRun: boolean) {
     if (
@@ -480,6 +526,31 @@ export function RecordImportDrawer({
     controller.current?.abort();
     onClose();
   }
+  // Esc, the mask and × land here: a chosen file and its column matches are
+  // asked about before they are thrown away.
+  const [modal, modalHolder] = Modal.useModal();
+  const asking = useRef(false);
+  function requestClose() {
+    const unsaved = !!parsed && !allDone && !revoked;
+    if (!unsaved) return close();
+    if (asking.current) return;
+    asking.current = true;
+    const left = parsed.rows.length - completedRows.size;
+    void modal.confirm({
+      title: importStarted ? "停止导入并关闭？" : "放弃这次导入？",
+      content: importStarted
+        ? `已导入的行会保留，剩下 ${left} 行没有导入。`
+        : "已选的文件和列对照还没有导入，关闭后需要重新选择。",
+      okText: importStarted ? "关闭" : "放弃",
+      okButtonProps: { danger: true },
+      autoFocusButton: "cancel",
+      cancelText: "继续导入",
+      onOk: close,
+      afterClose: () => {
+        asking.current = false;
+      },
+    });
+  }
 
   async function selectSheet(
     nextSource: ImportFile,
@@ -560,6 +631,7 @@ export function RecordImportDrawer({
   }
   function newSelection() {
     cancelAssist();
+    setAiMapped(undefined);
     setSnapshot(undefined);
     setDraftChanged(false);
     setExcluded([]);
@@ -644,6 +716,28 @@ export function RecordImportDrawer({
     generated?.scope === assistScope && assistEnabled && !importStarted
       ? generated
       : undefined;
+  // Once rows are in, the AI plan can no longer be acted on, but the status
+  // column still says where each mapping came from.
+  const origin =
+    generated?.scope === assistScope && assistEnabled ? generated : undefined;
+  function markAi(next: AssistDraft, plan: ImportAssistPlan, merge: boolean) {
+    const keys: Record<number, string> = {};
+    for (const advice of plan.columns) {
+      const target = advice.target;
+      if (target.mode === "skip") continue;
+      const index = Number(advice.col.slice(1)) - 1;
+      const key =
+        target.mode === "append" ? APPEND + target.field : target.field;
+      if (next.mapping[index] === key) keys[index] = key;
+    }
+    setAiMapped((previous) => ({
+      scope: assistScope,
+      keys:
+        merge && previous?.scope === assistScope
+          ? { ...previous.keys, ...keys }
+          : keys,
+    }));
+  }
   function install(next: AssistDraft) {
     setMapping(next.mapping);
     setManual(next.manual);
@@ -715,16 +809,16 @@ export function RecordImportDrawer({
       setGenerated({ plan, preview, scope: assistScope });
       setSnapshot(before);
       setDraftChanged(false);
-      install(
-        applyImportAdvice(
-          draft,
-          preview,
-          plan,
-          schema.fields,
-          undefined,
-          schema.queryFieldKeys,
-        ),
+      const next = applyImportAdvice(
+        draft,
+        preview,
+        plan,
+        schema.fields,
+        undefined,
+        schema.queryFieldKeys,
       );
+      markAi(next, plan, false);
+      install(next);
     } catch (e) {
       if (
         abort.signal.aborted ||
@@ -764,15 +858,39 @@ export function RecordImportDrawer({
     if (!current || !source || busy || revoked || importStarted) return;
     if (choice && !choice.value)
       setAdoptedColumns((cols) => [...cols, choice.column]);
-    install(
-      applyImportAdvice(
-        draft,
-        current.preview,
-        current.plan,
-        schema.fields,
-        choice,
-        schema.queryFieldKeys,
-      ),
+    const next = applyImportAdvice(
+      draft,
+      current.preview,
+      current.plan,
+      schema.fields,
+      choice,
+      schema.queryFieldKeys,
+    );
+    markAi(next, current.plan, true);
+    install(next);
+  }
+  function remap(index: number, next: string) {
+    resetResult(importStarted);
+    setMatchFields([]);
+    setAmountUnits((prev) => {
+      const n = { ...prev };
+      delete n[index];
+      return n;
+    });
+    setValueChoices((prev) => {
+      const n = { ...prev };
+      delete n[index];
+      return n;
+    });
+    setManual((prev) => (prev.includes(index) ? prev : [...prev, index]));
+    setOverrides((prev) => {
+      const n = { ...prev };
+      delete n[index];
+      return n;
+    });
+    if (next === OWNER || mapping[index] === OWNER) setOwnerChoices(new Map());
+    setMapping((current) =>
+      current.map((old, i) => (i === index ? next : old)),
     );
   }
   function restore() {
@@ -793,6 +911,7 @@ export function RecordImportDrawer({
     install(snapshot.draft);
     setSnapshot(undefined);
     setGenerated(undefined);
+    setAiMapped(undefined);
     setAiNotice("已恢复到 AI 之前的对照");
   }
   async function onFile(file: File | undefined, nextEncoding: CsvEncoding) {
@@ -880,36 +999,25 @@ export function RecordImportDrawer({
     <Drawer
       footer={
         <div className={importStyles.footer}>
-          {checked && (
-            <span role="status">
-              已检查 {checked.items.length} 行 · 可导入 {eligible} ·
-              重复或已导入{" "}
-              {(checked.skipped ?? 0) -
-                checked.items.filter((i) => i.reason === IMPORT_MANUAL_SKIP)
-                  .length}{" "}
-              · 主动跳过{" "}
-              {
-                checked.items.filter((i) => i.reason === IMPORT_MANUAL_SKIP)
-                  .length
-              }{" "}
-              · 错误 {checked.failed}
-            </span>
-          )}
           {emptyMarkerCount > 0 && (
             <span>已把 {emptyMarkerCount} 格 NaN/#N/A 按空值处理</span>
           )}
-          <Button onClick={close}>关闭</Button>
-          <Button
-            type={eligible > 0 ? "default" : "primary"}
-            aria-label={importStarted ? "检查剩余行" : "检查数据"}
-            loading={busy === "check"}
-            disabled={
-              !canCheck || !!busy || loadingFile || started !== undefined
-            }
-            onClick={() => void run(true)}
-          >
-            {importStarted ? "检查剩余行" : "检查数据"}
+          <Button type={allDone ? "primary" : "default"} onClick={requestClose}>
+            {allDone ? "完成" : "关闭"}
           </Button>
+          {allDone ? null : (
+            <Button
+              type={eligible > 0 ? "default" : "primary"}
+              aria-label={importStarted ? "检查剩余行" : "检查数据"}
+              loading={busy === "check"}
+              disabled={
+                !canCheck || !!busy || loadingFile || started !== undefined
+              }
+              onClick={() => void run(true)}
+            >
+              {importStarted ? "检查剩余行" : "检查数据"}
+            </Button>
+          )}
           {eligible > 0 ? (
             <Button
               type="primary"
@@ -926,620 +1034,799 @@ export function RecordImportDrawer({
       size="min(100vw, clamp(720px, 64vw, 920px))"
       title="导入 Excel / CSV"
       aria-label="导入 Excel / CSV"
-      onClose={close}
+      onClose={requestClose}
       destroyOnHidden
     >
+      {modalHolder}
       {parseError ? <Alert type="error" showIcon title={parseError} /> : null}
       {summary ? <Alert type="error" showIcon title={summary} /> : null}
-      {result ? (
-        <Alert
-          type={result.failed ? "warning" : "success"}
-          showIcon
-          title={`成功 ${result.created} 行，跳过 ${result.skipped ?? 0} 行，失败 ${result.failed} 行。`}
-        />
-      ) : null}
-      <Typography.Paragraph type="secondary">
-        单个工作表最多 1 万行、40 列，文件最大 10 MB。请先核对对照，再检查数据。
-      </Typography.Paragraph>
-      {canChooseOwner &&
-      ownerColumn < 0 &&
-      poolConfig?.enabled &&
-      poolConfig.lifecycleEnabled ? (
-        <Checkbox
-          aria-label="确认导入到初始公共池"
-          checked={importToPool}
-          disabled={!!busy || loadingFile || mappingLocked}
-          onChange={(event) => {
-            setImportToPool(event.target.checked);
-            setOwnerMemberId(undefined);
-            resetResult(importStarted);
-          }}
-        >
-          确认导入到{poolConfig.labels?.leadPool ?? "初始公共池"}
-          ，允许有权限成员领取
-        </Checkbox>
-      ) : null}
-      {canChooseOwner && ownerColumn < 0 ? (
-        <label className={styles.columnChooserRow}>
-          <span>导入负责人</span>
-          <Select
-            aria-label="导入负责人"
-            allowClear
-            showSearch
-            optionFilterProp="searchText"
-            placeholder="未分配"
-            value={ownerMemberId}
-            disabled={!!busy || loadingFile || mappingLocked}
-            options={memberSelectOptions(members)}
-            onChange={(next?: string) => {
-              setOwnerMemberId(next);
-              if (next) setImportToPool(false);
-              resetResult(importStarted);
+      <div className={importStyles.flow}>
+        <section className={importStyles.step}>
+          <h3 className={importStyles.stepTitle}>选择文件</h3>
+          <Button
+            type="dashed"
+            block
+            className={importStyles.filePicker}
+            data-empty={selectedFile ? undefined : ""}
+            data-dragging={dragging ? "" : undefined}
+            disabled={!!busy || loadingFile}
+            onClick={() => fileInput.current?.click()}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragging(true);
             }}
-          />
-        </label>
-      ) : null}
-      <Typography.Paragraph type="secondary">
-        {ownerColumn >= 0
-          ? "新增记录按文件中的负责人分别归属"
-          : importToPool
-            ? "新记录进入初始公共池，允许有权限成员领取"
-            : canChooseOwner
-              ? "整批新增记录使用所选负责人"
-              : "本次新增记录归你负责"}
-      </Typography.Paragraph>
-      <Button
-        type="dashed"
-        block
-        className={importStyles.filePicker}
-        disabled={!!busy || loadingFile}
-        onClick={() => fileInput.current?.click()}
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={(event) => {
-          event.preventDefault();
-          const file = event.dataTransfer.files[0];
-          if (file && !busy && !loadingFile) void onFile(file, "auto");
-        }}
-      >
-        {selectedFile ? (
-          <span className={importStyles.fileSummary}>
-            <strong>{selectedFile.name}</strong>
-            {parsed && (
-              <span>
-                {parsed.rows.length} 行 · {parsed.headers.length} 列
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragging(false);
+              const file = event.dataTransfer.files[0];
+              if (file && !busy && !loadingFile) void onFile(file, "auto");
+            }}
+          >
+            {selectedFile ? (
+              <span className={importStyles.fileSummary}>
+                <strong>{selectedFile.name}</strong>
+                {parsed && (
+                  <span>
+                    {parsed.rows.length} 行 · {parsed.headers.length} 列
+                  </span>
+                )}
+                <span>重新选择</span>
+              </span>
+            ) : (
+              <span className={importStyles.dropPrompt}>
+                <InboxOutlined aria-hidden />
+                <span>选择或拖入 Excel / CSV 文件</span>
+                <small>最多 1 万行、40 列、10 MB</small>
               </span>
             )}
-            <span>重新选择</span>
-          </span>
-        ) : (
-          "选择或拖入 Excel / CSV 文件"
-        )}
-      </Button>
-      <input
-        ref={fileInput}
-        hidden
-        type="file"
-        disabled={!!busy || loadingFile}
-        accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        aria-label="选择 Excel 或 CSV 文件"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) void onFile(file, "auto");
-        }}
-      />
-      <label className={styles.columnChooserRow}>
-        <span>文件编码</span>
-        <Select
-          aria-label="文件编码"
-          value={encoding}
-          disabled={
-            !!busy ||
-            loadingFile ||
-            importStarted ||
-            !!source?.sheetNames.length
-          }
-          onChange={(next: CsvEncoding) => void onFile(selectedFile, next)}
-          options={[
-            { value: "auto", label: "自动识别" },
-            { value: "utf-8", label: "UTF-8" },
-            { value: "gb18030", label: "GBK / GB18030（中文 Windows）" },
-          ]}
-        />
-      </label>
-      {decodedEncoding ? (
-        <Typography.Paragraph>
-          当前按 {decodedEncoding} 读取
-        </Typography.Paragraph>
-      ) : null}
-      {importStarted ? (
-        <Typography.Paragraph type="secondary">
-          本批次已开始导入。已成功的行保留原归属，剩余行修改后须重新检查。重试请使用原文件和同一工作表。
-        </Typography.Paragraph>
-      ) : null}
-      {source?.sheetNames.length ? (
-        <label className={styles.columnChooserRow}>
-          <span>工作表</span>
-          <Select
-            aria-label="工作表"
-            value={sheetName}
-            disabled={!!busy || loadingFile || importStarted}
-            options={source.sheetNames.map((name) => ({
-              value: name,
-              label: name,
-            }))}
-            onChange={async (name) => {
-              const request = ++readRequest.current;
-              newSelection();
-              setSheetName(name);
-              setParsed(undefined);
-              setBatchId(undefined);
-              setParseError(undefined);
-              setMatchFields([]);
-              resetResult();
-              setLoadingFile(true);
-              try {
-                await selectSheet(source, name, request);
-              } catch (error) {
-                if (request === readRequest.current && !stopped.current)
-                  showFileError(error);
-              } finally {
-                if (request === readRequest.current && !stopped.current)
-                  setLoadingFile(false);
-              }
+          </Button>
+          <input
+            ref={fileInput}
+            hidden
+            type="file"
+            disabled={!!busy || loadingFile}
+            accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            aria-label="选择 Excel 或 CSV 文件"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void onFile(file, "auto");
             }}
           />
-        </label>
-      ) : null}
-      {source && headers.length > 0 && (
-        <label className={styles.columnChooserRow}>
-          <span>表头在第几行</span>
-          <Select
-            aria-label="表头在第几行"
-            value={headerRow}
-            disabled={!!busy || loadingFile || importStarted}
-            options={headers.map((h) => ({
-              value: h.rowNumber,
-              label: `第 ${h.rowNumber} 行 · ${h.cells.filter(Boolean).slice(0, 4).join(" / ").slice(0, 70)}`,
-            }))}
-            onChange={(row) => {
-              setHeaderLocked(true);
-              applyHeader(source, sheetName, row, false);
-            }}
-          />
-        </label>
-      )}
-      {source && !headerLocked && (
-        <Alert
-          type="info"
-          showIcon
-          title={`请确认表头在第几行，当前使用第 ${headerRow} 行`}
-        />
-      )}
-      {aiNotice && <Alert type="info" showIcon title={aiNotice} />}
-      {preview && (
-        <section aria-label="AI 文件对照" className={importStyles.assist}>
-          <Typography.Paragraph>
-            {preview.unresolvedColumns || preview.unresolvedValues
-              ? `还有 ${preview.unresolvedColumns} 列、${preview.unresolvedValues} 个取值没对上`
-              : preview.needed
-                ? "表头或日期格式待确认"
-                : "已完成对照"}
-          </Typography.Paragraph>
-          {started !== undefined ? (
-            <>
-              <span role="status">正在生成对照 · 已等 {elapsed} 秒</span>{" "}
-              <Button onClick={() => cancelAssist("已取消，手动对照已保留")}>
-                取消生成
-              </Button>
-            </>
-          ) : (
-            !attempted &&
-            preview.needed && (
-              <Button disabled={!!busy} onClick={() => void generate()}>
-                AI 帮我对列
-              </Button>
-            )
-          )}
-          {!attempted && preview.needed && (
-            <small>将发送打码后的表头与样例</small>
-          )}
-          {!attempted && (
-            <Collapse
-              size="small"
-              items={[
-                {
-                  key: "scope",
-                  label: "查看发送范围",
-                  children: (
-                    <>
-                      <p>
-                        将发送打码后的表头与样例、低基数未解值及频数。取消勾选即可排除整列。
-                      </p>
-                      {preview.partial && (
-                        <p>仅部分取值可提供建议，余项请手动核对</p>
-                      )}
-                      {preview.request.columns.map((column, i) => {
-                        const label = parsed?.headers[i] || column.header;
-                        const privateColumn =
-                          column.excluded && !excluded.includes(i);
-                        return (
-                          <div key={i}>
-                            <Checkbox
-                              checked={!privateColumn && !excluded.includes(i)}
-                              disabled={!!busy || privateColumn}
-                              onChange={(e) =>
-                                setExcluded((prev) =>
-                                  e.target.checked
-                                    ? prev.filter((v) => v !== i)
-                                    : [...prev, i],
-                                )
-                              }
-                            >
-                              {label || "空表头"}（C{i + 1}） ·{" "}
-                              {column.samples.length} 个样例 ·{" "}
-                              {column.values?.length ?? 0} 个取值
-                            </Checkbox>
-                          </div>
-                        );
-                      })}
-                    </>
-                  ),
-                },
-              ]}
-            />
-          )}
-          {current && (
-            <small>
-              AI 生成 ·{" "}
-              {new Date(current.plan.generatedAt).toLocaleTimeString()}
-            </small>
-          )}
-          {snapshot?.scope === assistScope &&
-            (draftChanged ? (
-              <Popconfirm
-                title="恢复后将覆盖生成建议以来的人工修改"
-                onConfirm={restore}
-                okText="恢复"
-                cancelText="取消"
-              >
-                <Button disabled={!!busy}>恢复到 AI 之前的对照</Button>
-              </Popconfirm>
-            ) : (
-              <Button disabled={!!busy} onClick={restore}>
-                恢复到 AI 之前的对照
-              </Button>
-            ))}
-        </section>
-      )}
-      {autoHeader && headerRow > 1 && (
-        <Typography.Text type="secondary">
-          已识别第 {headerRow} 行为表头，可手动调整
-        </Typography.Text>
-      )}
-      {loadingFile ? (
-        <Typography.Paragraph>正在读取文件…</Typography.Paragraph>
-      ) : null}
-      {busy && progress.total > 0 ? (
-        <>
-          <Progress
-            percent={Math.round((progress.done / progress.total) * 100)}
-            status={busy ? "active" : undefined}
-          />
-          <Typography.Paragraph>
-            {busy === "check" ? "检查" : "处理"}进度：{progress.done} /{" "}
-            {progress.total} 行
-          </Typography.Paragraph>
-        </>
-      ) : null}
-
-      {parsed ? (
-        <>
-          {duplicateFields.length ? (
-            <Alert
-              type="error"
-              showIcon
-              title={`多个文件列映射到了同一字段：${[...new Set(duplicateFields.map((item) => item.field.label))].join("、")}。请保留一列，其余改为跳过。`}
-            />
-          ) : null}
-          {missingRequired.length ? (
-            <Alert
-              type="error"
-              showIcon
-              title={`尚未映射必填字段：${missingRequired.map((field) => field.label).join("、")}。请先选择对应列。`}
-            />
-          ) : null}
-          {skippedColumns.length ? (
-            <Alert
-              type="warning"
-              showIcon
-              title={`将跳过 ${skippedColumns.length} 列：${skippedColumns.map((header) => header || "空表头").join("、")}。未匹配或同名字段不会自动选择，请核对后手动映射需要导入的列。`}
-            />
-          ) : null}
-          <div className={importStyles.mapping} aria-label="文件列对照">
-            {parsed.headers.map((header, index) => {
-              const label = header || `第 ${index + 1} 列`;
-              const field = importable.find(
-                (f) => f.fieldKey === mapping[index],
-              );
-              const advice = current?.plan.columns.find(
-                (a) => a.col === "C" + (index + 1),
-              );
-              const target = advice?.target;
-              const targetField =
-                target && target.mode !== "skip"
-                  ? importable.find((f) => f.fieldKey === target.field)
-                  : undefined;
-              const needsReview =
-                advice?.confidence === "review" &&
-                !adoptedColumns.includes(advice.col);
-              const lockedOwner = !canChooseOwner && ownerHeader(header);
-              return (
-                <div key={index} className={importStyles.row}>
-                  <div>
-                    <strong>{label}</strong>
-                    {(sheetSummary?.samples[index].length ?? 0) > 70 ? (
-                      <details>
-                        <summary className={importStyles.example}>
-                          {sheetSummary?.samples[index].slice(0, 70)}… 展开
-                        </summary>
-                        {sheetSummary?.samples[index]}
-                      </details>
-                    ) : (
-                      <div className={importStyles.example}>
-                        {sheetSummary?.samples[index]}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <Select
-                      disabled={
-                        lockedOwner || !!busy || loadingFile || mappingLocked
-                      }
-                      id={`import-map-${index}`}
-                      aria-label={`映射 ${label}`}
-                      value={mapping[index]}
-                      onChange={(next) => {
-                        resetResult(importStarted);
-                        setMatchFields([]);
-                        setAmountUnits((prev) => {
-                          const n = { ...prev };
-                          delete n[index];
-                          return n;
-                        });
-                        setValueChoices((prev) => {
-                          const n = { ...prev };
-                          delete n[index];
-                          return n;
-                        });
-                        setManual((prev) =>
-                          prev.includes(index) ? prev : [...prev, index],
-                        );
-                        setOverrides((prev) => {
-                          const next = { ...prev };
-                          delete next[index];
-                          return next;
-                        });
-                        if (next === OWNER || mapping[index] === OWNER)
-                          setOwnerChoices(new Map());
-                        setMapping((current) =>
-                          current.map((old, i) => (i === index ? next : old)),
-                        );
-                      }}
-                      options={[
-                        { value: SKIP, label: "跳过此列" },
-                        ...(canChooseOwner
-                          ? [
-                              {
-                                value: OWNER,
-                                label: "按行指定负责人",
-                                disabled:
-                                  ownerColumn >= 0 && ownerColumn !== index,
-                              },
-                            ]
-                          : []),
-                        ...importable.map((field) => ({
-                          value: field.fieldKey,
-                          label: `${field.label}${assistEnabled && field.importManualOnly ? "（仅手动对照）" : ""} · ${FIELD_TYPE_LABELS[field.type]}${importable.some((other) => other.fieldKey !== field.fieldKey && other.label === field.label) ? `（${field.fieldKey}）` : ""}${field.required ? "（必填）" : ""}`,
-                        })),
-                        ...importable
-                          .filter((f) => f.type === "TEXTAREA")
-                          .map((f) => ({
-                            value: APPEND + f.fieldKey,
-                            label: `追加到「${f.label}」`,
-                          })),
-                      ]}
-                    />
-                    {lockedOwner && <small>仅公司管理员可按行指定负责人</small>}
-                    {dateInferences[index] === "conflict" ? (
-                      <small>同一列的日期顺序冲突，请更正文件后重选</small>
-                    ) : (
-                      dateInferences[index] && (
-                        <Select
-                          aria-label={`日期顺序 ${label}`}
-                          placeholder="请选择日月顺序"
-                          value={dateOrders[index]}
-                          disabled={!!busy || mappingLocked}
-                          options={[
-                            { value: "DMY", label: "日/月/年" },
-                            { value: "MDY", label: "月/日/年" },
-                          ]}
-                          onChange={(order) => {
-                            setOverrides((prev) => ({
-                              ...prev,
-                              [index]: order,
-                            }));
-                            resetResult(importStarted);
-                          }}
-                        />
-                      )
-                    )}
-                    {field &&
-                      (field.type === "NUMBER" || field.type === "MONEY") && (
-                        <Select
-                          aria-label={"无单位数值 " + label}
-                          value={amountUnits[index] ?? "yuan"}
-                          disabled={!!busy || mappingLocked}
-                          options={[
-                            { value: "yuan", label: "原数值" },
-                            { value: "wan", label: "无单位数值按万" },
-                          ]}
-                          onChange={(v) => {
-                            setAmountUnits((prev) => ({
-                              ...prev,
-                              [index]: v,
-                            }));
-                            resetResult(importStarted);
-                          }}
-                        />
-                      )}
-                    {field && isOptionField(field) && (
-                      <ImportValues
-                        key={JSON.stringify([
-                          fileKey,
-                          sheetName,
-                          headerRow,
-                          field.fieldKey,
-                        ])}
-                        rows={parsed.rows}
-                        index={index}
-                        field={field}
-                        choices={valueChoices[index]}
-                        advice={advice}
-                        preview={current?.preview}
-                        headerRow={headerRow}
-                        disabled={!!busy || mappingLocked}
-                        onChange={(choices) => {
-                          setValueChoices((prev) => ({
-                            ...prev,
-                            [index]: choices,
-                          }));
-                          resetResult(importStarted);
-                        }}
-                        onAdopt={(value) =>
-                          adopt({ column: "C" + (index + 1), value })
-                        }
-                      />
-                    )}
-                    {advice && (
-                      <small>
-                        {needsReview ? "把握不大 · " : "AI 建议 · "}
-                        {targetField
-                          ? (target?.mode === "append" ? "追加到" : "") +
-                            targetField.label
-                          : "跳过此列"}{" "}
-                        {advice.dateOrder}{" "}
-                        {advice.bareAmountUnit === "wan"
-                          ? "无单位数值按万"
-                          : ""}{" "}
-                        · {Array.from(advice.reason).slice(0, 20).join("")}
-                        {needsReview && (
-                          <Button
-                            size="small"
-                            disabled={!!busy || mappingLocked}
-                            onClick={() => adopt({ column: advice.col })}
-                          >
-                            采用
-                          </Button>
-                        )}
-                      </small>
-                    )}
-                  </div>
-                  <Tag>
-                    {manual.includes(index)
-                      ? "手动"
-                      : advice && !needsReview
-                        ? "AI 建议"
-                        : mapping[index] === SKIP
-                          ? "未对照"
-                          : "自动"}
-                  </Tag>
-                </div>
-              );
-            })}
+          <div className={importStyles.settings}>
+            {selectedFile && !source?.sheetNames.length ? (
+              <label className={importStyles.setting}>
+                <span>文件编码</span>
+                <Select
+                  aria-label="文件编码"
+                  value={encoding}
+                  disabled={
+                    !!busy ||
+                    loadingFile ||
+                    importStarted ||
+                    !!source?.sheetNames.length
+                  }
+                  onChange={(next: CsvEncoding) =>
+                    void onFile(selectedFile, next)
+                  }
+                  options={[
+                    {
+                      value: "auto",
+                      label: decodedEncoding
+                        ? `自动识别（${decodedEncoding}）`
+                        : "自动识别",
+                    },
+                    { value: "utf-8", label: "UTF-8" },
+                    {
+                      value: "gb18030",
+                      label: "GBK / GB18030（中文 Windows）",
+                    },
+                  ]}
+                />
+              </label>
+            ) : null}
+            {source?.sheetNames.length ? (
+              <label className={importStyles.setting}>
+                <span>工作表</span>
+                <Select
+                  aria-label="工作表"
+                  value={sheetName}
+                  disabled={!!busy || loadingFile || importStarted}
+                  options={source.sheetNames.map((name) => ({
+                    value: name,
+                    label: name,
+                  }))}
+                  onChange={async (name) => {
+                    const request = ++readRequest.current;
+                    newSelection();
+                    setSheetName(name);
+                    setParsed(undefined);
+                    setBatchId(undefined);
+                    setParseError(undefined);
+                    setMatchFields([]);
+                    resetResult();
+                    setLoadingFile(true);
+                    try {
+                      await selectSheet(source, name, request);
+                    } catch (error) {
+                      if (request === readRequest.current && !stopped.current)
+                        showFileError(error);
+                    } finally {
+                      if (request === readRequest.current && !stopped.current)
+                        setLoadingFile(false);
+                    }
+                  }}
+                />
+              </label>
+            ) : null}
+            {source && headers.length > 0 && (!autoHeader || pickHeader) && (
+              <label className={importStyles.setting}>
+                <span>表头在第几行</span>
+                <Select
+                  aria-label="表头在第几行"
+                  value={headerRow}
+                  disabled={!!busy || loadingFile || importStarted}
+                  options={headers.map((h) => ({
+                    value: h.rowNumber,
+                    label: `第 ${h.rowNumber} 行 · ${h.cells.filter(Boolean).slice(0, 4).join(" / ").slice(0, 70)}`,
+                  }))}
+                  onChange={(row) => {
+                    setHeaderLocked(true);
+                    applyHeader(source, sheetName, row, false);
+                  }}
+                />
+              </label>
+            )}
           </div>
-          {ownerColumn >= 0 && (
-            <Collapse
-              items={[
-                {
-                  key: "owners",
-                  label: `查看负责人对照 · ${owners.length} 个姓名 · ${owners.length - resolvedOwners.size} 个待处理`,
-                  children: (
-                    <ImportOwners
-                      owners={owners}
-                      members={members}
-                      resolved={resolvedOwners}
-                      disabled={!!busy || mappingLocked}
-                      poolEnabled={poolEnabled}
-                      onChange={(name, dest) => {
-                        setOwnerChoices((prev) =>
-                          new Map(prev).set(name, dest),
-                        );
-                        resetResult(importStarted);
-                      }}
-                    />
-                  ),
-                },
-              ]}
-            />
+          {/* Row 1 is what anyone expects; only a header further down is
+              worth a line under the select that already shows it. */}
+          {source && !headerLocked && headerRow > 1 && !autoHeader && (
+            <Typography.Text type="secondary" className={importStyles.note}>
+              表头按第 {headerRow} 行读取，不对可以在上面改
+            </Typography.Text>
           )}
-          <label className={styles.columnChooserRow}>
-            <span>查重字段（可选，最多 3 个）</span>
-            <Select
-              mode="multiple"
-              aria-label="查重字段"
-              style={{ minWidth: "min(320px, 100%)" }}
-              value={matchFields}
-              maxCount={3}
+          {autoHeader && headerRow > 1 && !pickHeader && (
+            <Typography.Text type="secondary" className={importStyles.note}>
+              已识别第 {headerRow} 行为表头
+              <Button
+                type="link"
+                size="small"
+                disabled={!!busy || loadingFile || importStarted}
+                onClick={() => setPickHeader(true)}
+              >
+                调整
+              </Button>
+            </Typography.Text>
+          )}
+          {loadingFile ? (
+            <Typography.Paragraph>正在读取文件…</Typography.Paragraph>
+          ) : null}
+          {importStarted && !allDone ? (
+            <Typography.Paragraph type="secondary">
+              已导入的行会保留。改好剩余的行后，用原文件重新检查。
+            </Typography.Paragraph>
+          ) : null}
+        </section>
+        {(parsed || preview || aiNotice) && (
+          <section className={importStyles.step}>
+            <h3 className={importStyles.stepTitle}>核对列对照</h3>
+            {aiNotice && <Alert type="info" showIcon title={aiNotice} />}
+            {preview && (
+              <section aria-label="AI 文件对照" className={importStyles.assist}>
+                <Typography.Paragraph className={importStyles.assistSummary}>
+                  <AiSparkIcon aria-hidden className={importStyles.aiMark} />
+                  {/* How many columns are skipped is said once, above the
+                      table; here only whether AI still has work to do. */}
+                  {preview.unresolvedColumns && preview.unresolvedValues
+                    ? `还有列和 ${preview.unresolvedValues} 个取值没对上`
+                    : preview.unresolvedColumns
+                      ? "还有列没对上"
+                      : preview.unresolvedValues
+                        ? `还有 ${preview.unresolvedValues} 个取值没对上`
+                        : preview.needed
+                          ? "表头或日期格式待确认"
+                          : "已完成对照"}
+                </Typography.Paragraph>
+                {started !== undefined ? (
+                  <>
+                    <span role="status">正在生成对照 · 已等 {elapsed} 秒</span>{" "}
+                    <Button
+                      onClick={() => cancelAssist("已取消，手动对照已保留")}
+                    >
+                      取消生成
+                    </Button>
+                  </>
+                ) : (
+                  !attempted &&
+                  preview.needed && (
+                    <Button
+                      icon={<AiSparkIcon aria-hidden />}
+                      disabled={!!busy}
+                      onClick={() => void generate()}
+                    >
+                      AI 帮我对列
+                    </Button>
+                  )
+                )}
+                {!attempted && preview.needed && (
+                  <small>将发送打码后的表头与样例</small>
+                )}
+                {!attempted && (
+                  <Collapse
+                    size="small"
+                    items={[
+                      {
+                        key: "scope",
+                        label: "查看发送范围",
+                        children: (
+                          <>
+                            <p>
+                              将发送打码后的表头与样例、低基数未解值及频数。取消勾选即可排除整列。
+                            </p>
+                            {preview.partial && (
+                              <p>仅部分取值可提供建议，余项请手动核对</p>
+                            )}
+                            {preview.request.columns.map((column, i) => {
+                              const label = parsed?.headers[i] || column.header;
+                              const privateColumn =
+                                column.excluded && !excluded.includes(i);
+                              return (
+                                <div key={i}>
+                                  <Checkbox
+                                    checked={
+                                      !privateColumn && !excluded.includes(i)
+                                    }
+                                    disabled={!!busy || privateColumn}
+                                    onChange={(e) =>
+                                      setExcluded((prev) =>
+                                        e.target.checked
+                                          ? prev.filter((v) => v !== i)
+                                          : [...prev, i],
+                                      )
+                                    }
+                                  >
+                                    {label || "空表头"}（C{i + 1}） ·{" "}
+                                    {column.samples.length} 个样例 ·{" "}
+                                    {column.values?.length ?? 0} 个取值
+                                  </Checkbox>
+                                </div>
+                              );
+                            })}
+                          </>
+                        ),
+                      },
+                    ]}
+                  />
+                )}
+                {current && (
+                  <small className={importStyles.generatedAt}>
+                    <AiBadge />
+                    {new Date(current.plan.generatedAt).toLocaleTimeString()}
+                  </small>
+                )}
+                {snapshot?.scope === assistScope &&
+                  (draftChanged ? (
+                    <Popconfirm
+                      title="恢复后将覆盖生成建议以来的人工修改"
+                      onConfirm={restore}
+                      okText="恢复"
+                      cancelText="取消"
+                    >
+                      <Button disabled={!!busy}>恢复到 AI 之前的对照</Button>
+                    </Popconfirm>
+                  ) : (
+                    <Button disabled={!!busy} onClick={restore}>
+                      恢复到 AI 之前的对照
+                    </Button>
+                  ))}
+              </section>
+            )}
+            {parsed ? (
+              <>
+                {duplicateFields.length ? (
+                  <Alert
+                    type="error"
+                    showIcon
+                    title={`多个文件列映射到了同一字段：${[...new Set(duplicateFields.map((item) => item.field.label))].join("、")}。请保留一列，其余改为跳过。`}
+                  />
+                ) : null}
+                {/* One line above the table; each column's own state is in
+                    its row. */}
+                {missingRequired.length ? (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    title={`还没对上必填字段：${missingRequired.map((field) => field.label).join("、")}`}
+                  />
+                ) : null}
+                <div className={importStyles.mapping} aria-label="文件列对照">
+                  <div className={importStyles.mappingHead} aria-hidden>
+                    <span>文件列</span>
+                    <span>导入到</span>
+                    <span>状态</span>
+                  </div>
+                  {parsed.headers.map((header, index) => {
+                    const label = header || `第 ${index + 1} 列`;
+                    const field = importable.find(
+                      (f) => f.fieldKey === mapping[index],
+                    );
+                    const advice = current?.plan.columns.find(
+                      (a) => a.col === "C" + (index + 1),
+                    );
+                    const target = advice?.target;
+                    const targetField =
+                      target && target.mode !== "skip"
+                        ? importable.find((f) => f.fieldKey === target.field)
+                        : undefined;
+                    const needsReview =
+                      advice?.confidence === "review" &&
+                      !adoptedColumns.includes(advice.col);
+                    const fromAi =
+                      origin?.plan.columns.find(
+                        (a) =>
+                          a.col === "C" + (index + 1) &&
+                          (a.confidence !== "review" ||
+                            adoptedColumns.includes(a.col)),
+                      ) ||
+                      (aiMapped?.scope === assistScope &&
+                        mapping[index] !== SKIP &&
+                        aiMapped.keys[index] === mapping[index]);
+                    const lockedOwner = !canChooseOwner && ownerHeader(header);
+                    return (
+                      <div key={index} className={importStyles.row}>
+                        <div>
+                          <strong>{label}</strong>
+                          {(sheetSummary?.samples[index].length ?? 0) > 70 ? (
+                            <details>
+                              <summary className={importStyles.example}>
+                                {sheetSummary?.samples[index].slice(0, 70)}…
+                                展开
+                              </summary>
+                              {sheetSummary?.samples[index]}
+                            </details>
+                          ) : (
+                            <div className={importStyles.example}>
+                              {sheetSummary?.samples[index]}
+                            </div>
+                          )}
+                        </div>
+                        <div className={importStyles.controls}>
+                          <Select
+                            disabled={
+                              lockedOwner ||
+                              !!busy ||
+                              loadingFile ||
+                              mappingLocked
+                            }
+                            id={`import-map-${index}`}
+                            aria-label={`映射 ${label}`}
+                            value={mapping[index]}
+                            onChange={(next: string) => remap(index, next)}
+                            options={[
+                              { value: SKIP, label: "跳过此列" },
+                              ...(canChooseOwner
+                                ? [
+                                    {
+                                      value: OWNER,
+                                      label: "按行指定负责人",
+                                      disabled:
+                                        ownerColumn >= 0 &&
+                                        ownerColumn !== index,
+                                    },
+                                  ]
+                                : []),
+                              ...importable.map((field) => ({
+                                value: field.fieldKey,
+                                label: `${field.label}${assistEnabled && field.importManualOnly ? "（仅手动对照）" : ""} · ${FIELD_TYPE_LABELS[field.type]}${importable.some((other) => other.fieldKey !== field.fieldKey && other.label === field.label) ? `（${field.fieldKey}）` : ""}${field.required ? "（必填）" : ""}`,
+                              })),
+                              ...importable
+                                .filter((f) => f.type === "TEXTAREA")
+                                .map((f) => ({
+                                  value: APPEND + f.fieldKey,
+                                  label: `追加到「${f.label}」`,
+                                })),
+                            ]}
+                          />
+                          {lockedOwner && (
+                            <small>仅公司管理员可按行指定负责人</small>
+                          )}
+                          {dateInferences[index] === "conflict" ? (
+                            <small>
+                              同一列的日期顺序冲突，请更正文件后重选
+                            </small>
+                          ) : (
+                            dateInferences[index] && (
+                              <Select
+                                aria-label={`日期顺序 ${label}`}
+                                placeholder="请选择日月顺序"
+                                value={dateOrders[index]}
+                                disabled={!!busy || mappingLocked}
+                                options={[
+                                  { value: "DMY", label: "日/月/年" },
+                                  { value: "MDY", label: "月/日/年" },
+                                ]}
+                                onChange={(order) => {
+                                  setOverrides((prev) => ({
+                                    ...prev,
+                                    [index]: order,
+                                  }));
+                                  resetResult(importStarted);
+                                }}
+                              />
+                            )
+                          )}
+                          {field &&
+                            (field.type === "NUMBER" ||
+                              field.type === "MONEY") && (
+                              <Select
+                                aria-label={"无单位数值 " + label}
+                                prefix="没写单位的数"
+                                value={amountUnits[index] ?? "yuan"}
+                                disabled={!!busy || mappingLocked}
+                                options={[
+                                  { value: "yuan", label: "按原数" },
+                                  { value: "wan", label: "按万" },
+                                ]}
+                                onChange={(v) => {
+                                  setAmountUnits((prev) => ({
+                                    ...prev,
+                                    [index]: v,
+                                  }));
+                                  resetResult(importStarted);
+                                }}
+                              />
+                            )}
+                          {field && isOptionField(field) && (
+                            <ImportValues
+                              key={JSON.stringify([
+                                fileKey,
+                                sheetName,
+                                headerRow,
+                                field.fieldKey,
+                              ])}
+                              rows={parsed.rows}
+                              index={index}
+                              field={field}
+                              choices={valueChoices[index]}
+                              advice={advice}
+                              preview={current?.preview}
+                              headerRow={headerRow}
+                              disabled={!!busy || mappingLocked}
+                              onChange={(choices) => {
+                                setValueChoices((prev) => ({
+                                  ...prev,
+                                  [index]: choices,
+                                }));
+                                resetResult(importStarted);
+                              }}
+                              onAdopt={(value) =>
+                                adopt({ column: "C" + (index + 1), value })
+                              }
+                            />
+                          )}
+                          {/* Only an unsure suggestion needs a line: what AI
+                              thinks it is, and one click to take it. A sure one
+                              is already in the select; its reason is on the tag. */}
+                          {advice && needsReview && (
+                            <small>
+                              {targetField
+                                ? `可能是「${targetField.label}」`
+                                : "建议跳过"}
+                              <Button
+                                type="link"
+                                size="small"
+                                className={styles.inlineAdopt}
+                                disabled={!!busy || mappingLocked}
+                                onClick={() => adopt({ column: advice.col })}
+                              >
+                                采用
+                              </Button>
+                            </small>
+                          )}
+                        </div>
+                        {(() => {
+                          // One colour per state: matched (green), AI's pick
+                          // (violet), left unmatched (amber), set by hand (grey).
+                          const [label, tone] = manual.includes(index)
+                            ? ["手动", "manual"]
+                            : fromAi
+                              ? ["AI 建议", "ai"]
+                              : mapping[index] === SKIP
+                                ? ["未对照", "unmatched"]
+                                : ["自动", "auto"];
+                          const tag = (
+                            <span
+                              className={importStyles.state}
+                              data-tone={tone}
+                              tabIndex={advice ? 0 : undefined}
+                            >
+                              {label}
+                            </span>
+                          );
+                          return advice ? (
+                            <Tooltip title={`AI：${advice.reason}`}>
+                              {tag}
+                            </Tooltip>
+                          ) : (
+                            tag
+                          );
+                        })()}
+                      </div>
+                    );
+                  })}
+                </div>
+                {ownerColumn >= 0 && (
+                  <Collapse
+                    items={[
+                      {
+                        key: "owners",
+                        label: `查看负责人对照 · ${owners.length} 个姓名 · ${owners.length - resolvedOwners.size} 个待处理`,
+                        children: (
+                          <ImportOwners
+                            owners={owners}
+                            members={members}
+                            resolved={resolvedOwners}
+                            disabled={!!busy || mappingLocked}
+                            poolEnabled={poolEnabled}
+                            onChange={(name, dest) => {
+                              setOwnerChoices((prev) =>
+                                new Map(prev).set(name, dest),
+                              );
+                              resetResult(importStarted);
+                            }}
+                          />
+                        ),
+                      },
+                    ]}
+                  />
+                )}
+              </>
+            ) : null}
+          </section>
+        )}
+        <section className={importStyles.step}>
+          <h3 className={importStyles.stepTitle}>新记录归属</h3>
+          {canChooseOwner && ownerColumn < 0 ? (
+            <label className={importStyles.setting}>
+              <span>导入负责人</span>
+              <Select
+                aria-label="导入负责人"
+                allowClear
+                showSearch
+                optionFilterProp="searchText"
+                placeholder="未分配"
+                value={ownerMemberId}
+                disabled={!!busy || loadingFile || mappingLocked}
+                options={memberSelectOptions(members)}
+                onChange={(next?: string) => {
+                  setOwnerMemberId(next);
+                  if (next) setImportToPool(false);
+                  resetResult(importStarted);
+                }}
+              />
+            </label>
+          ) : null}
+          {canChooseOwner &&
+          ownerColumn < 0 &&
+          poolConfig?.enabled &&
+          poolConfig.lifecycleEnabled ? (
+            <Checkbox
+              aria-label="确认导入到初始公共池"
+              checked={importToPool}
               disabled={!!busy || loadingFile || mappingLocked}
-              placeholder="选择手机号、编号等业务唯一标识"
-              options={matchableFields.map(({ field }) => ({
-                value: field.fieldKey,
-                label: field.label,
-              }))}
-              onChange={(fields) => {
-                setMatchFields(fields);
-                setMatchLocked(true);
+              onChange={(event) => {
+                setImportToPool(event.target.checked);
+                setOwnerMemberId(undefined);
                 resetResult(importStarted);
               }}
+            >
+              确认导入到{poolConfig.labels?.leadPool ?? "初始公共池"}
+              ，允许有权限成员领取
+            </Checkbox>
+          ) : null}
+          {ownerCandidate && !importToPool && !mappingLocked ? (
+            <div className={importStyles.ownerHint} role="note">
+              <span>「{ownerCandidate.header}」列都是成员姓名</span>
+              <Button
+                size="small"
+                disabled={!!busy || loadingFile}
+                onClick={() => remap(ownerCandidate.index, OWNER)}
+              >
+                按「{ownerCandidate.header}」分配
+              </Button>
+            </div>
+          ) : null}
+          {/* The select and the pool checkbox say what they do; a line is
+              only needed where there is no control to read. */}
+          {ownerColumn >= 0 || !canChooseOwner ? (
+            <p className={importStyles.note}>
+              {ownerColumn >= 0
+                ? "新增记录按文件中的负责人分别归属"
+                : "本次新增记录归你负责"}
+            </p>
+          ) : null}
+        </section>
+        {parsed ? (
+          <section className={importStyles.step}>
+            <h3 className={importStyles.stepTitle}>查重</h3>
+            <label className={importStyles.setting}>
+              <span>
+                查重字段
+                <Tooltip title="选手机号、编号这类能认出同一条记录的字段，最多 3 个；所选字段全部相同的行会跳过，按你能看到的数据查。不选时只防同一文件重复导入，不同文件里的重复数据会新增。">
+                  <InfoCircleOutlined
+                    className={importStyles.info}
+                    aria-label="查重说明"
+                    tabIndex={0}
+                  />
+                </Tooltip>
+              </span>
+              <Select
+                mode="multiple"
+                aria-label="查重字段"
+                style={{ minWidth: "min(320px, 100%)" }}
+                value={matchFields}
+                maxCount={3}
+                disabled={!!busy || loadingFile || mappingLocked}
+                placeholder="不查重"
+                options={matchableFields.map(({ field }) => ({
+                  value: field.fieldKey,
+                  label: field.label,
+                }))}
+                onChange={(fields) => {
+                  setMatchFields(fields);
+                  setMatchLocked(true);
+                  resetResult(importStarted);
+                }}
+              />
+            </label>
+            {!!sheetSummary?.duplicateRows && (
+              <Alert
+                type="warning"
+                showIcon
+                title={`文件中有 ${sheetSummary.duplicateRows} 行与其他行完全相同${recommendedMatch ? "，建议使用「" + recommendedMatch.label + "」查重" : ""}`}
+              />
+            )}
+          </section>
+        ) : null}
+        {!busy && (checked || (result && importStarted)) ? (
+          <section
+            className={importStyles.step}
+            aria-label={checked ? "检查结果" : "导入结果"}
+            ref={verdictRef}
+          >
+            <h3 className={importStyles.stepTitle}>
+              {checked ? "检查结果" : "导入结果"}
+            </h3>
+            {checked ? (
+              <>
+                <p className={importStyles.verdictCounts} role="status">
+                  <span>
+                    可导入 <b>{eligible}</b>
+                  </span>
+                  {duplicateCount ? (
+                    <span title="和已有记录或文件里的其他行重复">
+                      重复 <b>{duplicateCount}</b>
+                    </span>
+                  ) : null}
+                  {manualSkipCount ? (
+                    <span>
+                      跳过 <b>{manualSkipCount}</b>
+                    </span>
+                  ) : null}
+                  {checked.failed ? (
+                    <span data-tone="danger">
+                      错误 <b>{checked.failed}</b>
+                    </span>
+                  ) : null}
+                </p>
+                {eligible === 0 ? (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    title="没有可导入的行"
+                    description={
+                      [
+                        duplicateCount
+                          ? `${duplicateCount} 行和已有记录或文件里的其他行重复`
+                          : "",
+                        manualSkipCount ? `${manualSkipCount} 行设为跳过` : "",
+                        checked.failed ? `${checked.failed} 行有错误` : "",
+                      ]
+                        .filter(Boolean)
+                        .join("，") + "。"
+                    }
+                  />
+                ) : (
+                  <>
+                    {unassigned ? (
+                      <Alert
+                        type="warning"
+                        showIcon
+                        title={`这 ${eligible} 行导入后没有负责人`}
+                        description="只看自己负责记录的成员看不到它们，也不会有人收到跟进提醒。"
+                        action={
+                          ownerCandidate ? (
+                            <Button
+                              size="small"
+                              onClick={() => remap(ownerCandidate.index, OWNER)}
+                            >
+                              按「{ownerCandidate.header}」分配
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                    ) : null}
+                    <ImportCheckPreview
+                      parsed={parsed!}
+                      rows={readyPlan!.rows.filter((row) =>
+                        checked.items.some(
+                          (item) =>
+                            item.rowNumber === row.rowNumber &&
+                            item.status === "READY",
+                        ),
+                      )}
+                      mapping={mapping}
+                      fields={importable}
+                      members={members}
+                      timeZone={timeZone}
+                      showOwner={canChooseOwner}
+                    />
+                  </>
+                )}
+              </>
+            ) : result ? (
+              <Alert
+                type={result.failed ? "warning" : "success"}
+                showIcon
+                title={
+                  result.failed
+                    ? `已导入 ${result.created} 行，${result.failed} 行没有导入`
+                    : `已导入 ${result.created} 行`
+                }
+                description={
+                  result.skipped
+                    ? `另有 ${result.skipped} 行按查重规则跳过。`
+                    : undefined
+                }
+              />
+            ) : null}
+          </section>
+        ) : null}
+        {busy && progress.total > 0 ? (
+          <div className={importStyles.progress}>
+            <Progress
+              percent={Math.round((progress.done / progress.total) * 100)}
+              status={busy ? "active" : undefined}
             />
-          </label>
-          {!!sheetSummary?.duplicateRows && (
-            <Alert
-              type="warning"
-              showIcon
-              title={`文件中有 ${sheetSummary.duplicateRows} 行与其他行完全相同${recommendedMatch ? "，建议使用「" + recommendedMatch.label + "」查重" : ""}`}
-            />
-          )}
-          <Typography.Paragraph type="secondary">
-            {matchFields.length
-              ? "所选字段全部相同时跳过。查重字段不能为空；按当前账号可见的数据查重，文件内重复也会跳过。"
-              : "未选择查重字段：只防止同一文件重复导入。不同文件的重复数据会新增，请选择能标识一条业务记录的字段。"}
+            <Typography.Paragraph>
+              {busy === "check" ? "检查" : "处理"}进度：{progress.done} /{" "}
+              {progress.total} 行
+            </Typography.Paragraph>
+          </div>
+        ) : null}
+        {displayedResult && displayedResult.failed > 0 ? (
+          <ul className={styles.batchErrors}>
+            {displayedResult.items
+              .filter((item) => item.status === "FAILED")
+              .slice(0, 50)
+              .map((item) => (
+                <li key={item.rowNumber}>
+                  {importRowError(item, schema.fields)}
+                </li>
+              ))}
+          </ul>
+        ) : null}
+
+        {displayedResult?.failed ? (
+          <Button onClick={downloadFailures}>下载失败明细</Button>
+        ) : null}
+        {displayedResult && displayedResult.failed > 50 ? (
+          <Typography.Paragraph>
+            这里只展示前 50 个错误，完整结果请下载失败明细。
           </Typography.Paragraph>
-        </>
-      ) : null}
-
-      {displayedResult && displayedResult.failed > 0 ? (
-        <ul className={styles.batchErrors}>
-          {displayedResult.items
-            .filter((item) => item.status === "FAILED")
-            .slice(0, 50)
-            .map((item) => (
-              <li key={item.rowNumber}>
-                {importRowError(item, schema.fields)}
-              </li>
-            ))}
-        </ul>
-      ) : null}
-
-      {displayedResult?.failed ? (
-        <Button onClick={downloadFailures}>下载失败明细</Button>
-      ) : null}
-      {displayedResult && displayedResult.failed > 50 ? (
-        <Typography.Paragraph>
-          这里只展示前 50 个错误，完整结果请下载失败明细。
-        </Typography.Paragraph>
-      ) : null}
+        ) : null}
+      </div>
     </Drawer>
   );
 }

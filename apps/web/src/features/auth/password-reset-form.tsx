@@ -4,17 +4,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Alert, Button, Form, Input, Space } from "antd";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useEffect, useState, type FormEvent } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { authApi, type AuthApi } from "./auth-api";
 import {
+  errorText,
   normalizeFormError,
-  useCountdown,
+  rememberPhone,
+  rememberedPhone,
   useDeviceIdentity,
+  useSentCode,
+  waitText,
   type DeviceIdentity,
 } from "./form-support";
 import {
+  PASSWORD_RULE,
   phoneSchema,
   resetPasswordSchema,
   type ResetPasswordInput,
@@ -26,19 +31,16 @@ export function PasswordResetForm({
   api = authApi,
   navigate,
   device,
+  returnTo,
 }: {
   api?: AuthApi;
   navigate?: (path: string) => void;
   device?: DeviceIdentity;
+  /** Where the login after a reset should land, carried from the login page. */
+  returnTo?: string | null;
 }) {
   const router = useRouter();
   const identity = useDeviceIdentity(device);
-  const {
-    seconds: countdownSeconds,
-    start: startCountdown,
-    reset: resetCountdown,
-  } = useCountdown();
-  const [requestedPhone, setRequestedPhone] = useState<string>();
   const [summary, setSummary] = useState<{
     type: "error" | "success";
     text: string;
@@ -56,42 +58,66 @@ export function PasswordResetForm({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { phone: "", code: "", newPassword: "" },
   });
+  const newPassword = useWatch({ control, name: "newPassword" });
+  const sentCode = useSentCode("reset", (phone) => setValue("phone", phone));
+  useEffect(() => {
+    const phone = rememberedPhone();
+    if (phone && !getValues("phone")) setValue("phone", phone);
+  }, [getValues, setValue]);
+  const requestedPhone = sentCode.phone;
+  const countdownSeconds = sentCode.seconds;
   const codeMutation = useMutation({
     mutationFn: (input: { phone: string; deviceKey: string }) =>
       api.requestPasswordResetCode(input),
     onSuccess: (_result, input) => {
       if (getValues("phone") !== input.phone) {
-        setRequestedPhone(undefined);
-        resetCountdown();
+        sentCode.clear();
         return;
       }
-      setRequestedPhone(input.phone);
-      startCountdown();
+      sentCode.sent(input.phone);
+      clearErrors("code");
       setSummary({
         type: "success",
         text: `验证码已发送至 ${input.phone}，请在有效期内完成重置。`,
       });
     },
-    onError: (error) => {
+    onError: (error, input) => {
       const apiError = normalizeFormError(error);
-      setSummary({
-        type: "error",
-        text: `${apiError.message}（请求编号：${apiError.requestId}）`,
-      });
+      const retry = apiError.retryAfterSeconds;
+      if (apiError.code === "RATE_LIMITED" && retry) {
+        sentCode.blocked(retry);
+        // Say how long to wait, and that a code already received still works.
+        setSummary({
+          type: "error",
+          text: `验证码请求太频繁了，${waitText(retry)}后再试。${requestedPhone === input.phone ? "已经收到的验证码 10 分钟内仍然有效，可以直接填写。" : ""}`,
+        });
+        clearErrors("code");
+        return;
+      }
+      setSummary({ type: "error", text: errorText(apiError) });
     },
   });
   const resetMutation = useMutation({
     mutationFn: (input: ResetPasswordInput) => api.resetPassword(input),
-    onSuccess: () => {
+    onSuccess: (_result, input) => {
+      sentCode.clear();
+      // The login page fills the same phone in and goes back where the
+      // person was headed before they had to reset.
+      rememberPhone(input.phone);
       setSummary({ type: "success", text: "密码已重置" });
-      (navigate ?? router.push)("/login");
+      const params = new URLSearchParams({ reset: "done" });
+      if (returnTo) params.set("returnTo", returnTo);
+      (navigate ?? router.push)(`/login?${params}`);
     },
     onError: (error) => {
       const apiError = normalizeFormError(error);
-      setSummary({
-        type: "error",
-        text: `${apiError.message}（请求编号：${apiError.requestId}）`,
-      });
+      // A reason that belongs to a field is said there, not again on top.
+      const onField = Object.keys(apiError.fieldErrors).some(
+        (field) => field in getValues(),
+      );
+      setSummary(
+        onField ? undefined : { type: "error", text: errorText(apiError) },
+      );
       let shouldFocus = true;
       for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
         if (field in getValues()) {
@@ -121,13 +147,14 @@ export function PasswordResetForm({
       event.preventDefault();
       setError(
         "code",
-        { message: "请为当前手机号重新获取验证码。" },
+        {
+          message:
+            countdownSeconds > 0
+              ? `请先获取这个手机号的验证码，${waitText(countdownSeconds)}后可以获取。`
+              : "请先获取这个手机号的验证码。",
+        },
         { shouldFocus: true },
       );
-      setSummary({
-        type: "error",
-        text: "请先为当前手机号获取验证码，再重置密码。",
-      });
       return;
     }
     void handleSubmit((values) => {
@@ -158,8 +185,7 @@ export function PasswordResetForm({
                 clearErrors("phone");
                 setSummary(undefined);
                 if (requestedPhone && event.target.value !== requestedPhone) {
-                  setRequestedPhone(undefined);
-                  resetCountdown();
+                  sentCode.clear();
                   setValue("code", "");
                 }
               }}
@@ -191,7 +217,7 @@ export function PasswordResetForm({
             disabled={countdownSeconds > 0 || codeMutation.isPending}
           >
             {countdownSeconds > 0
-              ? `${countdownSeconds} 秒后重新获取`
+              ? `${waitText(countdownSeconds)}后重新获取`
               : codeMutation.isPending
                 ? "正在发送…"
                 : "获取验证码"}
@@ -203,7 +229,8 @@ export function PasswordResetForm({
         htmlFor="reset-password"
         validateStatus={errors.newPassword ? "error" : undefined}
         help={errors.newPassword?.message}
-        extra="10–72 位，同时包含字母和数字。"
+        // The rule shows up once typing starts; an error replaces it.
+        extra={newPassword && !errors.newPassword ? PASSWORD_RULE : undefined}
       >
         <Controller
           name="newPassword"

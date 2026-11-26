@@ -18,7 +18,7 @@ function renderForm(ui: ReactNode) {
 }
 
 describe("RegisterForm", () => {
-  it("says login uses the unique phone while display names may repeat", () => {
+  it("shows the password rule only once typing starts", () => {
     const api: AuthApi = {
       requestRegisterCode: vi.fn(),
       register: vi.fn(),
@@ -33,7 +33,12 @@ describe("RegisterForm", () => {
         device={{ key: "device-test", summary: "Vitest browser" }}
       />,
     );
-    expect(screen.getByText("登录使用唯一手机号，姓名允许重复。")).toBeInTheDocument();
+    const rule = "10–72 位，同时包含字母和数字";
+    expect(screen.queryByText(rule)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("设置密码"), {
+      target: { value: "a" },
+    });
+    expect(screen.getByText(rule)).toBeInTheDocument();
   });
 
   it("requests a code, starts a 60-second lock, and enters the only workspace", async () => {
@@ -134,9 +139,12 @@ describe("RegisterForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "创建账号" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "请先为当前手机号获取验证码",
-    );
+    // Said once, under the code box with focus there, not in a banner.
+    expect(
+      await screen.findByText("请先获取这个手机号的验证码。"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("验证码")).toHaveFocus();
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(api.register).not.toHaveBeenCalled();
   });
 
@@ -238,7 +246,7 @@ describe("RegisterForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "创建账号" }));
 
     expect(
-      await screen.findByText("请为当前手机号重新获取验证码。"),
+      await screen.findByText("请先获取这个手机号的验证码。"),
     ).toBeInTheDocument();
     expect(api.register).not.toHaveBeenCalled();
   });

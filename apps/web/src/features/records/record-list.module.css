@@ -453,7 +453,8 @@ th[data-resizing="true"] .columnResizer::after {
 
 .footer {
   position: sticky;
-  z-index: 3;
+  /* Above the table's pinned columns (z-index 15), so no row shows beside it. */
+  z-index: 16;
   bottom: 0;
   display: flex;
   gap: 12px;

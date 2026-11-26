@@ -7,6 +7,7 @@ import { cache } from "react";
 import { deniedWorkspaceRoute } from "@/features/workspaces/workspace-access";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
+import { loginPath } from "@/lib/auth/login-path";
 
 export type VerifiedWorkspace =
   components["schemas"]["WorkspaceSummaryResponseDto"];
@@ -20,7 +21,7 @@ async function loadWorkspace(tenantCode: string): Promise<VerifiedWorkspace> {
   );
 
   if (response.status === 401) {
-    redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+    redirect(await loginPath(returnTo));
   }
   if (data) return data;
   if (response.status >= 500) {
@@ -30,7 +31,7 @@ async function loadWorkspace(tenantCode: string): Promise<VerifiedWorkspace> {
 
   const workspaceResult = await client.GET("/api/v1/me/workspaces");
   if (workspaceResult.response.status === 401) {
-    redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+    redirect(await loginPath(returnTo));
   }
   if (!workspaceResult.data && workspaceResult.response.status >= 500) {
     const apiError = toApiError(

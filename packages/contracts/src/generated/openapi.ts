@@ -4,6 +4,54 @@
  */
 
 export interface paths {
+  "/api/v1/auth/email/forgot-password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["EmailRecoveryController_forgot"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/email/reset-password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["EmailRecoveryController_reset"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/email/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["EmailRecoveryController_status"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/forgot-password": {
     parameters: {
       query?: never;
@@ -139,9 +187,89 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get: operations["MeController_me"];
+    get: operations["UsersController_me"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/avatar": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["UsersController_upload"];
+    post?: never;
+    delete: operations["UsersController_remove"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/email": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["AccountEmailController_remove"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/email/challenges": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AccountEmailController_issue"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/email/challenges/{challengeId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["AccountEmailController_cancel"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/email/verify": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AccountEmailController_verify"];
     delete?: never;
     options?: never;
     head?: never;
@@ -212,6 +340,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/me/memberships": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["UsersController_memberships"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/memberships/{memberId}/job-title": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["UsersController_jobTitle"];
+    trace?: never;
+  };
+  "/api/v1/me/notification-settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AccountEmailController_settings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["AccountEmailController_updateSettings"];
+    trace?: never;
+  };
   "/api/v1/me/password": {
     parameters: {
       query?: never;
@@ -226,6 +402,22 @@ export interface paths {
     options?: never;
     head?: never;
     patch: operations["MeController_changePassword"];
+    trace?: never;
+  };
+  "/api/v1/me/profile": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["UsersController_rename"];
     trace?: never;
   };
   "/api/v1/me/sessions": {
@@ -676,6 +868,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/mail/statistics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformOperationsController_mailStatistics"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/mail/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["PlatformOperationsController_testMail"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/operations": {
     parameters: {
       query?: never;
@@ -876,6 +1100,22 @@ export interface paths {
       cookie?: never;
     };
     get: operations["TenantsController_summarize"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/{userId}/avatar/{version}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["UsersController_avatar"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2780,6 +3020,37 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
+    AccountMembershipDto: {
+      displayName: string;
+      employeeNo: string | null;
+      jobTitle: string | null;
+      memberDisplayName: string | null;
+      /** Format: uuid */
+      memberId: string;
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      tenantCode: string;
+      /** Format: uuid */
+      tenantId: string;
+      tenantName: string;
+    };
+    AccountNameDto: {
+      displayName: string;
+    };
+    AccountProfileDto: {
+      avatarUrl: string | null;
+      displayName: string;
+      /** @enum {string} */
+      emailStatus: "UNBOUND" | "UNVERIFIED" | "VERIFIED" | "UNDELIVERABLE";
+      /** Format: uuid */
+      id: string;
+      isPlatformAdmin: boolean;
+      jobTitle: string | null;
+      mailAvailable: boolean;
+      maskedEmail: string | null;
+      /** @example +8613800138000 */
+      phone: string;
+    };
     AiConversationPageDto: {
       items: components["schemas"]["AiConversationResponseDto"][];
       nextCursor?: string;
@@ -3088,6 +3359,9 @@ export interface components {
       /** Format: date-time */
       until: string;
     };
+    AvatarResponseDto: {
+      avatarUrl: string | null;
+    };
     BatchUpdateRecordItemDto: {
       /** Format: uuid */
       recordId: string;
@@ -3219,7 +3493,8 @@ export interface components {
       sourceTenantId: string;
     };
     ChangeMemberNameDto: {
-      displayName: string;
+      displayName?: string;
+      jobTitle?: string;
     };
     ChangeMemberRoleDto: {
       /** @enum {string} */
@@ -3925,6 +4200,9 @@ export interface components {
       /** @enum {boolean} */
       accepted: true;
     };
+    DeviceMailSettingsDto: {
+      newDeviceMailEnabled: boolean;
+    };
     DraftGroupAnalysisDto: {
       blocking: components["schemas"]["DraftGroupBlockingIssueDto"][];
       objects: components["schemas"]["AnalyzedDraftObjectDto"][];
@@ -3946,6 +4224,18 @@ export interface components {
           };
       /** @enum {string} */
       itemKey: "note" | "followUp" | "fields";
+    };
+    EmailAddressDto: {
+      /** Format: email */
+      email: string;
+    };
+    EmailChallengeDto: {
+      /** Format: uuid */
+      challengeId: string;
+      maskedEmail: string;
+    };
+    EmailStatusDto: {
+      mailAvailable: boolean;
     };
     EmployeePermissionsDto: {
       canCreate: boolean;
@@ -4198,6 +4488,9 @@ export interface components {
       /** Format: date-time */
       expiresAt: string;
     };
+    JobTitleDto: {
+      jobTitle: string;
+    };
     LoginDto: {
       deviceKey: string;
       deviceSummary: string;
@@ -4205,6 +4498,24 @@ export interface components {
       password: string;
       /** @example 13800138000 */
       phone: string;
+    };
+    MailReadinessDto: {
+      issues: string[];
+      ready: boolean;
+    };
+    MailStatisticDto: {
+      count: number;
+      kind: string;
+      status: string;
+    };
+    MailStatisticsDto: {
+      days: number;
+      items: components["schemas"]["MailStatisticDto"][];
+    };
+    MailTestResultDto: {
+      errorCode: string | null;
+      /** @enum {string} */
+      status: "sent" | "failed" | "unknown";
     };
     MemberFieldAccessChangeDto: {
       /** @enum {string} */
@@ -4292,6 +4603,13 @@ export interface components {
     MembershipActionResponseDto: {
       /** @example true */
       accepted: boolean;
+    };
+    NewEmailCodeDto: {
+      /** Format: password */
+      currentPassword?: string;
+      email?: string;
+      /** @enum {string} */
+      purpose: "BIND" | "CHANGE" | "REVERIFY";
     };
     NotificationItemDto: {
       canOpen: boolean;
@@ -5010,6 +5328,11 @@ export interface components {
       direction: "asc" | "desc";
       field: string;
     };
+    RecoveryChallengeDto: {
+      /** Format: uuid */
+      challengeId: string;
+      message: string;
+    };
     RegisterDto: {
       /** @example 123456 */
       code: string;
@@ -5023,8 +5346,21 @@ export interface components {
     RelationResultDto: {
       success: boolean;
     };
+    RemoveEmailDto: {
+      /** Format: password */
+      currentPassword: string;
+    };
     RenameAiConversationDto: {
       title: string;
+    };
+    ResetEmailPasswordDto: {
+      /** Format: uuid */
+      challengeId: string;
+      code: string;
+      /** Format: email */
+      email: string;
+      /** Format: password */
+      newPassword: string;
     };
     ResetPasswordDto: {
       /** @example 123456 */
@@ -5089,13 +5425,14 @@ export interface components {
     RuntimeServiceStatusDto: {
       detail: string;
       /** @enum {string} */
-      key: "database" | "redis" | "sms" | "webOrigin";
+      key: "database" | "redis" | "sms" | "mail" | "webOrigin";
       label: string;
       /** @enum {string} */
       status: "READY" | "DEVELOPMENT" | "ACTION_REQUIRED";
     };
     RuntimeStatusDto: {
       environment: string;
+      mail: components["schemas"]["MailReadinessDto"];
       policies: components["schemas"]["RuntimePoliciesDto"];
       services: components["schemas"]["RuntimeServiceStatusDto"][];
     };
@@ -5763,6 +6100,7 @@ export interface components {
       total: number;
     };
     TenantMemberResponseDto: {
+      avatarUrl?: string | null;
       displayName?: string;
       /** Format: uuid */
       groupId?: string | null;
@@ -5770,6 +6108,7 @@ export interface components {
       /** Format: uuid */
       id: string;
       isGroupLeader?: boolean;
+      jobTitle?: string | null;
       /** @example +8613800138000 */
       phone?: string;
       /** @enum {string} */
@@ -5941,6 +6280,16 @@ export interface components {
       phone: string;
       /** @enum {string} */
       purpose: "REGISTER" | "RESET_PASSWORD";
+    };
+    VerifyEmailDto: {
+      /** Format: uuid */
+      challengeId: string;
+      code: string;
+      /** Format: password */
+      currentPassword?: string;
+      email?: string;
+      /** @enum {string} */
+      purpose: "BIND" | "CHANGE" | "REVERIFY";
     };
     WorkflowActionDraftDto: {
       assignee?: {
@@ -6136,6 +6485,71 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  EmailRecoveryController_forgot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EmailAddressDto"];
+      };
+    };
+    responses: {
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecoveryChallengeDto"];
+        };
+      };
+    };
+  };
+  EmailRecoveryController_reset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResetEmailPasswordDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  EmailRecoveryController_status: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EmailStatusDto"];
+        };
+      };
+    };
+  };
   AuthController_forgotPassword: {
     parameters: {
       query?: never;
@@ -6306,7 +6720,54 @@ export interface operations {
       };
     };
   };
-  MeController_me: {
+  UsersController_me: {
+    parameters: {
+      query?: {
+        tenantCode?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AccountProfileDto"];
+        };
+      };
+    };
+  };
+  UsersController_upload: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /** Format: binary */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AvatarResponseDto"];
+        };
+      };
+    };
+  };
+  UsersController_remove: {
     parameters: {
       query?: never;
       header?: never;
@@ -6320,7 +6781,97 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["UserResponseDto"];
+          "application/json": components["schemas"]["AvatarResponseDto"];
+        };
+      };
+    };
+  };
+  AccountEmailController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RemoveEmailDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  AccountEmailController_issue: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["NewEmailCodeDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EmailChallengeDto"];
+        };
+      };
+    };
+  };
+  AccountEmailController_cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        challengeId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  AccountEmailController_verify: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["VerifyEmailDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
         };
       };
     };
@@ -6407,6 +6958,92 @@ export interface operations {
       };
     };
   };
+  UsersController_memberships: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AccountMembershipDto"][];
+        };
+      };
+    };
+  };
+  UsersController_jobTitle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["JobTitleDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  AccountEmailController_settings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeviceMailSettingsDto"];
+        };
+      };
+    };
+  };
+  AccountEmailController_updateSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeviceMailSettingsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeviceMailSettingsDto"];
+        };
+      };
+    };
+  };
   MeController_changePassword: {
     parameters: {
       query?: never;
@@ -6426,6 +7063,29 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  UsersController_rename: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AccountNameDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AccountProfileDto"];
         };
       };
     };
@@ -7718,6 +8378,44 @@ export interface operations {
       };
     };
   };
+  PlatformOperationsController_mailStatistics: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MailStatisticsDto"];
+        };
+      };
+    };
+  };
+  PlatformOperationsController_testMail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MailTestResultDto"];
+        };
+      };
+    };
+  };
   PlatformOperationsController_operationHistory: {
     parameters: {
       query?: {
@@ -8242,6 +8940,28 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlatformTenantSummaryDto"];
+        };
+      };
+    };
+  };
+  UsersController_avatar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        userId: string;
+        version: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "image/webp": string;
         };
       };
     };

@@ -14,9 +14,12 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
 } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataPanel } from "@/components/workbench/surface";
+import { StatusTag } from "@/components/workbench/status-tag";
 import { browserApiClient as api } from "@/lib/api/browser-client";
 import {
   type Feature,
@@ -118,7 +121,6 @@ export function PlatformPlans() {
       <PageHeader
         title="AI 套餐"
         count={plans.data?.length}
-        description="管理可分配给公司的功能与每月额度"
         extra={
           <Button
             type="primary"
@@ -141,6 +143,7 @@ export function PlatformPlans() {
         <DataPanel ariaLabel="AI 套餐列表">
           <Table<Plan>
             rowKey="id"
+            className={styles.planTable}
             dataSource={plans.data}
             pagination={false}
             locale={{ emptyText: <Empty description="尚未创建 AI 套餐" /> }}
@@ -159,6 +162,7 @@ export function PlatformPlans() {
               },
               {
                 title: "包含功能",
+                width: "36%",
                 render: (_, p) => (
                   <Space wrap size={4}>
                     {p.features.length
@@ -194,16 +198,20 @@ export function PlatformPlans() {
                           )}
                     </span>
                   ) : (
-                    "未设置单价"
+                    <Tooltip title="未设置单价，无法估算">
+                      <span className={styles.muted}>
+                        — <InfoCircleOutlined aria-label="未设置单价" />
+                      </span>
+                    </Tooltip>
                   ),
               },
               { title: "使用公司", render: (_, p) => p.companies + " 家" },
               {
                 title: "分配状态",
                 render: (_, p) => (
-                  <Tag color={p.assignable ? "blue" : undefined}>
+                  <StatusTag tone={p.assignable ? "success" : "neutral"}>
                     {p.assignable ? "可分配" : "已停止分配"}
-                  </Tag>
+                  </StatusTag>
                 ),
               },
               {

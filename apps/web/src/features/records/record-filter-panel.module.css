@@ -210,17 +210,21 @@
 .prompt {
   display: grid;
   gap: 8px;
-  margin: 0 0 14px;
-  padding: 12px;
+  margin: 0 0 12px;
+  padding: 8px;
   border: 1px solid var(--rule);
   border-radius: 8px;
   background: var(--bg-hover);
 }
-.prompt label {
-  font-weight: 600;
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
-.promptLine,
-.previewStatus {
+.promptLine {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -234,29 +238,28 @@
   color: var(--color-primary);
 }
 .hint,
-.previewStatus,
 .removed {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.previewStatus {
-  justify-content: space-between;
-  margin-block: 4px 8px;
-}
-.previewStatus button {
-  color: var(--color-primary);
+.header strong {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
 }
 .rowWrap {
   display: grid;
   gap: 4px;
 }
-.newTag {
-  justify-self: start;
-  padding: 0 5px;
-  border-radius: 4px;
-  background: var(--color-primary-soft);
+/* A condition AI added beside ones the person already had. */
+.rowWrap[data-ai] {
+  margin-inline-start: -8px;
+  padding-inline-start: 6px;
+  border-inline-start: 2px solid var(--color-ai);
+}
+.footer .undo {
+  margin-inline-end: auto;
   color: var(--color-primary);
-  font-size: 12px;
 }
 .removed {
   display: flex;
@@ -267,9 +270,8 @@
   text-decoration: line-through;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .newTag,
+  .rowWrap[data-ai],
   .removed,
-  .previewStatus,
   .hint {
     animation: enter 140ms ease-out;
   }

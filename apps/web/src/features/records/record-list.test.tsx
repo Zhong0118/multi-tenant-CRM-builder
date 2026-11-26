@@ -2254,7 +2254,7 @@ it("previews against the base view without reading records or navigating until a
       target: { value: "换成华东客户" },
     });
     fireEvent.click(screen.getByRole("button", { name: "生成条件" }));
-    await screen.findByText("已生成 · 尚未应用");
+    await screen.findByRole("button", { name: "撤销生成" });
     expect(request).toHaveBeenCalledWith(
       "northwind",
       "customers",

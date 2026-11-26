@@ -180,6 +180,11 @@ describe("AiMessageList pending answer", () => {
 
 
 describe("AiMessageList question navigation", () => {
+  it("leaves out the question navigation while there is only one question", () => {
+    render(<AiMessageList tenantCode="northwind" messages={[message("u1", "第一条问题")]} phase="IDLE" />);
+    expect(screen.queryByRole("navigation", { name: "按提问定位" })).not.toBeInTheDocument();
+  });
+
   it("does not resume following during the first upward frames of a smooth anchor scroll", () => {
     render(<AiMessageList tenantCode="northwind" messages={[message("u1", "第一条问题"), message("u2", "第二条问题")]} phase="IDLE" />);
     const scroller = screen.getByTestId("ai-message-scroller");
@@ -196,7 +201,9 @@ describe("AiMessageList question navigation", () => {
     scroller.scrollTop = 1198;
     fireEvent.scroll(scroller);
     expect(scroll).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "回到最新" })).toBeInTheDocument();
+    const jump = screen.getByRole("button", { name: "回到最新" });
+    // It floats beside the list: showing it never changes the list's content.
+    expect(scroller).not.toContainElement(jump);
   });
 
   it("creates one accessible anchor per question and does not jump back down while reading", () => {
@@ -232,5 +239,47 @@ describe("AiMessageList question navigation", () => {
     questions[1].getBoundingClientRect = () => ({ top: 120 } as DOMRect);
     fireEvent.scroll(scroller);
     expect(screen.getByRole("button", { name: "定位提问：第二条问题" })).toHaveAttribute("aria-current", "location");
+  });
+});
+
+
+describe("AiMessageList collapsing content", () => {
+  it("keeps the column's height when a card shrinks, until another conversation opens", () => {
+    const observers: ResizeObserverCallback[] = [];
+    const Original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(callback: ResizeObserverCallback) {
+        observers.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      const { rerender } = render(
+        <AiMessageList tenantCode="t" messages={[message("q1", "问题")]} phase="IDLE" />,
+      );
+      const column = screen.getByText("问题").closest("[data-ai-question]")!
+        .parentElement as HTMLElement;
+      let height = 900;
+      Object.defineProperty(column, "offsetHeight", { get: () => height });
+      const fire = () => observers.forEach((cb) => cb([], {} as ResizeObserver));
+      fire();
+      expect(column.style.minHeight).toBe("900px");
+      // A confirmed card collapses: the column keeps its height.
+      height = 700;
+      fire();
+      expect(column.style.minHeight).toBe("900px");
+      // A longer answer grows past it.
+      height = 1100;
+      fire();
+      expect(column.style.minHeight).toBe("1100px");
+      rerender(
+        <AiMessageList tenantCode="t" messages={[message("other", "另一个")]} phase="IDLE" />,
+      );
+      expect(column.style.minHeight).toBe("");
+    } finally {
+      globalThis.ResizeObserver = Original;
+    }
   });
 });

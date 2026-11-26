@@ -1,0 +1,8 @@
+.value {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}

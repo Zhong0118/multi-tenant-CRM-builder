@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Dropdown, Modal, Skeleton, Space, Tag } from "antd";
+import { Alert, Button, Dropdown, Modal, Skeleton, Space, Tooltip } from "antd";
 import {
   ApiOutlined,
   CameraOutlined,
@@ -9,6 +9,7 @@ import {
   EditOutlined,
   EllipsisOutlined,
   FontSizeOutlined,
+  InfoCircleOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
 import { PageSection } from "@/components/layout/page";
@@ -111,10 +112,7 @@ export function PlatformModelSettings() {
       : undefined;
   return (
     <div className={styles.page}>
-      <PageHeader
-        title="AI 模型"
-        description="管理所有公司的模型连接与用途分配"
-      />
+      <PageHeader title="AI 模型" />
       {!data || !catalog || q.error || settings.error ? (
         q.error || settings.error ? (
           <StatePanel
@@ -170,7 +168,13 @@ export function PlatformModelSettings() {
                     </span>
                     <div className={styles.copy}>
                       <strong>{purposeNames[purpose]}</strong>
-                      <span>{currentSource(data, purpose)}</span>
+                      {/* Vision and embeddings are optional: unset reads as
+                          a choice, not a fault. */}
+                      {!a && !fromEnv && purpose !== "text" ? (
+                        <span data-optional>未配置</span>
+                      ) : (
+                        <span>{currentSource(data, purpose)}</span>
+                      )}
                       {purpose === "text" &&
                         !a &&
                         !!data.environment.missing.length && (
@@ -272,29 +276,27 @@ export function PlatformModelSettings() {
                       </span>
                       <div className={styles.copy}>
                         <strong>{p.name}</strong>
+                        {/* One line: protocol, models, what it serves and
+                            when it was last tested; the key's last four
+                            digits sit behind ⓘ. */}
                         <span>
-                          {revision?.protocol === "responses"
-                            ? "Responses"
-                            : "Chat"}
-                          {revision?.embeddings ? " · Embeddings" : ""} ·{" "}
-                          {revision?.models.length ?? 0} 个模型
-                        </span>
-                        <small>
-                          {revision?.keyLast4
-                            ? "Key 末四位 · " + revision.keyLast4
-                            : "未设置 Key"}
-                          {used.length > 0
-                            ? " · 用于" +
-                              used
-                                .map((a) => purposeNames[a.purpose].slice(0, 2))
-                                .join("、")
-                            : ""}
-                          {check?.finishedAt && (
-                            <>
-                              {" "}
-                              · 最近测试{" "}
-                              <time dateTime={check.finishedAt}>
-                                {new Date(check.finishedAt).toLocaleString(
+                          {[
+                            revision?.protocol === "responses"
+                              ? "Responses"
+                              : "Chat",
+                            revision?.embeddings ? "Embeddings" : null,
+                            (revision?.models.length ?? 0) + " 个模型",
+                            used.length > 0
+                              ? "用于" +
+                                used
+                                  .map((a) =>
+                                    purposeNames[a.purpose].slice(0, 2),
+                                  )
+                                  .join("、")
+                              : null,
+                            check?.finishedAt
+                              ? "最近测试 " +
+                                new Date(check.finishedAt).toLocaleString(
                                   "zh-CN",
                                   {
                                     month: "numeric",
@@ -304,25 +306,39 @@ export function PlatformModelSettings() {
                                     hour12: false,
                                     timeZone: "Asia/Shanghai",
                                   },
-                                )}
-                              </time>
-                            </>
+                                )
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                          {revision?.keyLast4 ? (
+                            <Tooltip title={"Key 末四位 " + revision.keyLast4}>
+                              <InfoCircleOutlined
+                                className={styles.keyInfo}
+                                aria-label={"Key 末四位 " + revision.keyLast4}
+                                tabIndex={0}
+                              />
+                            </Tooltip>
+                          ) : (
+                            " · 未设置 Key"
                           )}
-                        </small>
+                        </span>
                       </div>
-                      <Tag
-                        color={
+                      {/* Same dot-and-text status as the purpose rows above. */}
+                      <span
+                        className={styles.status}
+                        data-tone={
                           state === "正常"
-                            ? "green"
+                            ? "success"
                             : state === "测试失败"
-                              ? "red"
+                              ? "error"
                               : state === "修改未生效"
                                 ? "warning"
-                                : undefined
+                                : "neutral"
                         }
                       >
                         {state}
-                      </Tag>
+                      </span>
                       <Space wrap className={styles.actions}>
                         {check && (
                           <Button

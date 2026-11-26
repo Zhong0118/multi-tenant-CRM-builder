@@ -847,6 +847,7 @@ describe('AiOrchestrator.streamTurn', () => {
       /Assigning or transferring a follow-up.*unsupported/i,
     );
     expect(AI_SYSTEM_PROMPT).toMatch(/不能默认为当前执行人/);
+    expect(AI_SYSTEM_PROMPT).toMatch(/Do not restate those fields or values/);
     expect(AI_SYSTEM_PROMPT).toMatch(/user's language/);
   });
 

@@ -33,6 +33,8 @@ export interface TenantMemberSummary {
   status: 'ACTIVE' | 'DISABLED';
   displayName?: string;
   phone?: string;
+  jobTitle?: string | null;
+  avatarUrl?: string | null;
   groupId?: string | null;
   groupName?: string | null;
   isGroupLeader?: boolean;
@@ -142,7 +144,8 @@ export interface MembershipStore {
   isGroupLeader(id: string): Promise<boolean>;
   updateMemberName(
     id: string,
-    displayName: string,
+    displayName: string | undefined,
+    jobTitle?: string | null,
   ): Promise<TenantMemberSummary>;
   updateMemberRole(id: string, role: MemberRole): Promise<TenantMemberSummary>;
   offboardingCounts(
@@ -271,8 +274,9 @@ export class MembershipsService {
   async changeMemberName(
     context: TenantContext,
     memberId: string,
-    displayName: string,
+    displayName: string | undefined,
     meta: { requestId: string; ip?: string },
+    title?: string,
   ) {
     this.assertAdmin(context);
     return this.repository.withTenant(context, async (store) => {
@@ -280,18 +284,37 @@ export class MembershipsService {
       await this.requireCurrentAdmin(store, context, [memberId]);
       const member = await store.findMember(memberId);
       if (!member) throw new ApiException('MEMBERSHIP_INACTIVE', 404);
-      const changed = await store.updateMemberName(memberId, displayName);
-      await store.appendAudit({
-        tenantId: context.tenantId,
-        actorType: 'USER',
-        actorId: context.userId,
-        action: 'membership.name_changed',
-        resourceType: 'tenant_member',
-        resourceId: memberId,
-        before: { displayName: member.displayName },
-        after: { displayName },
-        ...meta,
-      });
+      const jobTitle = title === undefined ? undefined : title || null;
+      const changed = await store.updateMemberName(
+        memberId,
+        displayName,
+        jobTitle,
+      );
+      if (jobTitle !== undefined) {
+        await store.appendAudit({
+          tenantId: context.tenantId,
+          actorType: 'USER',
+          actorId: context.userId,
+          resourceType: 'tenant_member',
+          resourceId: memberId,
+          action: 'membership.job_title_changed',
+          before: { jobTitle: member.jobTitle ?? null },
+          after: { jobTitle },
+          ...meta,
+        });
+      }
+      if (displayName !== undefined)
+        await store.appendAudit({
+          tenantId: context.tenantId,
+          actorType: 'USER',
+          actorId: context.userId,
+          action: 'membership.name_changed',
+          resourceType: 'tenant_member',
+          resourceId: memberId,
+          before: { displayName: member.displayName },
+          after: { displayName },
+          ...meta,
+        });
       return changed;
     });
   }

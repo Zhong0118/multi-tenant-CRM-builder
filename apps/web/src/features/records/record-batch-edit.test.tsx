@@ -155,7 +155,10 @@ describe("RecordBatchEditDrawer", () => {
       }),
     );
     expect(screen.getByText(/成功 1 条，失败 1 条/)).toBeInTheDocument();
-    expect(screen.getByText(/星云：记录已被其他人修改/)).toBeInTheDocument();
+    // Failed records are listed inside the result, next to the counts.
+    expect(screen.getByRole("list", { name: "没有修改的记录" })).toHaveTextContent(
+      "星云：记录已被其他人修改。",
+    );
     expect(onCompleted).not.toHaveBeenCalled();
     expect(screen.queryByText("内部备注")).not.toBeInTheDocument();
   });

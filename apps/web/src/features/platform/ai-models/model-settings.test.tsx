@@ -142,8 +142,8 @@ describe("平台模型设置", () => {
       ],
     }));
     expect(
-      await screen.findByText("修改未生效", { selector: ".ant-tag" }),
-    ).toHaveClass("ant-tag-warning");
+      await screen.findByText("修改未生效", { selector: "[data-tone]" }),
+    ).toHaveAttribute("data-tone", "warning");
   });
   it("视觉分配和供应商编辑都说明最大输出未填写", async () => {
     const send = show();

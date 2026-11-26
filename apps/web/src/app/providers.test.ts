@@ -2,51 +2,68 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { WORKSPACE_TOKENS } from "@/components/theme/workspace-theme";
+
 import { TOKENS } from "./providers";
 
+const css = readFileSync(resolve(import.meta.dirname, "globals.css"), "utf8");
+
 describe("design tokens", () => {
-  it("keeps Ant Design tokens identical to globals.css custom properties", () => {
-    const css = readFileSync(
-      resolve(import.meta.dirname, "globals.css"),
-      "utf8",
-    );
-
-    expect(TOKENS.ink).toBe("#17232D");
-    expect(TOKENS.inkHover).toBe("#22313D");
-    expect(TOKENS.textPrimary).toBe("#17232D");
+  it("uses one palette for public pages and the workspace", () => {
     expect(TOKENS.primary).toBe("#167568");
-    expect(TOKENS.primarySoft).toBe("#E7F3F0");
-    expect(TOKENS.page).toBe("#F3F6F8");
-    expect(TOKENS.surface).toBe("#FFFFFF");
-    expect(TOKENS.border).toBe("#D8E0E5");
-    expect(TOKENS.borderStrong).toBe("#C8D2D9");
-    expect(TOKENS.hairline).toBe("#E2E5E9");
-    expect(TOKENS.track).toBe("#E4E8EB");
-    expect(TOKENS.textSecondary).toBe("#687681");
-    expect(TOKENS.success).toBe("#167568");
-    expect(TOKENS.warning).toBe("#C66C18");
-    expect(TOKENS.warningSoft).toBe("#FFF3E5");
-    expect(TOKENS.danger).toBe("#B42318");
+    expect(TOKENS.primary).toBe(WORKSPACE_TOKENS.primary);
+    expect(TOKENS.textPrimary).toBe(WORKSPACE_TOKENS.textPrimary);
+    expect(TOKENS.page).toBe(WORKSPACE_TOKENS.page);
+    expect(TOKENS.border).toBe(WORKSPACE_TOKENS.border);
+    expect(TOKENS.fontUi).toBe(WORKSPACE_TOKENS.fontUi);
+    // No second palette that switches on [data-ui="workspace"] any more.
+    expect(css).not.toContain(':root:has([data-ui="workspace"])');
+  });
 
-    expect(css).toContain(
-      `--text-primary: ${TOKENS.textPrimary.toLowerCase()}`,
-    );
-    expect(css).toContain(`--color-primary: ${TOKENS.primary.toLowerCase()}`);
-    expect(css).toContain(`--bg-page: ${TOKENS.page.toLowerCase()}`);
-    expect(css).toContain(`--border-default: ${TOKENS.border.toLowerCase()}`);
-    expect(css).toContain(`--color-success: ${TOKENS.success.toLowerCase()}`);
-    expect(css).toContain(`--shell-ink: ${TOKENS.ink.toLowerCase()}`);
-    expect(css).toContain(
-      `--border-strong: ${TOKENS.borderStrong.toLowerCase()}`,
-    );
-    expect(css).toContain(
-      `--border-hairline: ${TOKENS.hairline.toLowerCase()}`,
-    );
-    expect(css).toContain(`--bg-track: ${TOKENS.track.toLowerCase()}`);
-    expect(css).toContain("--radius-reading: 12px");
-    expect(css).toContain("--radius-control: 8px");
+  it("keeps Ant Design tokens identical to globals.css custom properties", () => {
+    const pairs: Array<[string, string]> = [
+      ["--shell-ink", WORKSPACE_TOKENS.ink],
+      ["--color-primary", WORKSPACE_TOKENS.primary],
+      ["--color-primary-hover", WORKSPACE_TOKENS.primaryHover],
+      ["--color-primary-active", WORKSPACE_TOKENS.primaryActive],
+      ["--color-primary-soft", WORKSPACE_TOKENS.primarySoft],
+      ["--color-primary-soft-hover", WORKSPACE_TOKENS.primarySoftHover],
+      ["--color-primary-border", WORKSPACE_TOKENS.primaryBorder],
+      ["--text-primary", WORKSPACE_TOKENS.textPrimary],
+      ["--text-secondary", WORKSPACE_TOKENS.textSecondary],
+      ["--text-tertiary", WORKSPACE_TOKENS.textTertiary],
+      ["--text-disabled", WORKSPACE_TOKENS.textDisabled],
+      ["--border-default", WORKSPACE_TOKENS.border],
+      ["--border-strong", WORKSPACE_TOKENS.borderStrong],
+      ["--border-hairline", WORKSPACE_TOKENS.hairline],
+      ["--bg-page", WORKSPACE_TOKENS.page],
+      ["--bg-surface", WORKSPACE_TOKENS.surface],
+      ["--bg-surface-subtle", WORKSPACE_TOKENS.surfaceSubtle],
+      ["--bg-hover", WORKSPACE_TOKENS.hover],
+      ["--bg-selected", WORKSPACE_TOKENS.selected],
+      ["--bg-sidebar", WORKSPACE_TOKENS.sidebar],
+      ["--bg-sidebar-active", WORKSPACE_TOKENS.sidebarActive],
+      ["--bg-track", WORKSPACE_TOKENS.track],
+      ["--color-success", WORKSPACE_TOKENS.success],
+      ["--color-success-soft", WORKSPACE_TOKENS.successSoft],
+      ["--color-success-border", WORKSPACE_TOKENS.successBorder],
+      ["--color-warning", WORKSPACE_TOKENS.warning],
+      ["--color-warning-soft", WORKSPACE_TOKENS.warningSoft],
+      ["--color-warning-border", WORKSPACE_TOKENS.warningBorder],
+      ["--color-danger", WORKSPACE_TOKENS.danger],
+      ["--color-danger-soft", WORKSPACE_TOKENS.dangerSoft],
+      ["--color-danger-border", WORKSPACE_TOKENS.dangerBorder],
+      ["--color-info", WORKSPACE_TOKENS.info],
+      ["--color-ai", WORKSPACE_TOKENS.ai],
+      ["--color-ai-soft", WORKSPACE_TOKENS.aiSoft],
+    ];
+    for (const [property, hex] of pairs) {
+      expect(css, property).toContain(`${property}: ${hex.toLowerCase()};`);
+    }
+    expect(css).toContain("--radius-reading: 10px");
+    expect(css).toContain("--radius-control: 6px");
     expect(css).toContain("--radius-status: 4px");
-    expect(css).toContain("--radius-data: 12px");
+    expect(css).toContain("--radius-data: 10px");
     expect(css).toContain("--sidebar-width: 224px");
     expect(css).toContain("--header-height: 52px");
   });

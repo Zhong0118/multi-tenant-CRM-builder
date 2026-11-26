@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { readMailConfig } from '../mail/mail-config';
 import { RuntimeHealthService } from './runtime-health.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -55,6 +56,7 @@ export class PlatformOperationsService {
 
   async runtimeStatus(): Promise<RuntimeStatus> {
     const health = await this.health.check();
+    const mail = readMailConfig((key) => this.config.get<string>(key)).status;
     const environment = this.config.get<string>('NODE_ENV', 'development');
     const redisConfigured = Boolean(this.config.get<string>('REDIS_URL'));
     const webOriginConfigured = Boolean(this.config.get<string>('WEB_ORIGIN'));
@@ -76,6 +78,7 @@ export class PlatformOperationsService {
       );
     return {
       environment,
+      mail,
       services: [
         {
           key: 'database',
@@ -120,6 +123,14 @@ export class PlatformOperationsService {
               : fixedCodeConfigured
                 ? '开发环境使用固定验证码，不会发送真实短信。'
                 : '请配置六位开发验证码。',
+        },
+        {
+          key: 'mail',
+          label: '邮件发送',
+          status: mail.ready ? 'READY' : 'ACTION_REQUIRED',
+          detail: mail.ready
+            ? '邮件发送配置已就绪。'
+            : '请检查邮件配置 ' + mail.issues.join('、'),
         },
         {
           key: 'webOrigin',

@@ -324,8 +324,9 @@
   border-top: 1px solid var(--border-hairline);
 }
 
+/* Same left edge as the nav items' icons above it. */
 .sidebarFiling {
-  padding: 0 4px;
+  padding: 0 8px;
 }
 .filingButton {
   display: grid;
@@ -367,7 +368,16 @@
     margin: 8px 8px 8px 0;
     border: 1px solid var(--border-hairline);
     border-radius: var(--radius-reading);
-    box-shadow: 0 1px 2px rgb(23 35 45 / 4%);
+    box-shadow: 0 1px 2px rgb(24 24 27 / 4%);
+    transition: margin-right var(--motion-base) var(--ease-standard);
+  }
+}
+
+/* The side assistant docks beside the page from 1440px: the page column
+   gives up the panel's width (400px) plus the gap between the two panels. */
+@media (min-width: 1440px) {
+  :global(html[data-assistant-dock="open"]) .column {
+    margin-right: 416px;
   }
 }
 
@@ -378,7 +388,8 @@
   height: var(--header-height);
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  /* Same left edge as the padded content below. */
+  padding: 0 28px;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-hairline);
 }

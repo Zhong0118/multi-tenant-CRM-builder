@@ -16,6 +16,7 @@ import { AiAssistantPage } from "./ai-assistant-page";
 
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
+  refresh: vi.fn(),
   pathname: "/workspace/northwind/ai",
   conversation: undefined as string | undefined,
   listConversations: vi.fn(),
@@ -31,7 +32,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mocks.replace }),
+  useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
   usePathname: () => mocks.pathname,
   useSearchParams: () =>
     new URLSearchParams(
@@ -60,6 +61,7 @@ vi.mock("./ai-api", () => ({
 
 beforeEach(() => {
   mocks.replace.mockReset();
+  mocks.refresh.mockReset();
   mocks.retryTurn.mockReset();
   mocks.listConversations.mockReset();
   mocks.listMessages.mockReset();
@@ -113,7 +115,7 @@ describe("AiAssistantPage", () => {
       </QueryClientProvider>
     );
     const view = render(page(caps));
-    const input = screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据");
+    const input = screen.getByPlaceholderText(/^输入你的问题/);
     fireEvent.change(input, { target: { value: "查询记录" } });
     expect(await screen.findByRole("button", {name:"最近有哪些需要跟进？"})).toBeEnabled();
     view.rerender(page({...caps, notice:"company_exhausted",percent:100}));
@@ -342,6 +344,52 @@ describe("AiAssistantPage", () => {
     );
   });
 
+  it("refreshes the record beside the panel once a confirmed change is written", async () => {
+    const proposal = {
+      proposalId: "p-exec",
+      operation: "UPDATE_RECORD",
+      title: "修改记录",
+      targetSummary: "Acme",
+      changes: [{ label: "阶段", before: "初步接触", after: "商务谈判" }],
+      validationWarnings: [],
+      expiresAt: "2999-01-01T00:00:00.000Z",
+      status: "PROPOSED",
+      fieldErrors: {},
+      failureCode: null,
+      auditId: null,
+      result: null,
+    };
+    mocks.conversation = "c1";
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield {
+        event: "conversation.ready",
+        data: { conversationId: "c1", title: "问", turnId: "t-exec" },
+      };
+      yield {
+        event: "proposal.ready",
+        data: { turnId: "t-exec", batch: { items: [proposal] } },
+      };
+      yield {
+        event: "turn.completed",
+        data: { turnId: "t-exec", messageId: "m-exec" },
+      };
+    });
+    mocks.confirmBatch.mockResolvedValue({
+      items: [{ proposalId: "p-exec", status: "EXECUTED", message: "已执行" }],
+    });
+    renderPage();
+    fireEvent.change(
+      screen.getByPlaceholderText(/^输入你的问题/),
+      { target: { value: "改阶段" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "确认执行" })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "确认执行" }));
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalledTimes(1));
+  });
+
   it("replaces a completed live card with fresh server history after field access revocation", async () => {
     const proposal = {
       proposalId: "p-live-field",
@@ -375,7 +423,7 @@ describe("AiAssistantPage", () => {
     mocks.confirmBatch.mockResolvedValue({items:[{proposalId:proposal.proposalId,status:"FAILED",message:"校验失败"}]});
     const { client } = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "修改记录" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -447,7 +495,7 @@ describe("AiAssistantPage", () => {
     mocks.rejectProposal.mockResolvedValue({ ...proposal, status: "REJECTED" });
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "添加备注" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -495,7 +543,7 @@ describe("AiAssistantPage", () => {
     mocks.confirmBatch.mockResolvedValue({items:[{proposalId:proposal.proposalId,status:"CONFLICTED",message:"数据已变化，未覆盖最新内容"}]});
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "更新客户" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -520,14 +568,17 @@ describe("AiAssistantPage", () => {
     expect(
       screen.getByRole("heading", { name: /AI 助手/ }),
     ).toBeInTheDocument();
-    expect(screen.getByText("需确认后执行")).toBeInTheDocument();
+    // The promise is in the input itself; no header hint or key legend.
+    expect(
+      screen.getByPlaceholderText("输入你的问题，修改前会先请你确认"),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("ai-conversation-canvas")).toBeInTheDocument();
     expect(
-      screen.getByText("Enter 发送 · Shift+Enter 换行"),
-    ).toBeInTheDocument();
+      screen.queryByText("Enter 发送 · Shift+Enter 换行"),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "会话" })).toBeInTheDocument();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "帮我看看" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -557,7 +608,7 @@ describe("AiAssistantPage", () => {
     });
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "帮我看看" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -621,7 +672,7 @@ describe("AiAssistantPage", () => {
     renderPage();
     await waitFor(() => expect(screen.getByText("上一问")).toBeInTheDocument());
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "第一轮" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -633,7 +684,7 @@ describe("AiAssistantPage", () => {
       expect(screen.getByRole("button", { name: "发送" })).toBeInTheDocument(),
     );
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "第二轮提问" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -721,7 +772,7 @@ describe("AiAssistantPage", () => {
       });
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "帮我看看本月商机" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -777,7 +828,7 @@ describe("AiAssistantPage", () => {
     );
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "新问题" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -829,7 +880,7 @@ describe("AiAssistantPage", () => {
     mocks.listMessages.mockResolvedValue({ items: [] });
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "进行中的问题" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -846,7 +897,7 @@ describe("AiAssistantPage", () => {
     );
     releaseA();
     await waitFor(() =>
-      expect(screen.getByText("基于你当前 CRM 权限回答")).toBeInTheDocument(),
+      expect(screen.getByRole("heading", { name: "AI 助手" })).toBeInTheDocument(),
     );
     expect(screen.queryByText("不该出现")).not.toBeInTheDocument();
     expect(mocks.replace).toHaveBeenCalledWith("/workspace/northwind/ai");
@@ -903,7 +954,7 @@ describe("AiAssistantPage", () => {
     );
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "A问" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -943,7 +994,7 @@ describe("AiAssistantPage", () => {
     });
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "有 turn 的失败" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -970,7 +1021,7 @@ describe("AiAssistantPage", () => {
     });
     const fresh = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "还没 ready" } },
     );
     fireEvent.click(fresh.container.querySelector('[aria-label="发送"]')!);
@@ -1012,7 +1063,7 @@ describe("AiAssistantPage", () => {
       expect(screen.getByText("帮我总结客户")).toBeInTheDocument(),
     );
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "帮我总结客户" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1071,7 +1122,7 @@ describe("AiAssistantPage", () => {
     });
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "问跟进" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1161,7 +1212,7 @@ describe("AiAssistantPage", () => {
       expect(screen.getByText("旧回答失败")).toBeInTheDocument(),
     );
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "新问题" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1215,7 +1266,7 @@ describe("AiAssistantPage", () => {
     });
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "进行中" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1259,7 +1310,7 @@ describe("AiAssistantPage", () => {
     const { client } = renderPage();
     await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(1));
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "本周情况" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1329,7 +1380,7 @@ describe("AiAssistantPage", () => {
       ],
     });
     fireEvent.change(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "这次会失败" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1946,6 +1997,78 @@ it("uses published select labels in a change preview", async () => {
     ],
   });
   renderPage();
-  expect(await screen.findByText("初次接触 → 谈判")).toBeInTheDocument();
-  expect(screen.queryByText(/discovery → negotiation/)).not.toBeInTheDocument();
+  // The editable stage shows once, in its control, with the old label beneath.
+  expect(await screen.findByText("原为 初次接触")).toBeInTheDocument();
+  expect(screen.queryByText("初次接触 → 谈判")).not.toBeInTheDocument();
+  expect(screen.queryByText(/discovery|negotiation/)).not.toBeInTheDocument();
+});
+
+describe("settled proposal batches", () => {
+  const batchItem = {
+    operation: "UPDATE_RECORD",
+    proposalId: "p-old",
+    title: "更新阶段",
+    targetSummary: "华东仓储系统升级",
+    validationWarnings: [],
+    changes: [{ label: "阶段", before: "方案报价", after: "商务谈判" }],
+  };
+  function history(item: Record<string, unknown>) {
+    return {
+      items: [
+        {
+          id: "u-old",
+          conversationId: "c-settled",
+          turnId: "t-old",
+          role: "USER",
+          status: "COMPLETED",
+          content: "把阶段改成商务谈判",
+          toolSummary: [],
+          sourceSummary: [],
+          createdAt: "2026-11-25T00:00:00.000Z",
+        },
+        {
+          id: "a-old",
+          conversationId: "c-settled",
+          turnId: "t-old",
+          role: "ASSISTANT",
+          status: "COMPLETED",
+          content: "已生成一项变更建议，待你确认后才会生效：",
+          toolSummary: [],
+          sourceSummary: [],
+          createdAt: "2026-11-25T00:00:01.000Z",
+          batch: { items: [{ ...batchItem, ...item }] },
+        },
+      ],
+    };
+  }
+
+  it("heads an expired batch as not written and offers to ask again", async () => {
+    mocks.conversation = "c-settled";
+    mocks.listMessages.mockResolvedValue(
+      history({ status: "PROPOSED", expiresAt: "2000-01-01T00:00:00.000Z" }),
+    );
+    renderPage();
+    expect(await screen.findByText("建议已过期，没有写入")).toBeInTheDocument();
+    expect(screen.getByText("AI 提议")).toBeInTheDocument();
+    // Nothing to choose on a settled card: its title is text, not a checkbox.
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "按最新数据重新提议" }));
+    await waitFor(() => expect(mocks.streamTurn).toHaveBeenCalled());
+    expect(mocks.streamTurn.mock.calls.at(-1)?.[1]).toMatchObject({
+      conversationId: "c-settled",
+      content: "把阶段改成商务谈判",
+    });
+  });
+
+  it("heads an executed batch with what was written", async () => {
+    mocks.conversation = "c-settled";
+    mocks.listMessages.mockResolvedValue(
+      history({ status: "EXECUTED", expiresAt: "2999-01-01T00:00:00.000Z" }),
+    );
+    renderPage();
+    expect(await screen.findByText("已执行 1 项")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "按最新数据重新提议" }),
+    ).not.toBeInTheDocument();
+  });
 });

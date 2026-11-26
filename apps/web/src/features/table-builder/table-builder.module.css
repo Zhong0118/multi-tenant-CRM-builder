@@ -1,22 +1,27 @@
+/* AI 建表: describe, review the proposed tables, then save drafts. Native
+   inputs and selects are kept (they are the editor's accessible controls)
+   and drawn to the same 32px control grammar as the rest of the product. */
 .builder {
   display: grid;
   gap: 20px;
-  color: var(--ledger-ink);
-  --accent: #175cbd;
+  color: var(--text-primary);
+  font-size: 14px;
+  --accent: var(--color-primary);
 }
 .builder :where(p, ul, h2) {
   margin: 0;
 }
 .builder :where(p, small) {
-  color: var(--ink-secondary);
+  color: var(--text-secondary);
 }
 .builder h2 {
-  font-size: 17px;
-  line-height: 1.5;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
 }
 .builder code {
   font: 12px var(--font-mono);
-  color: var(--ink-secondary);
+  color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
 .canvas {
@@ -31,50 +36,201 @@
 .section,
 .side,
 .footer {
-  border: 1px solid var(--rule);
-  background: var(--paper);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
   border-radius: var(--radius-reading);
   padding: 18px 20px;
 }
 .composer {
   display: grid;
-  gap: 12px;
-  border-top: 3px solid var(--accent);
+  gap: 10px;
 }
+/* Before anything is generated: one large box in the middle of the page,
+   with three businesses to start from. */
+.composer[data-stage="input"] {
+  width: min(100%, 720px);
+  margin: 6vh auto 0;
+  padding: 16px;
+  gap: 12px;
+}
+.composer[data-stage="input"] textarea {
+  font-size: 15px;
+  line-height: 24px;
+}
+.composer[data-stage="input"] .actions {
+  justify-content: space-between;
+}
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.examples button {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.examples button:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* The way out to the manual designer: a quiet secondary button. */
+.manualLink {
+  display: inline-flex;
+  align-items: center;
+  height: var(--control-height);
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.manualLink:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+}
+
+/* Labels sit above their control, small and secondary. */
 .builder :where(label) {
   display: grid;
-  gap: 5px;
-  font-size: 13px;
-  font-weight: 550;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
 }
 .builder :is(input:not([type="checkbox"]), select, textarea) {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--rule);
-  border-radius: 5px;
+  min-height: var(--control-height, 32px);
+  padding: 4px 11px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
   font: inherit;
   font-size: 14px;
   font-weight: 400;
-  padding: 7px 9px;
-  color: var(--ledger-ink);
-  background: var(--paper);
+  line-height: 22px;
+}
+.builder select {
+  padding-right: 30px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 10px center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+.builder input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+.builder :is(input:not([type="checkbox"]), select, textarea):hover {
+  border-color: var(--border-strong);
+}
+.builder :is(input:not([type="checkbox"]), select, textarea):focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
+}
+.builder :is(input, select, textarea):disabled {
+  background-color: var(--bg-surface-subtle);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
 }
 .builder textarea {
   resize: vertical;
-  min-height: 50px;
+  min-height: 54px;
+  padding-block: 6px;
 }
-.builder :is(input, select, textarea, summary, button, a):focus-visible {
+.builder :is(summary, button, a, input[type="checkbox"]):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 .builder summary {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  list-style: none;
   cursor: pointer;
-  font-weight: 550;
 }
+.builder summary::-webkit-details-marker {
+  display: none;
+}
+.builder summary::before {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+.builder details[open] > summary::before {
+  transform: rotate(45deg);
+}
+.builder summary:hover {
+  color: var(--text-primary);
+}
+details.section {
+  display: block;
+  padding-block: 14px;
+}
+details.section ul {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* While the model works: one quiet line above the description. */
+.generating {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--color-ai-border);
+  border-radius: var(--radius-reading);
+  background: var(--color-ai-soft);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.generating > span[role="status"] {
+  flex: 1;
+  min-width: 0;
+}
+.aiMark {
+  flex: none;
+  color: var(--color-ai);
+}
+
 .grid {
   display: grid;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
-  gap: 18px;
+  gap: 16px;
   align-items: start;
 }
 .side {
@@ -83,20 +239,24 @@
   padding: 12px;
 }
 .side h2 {
-  font-size: 14px;
-  padding: 6px 8px 12px;
+  font-size: 13px;
+  padding: 4px 8px 10px;
 }
 .side h2 span,
 .sectionHead > span {
   font-size: 12px;
-  color: var(--ink-secondary);
+  font-weight: 400;
+  color: var(--text-tertiary);
 }
 .tab {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px;
-  border-radius: 5px;
+  padding: 2px 4px;
+  border-radius: var(--radius-control);
+}
+.tab:hover {
+  background: var(--bg-hover);
 }
 .tab > button:first-child {
   display: flex;
@@ -104,7 +264,7 @@
   min-width: 0;
   align-items: center;
   gap: 10px;
-  padding: 7px;
+  padding: 7px 6px;
   text-align: left;
   border: 0;
   color: inherit;
@@ -116,9 +276,17 @@
   display: block;
   overflow-wrap: anywhere;
 }
+.tab strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.tab small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
 .tab[data-active="true"] {
-  background: #edf4ff;
-  color: #174e9c;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 .detail,
 .section {
@@ -140,30 +308,77 @@
 .actions {
   justify-content: flex-end;
 }
-.two,
-.fieldRow {
+.two {
   display: grid;
   grid-template-columns: 3fr 2fr;
   gap: 12px;
 }
+
+/* The AI's reason for a table: one folded line; opened, the text sits on
+   the AI surface, not on the grey box system hints use. */
+.reason > p {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-ai-border);
+  border-radius: var(--radius-control);
+  background: var(--color-ai-soft);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Fields: one row each — name, key, type, required, remove — under a
+   single header, with the reason and options beneath. */
+.fieldHead,
+.fieldRow {
+  display: grid;
+  grid-template-columns:
+    minmax(120px, 1.4fr) minmax(120px, 1.2fr) minmax(100px, 1fr)
+    auto 32px;
+  gap: 10px;
+  align-items: center;
+}
+.fieldHead {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-hairline);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
 .field {
   display: grid;
   gap: 6px;
-  border-top: 1px solid var(--rule);
-  padding-top: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-hairline);
 }
-.fieldRow {
-  grid-template-columns: minmax(80px, 2fr) minmax(90px, 1fr) auto auto;
-  align-items: end;
+.fieldRow > label {
+  display: block;
 }
-.fieldRow > button,
-.check {
-  margin-bottom: 2px;
+.cellLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .check {
   display: flex;
+  gap: 6px;
   align-items: center;
   height: 32px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.builder .fieldRow .check {
+  display: flex;
+}
+.fieldReason {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
 }
 .section > button {
   justify-self: start;
@@ -172,7 +387,7 @@
 .columns {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 .options > div,
@@ -180,29 +395,118 @@
   display: flex;
   gap: 4px;
   align-items: center;
-  padding: 3px 5px;
-  background: var(--surface-subtle, #f5f7fa);
-  border-radius: 4px;
-}
-.options > div {
-  flex-wrap: wrap;
-}
-.options input {
-  max-width: 150px;
-}
-.issues {
-  padding-inline-start: 18px;
+  padding: 2px 4px 2px 8px;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-control);
   font-size: 13px;
 }
-.issues [data-blocking="true"],
-.issue {
-  color: #a52626;
+.options > div {
+  display: grid;
+  flex-basis: 100%;
+  grid-template-columns: minmax(120px, 180px) auto minmax(0, 1fr) auto;
+  gap: 8px;
 }
+.builder .options > div input {
+  max-width: none;
+}
+.options > div code {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+.builder .options input {
+  max-width: 150px;
+  min-height: 28px;
+  padding-block: 2px;
+}
+.options small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+/* Employee access per table: the choice, the recommendation, then what
+   changes, quietly. */
+.preset {
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-hairline);
+}
+.preset select {
+  max-width: 420px;
+}
+.preset > button {
+  justify-self: start;
+}
+.presetsTitle,
+.presetLabel {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+.presetLabel label {
+  display: inline;
+}
+.info {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  cursor: help;
+}
+.info:hover {
+  color: var(--text-secondary);
+}
+/* What changes once applied: the parts that open up carry the accent. */
+.effect {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.effect [data-changed] {
+  color: var(--color-primary);
+}
+
+/* Problems: blocking ones in red, hints quiet. */
+.issues {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 20px;
+}
+.issues li {
+  padding: 6px 10px;
+  border-radius: var(--radius-control);
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+}
+.issues [data-blocking="true"] {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.issue {
+  color: var(--color-danger);
+}
+
+/* The sticky commit bar. */
 .footer {
   position: sticky;
   bottom: 0;
   z-index: 2;
-  box-shadow: 0 -4px 12px #1939530a;
+  padding-block: 12px;
+  box-shadow: 0 -4px 12px rgb(24 24 27 / 4%);
+}
+.footer > .row {
+  margin-left: auto;
 }
 .footer details[open] {
   width: 100%;
@@ -210,7 +514,26 @@
   overflow: auto;
 }
 .footer ul {
-  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-left: 4px;
+  font-size: 13px;
+  list-style: none;
+}
+/* Each item reads as one line; why, and what to do instead, on opening. */
+.footer li summary {
+  color: var(--text-primary);
+}
+.footer li details > :not(summary) {
+  margin: 4px 0 0 14px;
+}
+.footer .row > span[role="status"] {
+  color: var(--color-danger);
+  font-size: 13px;
+}
+.footer .row > span[role="status"]:empty {
+  display: none;
 }
 .diff {
   width: 100%;
@@ -219,17 +542,22 @@
 }
 .diff th,
 .diff td {
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--border-hairline);
   text-align: left;
   padding: 7px 5px;
   overflow-wrap: anywhere;
+}
+.diff th {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
 }
 .objects {
   list-style: none;
   padding: 0;
 }
 .objects li {
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--border-hairline);
   padding: 12px 0;
 }
 .objects small {
@@ -256,13 +584,14 @@
     transition:
       transform 0.14s,
       border-color 0.14s,
-      background-color 0.14s;
-  }
-  .builder button:enabled:hover {
-    transform: translateY(-1px);
+      background-color 0.14s,
+      box-shadow 0.14s;
   }
   .builder button:enabled:active {
     transform: scale(0.985);
+  }
+  .generating .aiMark {
+    animation: pulse 1.4s ease-in-out infinite;
   }
   @keyframes arrive {
     from {
@@ -272,6 +601,11 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.45;
     }
   }
 }
@@ -290,11 +624,59 @@
   .footer {
     position: static;
   }
-  .fieldRow,
   .two {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  /* Narrow: name and key share a line, type and required below, and the
+     labels come back since the header row is gone. */
+  .fieldHead {
+    display: none;
+  }
+  .fieldRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+  }
+  .fieldRow > label {
+    display: grid;
+  }
+  .cellLabel {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
   }
   .fieldRow button {
     justify-self: end;
   }
+  .options > div {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .options > div :is(code, small) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* A problem with the table name or code, under that input. */
+.inputWithIssue {
+  display: grid;
+  /* A message under one input must not stretch its neighbour. */
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
+.inputIssue {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+.inputIssue[data-blocking="true"] {
+  color: var(--color-danger);
+}
+.section input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+.blockingCount {
+  color: var(--color-danger);
 }

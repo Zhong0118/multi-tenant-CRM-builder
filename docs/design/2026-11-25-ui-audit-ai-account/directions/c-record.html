@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>C 文档流 · 商机详情与 AI</title>
+<meta name="viewport" content="width=1440">
+<style>
+@font-face{font-family:"Inter";src:url("../../2026-10-20-ui-direction/fonts/inter.woff2") format("woff2");font-weight:100 900;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.ic{flex:none;display:inline-block;vertical-align:middle}
+
+:root{--paper:#fbfaf8;--side:#f6f5f2;--line:#e9e7e2;--hair:#efede9;--t1:#191919;--t2:#5f5e5b;--t3:#7a7975;--hover:#efeeea;--ai:#6e56cf;--ai-soft:#f3f0fd;--ai-line:#e0d9f8;--new:#e7f5ec;--new-t:#1d7a46;--old:#fbecec;--old-t:#b4453c;--yellow:#fbf3db;--yellow-t:#8a6a12}
+body{font:14px/1.6 Inter,"PingFang SC","Noto Sans SC",sans-serif;color:var(--t1);background:var(--paper);width:1440px;height:900px;overflow:hidden;font-feature-settings:"tnum" 1}
+.serif{font-family:"Songti SC","Noto Serif SC","STSong",serif}
+.app{display:grid;grid-template-columns:240px 1fr;height:900px}
+.side{background:var(--side);border-right:1px solid var(--line);padding:10px 8px;display:flex;flex-direction:column}
+.ws{display:flex;align-items:center;gap:8px;padding:6px 8px}
+.ws .lg{width:22px;height:22px;border-radius:5px;background:var(--t1);color:var(--paper);display:grid;place-items:center;font-size:12px;font-weight:600}
+.ws b{font-weight:600;font-size:13.5px;flex:1}
+.it{display:flex;align-items:center;gap:8px;height:28px;padding:0 8px;border-radius:5px;color:var(--t2);font-size:13.5px}
+.it .ic{color:var(--t3)}
+.it.on{background:var(--hover);color:var(--t1);font-weight:500}
+.it.on .ic{color:var(--t1)}
+.it.sub{padding-left:30px;font-size:13px}
+.it .ai{color:var(--ai)}
+.side h6{font-size:12px;font-weight:500;color:var(--t3);padding:16px 8px 4px}
+.main{position:relative;overflow:hidden}
+.top{height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--t2);font-size:13.5px}
+.top .cr{display:flex;align-items:center;gap:4px}
+.top .cr .ic{color:var(--t3)}
+.spacer{flex:1}
+.tbtn{height:28px;display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:5px;color:var(--t2)}
+.doc{width:720px;margin:0 auto;padding-top:30px}
+.pic{width:52px;height:52px;border-radius:12px;background:#efe9df;color:#8a6a3a;display:grid;place-items:center;margin-bottom:12px}
+.doc h1{font-size:36px;font-weight:700;line-height:1.25;letter-spacing:.01em;margin-bottom:14px}
+.pl{display:grid;grid-template-columns:150px 1fr;row-gap:1px;margin-bottom:12px}
+.pl .k{display:flex;align-items:center;gap:8px;height:32px;color:var(--t3);font-size:13.5px}
+.pl .v{display:flex;align-items:center;gap:8px;height:32px;padding:0 6px;border-radius:4px}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:4px;font-size:13px}
+.pill.y{background:var(--yellow);color:var(--yellow-t)}
+.u{text-decoration:underline;text-decoration-color:#cfcdc7;text-underline-offset:3px}
+.mini{width:20px;height:20px;border-radius:50%;background:#e6e1d8;color:#5f5e5b;display:grid;place-items:center;font-size:11px;font-weight:600}
+.hr{height:1px;background:var(--line);margin:14px 0}
+.callout{display:flex;gap:10px;background:var(--ai-soft);border-radius:6px;padding:12px 14px;margin-bottom:12px}
+.callout .ic{color:var(--ai);margin-top:3px}
+.callout p{line-height:1.7}
+.callout small{display:block;color:var(--t3);font-size:12px;margin-top:2px}
+.sug{border:1px solid var(--ai-line);border-radius:8px;background:#fff;margin-bottom:26px;overflow:hidden}
+.sug .h{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--hair);color:var(--t2);font-size:13px}
+.sug .h b{color:var(--ai);font-weight:600}
+.dl{display:grid;grid-template-columns:120px 1fr;padding:7px 14px;align-items:center}
+.dl span{color:var(--t3);font-size:13.5px}
+.del{background:var(--old);color:var(--old-t);text-decoration:line-through;padding:1px 5px;border-radius:3px;margin-right:6px}
+.add{background:var(--new);color:var(--new-t);padding:1px 5px;border-radius:3px;font-weight:500}
+.sug .f{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--hair);background:#fdfcfb}
+.b{height:28px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:5px;border:1px solid var(--line);background:#fff;color:var(--t1);font-size:13px}
+.b.k{background:var(--t1);border-color:var(--t1);color:#fff;font-weight:500}
+.b.g{border-color:transparent;color:var(--t2);background:none}
+.sug .f small{margin-left:auto;color:var(--t3);font-size:12px}
+.doc h2{font-size:22px;font-weight:700;display:flex;align-items:center;margin-bottom:8px}
+.doc h2 .b{margin-left:auto;font-family:Inter,"PingFang SC",sans-serif;font-weight:400}
+.entry{padding:8px 0 10px}
+.entry .m{color:var(--t3);font-size:12.5px;display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.entry p{line-height:1.75}
+.bar{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:600px;height:50px;border-radius:25px;background:#fff;border:1px solid var(--line);box-shadow:0 10px 30px rgba(25,25,25,.10),0 2px 6px rgba(25,25,25,.05);display:flex;align-items:center;gap:10px;padding:0 8px 0 18px;color:var(--t3)}
+.bar .ic.ai{color:var(--ai)}
+.bar kbd{margin-left:auto;font:12px Inter;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--t3)}
+.bar .go{width:34px;height:34px;border-radius:50%;background:var(--t1);color:#fff;display:grid;place-items:center}
+.bar .chip{height:26px;display:inline-flex;align-items:center;padding:0 10px;border-radius:13px;background:var(--side);color:var(--t2);font-size:12.5px}
+/* settings modal */
+.dim{position:absolute;inset:0;background:rgba(25,25,25,.42);z-index:5}
+.modal{position:absolute;left:200px;top:96px;width:1040px;height:708px;background:var(--paper);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.25);z-index:6;display:grid;grid-template-columns:232px 1fr;overflow:hidden}
+.mside{background:var(--side);padding:14px 8px;border-right:1px solid var(--line)}
+.mside h6{font-size:12px;font-weight:500;color:var(--t3);padding:10px 8px 4px}
+.mwho{display:flex;align-items:center;gap:8px;padding:4px 8px 8px}
+.mwho .mini{width:24px;height:24px;font-size:12px}
+.mwho small{display:block;color:var(--t3);font-size:12px;line-height:1.2}
+.mbody{padding:34px 52px;overflow:hidden}
+.mbody h1{font-size:20px;font-weight:600;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:22px}
+.mbody h3{font-size:13px;font-weight:500;color:var(--t3);margin-bottom:4px}
+.srow{display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--hair)}
+.srow .l{flex:1}
+.srow .l b{font-weight:500;display:flex;align-items:center;gap:8px}
+.srow .l small{display:block;color:var(--t3);font-size:12.5px}
+.ok{font-size:12px;color:var(--new-t);background:var(--new);border-radius:3px;padding:0 6px;font-weight:500}
+.sw{width:34px;height:20px;border-radius:10px;background:var(--t1);position:relative}
+.sw::after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sec{margin-bottom:26px}
+table{width:100%;border-collapse:collapse}
+th{font-weight:400;color:var(--t3);font-size:12.5px;text-align:left;padding:6px 0;border-bottom:1px solid var(--line)}
+td{padding:10px 0;border-bottom:1px solid var(--hair);font-size:13.5px}
+td .ic{color:var(--t3);margin-right:8px}
+td.r{text-align:right}
+.cur{font-size:12px;color:var(--t2);background:var(--hover);border-radius:3px;padding:0 6px;margin-left:6px}
+.red{color:#b4453c;border-color:#efd2cf}
+
+</style>
+</head>
+<body>
+<div class="app"><aside class="side">
+  <div class="ws"><span class="lg">星</span><b>星云科技演示公司</b><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m6 9l6 6l6-6"/></svg></div>
+  <div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="m21 21l-4.34-4.34"/><circle cx="11" cy="11" r="8"/></g></svg><span>搜索</span></div>
+  <div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></g></svg><span>我的工作台</span></div><div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11"/></g></svg><span>消息</span></div><div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M8 2v3m8-3v3"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 15l2 2l4-4"/></g></svg><span>跟进待办</span></div><div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 5h8m-8 7h8m-8 7h8M3 17l2 2l4-4M3 7l2 2l4-4"/></svg><span>任务与日报</span></div><div class="it"><svg class="ic ai" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594zM20 2v4m2-2h-4"/><circle cx="4" cy="20" r="2"/></g></svg><span>AI 助手</span></div>
+  <h6>业务表</h6>
+  <div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></g></svg><span>销售线索</span></div><div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></g></svg><span>客户</span></div><div class="it on"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="m11 17l2 2a1 1 0 1 0 3-3"/><path d="m14 14l2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3l1 11h-2M3 3L2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8"/></g></svg><span>跟单商机</span></div><div class="it sub on" style="background:none;font-weight:400;color:var(--t1)"><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8"/></g></svg><span>华东仓储系统升级</span></div><div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2zM7 11h10M7 15h6M7 7h8"/></svg><span>跟进活动</span></div><div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8"/></g></svg><span>合同</span></div><div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M12 17V7m4 1h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/><path d="M4 3a1 1 0 0 1 1-1a1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1a1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2a1 1 0 0 1-1-1z"/></g></svg><span>回款</span></div>
+  <h6>我的视图</h6>
+  <div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M22 3H2l8 9.46V19l4 2v-8.54z"/></svg><span>本周要跟进的商机</span></div>
+  <div class="it"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M22 3H2l8 9.46V19l4 2v-8.54z"/></svg><span>华东区客户</span></div>
+</aside><main class="main">
+  <div class="top"><div class="cr"><svg class="ic " width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="m11 17l2 2a1 1 0 1 0 3-3"/><path d="m14 14l2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3l1 11h-2M3 3L2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8"/></g></svg><span>跟单商机</span><span style="color:var(--t3)">/</span><span style="color:var(--t1)">华东仓储系统升级</span></div><span class="spacer"></span><span style="color:var(--t3);font-size:12.5px">今天 15:24 更新</span><span class="tbtn"><svg class="ic " width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4M2 6h4m-4 4h4m-4 4h4m-4 4h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></g></svg>整理沟通</span><span class="tbtn"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></span></div>
+  <article class="doc">
+    <div class="pic"><svg class="ic " width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"><path d="m11 17l2 2a1 1 0 1 0 3-3"/><path d="m14 14l2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3l1 11h-2M3 3L2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8"/></g></svg></div>
+    <h1 class="serif">华东仓储系统升级</h1>
+    <div class="pl"><div class="k"><svg class="ic " width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></g></svg>客户</div><div class="v"><span class="u">华东仓储（上海）有限公司</span></div><div class="k"><svg class="ic " width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></g></svg>联系人</div><div class="v"><span class="mini">王</span>王建国 · 采购总监</div><div class="k"><svg class="ic " width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="12" r="10"/></g></svg>商机阶段</div><div class="v"><span class="pill y">方案报价</span></div><div class="k"><svg class="ic " width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M12 17V7m4 1h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/><path d="M4 3a1 1 0 0 1 1-1a1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1a1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2a1 1 0 0 1-1-1z"/></g></svg>预计金额</div><div class="v">¥128,000</div><div class="k"><svg class="ic " width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M8 2v3m8-3v3"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></g></svg>预计成交日</div><div class="v">2026-12-15</div><div class="k"><svg class="ic " width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3.128a4 4 0 0 1 0 7.744M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></g></svg>负责人</div><div class="v"><span class="mini">孙</span>孙悦</div><div class="k"><svg class="ic " width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20M2 12h20"/></g></svg>来源</div><div class="v">官网咨询</div></div>
+    <div class="callout"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594zM20 2v4m2-2h-4"/><circle cx="4" cy="20" r="2"/></g></svg><div><p><b>AI 摘要</b>　王总认可方案，客户预算 9 万已批，和当前报价 ¥128,000 还有差距。约定下周三上午到公司现场演示，演示后可以签合同。</p><small>根据 3 条跟进生成 · 刚刚</small></div></div>
+    <div class="sug">
+      <div class="h"><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m21.64 3.64l-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72M14 7l3 3M5 6v4m14 4v4M10 2v2M7 8H3m18 8h-4M11 3H9"/></svg><b>AI 建议修改</b><span>· 依据 今天 15:20 电话 ·「约定下周三上午来公司做现场演示」</span></div>
+      <div class="dl"><span>商机阶段</span><div><span class="del">方案报价</span><span class="add">商务谈判</span></div></div><div class="dl"><span>新增跟进</span><div><span class="add">12月2日 周三 09:00 · 现场演示</span></div></div>
+      <div class="f"><span class="b k"><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"/></svg>接受全部</span><span class="b">逐项查看</span><span class="b g">忽略</span><small>只改你有权限编辑的字段</small></div>
+    </div>
+    <h2 class="serif">跟进记录<span class="b g"><svg class="ic " width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M5 12h14m-7-7v14"/></svg>新增</span></h2>
+    <div class="entry"><div class="m"><svg class="ic " width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233a14 14 0 0 0 6.392 6.384"/></svg>电话 · 今天 15:20 · 孙悦</div><p>王总对方案基本认可，预算 9 万已经批了。约定下周三上午来公司做现场演示，演示后可以签合同。</p></div><div class="entry"><div class="m"><svg class="ic " width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2zM7 11h10M7 15h6M7 7h8"/></svg>微信 · 11月18日 10:05 · 孙悦</div><p>发送第二版报价单（含三年维保），客户回复下周内部评审。</p></div><div class="entry"><div class="m"><svg class="ic " width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></g></svg>拜访 · 11月12日 14:00 · 孙悦</div><p>现场调研三号仓，确认 WMS 需对接现有 ERP，客户关心上线周期。</p></div>
+  </article>
+  <div class="bar"><svg class="ic ai" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594zM20 2v4m2-2h-4"/><circle cx="4" cy="20" r="2"/></g></svg><span>问 AI，或输入 / 使用命令</span><span class="chip">总结这个商机</span><span class="chip">帮我写微信</span><kbd>⌘J</kbd><span class="go"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7l7 7l-7 7"/></svg></span></div>
+</main></div>
+</body>
+</html>

@@ -1,8 +1,10 @@
 "use client";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { useEffect, useRef, useState } from "react";
-import { Button, Modal, Space } from "antd";
+import { Button, Modal, Segmented, Space } from "antd";
 import type { DailyReportSections } from "@crm/contracts";
 import { draftError, reportDraft } from "@/features/ai/sales-draft-api";
+import { AiBadge } from "@/components/ai/ai-badge";
 import { GenerationWait } from "@/features/ai/generation-wait";
 import styles from "./report-draft.module.css";
 type Section = keyof DailyReportSections;
@@ -88,6 +90,7 @@ export function ReportDraft({
     <div>
       <Space wrap>
         <Button
+          icon={<AiSparkIcon aria-hidden />}
           onClick={generate}
           aria-label={busy ? "生成中" : undefined}
           loading={busy}
@@ -100,10 +103,14 @@ export function ReportDraft({
           <Button onClick={() => request.current?.abort()}>取消生成</Button>
         )}
       </Space>
-      {!preview && message && <p role="status">{message}</p>}
+      {!preview && message && (
+        <p role="status" className={styles.note}>
+          {message}
+        </p>
+      )}
       <Modal
         title="日报草稿预览"
-        width={800}
+        width={640}
         open={Boolean(preview)}
         onCancel={() => setPreview(undefined)}
         onOk={apply}
@@ -112,31 +119,25 @@ export function ReportDraft({
         okButtonProps={{ disabled: disabled || !keys.some((k) => modes[k]) }}
       >
         {preview && (
-          <>
-            <p>
-              AI 生成 ·{" "}
+          <div className={styles.preview}>
+            <p className={styles.meta}>
+              <AiBadge />
               {new Date(preview.generatedAt).toLocaleString("zh-CN", {
                 timeZone: preview.timeZone,
               })}
             </p>
-            <table className={styles.compare}>
-              <thead>
-                <tr>
-                  <th>采用 / 字段</th>
-                  <th>已有内容</th>
-                  <th>AI 草稿</th>
-                  <th>处理</th>
-                </tr>
-              </thead>
-              <tbody>
-                {keys.map((k) => (
-                  <tr key={k}>
-                    <th scope="row">
+            {/* Each drafted section: adopt it, see the draft, and see what the
+                report already says there; append or replace when both exist. */}
+            <ul className={styles.sections}>
+              {keys
+                .filter((k) => preview.sections[k])
+                .map((k) => (
+                  <li key={k} className={styles.section}>
+                    <div className={styles.sectionHead}>
                       <label>
                         <input
                           type="checkbox"
                           aria-label={"采用" + names[k]}
-                          disabled={!preview.sections[k]}
                           checked={Boolean(modes[k])}
                           onChange={(e) =>
                             setModes({
@@ -147,39 +148,38 @@ export function ReportDraft({
                         />
                         {names[k]}
                       </label>
-                    </th>
-                    <td>{current[k] || "空"}</td>
-                    <td>{preview.sections[k] || "无依据，留空"}</td>
-                    <td>
                       {current[k] && modes[k] ? (
-                        <select
+                        <Segmented
+                          size="small"
                           aria-label={names[k] + "处理方式"}
                           value={modes[k]}
-                          onChange={(e) =>
+                          onChange={(value) =>
                             setModes({
                               ...modes,
-                              [k]:
-                                e.target.value === "replace"
-                                  ? "replace"
-                                  : "append",
+                              [k]: value === "replace" ? "replace" : "append",
                             })
                           }
-                        >
-                          <option value="append">追加</option>
-                          <option value="replace">替换</option>
-                        </select>
+                          options={[
+                            { value: "append", label: "追加" },
+                            { value: "replace", label: "替换" },
+                          ]}
+                        />
                       ) : modes[k] ? (
-                        "填入"
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
+                        <span className={styles.mode}>填入</span>
+                      ) : null}
+                    </div>
+                    <p className={styles.draft}>{preview.sections[k]}</p>
+                    {current[k] ? (
+                      <p className={styles.current}>
+                        <span>已有内容</span>
+                        {current[k]}
+                      </p>
+                    ) : null}
+                  </li>
                 ))}
-              </tbody>
-            </table>
+            </ul>
             {message && <p role="status">{message}</p>}
-          </>
+          </div>
         )}
       </Modal>
     </div>

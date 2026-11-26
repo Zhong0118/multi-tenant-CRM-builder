@@ -1,36 +1,91 @@
-.compare {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
+/* 日报草稿: one row per drafted section — adopt, the draft, what the report
+   already says — instead of a four-column table; empty sections are one line. */
+.note {
+  margin: 6px 0 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
 }
-.compare th,
-.compare td {
-  text-align: start;
-  vertical-align: top;
-  border-bottom: 1px solid #e2e6ec;
-  padding: 10px 6px;
+.preview {
+  display: grid;
+  gap: 10px;
+}
+.preview > p {
+  margin: 0;
+}
+.meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.sections {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  list-style: none;
+}
+.section {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-hairline);
+  animation: enter 0.15s ease;
+}
+.section:first-child {
+  border-top: 0;
+}
+.sectionHead {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+}
+.sectionHead label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.sectionHead input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-primary);
+}
+.mode {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.draft {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 22px;
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
-.compare th:first-child {
-  width: 22%;
+.current {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-control);
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
-.compare th:last-child {
-  width: 16%;
-}
-.compare th label {
-  display: flex;
-  gap: 4px;
-}
-.compare thead {
-  background: #f5f7fa;
-}
-.compare select {
-  max-width: 100%;
-  font: inherit;
-}
-.compare tbody tr {
-  animation: enter 0.15s ease;
+.current span {
+  display: block;
+  color: var(--text-tertiary);
+  font-size: 12px;
 }
 @keyframes enter {
   from {
@@ -41,7 +96,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .compare tbody tr {
+  .section {
     animation: none;
   }
 }

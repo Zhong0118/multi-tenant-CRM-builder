@@ -11,7 +11,6 @@ import {
   FileSearchOutlined,
   HomeOutlined,
   LineChartOutlined,
-  RobotOutlined,
   ScheduleOutlined,
   SettingOutlined,
   SwapOutlined,
@@ -19,6 +18,8 @@ import {
   TeamOutlined,
 } from "@ant-design/icons";
 import type { ReactNode } from "react";
+
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 
 const ICONS: Record<string, ReactNode> = {
   overview: <DashboardOutlined />,
@@ -30,7 +31,7 @@ const ICONS: Record<string, ReactNode> = {
   logs: <FileSearchOutlined />,
   settings: <SettingOutlined />,
   home: <HomeOutlined />,
-  ai: <RobotOutlined />,
+  ai: <AiSparkIcon />,
   stats: <BarChartOutlined />,
   team: <LineChartOutlined />,
   members: <TeamOutlined />,

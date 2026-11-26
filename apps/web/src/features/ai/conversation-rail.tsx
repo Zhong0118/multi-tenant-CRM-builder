@@ -154,7 +154,6 @@ export function ConversationRail({
         {hideBrand ? null : <p className={styles.railBrand}>AI 会话</p>}
         <Button
           className={styles.railNew}
-          type="primary"
           icon={<PlusOutlined aria-hidden />}
           data-rail-new
           onClick={onNew}
@@ -189,7 +188,7 @@ export function ConversationRail({
             allowClear
             size="small"
             aria-label="搜索会话"
-            placeholder="搜索已加载的会话"
+            placeholder="搜索会话"
             prefix={<SearchOutlined aria-hidden />}
             className={styles.railSearch}
             value={filter}
@@ -234,12 +233,6 @@ export function ConversationRail({
                             {conversationTime(item.lastMessageAt)}
                           </time>
                         </span>
-                        {item.latestUserPreview &&
-                        item.latestUserPreview !== item.title ? (
-                          <span className={styles.sessionPreview}>
-                            {item.latestUserPreview}
-                          </span>
-                        ) : null}
                       </button>
                       <Dropdown
                         trigger={["click"]}

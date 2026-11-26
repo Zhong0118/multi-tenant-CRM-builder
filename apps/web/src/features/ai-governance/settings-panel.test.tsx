@@ -56,6 +56,8 @@ describe("company AI settings", () => {
   it("lists all five capabilities with contact instructions for excluded features", async () => {
     show();
     await screen.findByText("基础版");
+    // The groups fold behind one line until opened.
+    fireEvent.click(screen.getByText(/包含 \d+ 项功能/));
     expect(screen.getAllByText("即将上线")).toHaveLength(3);
     for (const name of [
       "对话助手",

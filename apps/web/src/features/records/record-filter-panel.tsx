@@ -6,7 +6,6 @@ import {
   FilterOutlined,
   PlusOutlined,
   UndoOutlined,
-  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { Button, Popover, Select } from "antd";
 import {
@@ -31,6 +30,8 @@ import {
   selectOptions,
   type RuntimeObjectSchema,
 } from "@/features/objects/object-types";
+import { AiBadge } from "@/components/ai/ai-badge";
+import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
 import { usePublishEditorDraft } from "@/features/ai/assistant-filter-draft";
 import { PreviewChoices } from "@/components/forms/preview-choices";
 import type { DynamicFieldMember } from "./dynamic-field";
@@ -275,7 +276,6 @@ function FilterEditor(props: RecordFilterPanelProps) {
   const [error, setError] = useState("");
   const [choices, setChoices] = useState<PreviewChoice<FilterRule>[]>([]);
   const [before, setBefore] = useState<FilterRule>();
-  const [edited, setEdited] = useState(false);
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
   const ready = isReady(draft, fields);
@@ -294,6 +294,7 @@ function FilterEditor(props: RecordFilterPanelProps) {
     remaining.splice(index, 1);
     return false;
   });
+  const allAdded = added.length > 0 && added.every(Boolean);
   function cancelRequest() {
     request.current?.abort();
     request.current = null;
@@ -304,13 +305,11 @@ function FilterEditor(props: RecordFilterPanelProps) {
   function edit(next: FilterRule) {
     cancelRequest();
     setDraft(next);
-    setEdited(true);
   }
   function showRule(next: FilterRule) {
     setBefore(draft);
     setDraft(next);
     setChoices([]);
-    setEdited(false);
   }
   async function generate() {
     cancelRequest();
@@ -373,11 +372,13 @@ function FilterEditor(props: RecordFilterPanelProps) {
       }}
     >
       <FeatureGate feature="filter"><div className={styles.prompt}>
-        <label htmlFor="filter-preview-text">用一句话描述条件</label>
+        <label htmlFor="filter-preview-text" className={styles.srOnly}>
+          用一句话描述条件
+        </label>
         <div className={styles.promptLine}>
           <input
             id="filter-preview-text"
-            placeholder="例如：我负责的、预计金额超过 10 万的客户"
+            placeholder="用一句话描述，例如：我负责的、金额超过 10 万的客户"
             maxLength={2000}
             value={text}
             disabled={nested}
@@ -397,7 +398,7 @@ function FilterEditor(props: RecordFilterPanelProps) {
             }}
           />
           <Button
-            icon={<ThunderboltOutlined aria-hidden />}
+            icon={<AiSparkIcon aria-hidden />}
             loading={pending}
             disabled={nested || !ready || !text.trim()}
             onClick={() => void generate()}
@@ -423,7 +424,11 @@ function FilterEditor(props: RecordFilterPanelProps) {
       </div>
       </FeatureGate>
       <div className={styles.header}>
-        <strong>筛选条件</strong>
+        <strong>
+          筛选条件
+          {/* Every condition came from AI: one mark for the lot. */}
+          {allAdded && <AiBadge>AI 生成</AiBadge>}
+        </strong>
         <select
           aria-label="匹配方式"
           value={draft.match}
@@ -443,8 +448,15 @@ function FilterEditor(props: RecordFilterPanelProps) {
               : undefined;
           const label = `条件 ${index + 1}`;
           return (
-            <div className={styles.rowWrap} key={index}>
-              {added[index] && <span className={styles.newTag}>新</span>}
+            <div
+              className={styles.rowWrap}
+              key={index}
+              data-ai={(added[index] && !allAdded) || undefined}
+            >
+              {/* Some conditions came from AI: a violet rule beside each. */}
+              {added[index] && !allAdded && (
+                <span className={styles.srOnly}>AI 新增</span>
+              )}
               <div data-term={index} className={styles.row}>
                 {"conditions" in term || !field ? (
                   <span data-primary tabIndex={-1} className={styles.group}>
@@ -531,25 +543,21 @@ function FilterEditor(props: RecordFilterPanelProps) {
           ))}
         </div>
       )}
-      {before && (
-        <div className={styles.previewStatus}>
-          <span role="status">{edited ? "已编辑" : "已生成"} · 尚未应用</span>
+      <div className={styles.footer}>
+        {before && (
           <Button
             type="text"
-            size="small"
+            className={styles.undo}
             icon={<UndoOutlined aria-hidden />}
             onClick={() => {
               cancelRequest();
               setDraft(before);
               setBefore(undefined);
-              setEdited(false);
             }}
           >
             撤销生成
           </Button>
-        </div>
-      )}
-      <div className={styles.footer}>
+        )}
         <Button autoInsertSpace={false} onClick={() => onEditIndex(null)}>
           取消
         </Button>

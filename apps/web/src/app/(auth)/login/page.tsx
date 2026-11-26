@@ -12,7 +12,11 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ returnTo?: string | string[] }>;
+  searchParams: Promise<{
+    returnTo?: string | string[];
+    reset?: string | string[];
+    reason?: string | string[];
+  }>;
 }) {
   const params = await searchParams;
   const returnTo = Array.isArray(params.returnTo)
@@ -21,14 +25,21 @@ export default async function LoginPage({
   return (
     <AuthShell
       title="登录"
-      description="使用手机号和密码进入你的账号。"
       footer={
         <>
           还没有账号？ <Link href="/register">创建账号</Link>
         </>
       }
     >
-      <LoginForm returnTo={returnTo} />
+      <LoginForm
+        returnTo={returnTo}
+        notice={
+          params.reset === "done"
+            ? "密码已重置，所有设备已退出登录。请用新密码登录。"
+            : undefined
+        }
+        signedOut={params.reason === "signed-out"}
+      />
     </AuthShell>
   );
 }
