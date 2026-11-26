@@ -178,15 +178,6 @@ export function ReportDraft({
                   </li>
                 ))}
             </ul>
-            {keys.some((k) => !preview.sections[k]) ? (
-              <p className={styles.skipped}>
-                没有依据，留空：
-                {keys
-                  .filter((k) => !preview.sections[k])
-                  .map((k) => names[k])
-                  .join("、")}
-              </p>
-            ) : null}
             {message && <p role="status">{message}</p>}
           </div>
         )}

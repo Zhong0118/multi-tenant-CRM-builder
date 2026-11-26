@@ -87,10 +87,6 @@
   color: var(--text-tertiary);
   font-size: 12px;
 }
-.skipped {
-  color: var(--text-tertiary);
-  font-size: 12px;
-}
 @keyframes enter {
   from {
     opacity: 0;

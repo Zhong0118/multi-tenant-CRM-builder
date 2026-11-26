@@ -56,6 +56,7 @@
   font-size: 13px;
 }
 .item {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 16px;
@@ -63,6 +64,25 @@
   padding: 12px 0;
   border-top: 1px solid var(--border-hairline);
   overflow-wrap: anywhere;
+}
+/* The title's link covers the row; the ⓘ and actions sit above it. */
+.rowLink {
+  color: inherit;
+}
+.rowLink::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+.item:hover .rowLink strong {
+  color: var(--color-primary);
+}
+.rowLink:focus-visible {
+  outline: 0;
+}
+.rowLink:focus-visible::after {
+  border-radius: var(--radius-control);
+  box-shadow: var(--focus-ring);
 }
 .item:last-child {
   padding-bottom: 2px;
@@ -90,29 +110,41 @@
   color: var(--text-tertiary);
   font-size: 13px;
 }
-.itemBody .reason {
+.reason {
+  position: relative;
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
   color: var(--text-tertiary);
   font-size: 12px;
-  line-height: 18px;
+  cursor: help;
 }
-.reasonLabel {
-  margin-inline-end: 6px;
-  padding-inline-end: 6px;
-  border-inline-end: 1px solid var(--border-default);
+.reason:hover,
+.reason:focus-visible {
+  color: var(--text-secondary);
+}
+.reason:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
 }
 .itemActions {
+  position: relative;
+  z-index: 1;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
+  align-items: center;
+  gap: 4px 8px;
   justify-content: flex-end;
-  padding-top: 1px;
   font-size: 13px;
   white-space: nowrap;
 }
 .itemActions a {
-  color: var(--text-secondary);
-}
-.itemActions a:last-child {
   color: var(--color-primary);
   font-weight: 500;
 }

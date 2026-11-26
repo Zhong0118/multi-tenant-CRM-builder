@@ -35,6 +35,9 @@ it("keeps generated text in the opened card and regenerates with the chosen styl
       load={load}
     />,
   );
+  // Tone and length wait under 更多选项.
+  expect(screen.getAllByRole("combobox")).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button", { name: "更多选项" }));
   expect(screen.getAllByRole("combobox")).toHaveLength(4);
   expect(load).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "生成" }));
@@ -48,12 +51,13 @@ it("keeps generated text in the opened card and regenerates with the chosen styl
       { exact: false },
     ),
   ).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "更正式一些" }));
+  fireEvent.click(screen.getByRole("button", { name: "改写" }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "更正式一些" }));
   expect(load.mock.calls[1]?.[3]).toMatchObject({ tone: "formal" });
   expect(load.mock.calls[1]?.[3]).toMatchObject({
     rewrite: { mode: "formal", basis: "safe-basis", refs: ["F1"] },
   });
-  expect(screen.queryByText("已发送，记一笔沟通")).toBeNull();
+  expect(screen.queryByRole("button", { name: "记一笔沟通" })).toBeNull();
 });
 
 it("shows the estimate after ten seconds of generation and removes it on cancel", async () => {
@@ -209,9 +213,7 @@ it.each(["record", "chat"])(
       const draftText = [email.subject, email.blocks[0].text].join("\n\n");
       fireEvent.click(screen.getByRole("button", { name: "复制" }));
       expect(copy).toHaveBeenCalledWith(draftText);
-      fireEvent.click(
-        screen.getByRole("button", { name: "已发送，记一笔沟通" }),
-      );
+      fireEvent.click(screen.getByRole("button", { name: "记一笔沟通" }));
       const content = await screen.findByRole("textbox", { name: "内容" });
       expect(content).toHaveValue(draftText);
       const save = screen.getByRole("button", { name: "保存活动" });

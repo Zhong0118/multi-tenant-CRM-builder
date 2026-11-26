@@ -1,6 +1,6 @@
-/* 帮我写 in the assistant panel: four options in a 2×2 grid, the brief, then
-   the draft as a card — copy first, regenerate second, the tweaks as quiet
-   chips, and logging it only after it has been sent. */
+/* 帮我写 in the assistant panel: type and purpose side by side (tone and
+   length folded under 更多选项), the brief, then the draft as a card — copy
+   first, then one 改写 menu, then 记一笔沟通. */
 .editor,
 .result {
   display: grid;
@@ -79,32 +79,6 @@
   gap: 8px;
   align-items: center;
   padding-top: 4px;
-}
-.tweaks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-  color: var(--text-tertiary);
-  font-size: 12px;
-}
-.tweaks > span {
-  margin-right: 4px;
-}
-.tweaks .tweak {
-  border-radius: 999px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-.logRow {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  color: var(--text-tertiary);
-  font-size: 12px;
-}
-.logRow :global(.ant-btn) {
-  padding-inline: 0;
 }
 .editor button {
   transition: transform 0.16s ease;

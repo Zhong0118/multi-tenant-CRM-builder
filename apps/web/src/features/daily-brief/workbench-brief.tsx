@@ -5,8 +5,21 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Alert, Button, Drawer, Segmented, Skeleton } from "antd";
-import { DownOutlined, UpOutlined } from "@ant-design/icons";
+import {
+  Alert,
+  Button,
+  Drawer,
+  Dropdown,
+  Segmented,
+  Skeleton,
+  Tooltip,
+} from "antd";
+import {
+  DownOutlined,
+  InfoCircleOutlined,
+  MoreOutlined,
+  UpOutlined,
+} from "@ant-design/icons";
 import Link from "next/link";
 import { useAiFeature } from "@/features/ai-governance/access";
 import { sourceRecordHref } from "@/features/records/source-navigation";
@@ -160,11 +173,8 @@ export function BriefSuggestions({
                       取消
                     </Button>
                   )}
-                  {(data.generatedAt || data.remaining < 3) && (
-                    <span>
-                      今天还可重新生成 {data.remaining} 次
-                      {data.remaining === 0 ? "，明天恢复" : ""}
-                    </span>
+                  {data.remaining === 0 && (
+                    <span>今天的次数已用完，明天恢复</span>
                   )}
                 </div>
                 {data.generatedAt && !data.items.length && (
@@ -187,26 +197,28 @@ export function BriefSuggestions({
                       <article key={i.recordId} className={styles.item}>
                         <div className={styles.itemBody}>
                           <p className={styles.itemTitle}>
-                            <strong>{i.suggestedTitle}</strong>
+                            {/* The whole row opens the record. */}
+                            <Link href={href} className={styles.rowLink}>
+                              <strong>{i.suggestedTitle}</strong>
+                            </Link>
                             <span>
                               {i.title} · {i.objectName}
                             </span>
+                            {i.reason && (
+                              <Tooltip title={`依据：${i.reason}`}>
+                                <button
+                                  type="button"
+                                  className={styles.reason}
+                                  aria-label={`依据：${i.reason}`}
+                                >
+                                  <InfoCircleOutlined aria-hidden />
+                                </button>
+                              </Tooltip>
+                            )}
                           </p>
                           {i.explanation && <p>{i.explanation}</p>}
-                          {i.reason && (
-                            // The reason is already "字段：值"; a second colon
-                            // after 依据 read as a stutter.
-                            <p className={styles.reason}>
-                              <span className={styles.reasonLabel}>依据</span>
-                              {i.reason}
-                            </p>
-                          )}
                         </div>
                         <div className={styles.itemActions}>
-                          <Link href={href}>打开记录</Link>
-                          {writing && (
-                            <Link href={href + "?writing=1"}>帮我写</Link>
-                          )}
                           {i.canFollowUp && (
                             <Link
                               href={
@@ -225,6 +237,31 @@ export function BriefSuggestions({
                                 ? "去处理这条跟进"
                                 : "加跟进"}
                             </Link>
+                          )}
+                          {writing && (
+                            <Dropdown
+                              trigger={["click"]}
+                              placement="bottomRight"
+                              menu={{
+                                items: [
+                                  {
+                                    key: "writing",
+                                    label: (
+                                      <Link href={href + "?writing=1"}>
+                                        帮我写
+                                      </Link>
+                                    ),
+                                  },
+                                ],
+                              }}
+                            >
+                              <Button
+                                type="text"
+                                size="small"
+                                aria-label={`更多：${i.suggestedTitle}`}
+                                icon={<MoreOutlined />}
+                              />
+                            </Dropdown>
                           )}
                         </div>
                       </article>
