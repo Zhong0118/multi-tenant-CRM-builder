@@ -95,6 +95,11 @@
   font-size: 12px;
   line-height: 18px;
 }
+.reasonLabel {
+  margin-inline-end: 6px;
+  padding-inline-end: 6px;
+  border-inline-end: 1px solid var(--border-default);
+}
 .itemActions {
   display: flex;
   flex-wrap: wrap;

@@ -9,9 +9,15 @@ export function TrendChart({
   title,
   data,
   formatValue,
+  formatAxis = formatValue,
+  zeroBaseline = false,
 }: {
   title: string;
   formatValue?: (value: number) => string;
+  /** Axis ticks: the unit can live in the caption instead of every tick. */
+  formatAxis?: (value: number) => string;
+  /** Totals such as usage: start at 0 so a dip is not drawn as a collapse. */
+  zeroBaseline?: boolean;
   data: Array<{ date: string; value: number }>;
 }) {
   if (data.length === 1)
@@ -39,11 +45,20 @@ export function TrendChart({
             x: { title: false },
             y: {
               title: false,
-              ...(formatValue && {
-                labelFormatter: (v: number | string) => formatValue(Number(v)),
+              ...(formatAxis && {
+                labelFormatter: (v: number | string) => formatAxis(Number(v)),
               }),
             },
           }}
+          {...(zeroBaseline && { scale: { y: { domainMin: 0, nice: true } } })}
+          // A short series shows its points, so two days do not read as a
+          // continuous slide.
+          {...(data.length <= 7 && {
+            point: {
+              sizeField: 3,
+              style: { fill: WORKSPACE_TOKENS.primary, lineWidth: 0 },
+            },
+          })}
           tooltip={
             formatValue && {
               items: [

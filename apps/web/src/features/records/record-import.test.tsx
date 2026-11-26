@@ -230,7 +230,7 @@ describe("RecordImportDrawer", () => {
     const { api } = setup(recordApi(), schema, false, undefined, true);
     chooseFile("文件标题\n\n单位名称,客户状态\n第三行测试客户,待联系");
     fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
-    await screen.findByText("请确认表头在第几行，当前使用第 3 行");
+    await screen.findByText("表头按第 3 行读取，不对可以在上面改");
     expect(call.mock.calls[0][2]).not.toHaveProperty("candidates");
     await screen.findByText("1 行 · 2 列");
     expect(screen.getByRole("button", { name: "检查数据" })).toBeEnabled();
@@ -515,7 +515,7 @@ describe("RecordImportDrawer", () => {
       screen.queryByRole("button", { name: /确认导入/ }),
     ).not.toBeInTheDocument();
     await checkAndImport();
-    await screen.findByText(/成功 1 行/);
+    await screen.findByText(/已导入 1 行/);
     expect(
       vi.mocked(api.importRows).mock.calls.map((call) => call[2].ownerMemberId),
     ).toEqual(["m1", "m2", "m2"]);
@@ -589,7 +589,7 @@ describe("RecordImportDrawer", () => {
     chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");
     await screen.findByText("1 行 · 3 列");
     await checkAndImport();
-    await screen.findByText(/成功 1 行，跳过 0 行，失败 0 行/);
+    await screen.findByText(/已导入 1 行/);
     expect(api.importRows).toHaveBeenCalledTimes(2);
     const calls = vi.mocked(api.importRows).mock.calls;
     expect(calls[0][2]).toMatchObject({
@@ -602,6 +602,38 @@ describe("RecordImportDrawer", () => {
     });
     expect(screen.getByLabelText("映射 姓名")).toBeDisabled();
     expect(onCompleted).toHaveBeenCalled();
+  });
+  it("says in the main area when nothing can be imported, and why", async () => {
+    const api = recordApi();
+    vi.mocked(api.importRows).mockResolvedValue({
+      created: 0,
+      failed: 0,
+      skipped: 1,
+      items: [{ rowNumber: 2, status: "SKIPPED" }],
+    } as never);
+    setup(api);
+    chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");
+    await screen.findByText("1 行 · 3 列");
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    const verdict = await screen.findByRole("region", { name: "检查结果" });
+    expect(verdict).toHaveTextContent("这次没有可以导入的行");
+    expect(verdict).toHaveTextContent("1 行和已有记录或文件里的其他行重复");
+    expect(
+      screen.queryByRole("button", { name: /确认导入/ }),
+    ).not.toBeInTheDocument();
+  });
+  it("offers 完成 once every row is imported", async () => {
+    setup();
+    chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");
+    await screen.findByText("1 行 · 3 列");
+    await checkAndImport();
+    await screen.findByText(/已导入 1 行/);
+    expect(
+      screen.getByRole("button", { name: /^完\s*成$/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "检查剩余行" }),
+    ).not.toBeInTheDocument();
   });
   it("automatically reads GBK and blocks already damaged text", async () => {
     const { api } = setup();
@@ -621,7 +653,7 @@ describe("RecordImportDrawer", () => {
     await screen.findByText(/多个文件列映射到了同一字段/);
     expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
     chooseFile("名字,备注\n张三,未知");
-    await screen.findByText(/尚未映射必填字段：姓名/);
+    await screen.findByText(/还没对上必填字段：姓名/);
     expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
   });
   it("rejects fake Excel and explains read failures", async () => {
@@ -672,7 +704,7 @@ describe("RecordImportDrawer", () => {
     );
     await screen.findByText("201 行 · 1 列");
     await checkAndImport();
-    await screen.findByText(/成功 100 行/);
+    await screen.findByText(/已导入 100 行/);
     await screen.findByText(/请求中断/);
     fireEvent.click(await screen.findByRole("button", { name: "检查剩余行" }));
     await screen.findByRole("button", { name: /确认导入/ });
@@ -683,7 +715,7 @@ describe("RecordImportDrawer", () => {
         .map((row) => row.rowNumber),
     ).toEqual(Array.from({ length: 101 }, (_, i) => i + 102));
     fireEvent.click(screen.getByRole("button", { name: /确认导入/ }));
-    await screen.findByText(/成功 201 行，跳过 0 行，失败 0 行/);
+    await screen.findByText(/已导入 201 行/);
   });
   it("keeps server validation failures visible and offers a failure download", async () => {
     const api = recordApi();
@@ -730,7 +762,7 @@ it("requires manual mapping for same-name fields and displays their types", asyn
     ],
   });
   chooseFile("姓名,线索状态\n张三,待联系");
-  await screen.findByText(/将跳过 1 列：线索状态/);
+  await screen.findByText(/1 列导入时会跳过：线索状态/);
   fireEvent.mouseDown(screen.getByLabelText("映射 线索状态"));
   expect(
     screen.getByText("线索状态 · 单选（lead_status）"),
@@ -762,7 +794,7 @@ it("imports into the initial pool only after explicit selection and excludes own
   chooseFile("姓名\n新客户");
   await screen.findByText("1 行 · 1 列");
   await checkAndImport();
-  await screen.findByText(/成功 1 行/);
+  await screen.findByText(/已导入 1 行/);
   const input = vi.mocked(api.importRows).mock.calls.at(-1)![2];
   expect(input.importToPool).toBe(true);
   expect(input).not.toHaveProperty("ownerMemberId");
@@ -974,7 +1006,7 @@ it("keeps a confirmed row locked to its original write when the remaining mappin
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "检查剩余行" }));
   fireEvent.click(await screen.findByRole("button", { name: /确认导入 1 行/ }));
-  await screen.findByText(/成功 2 行/);
+  await screen.findByText(/已导入 2 行/);
   const requests = mock.mock.calls.map(([, , input]) => input);
   expect(requests.slice(-2).map((req) => req.rows)).toEqual(
     Array.from({ length: 2 }, () => [{ rowNumber: 3, values: { name: "乙" } }]),

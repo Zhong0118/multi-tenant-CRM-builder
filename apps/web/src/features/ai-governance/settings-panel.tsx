@@ -11,7 +11,7 @@ import {
   Tabs,
   Tag,
 } from "antd";
-import { CheckCircleOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import { MinusCircleOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Page, PageSection } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
@@ -122,18 +122,21 @@ export function WorkspaceAiSettings({
                       .filter((f) => f.group === group)
                       .map((f) => (
                         <li key={f.key}>
+                          {/* Included features are plain labels, the same
+                              tags the platform's plan table shows; a missing
+                              one is muted text that says how to get it. */}
                           {f.released && state.features.includes(f.key) ? (
-                            <CheckCircleOutlined className={styles.check} />
+                            <Tag>{f.label}</Tag>
                           ) : (
-                            <MinusCircleOutlined />
-                          )}
-                          <span>{f.label}</span>
-                          {!f.released ? (
-                            <small>即将上线</small>
-                          ) : (
-                            !state.features.includes(f.key) && (
-                              <small>当前套餐不含，如需开通请联系平台</small>
-                            )
+                            <>
+                              <MinusCircleOutlined aria-hidden />
+                              <span>{f.label}</span>
+                              <small>
+                                {f.released
+                                  ? "当前套餐不含，如需开通请联系平台"
+                                  : "即将上线"}
+                              </small>
+                            </>
                           )}
                         </li>
                       ))}

@@ -333,3 +333,39 @@
   gap: 6px;
   align-items: center;
 }
+
+/* What happens to unmatched columns, said once above the table. */
+.mappingNote {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* The check verdict: counts in one line, then what to do next. */
+.verdictCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.verdictCounts b {
+  margin-inline-start: 4px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* "采用" inside an AI note: a text action on the note's own line, spaced
+   from the reason, never taller than the line it sits in. */
+.inlineAdopt:global(.ant-btn) {
+  height: auto;
+  margin-inline-start: 8px;
+  padding: 0;
+  font-size: 12px;
+  line-height: inherit;
+  vertical-align: baseline;
+}

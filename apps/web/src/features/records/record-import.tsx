@@ -371,6 +371,18 @@ export function RecordImportDrawer({
     : 0;
   const eligible =
     checked?.items.filter((item) => item.status === "READY").length ?? 0;
+  const manualSkipCount =
+    checked?.items.filter((item) => item.reason === IMPORT_MANUAL_SKIP)
+      .length ?? 0;
+  const duplicateCount = (checked?.skipped ?? 0) - manualSkipCount;
+  const allDone = Boolean(
+    importStarted && parsed && completedRows.size === parsed.rows.length,
+  );
+  // A new verdict lands below the fold: bring it into view.
+  const verdictRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    verdictRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [checked, result]);
 
   async function run(dryRun: boolean) {
     if (
@@ -885,34 +897,28 @@ export function RecordImportDrawer({
         <div className={importStyles.footer}>
           {checked && (
             <span role="status">
-              已检查 {checked.items.length} 行 · 可导入 {eligible} ·
-              重复或已导入{" "}
-              {(checked.skipped ?? 0) -
-                checked.items.filter((i) => i.reason === IMPORT_MANUAL_SKIP)
-                  .length}{" "}
-              · 主动跳过{" "}
-              {
-                checked.items.filter((i) => i.reason === IMPORT_MANUAL_SKIP)
-                  .length
-              }{" "}
-              · 错误 {checked.failed}
+              已检查 {checked.items.length} 行 · 可导入 {eligible} 行
             </span>
           )}
           {emptyMarkerCount > 0 && (
             <span>已把 {emptyMarkerCount} 格 NaN/#N/A 按空值处理</span>
           )}
-          <Button onClick={close}>关闭</Button>
-          <Button
-            type={eligible > 0 ? "default" : "primary"}
-            aria-label={importStarted ? "检查剩余行" : "检查数据"}
-            loading={busy === "check"}
-            disabled={
-              !canCheck || !!busy || loadingFile || started !== undefined
-            }
-            onClick={() => void run(true)}
-          >
-            {importStarted ? "检查剩余行" : "检查数据"}
+          <Button type={allDone ? "primary" : "default"} onClick={close}>
+            {allDone ? "完成" : "关闭"}
           </Button>
+          {allDone ? null : (
+            <Button
+              type={eligible > 0 ? "default" : "primary"}
+              aria-label={importStarted ? "检查剩余行" : "检查数据"}
+              loading={busy === "check"}
+              disabled={
+                !canCheck || !!busy || loadingFile || started !== undefined
+              }
+              onClick={() => void run(true)}
+            >
+              {importStarted ? "检查剩余行" : "检查数据"}
+            </Button>
+          )}
           {eligible > 0 ? (
             <Button
               type="primary"
@@ -934,13 +940,6 @@ export function RecordImportDrawer({
     >
       {parseError ? <Alert type="error" showIcon title={parseError} /> : null}
       {summary ? <Alert type="error" showIcon title={summary} /> : null}
-      {result ? (
-        <Alert
-          type={result.failed ? "warning" : "success"}
-          showIcon
-          title={`成功 ${result.created} 行，跳过 ${result.skipped ?? 0} 行，失败 ${result.failed} 行。`}
-        />
-      ) : null}
       <div className={importStyles.flow}>
         <section className={importStyles.step}>
           <h3 className={importStyles.stepTitle}>选择文件</h3>
@@ -1081,11 +1080,9 @@ export function RecordImportDrawer({
             )}
           </div>
           {source && !headerLocked && (
-            <Alert
-              type="info"
-              showIcon
-              title={`请确认表头在第几行，当前使用第 ${headerRow} 行`}
-            />
+            <Typography.Text type="secondary" className={importStyles.note}>
+              表头按第 {headerRow} 行读取，不对可以在上面改
+            </Typography.Text>
           )}
           {autoHeader && headerRow > 1 && (
             <Typography.Text type="secondary">
@@ -1095,9 +1092,9 @@ export function RecordImportDrawer({
           {loadingFile ? (
             <Typography.Paragraph>正在读取文件…</Typography.Paragraph>
           ) : null}
-          {importStarted ? (
+          {importStarted && !allDone ? (
             <Typography.Paragraph type="secondary">
-              本批次已开始导入。已成功的行保留原归属，剩余行修改后须重新检查。重试请使用原文件和同一工作表。
+              已导入的行会保留。剩余的行改好后请重新检查；重试时请用原文件和同一工作表。
             </Typography.Paragraph>
           ) : null}
         </section>
@@ -1110,7 +1107,16 @@ export function RecordImportDrawer({
                 <Typography.Paragraph className={importStyles.assistSummary}>
                   <AiSparkIcon aria-hidden className={importStyles.aiMark} />
                   {preview.unresolvedColumns || preview.unresolvedValues
-                    ? `还有 ${preview.unresolvedColumns} 列、${preview.unresolvedValues} 个取值没对上`
+                    ? `AI 可对照的列里还有 ${[
+                        preview.unresolvedColumns
+                          ? `${preview.unresolvedColumns} 列`
+                          : "",
+                        preview.unresolvedValues
+                          ? `${preview.unresolvedValues} 个取值`
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join("、")}没对上`
                     : preview.needed
                       ? "表头或日期格式待确认"
                       : "已完成对照"}
@@ -1214,19 +1220,26 @@ export function RecordImportDrawer({
                     title={`多个文件列映射到了同一字段：${[...new Set(duplicateFields.map((item) => item.field.label))].join("、")}。请保留一列，其余改为跳过。`}
                   />
                 ) : null}
+                {/* One line above the table; each column's own state is in
+                    its row. */}
                 {missingRequired.length ? (
                   <Alert
                     type="error"
                     showIcon
-                    title={`尚未映射必填字段：${missingRequired.map((field) => field.label).join("、")}。请先选择对应列。`}
+                    title={`还没对上必填字段：${missingRequired.map((field) => field.label).join("、")}`}
+                    description={
+                      skippedColumns.length
+                        ? `在下表给对应的列选择「导入到」。标着「未对照」的 ${skippedColumns.length} 列导入时会跳过。`
+                        : "在下表给对应的列选择「导入到」。"
+                    }
                   />
-                ) : null}
-                {skippedColumns.length ? (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    title={`将跳过 ${skippedColumns.length} 列：${skippedColumns.map((header) => header || "空表头").join("、")}。未匹配或同名字段不会自动选择，请核对后手动映射需要导入的列。`}
-                  />
+                ) : skippedColumns.length ? (
+                  <p className={importStyles.mappingNote}>
+                    标着「未对照」的 {skippedColumns.length} 列导入时会跳过：
+                    {skippedColumns
+                      .map((header) => header || "空表头")
+                      .join("、")}
+                  </p>
                 ) : null}
                 <div className={importStyles.mapping} aria-label="文件列对照">
                   <div className={importStyles.mappingHead} aria-hidden>
@@ -1425,7 +1438,9 @@ export function RecordImportDrawer({
                               {Array.from(advice.reason).slice(0, 20).join("")}
                               {needsReview && (
                                 <Button
+                                  type="link"
                                   size="small"
+                                  className={styles.inlineAdopt}
                                   disabled={!!busy || mappingLocked}
                                   onClick={() => adopt({ column: advice.col })}
                                 >
@@ -1575,6 +1590,79 @@ export function RecordImportDrawer({
                 ? "所选字段全部相同时跳过。查重字段不能为空；按当前账号可见的数据查重，文件内重复也会跳过。"
                 : "未选择查重字段：只防止同一文件重复导入。不同文件的重复数据会新增，请选择能标识一条业务记录的字段。"}
             </p>
+          </section>
+        ) : null}
+        {!busy && (checked || (result && importStarted)) ? (
+          <section
+            className={importStyles.step}
+            aria-label={checked ? "检查结果" : "导入结果"}
+            ref={verdictRef}
+          >
+            <h3 className={importStyles.stepTitle}>
+              {checked ? "检查结果" : "导入结果"}
+            </h3>
+            {checked ? (
+              <>
+                <p className={importStyles.verdictCounts}>
+                  <span>
+                    可导入 <b>{eligible}</b>
+                  </span>
+                  <span>
+                    重复或已导入 <b>{duplicateCount}</b>
+                  </span>
+                  <span>
+                    主动跳过 <b>{manualSkipCount}</b>
+                  </span>
+                  <span>
+                    错误 <b>{checked.failed}</b>
+                  </span>
+                </p>
+                {eligible === 0 ? (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    title="这次没有可以导入的行"
+                    description={[
+                      duplicateCount
+                        ? `${duplicateCount} 行和已有记录或文件里的其他行重复，按查重规则跳过。`
+                        : "",
+                      manualSkipCount
+                        ? `${manualSkipCount} 行设为了跳过。`
+                        : "",
+                      checked.failed
+                        ? `${checked.failed} 行有错误，明细见下方。`
+                        : "",
+                      "修改文件或查重字段后，重新检查。",
+                    ]
+                      .filter(Boolean)
+                      .join("")}
+                  />
+                ) : (
+                  <p className={importStyles.note}>
+                    检查通过，可以导入 {eligible} 行
+                    {checked.failed
+                      ? `；另有 ${checked.failed} 行有错误，不会导入`
+                      : ""}
+                    。
+                  </p>
+                )}
+              </>
+            ) : result ? (
+              <Alert
+                type={result.failed ? "warning" : "success"}
+                showIcon
+                title={
+                  result.failed
+                    ? `已导入 ${result.created} 行，${result.failed} 行没有导入`
+                    : `已导入 ${result.created} 行`
+                }
+                description={
+                  result.skipped
+                    ? `另有 ${result.skipped} 行按查重规则跳过。`
+                    : undefined
+                }
+              />
+            ) : null}
           </section>
         ) : null}
         {busy && progress.total > 0 ? (

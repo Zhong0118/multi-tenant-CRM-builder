@@ -100,14 +100,13 @@ export function LoginForm({
     setSummary(undefined);
     mutation.mutate(values);
   }
-  function showValidationSummary() {
-    setSummary("请检查手机号和密码，并补全标记为错误的内容。");
-  }
   /* eslint-disable react-hooks/refs -- RHF invokes submitLogin only from the DOM submit event. */
   return (
     <form
       className={styles.authForm}
-      onSubmit={handleSubmit(submitLogin, showValidationSummary)}
+      // Two fields: their own messages are enough; a banner above them
+      // would only repeat them and push the form down.
+      onSubmit={handleSubmit(submitLogin)}
       noValidate
     >
       {summary ? (

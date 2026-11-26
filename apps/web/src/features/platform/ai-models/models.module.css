@@ -74,6 +74,12 @@
 .status[data-tone="error"]::before {
   background: var(--color-danger);
 }
+.status[data-tone="warning"]::before {
+  background: var(--color-warning);
+}
+.status[data-tone="neutral"]::before {
+  background: var(--text-tertiary);
+}
 .actions {
   margin-left: auto;
 }

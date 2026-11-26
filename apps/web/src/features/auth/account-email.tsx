@@ -378,17 +378,21 @@ export function AccountEmail({
             : "验证邮箱后可以开启"
         }
       >
-        <Switch
-          aria-label="新设备登录提醒"
-          checked={device ?? false}
-          disabled={busy || device === null || status !== "VERIFIED"}
-          onChange={(value) =>
-            void execute(async () => {
-              await emailApi.device(value);
-              setDevice(value);
-            })
-          }
-        />
+        {/* The switch sits in the same right-hand action column as the
+            buttons in the rows above. */}
+        <div className={styles.rowSwitch}>
+          <Switch
+            aria-label="新设备登录提醒"
+            checked={device ?? false}
+            disabled={busy || device === null || status !== "VERIFIED"}
+            onChange={(value) =>
+              void execute(async () => {
+                await emailApi.device(value);
+                setDevice(value);
+              })
+            }
+          />
+        </div>
       </SettingRow>
     </>
   );

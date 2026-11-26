@@ -247,12 +247,6 @@
   justify-items: center;
 }
 
-.trustLine {
-  margin: 0;
-  color: var(--text-tertiary);
-  font-size: 12px;
-}
-
 @media (max-width: 1099px) {
   .authPage {
     grid-template-columns: minmax(0, 1fr);
@@ -388,6 +382,13 @@
 .rowValue > span:first-child {
   color: var(--text-primary);
   font-size: 14px;
+}
+
+.rowSwitch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 32px;
 }
 
 .rowActions {

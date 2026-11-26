@@ -56,6 +56,11 @@ export function TableEditor({
   const setColumns = (ids: string[]) =>
     patch({ view: { ...table.view, columnIds: ids } });
   const names = new Map(fields.map((f) => [f.id, f.label]));
+  // Table-level problems with the name or code sit under that input.
+  const inputIssue = (path: "name" | "code") =>
+    issues.find((i) => !i.fieldId && i.path === path);
+  const nameIssue = inputIssue("name");
+  const codeIssue = inputIssue("code");
   function moveColumn(from: number, to: number) {
     const ids = [...table.view.columnIds];
     ids.splice(to, 0, ids.splice(from, 1)[0]!);
@@ -86,22 +91,52 @@ export function TableEditor({
         ) : (
           <>
             <div className={styles.two}>
-              <label>
-                表名称
-                <input
-                  value={table.name}
-                  onChange={(e) => patch({ name: e.target.value })}
-                />
-              </label>
-              <label>
-                表编码
-                <input
-                  value={table.code}
-                  maxLength={64}
-                  spellCheck={false}
-                  onChange={(e) => patch({ code: e.target.value })}
-                />
-              </label>
+              <div className={styles.inputWithIssue}>
+                <label>
+                  表名称
+                  <input
+                    value={table.name}
+                    aria-invalid={nameIssue?.blocking || undefined}
+                    aria-describedby={
+                      nameIssue ? "table-name-issue" : undefined
+                    }
+                    onChange={(e) => patch({ name: e.target.value })}
+                  />
+                </label>
+                {nameIssue && (
+                  <span
+                    id="table-name-issue"
+                    className={styles.inputIssue}
+                    data-blocking={nameIssue.blocking}
+                  >
+                    {nameIssue.message}
+                  </span>
+                )}
+              </div>
+              <div className={styles.inputWithIssue}>
+                <label>
+                  表编码
+                  <input
+                    value={table.code}
+                    maxLength={64}
+                    spellCheck={false}
+                    aria-invalid={codeIssue?.blocking || undefined}
+                    aria-describedby={
+                      codeIssue ? "table-code-issue" : undefined
+                    }
+                    onChange={(e) => patch({ code: e.target.value })}
+                  />
+                </label>
+                {codeIssue && (
+                  <span
+                    id="table-code-issue"
+                    className={styles.inputIssue}
+                    data-blocking={codeIssue.blocking}
+                  >
+                    {codeIssue.message}
+                  </span>
+                )}
+              </div>
             </div>
             <label>
               记录标题
@@ -136,7 +171,12 @@ export function TableEditor({
           </>
         )}
         <Issues
-          items={issues.filter((i) => !i.fieldId || !names.has(i.fieldId))}
+          items={issues.filter(
+            (i) =>
+              (!i.fieldId || !names.has(i.fieldId)) &&
+              i !== nameIssue &&
+              i !== codeIssue,
+          )}
         />
       </section>
       <section className={styles.section}>

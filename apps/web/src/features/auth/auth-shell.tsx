@@ -53,9 +53,6 @@ export function AuthShell({
           <div className={styles.formFooter}>{footer}</div>
         </div>
         <footer className={styles.filing}>
-          <p className={styles.trustLine}>
-            手机验证 · 独立账号 · 公司级权限隔离
-          </p>
           <FilingLinks />
         </footer>
       </section>

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Dropdown, Modal, Skeleton, Space, Tag } from "antd";
+import { Alert, Button, Dropdown, Modal, Skeleton, Space } from "antd";
 import {
   ApiOutlined,
   CameraOutlined,
@@ -316,19 +316,21 @@ export function PlatformModelSettings() {
                           )}
                         </small>
                       </div>
-                      <Tag
-                        color={
+                      {/* Same dot-and-text status as the purpose rows above. */}
+                      <span
+                        className={styles.status}
+                        data-tone={
                           state === "正常"
-                            ? "green"
+                            ? "success"
                             : state === "测试失败"
-                              ? "red"
+                              ? "error"
                               : state === "修改未生效"
                                 ? "warning"
-                                : undefined
+                                : "neutral"
                         }
                       >
                         {state}
-                      </Tag>
+                      </span>
                       <Space wrap className={styles.actions}>
                         {check && (
                           <Button

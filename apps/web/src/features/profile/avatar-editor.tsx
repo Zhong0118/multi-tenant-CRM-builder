@@ -57,7 +57,7 @@ export function AvatarEditor({
             selected.size > 2 * 1024 * 1024 ||
             !["image/jpeg", "image/png", "image/webp"].includes(selected.type)
           ) {
-            setError("请选择不超过 2 MB 的 JPEG、PNG 或 WebP 图片");
+            setError("请选择不超过 2\u00a0MB 的 JPEG、PNG 或 WebP 图片");
             return;
           }
           setError("");

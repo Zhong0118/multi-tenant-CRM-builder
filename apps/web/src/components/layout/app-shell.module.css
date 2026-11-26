@@ -324,8 +324,9 @@
   border-top: 1px solid var(--border-hairline);
 }
 
+/* Same left edge as the nav items' icons above it. */
 .sidebarFiling {
-  padding: 0 4px;
+  padding: 0 8px;
 }
 .filingButton {
   display: grid;

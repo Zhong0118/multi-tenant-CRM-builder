@@ -29,11 +29,14 @@
   min-height: 0;
 }
 
+/* Two left anchors in the rail: boxes (button, search, row highlight) and
+   the brand line sit on the 12px edge; text inside the list (group names,
+   session titles) sits 10px in. */
 .railHeader {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 14px 10px;
+  padding: 16px 12px 10px;
 }
 
 .railBrand {
@@ -52,13 +55,13 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0 8px 20px;
+  padding: 0 12px 20px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--text-tertiary) 35%, transparent) transparent;
 }
 
 .groupLabel {
-  margin: 12px 8px 4px;
+  margin: 12px 10px 4px;
   color: var(--text-tertiary);
   font-size: 11px;
   font-weight: 500;
@@ -636,29 +639,17 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
+  width: 100%;
   max-width: 560px;
   margin: 0 auto;
   padding: 24px 16px 8px;
-  text-align: center;
-}
-
-/* The AI mark in its own quiet violet: AI is a helper here, not the brand. */
-.emptyMark {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  margin-bottom: 14px;
-  border-radius: 999px;
-  background: var(--color-ai-soft);
-  color: var(--color-ai);
-  font-size: 18px;
 }
 
 .empty h2 {
-  margin: 0;
+  margin: 0 0 12px;
+  padding-inline: 8px;
   color: var(--text-primary);
   font-size: 18px;
   font-weight: 600;
@@ -674,29 +665,42 @@
 
 .promptGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
+  border-top: 1px solid var(--border-hairline);
 }
 
 .promptChip {
-  padding: 9px 12px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
-  background: var(--bg-surface);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--border-hairline);
+  background: transparent;
   color: var(--text-primary);
   font: inherit;
   font-size: 13px;
   line-height: 20px;
   text-align: left;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background 160ms ease;
+}
+
+.promptChip :global(.anticon) {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  transition: color 160ms ease, translate 160ms ease;
 }
 
 .promptChip:hover,
 .promptChip:focus-visible {
-  border-color: var(--border-strong);
   background: var(--bg-hover);
+}
+
+.promptChip:hover :global(.anticon) {
+  color: var(--color-primary);
+  translate: 2px 0;
 }
 
 .jumpLatest {
@@ -790,8 +794,7 @@
     max-width: 90%;
   }
 
-  .sources,
-  .promptGrid {
+  .sources {
     grid-template-columns: 1fr;
   }
 
@@ -910,7 +913,7 @@
 .composer { border-radius: 14px; }
 .composerActions button, .railNew, .promptChip { transition: transform 160ms ease, background 160ms ease, border-color 160ms ease; }
 .composerActions button:hover { transform: scale(1.025); }
-.composerActions button:active, .railNew:active, .promptChip:active { transform: scale(.98); }
+.composerActions button:active, .railNew:active { transform: scale(.98); }
 .assistantRow, .userRow { animation: answerAppear 180ms ease-out; }
 @keyframes answerAppear { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {

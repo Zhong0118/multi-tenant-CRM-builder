@@ -1,6 +1,6 @@
 "use client";
 
-import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
+import { ArrowRightOutlined } from "@ant-design/icons";
 import { useAiFeature } from "@/features/ai-governance/access";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
@@ -22,7 +22,7 @@ export function AiEmptyState({
   const named = objects.slice(0, 2);
   const prompts =
     pageKind === "record"
-      ? [`查看${objectName || "当前记录"}概况`, ...(communication ? ["记录本次沟通"] : [])]
+      ? [`查看${objectName || "当前记录"}概况`, ...(communication ? ["整理本次沟通"] : [])]
       : pageKind === "list"
         ? [...(filter ? ["帮我筛选"] : []), "这张表有哪些可用字段"]
         : [
@@ -34,10 +34,9 @@ export function AiEmptyState({
             "总结某条记录的最近活动",
           ];
   return (
+    // Suggested questions as a plain list under the question, aligned with
+    // the conversation column — not a centred icon over a grid of chips.
     <div className={styles.empty}>
-      <div className={styles.emptyMark} aria-hidden>
-        <AiSparkIcon />
-      </div>
       <h2>有什么可以帮你查的？</h2>
       <div className={styles.promptGrid}>
         {prompts.map((prompt) => (
@@ -47,7 +46,8 @@ export function AiEmptyState({
             className={styles.promptChip}
             onClick={() => onPrompt(prompt)}
           >
-            {prompt}
+            <span>{prompt}</span>
+            <ArrowRightOutlined aria-hidden />
           </button>
         ))}
       </div>

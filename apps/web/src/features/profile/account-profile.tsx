@@ -136,7 +136,7 @@ export function AccountProfile({
         description="姓名和头像会显示在你加入的所有公司。"
       >
         <div className={styles.group}>
-          <SettingRow label="头像" help="JPG、PNG 或 WebP，不超过 2 MB">
+          <SettingRow label="头像" help={"JPG、PNG 或 WebP，不超过 2\u00a0MB"}>
             <div className={styles.avatarRow}>
               <ProfileAvatar name={displayName} avatarUrl={image} size={48} />
               <AvatarEditor

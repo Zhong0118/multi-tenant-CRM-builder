@@ -68,7 +68,7 @@ describe("LoginForm", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/platform"));
   });
 
-  it("shows a top-level instruction for invalid client input", async () => {
+  it("marks invalid fields in place without a second banner", async () => {
     const api = baseApi();
     renderForm(
       <LoginForm
@@ -80,9 +80,8 @@ describe("LoginForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /登\s*录/ }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "请检查手机号和密码",
-    );
+    expect(await screen.findByText("请输入密码。")).toBeInTheDocument();
+    expect(screen.queryByText(/请检查手机号和密码/)).not.toBeInTheDocument();
     expect(api.login).not.toHaveBeenCalled();
   });
 

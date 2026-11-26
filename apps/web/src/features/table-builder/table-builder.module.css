@@ -581,3 +581,25 @@ details.section ul {
     grid-column: 1 / -1;
   }
 }
+
+/* A problem with the table name or code, under that input. */
+.inputWithIssue {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.inputIssue {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+.inputIssue[data-blocking="true"] {
+  color: var(--color-danger);
+}
+.section input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+.blockingCount {
+  color: var(--color-danger);
+}

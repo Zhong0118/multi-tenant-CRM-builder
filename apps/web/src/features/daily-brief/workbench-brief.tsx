@@ -193,7 +193,12 @@ export function BriefSuggestions({
                           </p>
                           {i.explanation && <p>{i.explanation}</p>}
                           {i.reason && (
-                            <p className={styles.reason}>依据：{i.reason}</p>
+                            // The reason is already "字段：值"; a second colon
+                            // after 依据 read as a stutter.
+                            <p className={styles.reason}>
+                              <span className={styles.reasonLabel}>依据</span>
+                              {i.reason}
+                            </p>
                           )}
                         </div>
                         <div className={styles.itemActions}>

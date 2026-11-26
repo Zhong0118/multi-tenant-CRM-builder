@@ -439,14 +439,12 @@ export function TableBuilder({
                             <TableOutlined aria-hidden />
                             <span>
                               <strong>{t.name || "未命名表"}</strong>
-                              <small>
-                                {t.fields.length} 个字段 ·{" "}
-                                {
-                                  issues.filter((i) => i.tableId === t.id)
-                                    .length
-                                }{" "}
-                                项提示
-                              </small>
+                              <TableIssueCount
+                                fields={t.fields.length}
+                                issues={issues.filter(
+                                  (i) => i.tableId === t.id,
+                                )}
+                              />
                             </span>
                           </button>
                           {batchChoices.length > 0 && (
@@ -672,9 +670,7 @@ export function TableBuilder({
                           ? "正在校验…"
                           : needsCheck
                             ? "等待重新校验"
-                            : issues.some((i) => i.blocking)
-                              ? "请先修正阻塞项"
-                              : ""}
+                            : blockingSummary(issues, blueprint?.tables)}
                       </span>
                       <Button
                         disabled={!description.trim() || checking}
@@ -728,4 +724,42 @@ export function TableBuilder({
       </div>
     </Page>
   );
+}
+
+/** "4 个字段 · 1 项需修正": a table that blocks creation says so in the list. */
+function TableIssueCount({
+  fields,
+  issues,
+}: {
+  fields: number;
+  issues: TableBuilderIssue[];
+}) {
+  const blocking = issues.filter((i) => i.blocking).length;
+  return (
+    <small>
+      {fields} 个字段 ·{" "}
+      {blocking ? (
+        <span className={styles.blockingCount}>{blocking} 项需修正</span>
+      ) : (
+        `${issues.length} 项提示`
+      )}
+    </small>
+  );
+}
+
+/** Footer status: how many fixes are left, and in which tables. */
+function blockingSummary(
+  issues: TableBuilderIssue[],
+  tables: { id: string; name: string }[] = [],
+) {
+  const blocking = issues.filter((i) => i.blocking);
+  if (!blocking.length) return "";
+  const names = [
+    ...new Set(
+      blocking.map(
+        (i) => tables.find((t) => t.id === i.tableId)?.name || "方案",
+      ),
+    ),
+  ];
+  return `还有 ${blocking.length} 项需修正：${names.join("、")}`;
 }

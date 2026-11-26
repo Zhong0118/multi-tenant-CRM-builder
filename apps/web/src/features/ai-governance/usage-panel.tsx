@@ -50,12 +50,16 @@ export function UsagePanel({
       <div className={styles.grid}>
         <PageSection
           title="每日用量趋势"
-          description="每天结算的输入与输出 token"
+          description="每天结算的输入与输出 token，单位：token"
         >
           {byDay.size > 0 ? (
             <Trend
               title="用量"
               formatValue={formatTokens}
+              formatAxis={(value) =>
+                formatTokens(value).replace(/\s*token$/, "")
+              }
+              zeroBaseline
               data={[...byDay.entries()]
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([date, value]) => ({ date, value }))}
