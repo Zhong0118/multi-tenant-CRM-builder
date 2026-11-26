@@ -125,4 +125,15 @@ it('renders escaped multipart content and masks recipient addresses', () => {
   expect(device.text).toContain('设备：<i>Chrome</i>');
   expect(device.html).toContain('查看登录设备');
   expect(device.html).toContain('你收到这封邮件');
+  // Signed out everywhere: the way back is a reset, not 账号安全.
+  const changed = renderMail(
+    'password_changed',
+    { occurredAt: new Date(0) },
+    'https://crm.baijiehub.com',
+  );
+  expect(changed.text).toContain('通过「忘记密码」用手机验证码重置密码');
+  expect(changed.text).toContain(
+    '重置密码 https://crm.baijiehub.com/forgot-password',
+  );
+  expect(changed.text).not.toContain('请立即修改密码');
 });

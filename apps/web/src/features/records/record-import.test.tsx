@@ -651,6 +651,93 @@ describe("RecordImportDrawer", () => {
     expect(row()).not.toHaveTextContent("自动");
     call.mockRestore();
   });
+  it("keeps AI marks on other columns after one column is changed by hand", async () => {
+    const call = vi.spyOn(assistApi, "requestImportAssist").mockResolvedValue({
+      version: 1,
+      generatedAt: "",
+      matchFields: [],
+      columns: [
+        {
+          col: "C2",
+          target: { mode: "field", field: "lead_status" },
+          confidence: "high",
+          reason: "表头含义相近",
+        },
+      ],
+    });
+    setup(recordApi(), schema, false, undefined, true);
+    chooseFile("姓名,客户进度,说明\n手改后客户,待联系,无");
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    const row = (name: string) =>
+      screen.getByText(name, { selector: "strong" }).closest("div")!
+        .parentElement!;
+    await waitFor(() => expect(row("客户进度")).toHaveTextContent("AI 建议"));
+    fireEvent.mouseDown(screen.getByLabelText("映射 说明"));
+    fireEvent.click(
+      await screen.findByText(/^姓名 · /, {
+        selector: ".ant-select-item-option-content",
+      }),
+    );
+    await waitFor(() => expect(row("说明")).toHaveTextContent("手动"));
+    expect(row("客户进度")).toHaveTextContent("AI 建议");
+    expect(row("客户进度")).not.toHaveTextContent("自动");
+    call.mockRestore();
+  });
+  it("offers a column of member names as the owner and warns before importing with no owner", async () => {
+    const { api } = setup(recordApi(), schema, true);
+    chooseFile(
+      "姓名,销售,线索状态\n客户甲,员工甲,待联系\n客户乙,员工乙,待联系",
+    );
+    await screen.findByText("2 行 · 3 列");
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    const verdict = await screen.findByRole("region", { name: "检查结果" });
+    expect(verdict).toHaveTextContent("这 2 行导入后没有负责人");
+    // What will be written, with the file's own text where it changes.
+    const preview = within(verdict).getByRole("table", { name: "导入预览" });
+    expect(preview).toHaveTextContent("客户甲");
+    expect(preview).toHaveTextContent("未分配");
+    fireEvent.click(
+      within(verdict).getByRole("button", { name: "按「销售」分配" }),
+    );
+    expect(
+      screen.queryByText(/这 2 行导入后没有负责人/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("新增记录按文件中的负责人分别归属"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    const next = await screen.findByRole("region", { name: "检查结果" });
+    expect(next).not.toHaveTextContent("没有负责人");
+    const table = within(next).getByRole("table", { name: "导入预览" });
+    expect(table).toHaveTextContent("员工甲");
+    expect(table).toHaveTextContent("员工乙");
+    fireEvent.click(screen.getByRole("button", { name: /确认导入/ }));
+    await screen.findByText(/已导入 2 行/);
+    const owners = vi
+      .mocked(api.importRows)
+      .mock.calls.filter(([, , input]) => !input.dryRun)
+      .map(([, , input]) => input.ownerMemberId)
+      .sort();
+    expect(owners).toEqual(["m1", "m2"]);
+  });
+  it("asks before closing with a chosen file, and closes at once when done", async () => {
+    const { onClose } = setup();
+    chooseFile("姓名\n关闭前客户");
+    await screen.findByText("1 行 · 1 列");
+    fireEvent.click(screen.getByRole("button", { name: /^关\s*闭$/ }));
+    expect(
+      await screen.findByText(
+        "已选的文件和列对照还没有导入，关闭后需要重新选择。",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "继续导入" }));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText("1 行 · 1 列")).toBeInTheDocument();
+    await checkAndImport();
+    await screen.findByText(/已导入 1 行/);
+    fireEvent.click(screen.getByRole("button", { name: /^完\s*成$/ }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
   it("offers 完成 once every row is imported", async () => {
     setup();
     chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");

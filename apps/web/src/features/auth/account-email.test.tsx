@@ -170,12 +170,13 @@ it("names the new address once the change is verified", async () => {
   verify.mockRestore();
 });
 
-it("explains the sending limits instead of a bare 稍后再试", async () => {
+it("says which sending limit was hit and waits as long as the server says", async () => {
   const send = vi.spyOn(emailApi, "challenge").mockRejectedValue({
     code: "RATE_LIMITED",
-    message: "操作过于频繁，请稍后再试。",
+    message: "这个账号一天内最多发 10 次邮箱验证码，请 约 300 分钟后再试。",
     requestId: "req",
     status: 429,
+    retryAfterSeconds: 18_000,
   });
   render(
     <AccountEmail
@@ -190,6 +191,13 @@ it("explains the sending limits instead of a bare 稍后再试", async () => {
     target: { value: "sales@example.net" },
   });
   fireEvent.click(screen.getByRole("button", { name: "发送验证码" }));
-  expect(await screen.findByText(/每分钟只能发 1 次，每小时最多 5 次/)).toBeVisible();
+  expect(
+    await screen.findByText(/这个账号一天内最多发 10 次邮箱验证码/),
+  ).toBeVisible();
+  // No code was sent in this flow, so none is promised.
+  expect(screen.queryByText(/已经收到的验证码/)).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "约 300 分钟后可发送" }),
+  ).toBeDisabled();
   send.mockRestore();
 });

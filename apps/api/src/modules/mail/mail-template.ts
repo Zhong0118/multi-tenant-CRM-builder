@@ -93,12 +93,24 @@ export function renderMail(
         break;
     }
     facts.unshift(['时间（北京时间）', time]);
+    // After a password change or reset every other device is signed out, so
+    // someone who did not do it can only recover through 忘记密码.
+    const lockedOut = kind === 'password_changed' || kind === 'password_reset';
     if (kind !== 'test') {
-      if (kind !== 'new_device') note = '如果不是你本人操作，请立即修改密码。';
-      link = origin + '/account/security';
+      if (lockedOut)
+        note =
+          '如果不是你本人操作，请立即通过「忘记密码」用手机验证码重置密码，重置后所有设备都会退出。';
+      else if (kind !== 'new_device')
+        note = '如果不是你本人操作，请立即修改密码。';
+      link = origin + (lockedOut ? '/forgot-password' : '/account/security');
     }
   }
-  const label = kind === 'new_device' ? '查看登录设备' : '打开账号安全';
+  const label =
+    kind === 'new_device'
+      ? '查看登录设备'
+      : kind === 'password_changed' || kind === 'password_reset'
+        ? '重置密码'
+        : '打开账号安全';
   const text = [
     subject,
     intro,

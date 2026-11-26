@@ -21,7 +21,7 @@ local count = redis.call('INCR', KEYS[1])
 if redis.call('TTL', KEYS[1]) == -1 then
   redis.call('EXPIRE', KEYS[1], ARGV[1])
 end
-return count
+return {count, redis.call('TTL', KEYS[1])}
 `;
 
 @Injectable()
@@ -46,11 +46,22 @@ export class RedisRateLimiter implements CallRateLimiter, OnModuleDestroy {
   }): Promise<void> {
     await this.ensureConnected();
     const key = `crm:rate-limit:${input.key}`;
-    const count = Number(
-      await this.redis.eval(CONSUME_WINDOW, 1, key, input.windowSeconds),
+    const reply = await this.redis.eval(
+      CONSUME_WINDOW,
+      1,
+      key,
+      input.windowSeconds,
     );
+    // Older scripts returned the bare count; the pair adds seconds left.
+    const [count, ttl] = Array.isArray(reply)
+      ? reply.map(Number)
+      : [Number(reply), NaN];
     if (count > input.limit) {
-      throw new ApiException('RATE_LIMITED', 429);
+      throw new ApiException(
+        'RATE_LIMITED',
+        429,
+        ttl > 0 ? { retryAfterSeconds: ttl } : {},
+      );
     }
   }
 

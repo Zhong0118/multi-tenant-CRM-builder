@@ -100,7 +100,7 @@ describe("LoginForm", () => {
     expect(password).toHaveAttribute("type", "text");
   });
 
-  it("shows field errors and the request id from a failed API response", async () => {
+  it("shows field errors under the fields without a request id", async () => {
     const api = baseApi();
     vi.mocked(api.login).mockRejectedValue({
       code: "VALIDATION_FAILED",
@@ -126,7 +126,8 @@ describe("LoginForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /登\s*录/ }));
 
     expect(await screen.findByText("手机号格式错误")).toBeInTheDocument();
-    expect(screen.getByText(/req_login_123/)).toBeInTheDocument();
+    expect(screen.queryByText(/req_login_123/)).toBeNull();
+    expect(screen.queryByText("提交内容有误，请检查后重试。")).toBeNull();
   });
 
   it("prevents duplicate submit and preserves an authorized return path", async () => {

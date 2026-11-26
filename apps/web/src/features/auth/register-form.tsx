@@ -11,9 +11,11 @@ import { resolvePostLoginRoute } from "@/lib/auth/post-login-route";
 
 import { authApi, type AuthApi } from "./auth-api";
 import {
+  errorText,
   normalizeFormError,
   useDeviceIdentity,
-  useCountdown,
+  useSentCode,
+  waitText,
   type DeviceIdentity,
 } from "./form-support";
 import { phoneSchema, registerSchema, type RegisterInput } from "./schemas";
@@ -31,16 +33,10 @@ export function RegisterForm({
 }) {
   const router = useRouter();
   const identity = useDeviceIdentity(device);
-  const {
-    seconds: countdownSeconds,
-    start: startCountdown,
-    reset: resetCountdown,
-  } = useCountdown();
   const [summary, setSummary] = useState<{
     type: "error" | "success";
     text: string;
   }>();
-  const [requestedPhone, setRequestedPhone] = useState<string>();
   const {
     control,
     handleSubmit,
@@ -60,28 +56,38 @@ export function RegisterForm({
       deviceSummary: identity.summary,
     },
   });
+  const sentCode = useSentCode("register", (phone) => setValue("phone", phone));
+  const requestedPhone = sentCode.phone;
+  const countdownSeconds = sentCode.seconds;
   const codeMutation = useMutation({
     mutationFn: (input: { phone: string; deviceKey: string }) =>
       api.requestRegisterCode(input),
     onSuccess: (_result, input) => {
       if (getValues("phone") !== input.phone) {
-        setRequestedPhone(undefined);
-        resetCountdown();
+        sentCode.clear();
         return;
       }
-      setRequestedPhone(input.phone);
-      startCountdown();
+      sentCode.sent(input.phone);
+      clearErrors("code");
       setSummary({
         type: "success",
         text: `验证码已发送至 ${input.phone}，请在有效期内完成注册。`,
       });
     },
-    onError: (error) => {
+    onError: (error, input) => {
       const apiError = normalizeFormError(error);
-      setSummary({
-        type: "error",
-        text: `${apiError.message}（请求编号：${apiError.requestId}）`,
-      });
+      const retry = apiError.retryAfterSeconds;
+      if (apiError.code === "RATE_LIMITED" && retry) {
+        sentCode.blocked(retry);
+        // Say how long to wait, and that a code already received still works.
+        setSummary({
+          type: "error",
+          text: `验证码请求太频繁了，请 ${waitText(retry)}后再试。${requestedPhone === input.phone ? "已经收到的验证码 10 分钟内仍然有效，可以直接填写。" : ""}`,
+        });
+        clearErrors("code");
+        return;
+      }
+      setSummary({ type: "error", text: errorText(apiError) });
     },
   });
   const registerMutation = useMutation({
@@ -91,6 +97,7 @@ export function RegisterForm({
         deviceSummary: identity.summary,
       }),
     onSuccess: async (result) => {
+      sentCode.clear();
       let path = result.user.isPlatformAdmin ? "/platform" : "/workspaces";
       try {
         const workspaces = await api.listWorkspaces();
@@ -106,10 +113,13 @@ export function RegisterForm({
     },
     onError: (error) => {
       const apiError = normalizeFormError(error);
-      setSummary({
-        type: "error",
-        text: `${apiError.message}（请求编号：${apiError.requestId}）`,
-      });
+      // A reason that belongs to a field is said there, not again on top.
+      const onField = Object.keys(apiError.fieldErrors).some(
+        (field) => field in getValues(),
+      );
+      setSummary(
+        onField ? undefined : { type: "error", text: errorText(apiError) },
+      );
       let shouldFocus = true;
       for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
         if (field in getValues()) {
@@ -143,26 +153,21 @@ export function RegisterForm({
       event.preventDefault();
       setError(
         "code",
-        { message: "请为当前手机号重新获取验证码。" },
+        {
+          message:
+            countdownSeconds > 0
+              ? `请先获取这个手机号的验证码，${waitText(countdownSeconds)}后可以获取。`
+              : "请先获取这个手机号的验证码。",
+        },
         { shouldFocus: true },
       );
-      setSummary({
-        type: "error",
-        text: "请先为当前手机号获取验证码，再创建账号。",
-      });
       return;
     }
-    void handleSubmit(
-      (values) => {
-        setSummary(undefined);
-        registerMutation.mutate(values);
-      },
-      () =>
-        setSummary({
-          type: "error",
-          text: "请检查表单，并补全标记为错误的内容。",
-        }),
-    )(event);
+    // Invalid fields say why under themselves; no second banner on top.
+    void handleSubmit((values) => {
+      setSummary(undefined);
+      registerMutation.mutate(values);
+    })(event);
   }
 
   return (
@@ -188,8 +193,7 @@ export function RegisterForm({
                 clearErrors("phone");
                 setSummary(undefined);
                 if (requestedPhone && event.target.value !== requestedPhone) {
-                  setRequestedPhone(undefined);
-                  resetCountdown();
+                  sentCode.clear();
                   setValue("code", "");
                 }
               }}
@@ -222,7 +226,7 @@ export function RegisterForm({
             disabled={countdownSeconds > 0 || codeMutation.isPending}
           >
             {countdownSeconds > 0
-              ? `${countdownSeconds} 秒后重新获取`
+              ? `${waitText(countdownSeconds)}后重新获取`
               : codeMutation.isPending
                 ? "正在发送…"
                 : "获取验证码"}

@@ -55,3 +55,63 @@ it("saves jobs independently and preserves input on failed account edits", async
   fireEvent.click(screen.getByRole("button", { name: "保存账号姓名" }));
   await waitFor(() => expect(api.name).toHaveBeenCalledTimes(2));
 });
+
+it("keeps a value that could not be saved after a sign-out and fills it back after login", async () => {
+  const api = {
+    name: vi.fn(),
+    title: vi.fn().mockRejectedValue({
+      message: "请先登录。",
+      status: 401,
+      requestId: "r",
+      code: "AUTH_REQUIRED",
+    }),
+  };
+  const memberships = [
+    {
+      memberId: "0",
+      tenantId: "0",
+      tenantCode: "0",
+      tenantName: "甲公司",
+      role: "EMPLOYEE" as const,
+      memberDisplayName: null,
+      displayName: "李明",
+      jobTitle: null,
+      employeeNo: null,
+    },
+  ];
+  const view = render(
+    <AccountProfile
+      name="李明"
+      avatarUrl={null}
+      memberships={memberships}
+      api={api}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("甲公司职位"), {
+    target: { value: "华东区销售经理" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "保存甲公司职位" }));
+  expect(
+    await screen.findByText(/这台设备已退出登录，修改还没保存。/),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "重新登录" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("reason=signed-out"),
+  );
+  view.unmount();
+  // Back after signing in: the value is filled in, ready to save.
+  render(
+    <AccountProfile
+      name="李明"
+      avatarUrl={null}
+      memberships={memberships}
+      api={api}
+    />,
+  );
+  await waitFor(() =>
+    expect(screen.getByLabelText("甲公司职位")).toHaveValue("华东区销售经理"),
+  );
+  expect(
+    screen.getByRole("button", { name: "保存甲公司职位" }),
+  ).toBeInTheDocument();
+});

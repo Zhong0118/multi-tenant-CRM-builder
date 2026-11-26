@@ -10,7 +10,15 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default async function ForgotPasswordPage() {
+export default async function ForgotPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnTo?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const returnTo = Array.isArray(params.returnTo)
+    ? params.returnTo[0]
+    : params.returnTo;
   const client = await createServerApiClient();
   const { data } = await client
     .GET("/api/v1/auth/email/status")
@@ -21,11 +29,23 @@ export default async function ForgotPasswordPage() {
       description="验证账号后设置新密码，完成后所有设备将退出登录。"
       footer={
         <>
-          想起密码了？ <Link href="/login">返回登录</Link>
+          想起密码了？{" "}
+          <Link
+            href={
+              returnTo
+                ? `/login?${new URLSearchParams({ returnTo })}`
+                : "/login"
+            }
+          >
+            返回登录
+          </Link>
         </>
       }
     >
-      <ResetMethods mailAvailable={data?.mailAvailable ?? false} />
+      <ResetMethods
+        mailAvailable={data?.mailAvailable ?? false}
+        returnTo={returnTo}
+      />
     </AuthShell>
   );
 }

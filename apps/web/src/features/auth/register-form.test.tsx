@@ -134,9 +134,12 @@ describe("RegisterForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "创建账号" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "请先为当前手机号获取验证码",
-    );
+    // Said once, under the code box with focus there, not in a banner.
+    expect(
+      await screen.findByText("请先获取这个手机号的验证码。"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("验证码")).toHaveFocus();
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(api.register).not.toHaveBeenCalled();
   });
 
@@ -238,7 +241,7 @@ describe("RegisterForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "创建账号" }));
 
     expect(
-      await screen.findByText("请为当前手机号重新获取验证码。"),
+      await screen.findByText("请先获取这个手机号的验证码。"),
     ).toBeInTheDocument();
     expect(api.register).not.toHaveBeenCalled();
   });

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { StatusTag } from "@/components/workbench/status-tag";
 import { SettingRow } from "@/components/layout/page";
 import { emailApi, type EmailPurpose, type EmailStatus } from "./email-api";
-import { normalizeFormError, useCountdown } from "./form-support";
+import { normalizeFormError, useCountdown, waitText } from "./form-support";
 import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
 
@@ -122,12 +122,17 @@ export function AccountEmail({
       await action();
     } catch (error) {
       const apiError = normalizeFormError(error);
+      const limited = apiError.code === "RATE_LIMITED";
+      // The server names the limit that was hit and when it lifts; the send
+      // button waits that long. A code already sent is only mentioned when
+      // there is one, next to the box it goes in.
+      if (limited && apiError.retryAfterSeconds)
+        cooldown.start(apiError.retryAfterSeconds);
       setNotice({
         type: "error",
-        // The server keeps no countdown for us: name the limits instead.
         text:
-          apiError.code === "RATE_LIMITED"
-            ? "发送太频繁了：同一邮箱每分钟只能发 1 次，每小时最多 5 次。已经收到的验证码 10 分钟内仍然有效。"
+          limited && challenge
+            ? `${apiError.message}已经收到的验证码 10 分钟内仍然有效，可以直接填写。`
             : apiError.message,
       });
     } finally {
@@ -334,7 +339,7 @@ export function AccountEmail({
                     onClick={() => void execute(send)}
                   >
                     {cooldown.seconds
-                      ? `${cooldown.seconds} 秒后重发`
+                      ? `${waitText(cooldown.seconds)}后重发`
                       : "重新发送"}
                   </Button>
                 </Space.Compact>
@@ -366,7 +371,7 @@ export function AccountEmail({
                   : challenge
                     ? "完成验证"
                     : cooldown.seconds > 0
-                      ? `${cooldown.seconds} 秒后可发送`
+                      ? `${waitText(cooldown.seconds)}后可发送`
                       : "发送验证码"}
               </Button>
             </div>

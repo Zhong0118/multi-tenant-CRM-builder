@@ -264,8 +264,9 @@ export function SessionList({
           <SettingRow
             label="密码"
             help={
+              // The consequence stays in view while the form is open.
               changing
-                ? "10–72 位，同时包含字母和数字。"
+                ? "10–72 位，同时包含字母和数字。更新后保留当前会话，其他设备将自动退出。"
                 : "更新后保留当前会话，其他设备将自动退出。"
             }
           >

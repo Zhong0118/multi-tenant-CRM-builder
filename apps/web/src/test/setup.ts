@@ -3,6 +3,8 @@ import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
 afterEach(cleanup);
+// Tab-scoped drafts (sent codes, a phone carried to login) start empty.
+afterEach(() => sessionStorage.clear());
 
 class TestResizeObserver implements ResizeObserver {
   observe() {}

@@ -15,6 +15,7 @@ export default async function LoginPage({
   searchParams: Promise<{
     returnTo?: string | string[];
     reset?: string | string[];
+    reason?: string | string[];
   }>;
 }) {
   const params = await searchParams;
@@ -36,6 +37,7 @@ export default async function LoginPage({
         notice={
           params.reset === "done" ? "密码已重置，请用新密码登录。" : undefined
         }
+        signedOut={params.reason === "signed-out"}
       />
     </AuthShell>
   );

@@ -2,7 +2,7 @@
 
 import { Button, Input } from "antd";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { components } from "@crm/contracts";
 import { ProfileAvatar } from "@/components/identity/profile-avatar";
 import { PageSection, SettingRow } from "@/components/layout/page";
@@ -52,6 +52,29 @@ function EditableField({
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
+  // A value that could not be saved because this device was signed out
+  // comes back after signing in again, ready to save.
+  const unsavedKey = "crm.profile.unsaved." + accessibleLabel;
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem(unsavedKey);
+      sessionStorage.removeItem(unsavedKey);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (pending !== null && pending !== initial) setValue(pending);
+    } catch {
+      // Storage refused: nothing was kept.
+    }
+  }, [unsavedKey, initial]);
+  // Reloading or closing the tab with an unsaved value asks first — unless
+  // the value is already kept for after signing in again.
+  const dirty = value.trim() !== saved && !signedOut;
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
   async function submit() {
     const next = value.trim();
     if (busy || next === saved || (required && !next)) return;
@@ -66,7 +89,18 @@ function EditableField({
     } catch (e) {
       const failure = toApiError(e);
       setError(true);
-      setStatus(Object.values(failure.fieldErrors)[0]?.[0] ?? failure.message);
+      if (failure.status === 401) {
+        try {
+          sessionStorage.setItem(unsavedKey, next);
+        } catch {
+          // Storage refused: the value is only on this page.
+        }
+        setSignedOut(true);
+        setStatus("这台设备已退出登录，修改还没保存。");
+      } else
+        setStatus(
+          Object.values(failure.fieldErrors)[0]?.[0] ?? failure.message,
+        );
     } finally {
       setBusy(false);
     }
@@ -106,6 +140,17 @@ function EditableField({
       {status && (
         <span role="status" data-error={error}>
           {status}
+          {signedOut ? (
+            <>
+              {" "}
+              <a
+                href={`/login?${new URLSearchParams({ returnTo: window.location.pathname, reason: "signed-out" })}`}
+              >
+                重新登录
+              </a>
+              后会自动填回。
+            </>
+          ) : null}
         </span>
       )}
     </form>

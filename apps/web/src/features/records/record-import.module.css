@@ -369,3 +369,62 @@
   line-height: inherit;
   vertical-align: baseline;
 }
+
+/* A skipped column that names members: one line and one button, under the
+   owner setting it would replace. */
+.ownerHint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* What the first rows will be stored as, before anything is written. */
+.preview {
+  display: grid;
+  gap: 6px;
+}
+.previewTitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.previewTable {
+  width: 100%;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.previewTable th,
+.previewTable td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-hairline);
+  text-align: start;
+  vertical-align: top;
+}
+.previewTable tr:last-child td {
+  border-bottom: 0;
+}
+.previewTable th {
+  background: var(--bg-surface-subtle);
+  color: var(--text-tertiary);
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.previewTable td small {
+  display: block;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}

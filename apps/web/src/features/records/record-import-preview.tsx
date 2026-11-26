@@ -1,0 +1,127 @@
+import type { ReactNode } from "react";
+
+import type { PublishedFieldView } from "@/features/objects/object-types";
+import type { DynamicFieldMember } from "./dynamic-field";
+import type { ParsedCsv } from "./record-csv";
+import { displayValue } from "./record-display-value";
+import type { PlannedImportRow } from "./record-import-groups";
+import styles from "./record-import.module.css";
+
+const CONVERTED = new Set([
+  "DATE",
+  "DATETIME",
+  "MONEY",
+  "NUMBER",
+  "SINGLE_SELECT",
+  "MULTI_SELECT",
+  "BOOLEAN",
+]);
+
+/**
+ * The first rows as they will be stored, with the file's own text under any
+ * value that changes on the way in: dates, amounts, options and the owner.
+ */
+export function ImportCheckPreview({
+  parsed,
+  rows,
+  mapping,
+  fields,
+  members,
+  timeZone,
+  showOwner,
+  limit = 3,
+}: {
+  parsed: ParsedCsv;
+  rows: PlannedImportRow[];
+  mapping: string[];
+  fields: PublishedFieldView[];
+  members: DynamicFieldMember[];
+  timeZone?: string;
+  showOwner: boolean;
+  limit?: number;
+}) {
+  const byKey = new Map(fields.map((field) => [field.fieldKey, field]));
+  const mapped = mapping.flatMap((key, column) => {
+    const field = byKey.get(key);
+    return field ? [{ column, field }] : [];
+  });
+  // The row's name first, then up to four columns whose value is converted.
+  const title = mapped.find(({ field }) => !CONVERTED.has(field.type));
+  const converted = mapped
+    .filter(({ field }) => CONVERTED.has(field.type))
+    .slice(0, 4);
+  const columns = title ? [title, ...converted] : converted;
+  const shown = rows.slice(0, limit);
+  if (!shown.length || (!converted.length && !showOwner)) return null;
+
+  const rowIndex = (rowNumber: number) => {
+    const index = parsed.rowNumbers?.indexOf(rowNumber) ?? -1;
+    return index >= 0 ? index : rowNumber - 2;
+  };
+
+  return (
+    <div className={styles.preview}>
+      <p className={styles.previewTitle}>
+        前 {shown.length} 行将这样写入，灰字是文件里的原文：
+      </p>
+      <table className={styles.previewTable} aria-label="导入预览">
+        <thead>
+          <tr>
+            {columns.map(({ field }) => (
+              <th key={field.fieldKey} scope="col">
+                {field.label}
+              </th>
+            ))}
+            {showOwner ? <th scope="col">负责人</th> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((row) => {
+            const source = parsed.rows[rowIndex(row.rowNumber)] ?? [];
+            return (
+              <tr key={row.rowNumber}>
+                {columns.map(({ column, field }) => (
+                  <td key={field.fieldKey}>
+                    <Cell
+                      written={displayValue(
+                        field,
+                        row.values[field.fieldKey],
+                        members,
+                        timeZone,
+                      )}
+                      raw={source[column] ?? ""}
+                    />
+                  </td>
+                ))}
+                {showOwner ? <td>{owner(row, members)}</td> : null}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Cell({ written, raw }: { written: ReactNode; raw: string }) {
+  const text = raw.trim();
+  const same = typeof written === "string" && written === text;
+  return (
+    <>
+      {written}
+      {text && !same ? <small>{text}</small> : null}
+    </>
+  );
+}
+
+function owner(row: PlannedImportRow, members: DynamicFieldMember[]) {
+  const destination = row.destination;
+  if (destination.kind === "member")
+    return (
+      members.find((member) => member.id === destination.id)?.displayName ??
+      "其他成员"
+    );
+  if (destination.kind === "pool") return "公共池";
+  if (destination.kind === "default") return "你";
+  return "未分配";
+}

@@ -84,6 +84,12 @@ describe("resolvePostLoginRoute", () => {
         returnTo: "/account/security?from=login",
       }),
     ).toBe("/account/security?from=login");
+    expect(
+      resolvePostLoginRoute({
+        workspaces: [activeWorkspace("acme")],
+        returnTo: "/account/profile",
+      }),
+    ).toBe("/account/profile");
   });
 
   it("revalidates workspace and platform access before returning", () => {

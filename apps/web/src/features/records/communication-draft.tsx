@@ -122,6 +122,8 @@ export function CommunicationDraftDialog({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [needsRecovery, setNeedsRecovery] = useState(false);
+  const [modal, modalHolder] = Modal.useModal();
+  const asking = useRef(false);
   const request = useRef<{ requestId: string; text: string } | undefined>(
     undefined,
   );
@@ -443,14 +445,39 @@ export function CommunicationDraftDialog({
     draft.results.some((result) => result.status === "EXECUTED") &&
     selected.length > 0 &&
     selected.every((key) => itemResults[key]?.status === "EXECUTED");
+  // Esc, the mask and × all land here: a typed note or an unsaved draft is
+  // asked about first instead of being thrown away.
+  const unsaved =
+    !saved &&
+    (source.trim() !== "" || (!!draft && draft.status !== "PENDING" && draft !== initialDraft));
+  function requestClose() {
+    if (!unsaved) return onClose();
+    // One Esc can reach both the dialog and the page; ask only once.
+    if (asking.current) return;
+    asking.current = true;
+    void modal.confirm({
+      afterClose: () => {
+        asking.current = false;
+      },
+      title: "放弃这次整理？",
+      content: draft
+        ? "草稿和你的修改还没有保存，关闭后需要重新生成。"
+        : "写好的沟通原文还没有整理，关闭后会丢失。",
+      okText: "放弃",
+      okButtonProps: { danger: true },
+      cancelText: "继续整理",
+      onOk: onClose,
+    });
+  }
   return (
     <Modal
       open
       title={`整理本次沟通 · ${recordTitle}`}
       width={600}
-      onCancel={onClose}
+      onCancel={requestClose}
       footer={null}
     >
+      {modalHolder}
       <div className={styles.dialog}>
         {error && <Alert type="warning" showIcon role="alert" title={error} />}
         {!draft ? (
@@ -616,7 +643,17 @@ function SavedCommunication({
         <Button
           onClick={() => {
             onClose();
-            if (pathname !== customerHref) router.push(customerHref);
+            // Open the tab that shows what was just written: the note lives
+            // under 动态, a follow-up alone under 跟进.
+            const section = note ? "activity" : task ? "followups" : undefined;
+            if (!section) {
+              if (pathname !== customerHref) router.push(customerHref);
+              return;
+            }
+            const href = `${customerHref}${customerHref.includes("?") ? "&" : "?"}section=${section}`;
+            if (pathname === customerHref.split("?")[0])
+              router.replace(href, { scroll: false });
+            else router.push(href);
           }}
         >
           查看记录

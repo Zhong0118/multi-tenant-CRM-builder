@@ -456,8 +456,13 @@ const competingColumnLabels = {
 } as const;
 type ComparableType = keyof typeof competingColumnLabels;
 
+// Phone numbers parse as numbers but are never an amount or a count.
+const phoneLike = /^(?:\+?86[\s-]?)?1[3-9]\d{9}$|^0\d{2,3}-\d{7,8}$/;
+
 function parsesAs(type: ComparableType, value: string, timeZone?: string) {
   if (!value?.trim() || isImportNullMarker(type, value)) return false;
+  if ((type === "MONEY" || type === "NUMBER") && phoneLike.test(value.trim()))
+    return false;
   const orders =
     type === "DATE" || type === "DATETIME"
       ? (["DMY", "MDY"] as const)
@@ -483,7 +488,7 @@ export function reviewImportPlan(
 ): ImportAssistPlan {
   const candidate = preview.request;
   // Compare all physical cells locally, including rows beyond the sampled or masked preview.
-  let rows: string[][] | undefined;
+  let sheetData: { headers: string[]; rows: string[][] } | undefined;
   const compatible = new Map<ComparableType, string[]>();
   const columns = plan.columns.map((advice) => {
     const target = advice.target;
@@ -498,8 +503,8 @@ export function reviewImportPlan(
       return advice;
     let sources = compatible.get(type);
     if (!sources) {
-      rows ??= file.sheet(sheet, preview.headerRow).rows;
-      const data = rows;
+      sheetData ??= file.sheet(sheet, preview.headerRow);
+      const data = sheetData.rows;
       sources = candidate.columns
         .filter(
           (col, i) =>
@@ -510,11 +515,22 @@ export function reviewImportPlan(
         .map((col) => col.col);
       compatible.set(type, sources);
     }
-    if (!sources.some((col) => col !== advice.col)) return advice;
+    const others = sources.filter((col) => col !== advice.col);
+    if (!others.length) return advice;
+    // Name the other column so the reason can be checked against the file.
+    const first = sheetData?.headers[Number(others[0].slice(1)) - 1]?.trim();
+    const name = first
+      ? "「" + Array.from(first).slice(0, 6).join("") + "」"
+      : "另一列";
     return {
       ...advice,
       confidence: "review" as const,
-      reason: "文件中还有其他" + competingColumnLabels[type] + "列，请确认",
+      reason:
+        name +
+        (others.length > 1 ? `等 ${others.length} 列` : "") +
+        "也像" +
+        competingColumnLabels[type] +
+        "，请确认",
     };
   });
   return { ...plan, columns };

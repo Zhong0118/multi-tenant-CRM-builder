@@ -5,14 +5,17 @@ import { useMutation } from "@tanstack/react-query";
 import { Alert, Button, Form, Input } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { resolvePostLoginRoute } from "@/lib/auth/post-login-route";
 
 import { authApi, type AuthApi } from "./auth-api";
 import {
+  errorText,
   normalizeFormError,
+  rememberPhone,
+  rememberedPhone,
   useDeviceIdentity,
   type DeviceIdentity,
 } from "./form-support";
@@ -26,6 +29,7 @@ export function LoginForm({
   returnTo,
   device,
   notice,
+  signedOut,
 }: {
   api?: AuthApi;
   navigate?: (path: string) => void;
@@ -33,6 +37,8 @@ export function LoginForm({
   device?: DeviceIdentity;
   /** A success line carried over from the previous step, such as a reset. */
   notice?: string;
+  /** This browser's session was ended elsewhere; say why it is back here. */
+  signedOut?: boolean;
 }) {
   const router = useRouter();
   const identity = useDeviceIdentity(device);
@@ -42,6 +48,7 @@ export function LoginForm({
     control,
     handleSubmit,
     getValues,
+    setValue,
     clearErrors,
     setError,
     formState: { errors },
@@ -54,6 +61,11 @@ export function LoginForm({
       deviceSummary: identity.summary,
     },
   });
+  // The phone typed before going to reset the password, or used there.
+  useEffect(() => {
+    const phone = rememberedPhone();
+    if (phone && !getValues("phone")) setValue("phone", phone);
+  }, [getValues, setValue]);
   const mutation = useMutation({
     mutationFn: (values: LoginInput) =>
       api.login({
@@ -77,7 +89,11 @@ export function LoginForm({
     },
     onError: (error) => {
       const apiError = normalizeFormError(error);
-      setSummary(`${apiError.message}（请求编号：${apiError.requestId}）`);
+      // A reason that belongs to a field is said there, not again on top.
+      const onField = Object.keys(apiError.fieldErrors).some(
+        (field) => field in getValues(),
+      );
+      setSummary(onField ? undefined : errorText(apiError));
       let shouldFocus = true;
       for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
         if (field in getValues()) {
@@ -113,6 +129,13 @@ export function LoginForm({
         <Alert type="error" showIcon title={summary} />
       ) : notice ? (
         <Alert type="success" showIcon title={notice} />
+      ) : signedOut ? (
+        <Alert
+          type="info"
+          showIcon
+          title="这台设备已退出登录"
+          description="密码在其他设备上修改或重置过，或这台设备被移出了登录设备。请重新登录；如果不是你本人操作，请用「忘记密码」重置。"
+        />
       ) : null}
       <Form.Item
         label="手机号"
@@ -162,7 +185,19 @@ export function LoginForm({
         />
       </Form.Item>
       <div className={styles.formAside}>
-        <Link href="/forgot-password">忘记密码？</Link>
+        <Link
+          href={
+            returnTo
+              ? `/forgot-password?${new URLSearchParams({ returnTo })}`
+              : "/forgot-password"
+          }
+          onClick={() => {
+            const phone = getValues("phone").trim();
+            if (phone) rememberPhone(phone);
+          }}
+        >
+          忘记密码？
+        </Link>
       </div>
       <Button
         type="primary"

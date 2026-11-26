@@ -6,6 +6,7 @@ import {
   Checkbox,
   Collapse,
   Drawer,
+  Modal,
   Popconfirm,
   Progress,
   Select,
@@ -55,6 +56,7 @@ import {
   buildImportRows,
 } from "./record-import-mapping";
 import { ImportOwners } from "./record-import-owners";
+import { ImportCheckPreview } from "./record-import-preview";
 import importStyles from "./record-import.module.css";
 
 import styles from "./records.module.css";
@@ -140,6 +142,12 @@ export function RecordImportDrawer({
   );
   const [adoptedColumns, setAdoptedColumns] = useState<string[]>([]);
   const [generated, setGenerated] = useState<Generated>();
+  // Which columns AI set, and to what — kept after later hand edits so the
+  // status column still tells AI picks from rule matches.
+  const [aiMapped, setAiMapped] = useState<{
+    scope: string;
+    keys: Record<number, string>;
+  }>();
   const [snapshot, setSnapshot] = useState<AssistSnapshot>();
   const [draftChanged, setDraftChanged] = useState(false);
   const [started, setStarted] = useState<number>();
@@ -256,6 +264,24 @@ export function RecordImportDrawer({
         : [],
     [parsed, ownerColumn, members],
   );
+  // A skipped column whose every name is one member — often titled 销售 or
+  // 归属, which are too ambiguous to map on their own.
+  const ownerCandidate = (() => {
+    if (!canChooseOwner || !parsed || ownerColumn >= 0) return undefined;
+    for (const [index, header] of parsed.headers.entries()) {
+      if (mapping[index] !== SKIP) continue;
+      const names = parsed.rows
+        .map((row) => (row[index] ?? "").trim())
+        .filter(Boolean);
+      if (
+        names.length &&
+        resolveImportOwners(names, members).every(
+          (entry) => entry.matches.length === 1,
+        )
+      )
+        return { index, header: header.trim() || `第 ${index + 1} 列` };
+    }
+  })();
   const resolvedOwners = new Map<string, ImportDestination>();
   const poolEnabled = Boolean(
     poolConfig?.enabled && poolConfig.lifecycleEnabled,
@@ -366,6 +392,11 @@ export function RecordImportDrawer({
     Array.from(resolvedOwners),
   ]);
   const checked = readyPlan?.scope === scope ? checkResult : undefined;
+  const unassigned =
+    canChooseOwner &&
+    ownerColumn < 0 &&
+    !(importToPool && poolEnabled) &&
+    !ownerMemberId;
   const emptyMarkerCount = checked
     ? readyPlan!.rows.reduce((n, row) => n + (row.emptyMarkerCount ?? 0), 0)
     : 0;
@@ -495,6 +526,30 @@ export function RecordImportDrawer({
     controller.current?.abort();
     onClose();
   }
+  // Esc, the mask and × land here: a chosen file and its column matches are
+  // asked about before they are thrown away.
+  const [modal, modalHolder] = Modal.useModal();
+  const asking = useRef(false);
+  function requestClose() {
+    const unsaved = !!parsed && !allDone && !revoked;
+    if (!unsaved) return close();
+    if (asking.current) return;
+    asking.current = true;
+    const left = parsed.rows.length - completedRows.size;
+    void modal.confirm({
+      title: importStarted ? "停止导入并关闭？" : "放弃这次导入？",
+      content: importStarted
+        ? `已导入的行会保留，剩下 ${left} 行没有导入。`
+        : "已选的文件和列对照还没有导入，关闭后需要重新选择。",
+      okText: importStarted ? "关闭" : "放弃",
+      okButtonProps: { danger: true },
+      cancelText: "继续导入",
+      onOk: close,
+      afterClose: () => {
+        asking.current = false;
+      },
+    });
+  }
 
   async function selectSheet(
     nextSource: ImportFile,
@@ -575,6 +630,7 @@ export function RecordImportDrawer({
   }
   function newSelection() {
     cancelAssist();
+    setAiMapped(undefined);
     setSnapshot(undefined);
     setDraftChanged(false);
     setExcluded([]);
@@ -663,6 +719,24 @@ export function RecordImportDrawer({
   // column still says where each mapping came from.
   const origin =
     generated?.scope === assistScope && assistEnabled ? generated : undefined;
+  function markAi(next: AssistDraft, plan: ImportAssistPlan, merge: boolean) {
+    const keys: Record<number, string> = {};
+    for (const advice of plan.columns) {
+      const target = advice.target;
+      if (target.mode === "skip") continue;
+      const index = Number(advice.col.slice(1)) - 1;
+      const key =
+        target.mode === "append" ? APPEND + target.field : target.field;
+      if (next.mapping[index] === key) keys[index] = key;
+    }
+    setAiMapped((previous) => ({
+      scope: assistScope,
+      keys:
+        merge && previous?.scope === assistScope
+          ? { ...previous.keys, ...keys }
+          : keys,
+    }));
+  }
   function install(next: AssistDraft) {
     setMapping(next.mapping);
     setManual(next.manual);
@@ -734,16 +808,16 @@ export function RecordImportDrawer({
       setGenerated({ plan, preview, scope: assistScope });
       setSnapshot(before);
       setDraftChanged(false);
-      install(
-        applyImportAdvice(
-          draft,
-          preview,
-          plan,
-          schema.fields,
-          undefined,
-          schema.queryFieldKeys,
-        ),
+      const next = applyImportAdvice(
+        draft,
+        preview,
+        plan,
+        schema.fields,
+        undefined,
+        schema.queryFieldKeys,
       );
+      markAi(next, plan, false);
+      install(next);
     } catch (e) {
       if (
         abort.signal.aborted ||
@@ -783,15 +857,39 @@ export function RecordImportDrawer({
     if (!current || !source || busy || revoked || importStarted) return;
     if (choice && !choice.value)
       setAdoptedColumns((cols) => [...cols, choice.column]);
-    install(
-      applyImportAdvice(
-        draft,
-        current.preview,
-        current.plan,
-        schema.fields,
-        choice,
-        schema.queryFieldKeys,
-      ),
+    const next = applyImportAdvice(
+      draft,
+      current.preview,
+      current.plan,
+      schema.fields,
+      choice,
+      schema.queryFieldKeys,
+    );
+    markAi(next, current.plan, true);
+    install(next);
+  }
+  function remap(index: number, next: string) {
+    resetResult(importStarted);
+    setMatchFields([]);
+    setAmountUnits((prev) => {
+      const n = { ...prev };
+      delete n[index];
+      return n;
+    });
+    setValueChoices((prev) => {
+      const n = { ...prev };
+      delete n[index];
+      return n;
+    });
+    setManual((prev) => (prev.includes(index) ? prev : [...prev, index]));
+    setOverrides((prev) => {
+      const n = { ...prev };
+      delete n[index];
+      return n;
+    });
+    if (next === OWNER || mapping[index] === OWNER) setOwnerChoices(new Map());
+    setMapping((current) =>
+      current.map((old, i) => (i === index ? next : old)),
     );
   }
   function restore() {
@@ -812,6 +910,7 @@ export function RecordImportDrawer({
     install(snapshot.draft);
     setSnapshot(undefined);
     setGenerated(undefined);
+    setAiMapped(undefined);
     setAiNotice("已恢复到 AI 之前的对照");
   }
   async function onFile(file: File | undefined, nextEncoding: CsvEncoding) {
@@ -907,7 +1006,7 @@ export function RecordImportDrawer({
           {emptyMarkerCount > 0 && (
             <span>已把 {emptyMarkerCount} 格 NaN/#N/A 按空值处理</span>
           )}
-          <Button type={allDone ? "primary" : "default"} onClick={close}>
+          <Button type={allDone ? "primary" : "default"} onClick={requestClose}>
             {allDone ? "完成" : "关闭"}
           </Button>
           {allDone ? null : (
@@ -939,9 +1038,10 @@ export function RecordImportDrawer({
       size="min(100vw, clamp(720px, 64vw, 920px))"
       title="导入 Excel / CSV"
       aria-label="导入 Excel / CSV"
-      onClose={close}
+      onClose={requestClose}
       destroyOnHidden
     >
+      {modalHolder}
       {parseError ? <Alert type="error" showIcon title={parseError} /> : null}
       {summary ? <Alert type="error" showIcon title={summary} /> : null}
       <div className={importStyles.flow}>
@@ -1232,7 +1332,7 @@ export function RecordImportDrawer({
                     its row. */}
                 {missingRequired.length ? (
                   <Alert
-                    type="error"
+                    type="warning"
                     showIcon
                     title={`还没对上必填字段：${missingRequired.map((field) => field.label).join("、")}`}
                     description={
@@ -1271,12 +1371,16 @@ export function RecordImportDrawer({
                     const needsReview =
                       advice?.confidence === "review" &&
                       !adoptedColumns.includes(advice.col);
-                    const fromAi = origin?.plan.columns.find(
-                      (a) =>
-                        a.col === "C" + (index + 1) &&
-                        (a.confidence !== "review" ||
-                          adoptedColumns.includes(a.col)),
-                    );
+                    const fromAi =
+                      origin?.plan.columns.find(
+                        (a) =>
+                          a.col === "C" + (index + 1) &&
+                          (a.confidence !== "review" ||
+                            adoptedColumns.includes(a.col)),
+                      ) ||
+                      (aiMapped?.scope === assistScope &&
+                        mapping[index] !== SKIP &&
+                        aiMapped.keys[index] === mapping[index]);
                     const lockedOwner = !canChooseOwner && ownerHeader(header);
                     return (
                       <div key={index} className={importStyles.row}>
@@ -1307,35 +1411,7 @@ export function RecordImportDrawer({
                             id={`import-map-${index}`}
                             aria-label={`映射 ${label}`}
                             value={mapping[index]}
-                            onChange={(next) => {
-                              resetResult(importStarted);
-                              setMatchFields([]);
-                              setAmountUnits((prev) => {
-                                const n = { ...prev };
-                                delete n[index];
-                                return n;
-                              });
-                              setValueChoices((prev) => {
-                                const n = { ...prev };
-                                delete n[index];
-                                return n;
-                              });
-                              setManual((prev) =>
-                                prev.includes(index) ? prev : [...prev, index],
-                              );
-                              setOverrides((prev) => {
-                                const next = { ...prev };
-                                delete next[index];
-                                return next;
-                              });
-                              if (next === OWNER || mapping[index] === OWNER)
-                                setOwnerChoices(new Map());
-                              setMapping((current) =>
-                                current.map((old, i) =>
-                                  i === index ? next : old,
-                                ),
-                              );
-                            }}
+                            onChange={(next: string) => remap(index, next)}
                             options={[
                               { value: SKIP, label: "跳过此列" },
                               ...(canChooseOwner
@@ -1444,7 +1520,12 @@ export function RecordImportDrawer({
                                 ? (target?.mode === "append" ? "追加到" : "") +
                                   targetField.label
                                 : "跳过此列"}{" "}
-                              {advice.dateOrder}{" "}
+                              {advice.dateOrder &&
+                              dateInferences[index] === "ambiguous"
+                                ? advice.dateOrder === "DMY"
+                                  ? "按日/月/年 "
+                                  : "按月/日/年 "
+                                : ""}
                               {advice.bareAmountUnit === "wan"
                                 ? "无单位数值按万"
                                 : ""}{" "}
@@ -1556,6 +1637,21 @@ export function RecordImportDrawer({
               ，允许有权限成员领取
             </Checkbox>
           ) : null}
+          {ownerCandidate && !importToPool && !mappingLocked ? (
+            <div className={importStyles.ownerHint} role="note">
+              <span>
+                文件里的「{ownerCandidate.header}
+                」列都能对上成员，可以按这一列分别指定负责人。
+              </span>
+              <Button
+                size="small"
+                disabled={!!busy || loadingFile}
+                onClick={() => remap(ownerCandidate.index, OWNER)}
+              >
+                按「{ownerCandidate.header}」分配
+              </Button>
+            </div>
+          ) : null}
           <p className={importStyles.note}>
             {ownerColumn >= 0
               ? "新增记录按文件中的负责人分别归属"
@@ -1652,13 +1748,48 @@ export function RecordImportDrawer({
                       .join("")}
                   />
                 ) : (
-                  <p className={importStyles.note}>
-                    检查通过，可以导入 {eligible} 行
-                    {checked.failed
-                      ? `；另有 ${checked.failed} 行有错误，不会导入`
-                      : ""}
-                    。
-                  </p>
+                  <>
+                    <p className={importStyles.note}>
+                      检查通过，可以导入 {eligible} 行
+                      {checked.failed
+                        ? `；另有 ${checked.failed} 行有错误，不会导入`
+                        : ""}
+                      。
+                    </p>
+                    {unassigned ? (
+                      <Alert
+                        type="warning"
+                        showIcon
+                        title={`这 ${eligible} 行导入后没有负责人`}
+                        description="只看自己负责记录的成员看不到它们，也不会有人收到跟进提醒。可以在「新记录归属」里选负责人后重新检查。"
+                        action={
+                          ownerCandidate ? (
+                            <Button
+                              size="small"
+                              onClick={() => remap(ownerCandidate.index, OWNER)}
+                            >
+                              按「{ownerCandidate.header}」分配
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                    ) : null}
+                    <ImportCheckPreview
+                      parsed={parsed!}
+                      rows={readyPlan!.rows.filter((row) =>
+                        checked.items.some(
+                          (item) =>
+                            item.rowNumber === row.rowNumber &&
+                            item.status === "READY",
+                        ),
+                      )}
+                      mapping={mapping}
+                      fields={importable}
+                      members={members}
+                      timeZone={timeZone}
+                      showOwner={canChooseOwner}
+                    />
+                  </>
                 )}
               </>
             ) : result ? (

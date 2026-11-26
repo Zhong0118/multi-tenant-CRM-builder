@@ -37,8 +37,13 @@ const url = process.env.TEST_REDIS_URL;
     await limits.issue(target, ip, account);
     const timestamp = Date.now();
     await redis.zadd(minuteKey, timestamp - 59_000, 'first');
+    // The message names the limit that was hit and when it lifts.
     await expect(limits.issue(target, ip)).rejects.toMatchObject({
       code: 'RATE_LIMITED',
+      message: expect.stringMatching(
+        /^同一邮箱每分钟只能发 1 次，请 \d+ 秒后再试。$/,
+      ) as string,
+      retryAfterSeconds: expect.any(Number) as number,
     });
     await redis.del(minuteKey);
     for (let i = 0; i < 4; i++)
@@ -51,7 +56,12 @@ const url = process.env.TEST_REDIS_URL;
     for (let i = 0; i < 9; i++) await limits.account(account);
     await expect(
       limits.issue(prefix + 'another', ip, account),
-    ).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+    ).rejects.toMatchObject({
+      code: 'RATE_LIMITED',
+      message: expect.stringContaining(
+        '这个账号一天内最多发 10 次邮箱验证码',
+      ) as string,
+    });
   });
   it('limits IP across targets and confirmations across IPs', async () => {
     const ip = prefix + 'alltargets',

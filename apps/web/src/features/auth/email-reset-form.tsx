@@ -10,7 +10,13 @@ import { PasswordResetForm } from "./password-reset-form";
 import { passwordSchema, verificationCodeSchema } from "./schemas";
 import styles from "./auth.module.css";
 
-export function ResetMethods({ mailAvailable }: { mailAvailable: boolean }) {
+export function ResetMethods({
+  mailAvailable,
+  returnTo,
+}: {
+  mailAvailable: boolean;
+  returnTo?: string | null;
+}) {
   const [method, setMethod] = useState("手机号");
   return (
     <div className={styles.resetMethods}>
@@ -23,15 +29,19 @@ export function ResetMethods({ mailAvailable }: { mailAvailable: boolean }) {
         />
       )}
       {mailAvailable && method === "邮箱" ? (
-        <EmailResetForm />
+        <EmailResetForm returnTo={returnTo} />
       ) : (
-        <PasswordResetForm />
+        <PasswordResetForm returnTo={returnTo} />
       )}
     </div>
   );
 }
 
-export function EmailResetForm() {
+export function EmailResetForm({
+  returnTo,
+}: {
+  returnTo?: string | null;
+} = {}) {
   const router = useRouter(),
     cooldown = useCountdown();
   const [email, setEmail] = useState(""),
@@ -67,7 +77,9 @@ export function EmailResetForm() {
           newPassword,
           challengeId: challenge,
         });
-        router.push("/login?reset=done");
+        const params = new URLSearchParams({ reset: "done" });
+        if (returnTo) params.set("returnTo", returnTo);
+        router.push(`/login?${params}`);
       }
     } catch (e) {
       setError(normalizeFormError(e).message);

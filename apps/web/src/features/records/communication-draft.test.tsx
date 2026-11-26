@@ -16,8 +16,9 @@ import type {
 import type { PublishedFieldView } from "@/features/objects/object-types";
 
 const push = vi.hoisted(() => vi.fn());
+const replace = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace }),
   usePathname: () => window.location.pathname,
 }));
 
@@ -25,6 +26,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-22T12:00:00Z"));
   push.mockClear();
+  replace.mockClear();
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -189,7 +191,10 @@ it("sends edited tenant wall time and just the selected fields in one operation"
     screen.queryByText(/审计|audit-note|audit-task|Asia\/Shanghai/),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "查看记录" }));
-  expect(push).toHaveBeenCalledWith("/workspace/t/objects/customers/r");
+  // The note was written: open the 动态 tab where it shows.
+  expect(push).toHaveBeenCalledWith(
+    "/workspace/t/objects/customers/r?section=activity",
+  );
   expect(onClose).toHaveBeenCalledTimes(1);
   expect(invalidate.mock.calls.map(([options]) => options?.queryKey)).toEqual(
     expect.arrayContaining([
@@ -469,6 +474,10 @@ it("shows generation and save progress and closes 查看记录 on the customer's
   fireEvent.click(screen.getByRole("button", { name: "查看记录" }));
   expect(onClose).toHaveBeenCalledTimes(1);
   expect(push).not.toHaveBeenCalled();
+  expect(replace).toHaveBeenCalledWith(
+    "/workspace/t/objects/customers/r?section=activity",
+    { scroll: false },
+  );
 });
 
 it("retries a failed item independently when two operations fail", async () => {
@@ -591,4 +600,25 @@ it("keeps an unsubmitted item with missing inputs collapsed when another item fa
   expect(screen.getByLabelText("纪要内容").closest("details")).toBeNull();
   fireEvent.click(screen.getByText("下次跟进 · 待补充"));
   expect(pending).toHaveAttribute("open");
+});
+
+it("asks before Esc throws away an unsaved draft", async () => {
+  const { onClose } = setup();
+  await screen.findByRole("button", { name: "确认所选项" });
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+  expect(
+    await screen.findByRole("button", { name: "继续整理" }),
+  ).toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: "继续整理" })).toHaveLength(1);
+  expect(
+    screen.getByText("草稿和你的修改还没有保存，关闭后需要重新生成。"),
+  ).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "继续整理" }));
+  expect(
+    screen.getByRole("button", { name: "确认所选项" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  fireEvent.click(await screen.findByRole("button", { name: "放弃" }));
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
 });

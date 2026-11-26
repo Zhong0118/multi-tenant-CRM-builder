@@ -185,7 +185,7 @@ export function RecordActivityTimeline({
       <h2 className={styles.visuallyHidden}>活动历史</h2>
       <div className={styles.timelineHeading}>
         <Typography.Text type="secondary">
-          按时间追加，已有记录不能修改。
+          按时间追加，写错了可以删除后重记，不能改原文。
         </Typography.Text>
         {action}
         {canCreate && !composing ? (
