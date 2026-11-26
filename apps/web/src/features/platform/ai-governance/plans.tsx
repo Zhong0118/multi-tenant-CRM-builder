@@ -14,7 +14,9 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
 } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataPanel } from "@/components/workbench/surface";
 import { StatusTag } from "@/components/workbench/status-tag";
@@ -119,7 +121,6 @@ export function PlatformPlans() {
       <PageHeader
         title="AI 套餐"
         count={plans.data?.length}
-        description="管理可分配给公司的功能与每月额度"
         extra={
           <Button
             type="primary"
@@ -197,7 +198,11 @@ export function PlatformPlans() {
                           )}
                     </span>
                   ) : (
-                    <span className={styles.muted}>未设置单价</span>
+                    <Tooltip title="未设置单价，无法估算">
+                      <span className={styles.muted}>
+                        — <InfoCircleOutlined aria-label="未设置单价" />
+                      </span>
+                    </Tooltip>
                   ),
               },
               { title: "使用公司", render: (_, p) => p.companies + " 家" },

@@ -104,6 +104,12 @@ describe("platform operations pages", () => {
               status: "ACTION_REQUIRED",
               detail: "尚未接入生产短信供应商。",
             },
+            {
+              key: "database",
+              label: "PostgreSQL 数据库",
+              status: "READY",
+              detail: "数据库实时探测成功。",
+            },
           ],
           policies: {
             sessionTtlDays: 30,
@@ -121,6 +127,9 @@ describe("platform operations pages", () => {
     expect(screen.getByText(/北京时间 10:05/)).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.getByText("需要处理")).toBeInTheDocument();
+    // Only the service with a problem explains itself.
+    expect(screen.getByText("尚未接入生产短信供应商。")).toBeInTheDocument();
+    expect(screen.queryByText("数据库实时探测成功。")).toBeNull();
     expect(
       screen.getByText("登录历史保留").nextElementSibling,
     ).toHaveTextContent("90 天");

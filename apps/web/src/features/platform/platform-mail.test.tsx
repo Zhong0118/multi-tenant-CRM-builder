@@ -19,7 +19,12 @@ it("keeps ambiguous deliveries separate from failures and uses the message categ
     within(row)
       .getAllByRole("cell")
       .map((c) => c.textContent),
-  ).toEqual(["邮箱找回", "2", "0", "1"]);
+  ).toEqual(["邮箱找回", "2", "1"]);
+  // Nothing failed, so there is no failure column; unknown stays its own.
+  expect(screen.queryByRole("columnheader", { name: "失败" })).toBeNull();
+  expect(
+    screen.getByRole("columnheader", { name: /结果未知/ }),
+  ).toBeInTheDocument();
 });
 it("hides the send action when SMTP is disabled", () => {
   render(<PlatformMail ready={false} verified items={[]} />);

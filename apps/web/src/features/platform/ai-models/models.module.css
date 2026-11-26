@@ -177,3 +177,10 @@
     }
   }
 }
+
+/* The key's last four digits, one hover away from the provider line. */
+.keyInfo {
+  margin-inline-start: 6px;
+  color: var(--text-tertiary);
+  cursor: help;
+}

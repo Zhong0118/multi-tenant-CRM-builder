@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { Alert, Button, Space, Table, Typography } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
+import { Alert, Button, Space, Table, Tooltip, Typography } from "antd";
 import { PageSection } from "@/components/layout/page";
 import { dataOrThrow } from "@/features/objects/object-api";
 import { browserApiClient } from "@/lib/api/browser-client";
@@ -73,10 +74,11 @@ export function PlatformMail({
     row[item.status as "sent" | "failed" | "unknown"] += item.count;
     counts.set(item.kind, row);
   }
+  const rows = [...counts.values()];
   return (
     <PageSection
       title="邮件发送"
-      description="最近 7 天的投递结果。「结果未知」指发送中途连接中断，无法确认邮件服务器是否已收下。"
+      description="最近 7 天"
       extra={
         ready && (
           <Button
@@ -107,7 +109,7 @@ export function PlatformMail({
             size="small"
             pagination={false}
             rowKey="kind"
-            dataSource={[...counts.values()]}
+            dataSource={rows}
             columns={[
               {
                 title: "类别",
@@ -115,8 +117,25 @@ export function PlatformMail({
                 render: (kind: string) => titles[kind] ?? "其他邮件",
               },
               { title: "成功", dataIndex: "sent" },
-              { title: "失败", dataIndex: "failed" },
-              { title: "结果未知", dataIndex: "unknown" },
+              // Failed and unknown only take a column once something lands
+              // in them.
+              ...(rows.some((row) => row.failed)
+                ? [{ title: "失败", dataIndex: "failed" }]
+                : []),
+              ...(rows.some((row) => row.unknown)
+                ? [
+                    {
+                      title: (
+                        <Tooltip title="发送中途连接中断，无法确认邮件服务器是否已收下">
+                          <span>
+                            结果未知 <InfoCircleOutlined aria-hidden />
+                          </span>
+                        </Tooltip>
+                      ),
+                      dataIndex: "unknown",
+                    },
+                  ]
+                : []),
             ]}
           />
         )}
