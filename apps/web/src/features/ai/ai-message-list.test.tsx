@@ -2,7 +2,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { AiMessageList, nextPrependScrollTop } from "./ai-message-list";
+import {
+  AiMessageList,
+  nextHold,
+  nextPrependScrollTop,
+} from "./ai-message-list";
 import type { AiMessage } from "./ai-types";
 
 function message(id: string, content: string): AiMessage {
@@ -239,5 +243,18 @@ describe("AiMessageList question navigation", () => {
     questions[1].getBoundingClientRect = () => ({ top: 120 } as DOMRect);
     fireEvent.scroll(scroller);
     expect(screen.getByRole("button", { name: "定位提问：第二条问题" })).toHaveAttribute("aria-current", "location");
+  });
+});
+
+describe("nextHold", () => {
+  it("keeps the space a collapsing card frees, so nothing above moves", () => {
+    expect(nextHold(1000, 845, 0, true)).toBe(155);
+  });
+  it("lets the next message grow into the kept space first", () => {
+    expect(nextHold(845, 905, 155, true)).toBe(95);
+    expect(nextHold(905, 1200, 95, true)).toBe(0);
+  });
+  it("leaves the space alone while the reader is up in the history", () => {
+    expect(nextHold(845, 1400, 155, false)).toBe(155);
   });
 });
