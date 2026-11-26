@@ -1,7 +1,8 @@
 "use client";
 import { formatPercent, formatTokens } from "@/features/ai-governance/format";
 import dynamic from "next/dynamic";
-import { Empty, Progress } from "antd";
+import { useState } from "react";
+import { Button, Empty, Progress } from "antd";
 import { PageSection } from "@/components/layout/page";
 import { MemberIdentity } from "@/components/identity/member-identity";
 import {
@@ -26,6 +27,7 @@ export function UsagePanel({
   usage: Usage;
 }) {
   const featureNames = catalogLabels(state.catalog);
+  const [everyone, setEveryone] = useState(false);
   const byDay = new Map<string, number>(),
     byFeature = new Map<AiFeature, number>();
   let proposals = 0,
@@ -43,6 +45,12 @@ export function UsagePanel({
     return <Empty description="本月还没有使用 AI" />;
   // Daily totals past ten thousand read in 万 on the axis.
   const inWan = Math.max(0, ...byDay.values()) >= 10_000;
+  const days = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b));
+  // Members who have not used AI this month wait behind 显示全部.
+  const idle = usage.members.filter((m) => !Number(m.usedTokens)).length;
+  const shown = everyone
+    ? usage.members
+    : usage.members.filter((m) => Number(m.usedTokens) > 0);
   const share =
     state.allocation === "equal" && state.preview.shareTokens !== null
       ? Number(state.preview.shareTokens)
@@ -50,25 +58,34 @@ export function UsagePanel({
   return (
     <>
       <div className={styles.grid}>
-        <PageSection
-          title="每日用量趋势"
-          description={`每天结算的输入与输出 token，纵轴单位：${inWan ? "万 token" : "token"}`}
-        >
-          {byDay.size > 0 ? (
+        <PageSection title="每日用量">
+          {byDay.size >= 7 ? (
             <Trend
               title="用量"
               formatValue={formatTokens}
-              // The unit is said once above; ticks are bare round numbers.
+              // Ticks carry their unit: "80万", or bare token counts.
               formatAxis={(value) =>
                 new Intl.NumberFormat("zh-CN", {
                   maximumFractionDigits: 1,
-                }).format(inWan ? value / 10_000 : value)
+                }).format(inWan ? value / 10_000 : value) + (inWan ? "万" : "")
               }
               zeroBaseline
-              data={[...byDay.entries()]
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([date, value]) => ({ date, value }))}
+              data={days.map(([date, value]) => ({ date, value }))}
             />
+          ) : byDay.size > 0 ? (
+            // Under a week a line says little; the days read as numbers.
+            days.map(([date, value]) => (
+              <div key={date} className={styles.featureUsage}>
+                <span>{dayLabel(date)}</span>
+                <b>{formatTokens(value)}</b>
+                <Progress
+                  size="small"
+                  status="normal"
+                  percent={(100 * value) / Math.max(1, ...byDay.values())}
+                  showInfo={false}
+                />
+              </div>
+            ))
           ) : (
             <p>本月暂无模型调用用量</p>
           )}
@@ -97,7 +114,7 @@ export function UsagePanel({
       </div>
       <PageSection title="成员用量">
         <ul className={styles.members}>
-          {usage.members.map((m) => {
+          {shown.map((m) => {
             const limit = share ?? Number(state.totalTokens),
               percent = limit > 0 ? (100 * Number(m.usedTokens)) / limit : 0;
             return (
@@ -120,7 +137,22 @@ export function UsagePanel({
             );
           })}
         </ul>
+        {idle > 0 && !everyone && (
+          <Button
+            type="link"
+            className={styles.showAll}
+            onClick={() => setEveryone(true)}
+          >
+            显示全部 {usage.members.length} 人
+          </Button>
+        )}
       </PageSection>
     </>
   );
+}
+
+/** "2026-11-25" → "11月25日". */
+function dayLabel(date: string) {
+  const [, month, day] = date.split("-").map(Number);
+  return `${month}月${day}日`;
 }

@@ -127,6 +127,52 @@
 .helper {
   margin: 12px 0;
 }
+/* Plan features fold to one line. */
+.featureFold > summary {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 13px;
+  list-style: none;
+  cursor: pointer;
+}
+.featureFold > summary::-webkit-details-marker {
+  display: none;
+}
+.featureFold > summary::after {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--text-tertiary);
+  border-bottom: 1.5px solid var(--text-tertiary);
+  content: "";
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+.featureFold[open] > summary {
+  margin-bottom: 10px;
+}
+.featureFold[open] > summary::after {
+  transform: rotate(45deg);
+}
+/* The choice and what it means, on one line. */
+.allocation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+}
+.allocation small {
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+.tabs.tabs {
+  margin-top: 20px;
+}
+.showAll:global(.ant-btn) {
+  padding-inline: 0;
+  margin-top: 6px;
+}
 .saveRow {
   display: flex;
   gap: 10px;

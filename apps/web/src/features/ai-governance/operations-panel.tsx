@@ -107,6 +107,7 @@ export function OperationsPanel({
   const featureNames = catalogLabels(catalog);
   const [filters, setFilters] = useState<Record<string, string>>({}),
     [open, setOpen] = useState(false),
+    [more, setMore] = useState(false),
     [selected, select] = useState<string>();
   const search = new URLSearchParams(filters).toString();
   const list = useInfiniteQuery({
@@ -147,6 +148,9 @@ export function OperationsPanel({
       onChange={(v) => set(key, v)}
     />
   );
+  const hiddenActive = ["operationType", "source", "from", "to"].some(
+    (key) => filters[key],
+  );
   const controls = (
     <>
       {selectControl(
@@ -154,22 +158,31 @@ export function OperationsPanel({
         "全部成员",
         members.map((m) => ({ value: m.memberId, label: m.name })),
       )}
-      {selectControl("operationType", "写入类型", options(operationNames))}
-      {selectControl("source", "操作来源", options(sources))}
       {selectControl("status", "全部状态", options(statuses))}
-      {(["from", "to"] as const).map((key, i) => (
-        <DatePicker
-          key={key}
-          aria-label={i ? "截至日期" : "起始日期"}
-          placeholder={i ? "截至日期" : "起始日期"}
-          value={filters[key] ? dayjs(filters[key]) : null}
-          minDate={
-            key === "to" && filters.from ? dayjs(filters.from) : undefined
-          }
-          maxDate={key === "from" && filters.to ? dayjs(filters.to) : undefined}
-          onChange={(d) => set(key, d?.format("YYYY-MM-DD"))}
-        />
-      ))}
+      {/* Member and status cover most looks; the rest wait behind 更多筛选. */}
+      {more || hiddenActive ? (
+        <>
+          {selectControl("operationType", "写入类型", options(operationNames))}
+          {selectControl("source", "操作来源", options(sources))}
+          {(["from", "to"] as const).map((key, i) => (
+            <DatePicker
+              key={key}
+              aria-label={i ? "截至日期" : "起始日期"}
+              placeholder={i ? "截至日期" : "起始日期"}
+              value={filters[key] ? dayjs(filters[key]) : null}
+              minDate={
+                key === "to" && filters.from ? dayjs(filters.from) : undefined
+              }
+              maxDate={
+                key === "from" && filters.to ? dayjs(filters.to) : undefined
+              }
+              onChange={(d) => set(key, d?.format("YYYY-MM-DD"))}
+            />
+          ))}
+        </>
+      ) : (
+        <Button onClick={() => setMore(true)}>更多筛选</Button>
+      )}
       {search && (
         <Button type="link" onClick={() => setFilters({})}>
           清除筛选
