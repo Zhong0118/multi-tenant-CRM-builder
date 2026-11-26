@@ -380,12 +380,10 @@ export function CommunicationDraftDialog({
             (Array.isArray(value) && !value.length))
             ? `请填写${field.label}`
             : undefined,
+        // The new value lives in the control; the old one sits under it as
+        // "原为 …", the same as proposal cards in the assistant.
         render: (edit, disabled) => (
           <>
-            <p className={styles.change}>
-              旧值 <span>{displayValue(field, change.oldValue, members)}</span>{" "}
-              → <span>{displayValue(field, value, members)}</span>
-            </p>
             <DynamicField
               field={field}
               value={value}
@@ -393,6 +391,11 @@ export function CommunicationDraftDialog({
               disabled={disabled}
               onChange={edit}
             />
+            {change.oldValue != null && change.oldValue !== "" && (
+              <p className={styles.change}>
+                原为 {displayValue(field, change.oldValue, members)}
+              </p>
+            )}
           </>
         ),
       });
