@@ -201,21 +201,22 @@ table,
 }
 
 /* Notices: white box, hairline border, the status colour only on the icon
-   and a 3px left rule. Same shape as the other boxes in the product. */
-.ant-alert {
+   and a 3px left rule. Same shape as the other boxes in the product.
+   Repeated classes: AntD injects its own rules later at the same weight. */
+.ant-alert.ant-alert {
   border-inline-start-width: 3px;
   border-radius: 8px;
 }
-.ant-alert-info {
+.ant-alert.ant-alert.ant-alert-info {
   border-inline-start-color: var(--color-info);
 }
-.ant-alert-success {
+.ant-alert.ant-alert.ant-alert-success {
   border-inline-start-color: var(--color-success);
 }
-.ant-alert-warning {
+.ant-alert.ant-alert.ant-alert-warning {
   border-inline-start-color: var(--color-warning);
 }
-.ant-alert-error {
+.ant-alert.ant-alert.ant-alert-error {
   border-inline-start-color: var(--color-danger);
 }
 .ant-alert .ant-alert-description {
