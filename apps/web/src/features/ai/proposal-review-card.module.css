@@ -36,9 +36,11 @@
 .item > * {
   grid-column: 1 / -1;
 }
-.item > :global(.ant-checkbox-wrapper),
-.item > .itemTitle {
-  grid-column: 1;
+.itemHead {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
 }
 .itemTitle {
   min-width: 0;
@@ -83,22 +85,44 @@
 .item :global(.ant-form-item .ant-form-item-label > label::after) {
   display: none;
 }
-.item p,
-.item blockquote {
+.item p {
   margin: 0;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
-/* Evidence: the user's own words the suggestion came from. Not AI-written,
-   so it carries a neutral rule, not the AI violet. */
-.item blockquote {
-  padding: 6px 10px;
-  border-inline-start: 2px solid var(--border-default);
-  border-radius: 0 var(--radius-control) var(--radius-control) 0;
-  background: var(--bg-surface-subtle);
+/* Evidence: the user's own words the suggestion came from, behind an ⓘ
+   beside the item's name. Not AI-written, so it stays neutral grey. */
+.evidence {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: help;
+}
+.evidence:hover,
+.evidence:focus-visible {
   color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 18px;
+}
+.evidence:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+/* The item's name above already says which field this is; the control's own
+   label stays for screen readers only. */
+.bareField :global(.ant-form-item .ant-form-item-label) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .item [role="alert"] {
   color: var(--color-danger);

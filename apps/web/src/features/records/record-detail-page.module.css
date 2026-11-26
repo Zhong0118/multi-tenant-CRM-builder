@@ -302,10 +302,13 @@
   line-height: 20px;
 }
 
-.ownerActions {
+/* The owner and what can be done with the record share one line. */
+.facts dd.ownerValue {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 8px;
 }
 
 .tabs :global(.ant-tabs-nav) {

@@ -323,9 +323,7 @@ export function CommunicationDraftDialog({
       items.push({
         key: "followUp",
         label: "下次跟进",
-        evidence: draft.followUp.evidence
-          ? `依据：${draft.followUp.evidence}`
-          : undefined,
+        evidence: draft.followUp.evidence || undefined,
         error:
           !title.trim() || !dueAt
             ? "请填写跟进标题，并选择有效的日期和时间"
@@ -371,7 +369,7 @@ export function CommunicationDraftDialog({
         key,
         operationKey: "fields",
         label: field.label,
-        evidence: change.evidence,
+        evidence: change.evidence || undefined,
         locked: byKey("fields")?.status === "EXECUTED",
         error:
           field.required &&
@@ -384,13 +382,15 @@ export function CommunicationDraftDialog({
         // "原为 …", the same as proposal cards in the assistant.
         render: (edit, disabled) => (
           <>
-            <DynamicField
-              field={field}
-              value={value}
-              members={fieldMembers}
-              disabled={disabled}
-              onChange={edit}
-            />
+            <div className={styles.bareField}>
+              <DynamicField
+                field={field}
+                value={value}
+                members={fieldMembers}
+                disabled={disabled}
+                onChange={edit}
+              />
+            </div>
             {change.oldValue != null && change.oldValue !== "" && (
               <p className={styles.change}>
                 原为 {displayValue(field, change.oldValue, members)}
@@ -493,7 +493,11 @@ export function CommunicationDraftDialog({
                 aria-label="沟通原文"
                 rows={5}
                 maxLength={4000}
-                showCount
+                // The count only matters close to the limit.
+                showCount={{
+                  formatter: ({ count, maxLength }) =>
+                    count > 3600 ? `${count} / ${maxLength}` : "",
+                }}
                 disabled={busy}
                 placeholder="例如：预算还没批，客户让下周再联系"
                 value={source}
@@ -554,7 +558,7 @@ export function CommunicationDraftDialog({
             {draft.status !== "FALLBACK" && (
               <h3 className={styles.draftHeading}>
                 <AiBadge>AI 提议</AiBadge>
-                <span>核对 {items.length} 项建议，可以只保存其中几项</span>
+                <span>{items.length} 项建议</span>
               </h3>
             )}
             <ProposalReviewCard

@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Checkbox } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
+import { Button, Checkbox, Tooltip } from "antd";
 import type { ReactNode } from "react";
 import styles from "./proposal-review-card.module.css";
 
@@ -92,22 +93,39 @@ export function ProposalReviewCard({
             <>
               {/* A settled item (written, expired, rejected) has nothing to
                   choose: its name reads as a plain title, not a greyed box. */}
-              {onSelect && item.locked ? (
-                <strong className={styles.itemTitle}>{item.label}</strong>
-              ) : onSelect ? (
-                <Checkbox
-                  aria-label={`选择${item.label}`}
-                  checked={selected}
-                  disabled={disabled}
-                  onChange={(event) => onSelect(item.key, event.target.checked)}
-                >
-                  {item.label}
-                </Checkbox>
-              ) : null}
+              {onSelect && (
+                <span className={styles.itemHead}>
+                  {item.locked ? (
+                    <strong className={styles.itemTitle}>{item.label}</strong>
+                  ) : (
+                    <Checkbox
+                      aria-label={`选择${item.label}`}
+                      checked={selected}
+                      disabled={disabled}
+                      onChange={(event) =>
+                        onSelect(item.key, event.target.checked)
+                      }
+                    >
+                      {item.label}
+                    </Checkbox>
+                  )}
+                  {/* The words the suggestion came from, one hover away. */}
+                  {item.evidence && expanded && (
+                    <Tooltip title={`依据：${item.evidence}`}>
+                      <button
+                        type="button"
+                        className={styles.evidence}
+                        aria-label={`依据：${item.evidence}`}
+                      >
+                        <InfoCircleOutlined aria-hidden />
+                      </button>
+                    </Tooltip>
+                  )}
+                </span>
+              )}
               {expanded && (
                 <>
                   {item.render((value) => onEdit?.(item.key, value), disabled)}
-                  {item.evidence && <blockquote>{item.evidence}</blockquote>}
                   {selected && item.error && <p role="status">{item.error}</p>}
                 </>
               )}

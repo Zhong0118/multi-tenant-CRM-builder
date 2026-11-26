@@ -17,14 +17,43 @@ import { RecordDetailPage } from "./record-detail-page";
 import { recordApi } from "./record-api";
 import { recordPoolApi } from "./record-pool-api";
 
-vi.mock("@/features/follow-ups/follow-up-panel", () => ({
-  FollowUpPanel: () => null,
+// What the mocked follow-up panel and history report having, if anything.
+const counts = vi.hoisted(() => ({
+  followUps: undefined as number | undefined,
+  activity: undefined as number | undefined,
 }));
-vi.mock("./record-activity-timeline", () => ({
-  RecordActivityTimeline: ({ action }: { action?: ReactNode }) => (
-    <section aria-label="活动历史">{action}</section>
-  ),
-}));
+vi.mock("@/features/follow-ups/follow-up-panel", async () => {
+  const { useEffect } = await vi.importActual<typeof import("react")>("react");
+  return {
+    FollowUpPanel: ({
+      onOpenCount,
+    }: {
+      onOpenCount?: (count: number) => void;
+    }) => {
+      useEffect(() => {
+        if (counts.followUps !== undefined) onOpenCount?.(counts.followUps);
+      }, [onOpenCount]);
+      return null;
+    },
+  };
+});
+vi.mock("./record-activity-timeline", async () => {
+  const { useEffect } = await vi.importActual<typeof import("react")>("react");
+  return {
+    RecordActivityTimeline: ({
+      action,
+      onCount,
+    }: {
+      action?: ReactNode;
+      onCount?: (count: number) => void;
+    }) => {
+      useEffect(() => {
+        if (counts.activity !== undefined) onCount?.(counts.activity);
+      }, [onCount]);
+      return <section aria-label="活动历史">{action}</section>;
+    },
+  };
+});
 vi.mock("./record-relations-panel", () => ({
   RecordRelationsPanel: () => null,
 }));
@@ -106,6 +135,80 @@ it.each([false, true])(
     expect(window.localStorage.getItem("crm.record.tab.northwind.me")).toBe(
       "attachments",
     );
+  },
+);
+
+it.each([
+  [3, "动态"],
+  [0, "跟进"],
+] as const)(
+  "with nothing left to follow up and %i activities, opens on %s",
+  async (activity, opened) => {
+    window.localStorage.removeItem("crm.record.tab.northwind.me");
+    counts.followUps = 0;
+    counts.activity = activity;
+    const record: RecordSummary = {
+      id: "r1",
+      recordNo: "1",
+      title: "客户甲",
+      version: 7,
+      ownerMemberId: "me",
+      inPublicPool: false,
+      ownershipExpiresAt: null,
+      values: { name: "客户甲" },
+      createdAt: "2026-10-23T00:00:00Z",
+      updatedAt: "2026-10-23T00:00:00Z",
+    };
+    const schema: RuntimeObjectSchema = {
+      publication: { number: 1, publishedAt: "2026-10-23T00:00:00Z" },
+      object: {
+        code: "customers",
+        name: "客户",
+        description: null,
+        titleFieldKey: "name",
+        icon: null,
+        sortOrder: 1,
+      },
+      fields: [],
+      defaultView: {
+        code: "default",
+        name: "默认",
+        columnFieldKeys: [],
+        sort: { field: "updatedAt", direction: "desc" },
+      },
+      actions: {
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        canDelete: false,
+      },
+      scopes: { read: "OWN", update: "OWN" },
+    };
+    try {
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <RecordDetailPage
+            tenantCode="northwind"
+            schema={schema}
+            record={record}
+            currentMemberId="me"
+            onClose={vi.fn()}
+            onChanged={vi.fn()}
+          />
+        </QueryClientProvider>,
+      );
+      const followUps = screen.getByRole("tab", { name: /^跟进/ });
+      await waitFor(() => expect(followUps).toHaveTextContent("0"));
+      expect(
+        screen.getByRole("tab", { name: new RegExp(`^${opened}`) }),
+      ).toHaveAttribute("aria-selected", "true");
+      // Asking for 跟进 keeps it, even with nothing in it.
+      fireEvent.click(followUps);
+      expect(followUps).toHaveAttribute("aria-selected", "true");
+    } finally {
+      counts.followUps = undefined;
+      counts.activity = undefined;
+    }
   },
 );
 

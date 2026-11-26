@@ -152,7 +152,9 @@ it("sends edited tenant wall time and just the selected fields in one operation"
   expect(screen.getByLabelText("选择下次跟进")).toBeChecked();
   expect(screen.getByLabelText("选择关注点")).not.toBeChecked();
   expect(screen.queryByText("敏感值")).toBeNull();
-  expect(screen.getByText("依据：下周再联系")).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "依据：下周再联系" }),
+  ).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("纪要内容"), {
     target: { value: "预算暂未获批" },
   });
