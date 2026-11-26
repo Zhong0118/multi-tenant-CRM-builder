@@ -123,6 +123,32 @@ describe("SessionList", () => {
     expect(screen.queryByLabelText("当前密码")).not.toBeInTheDocument();
   });
 
+  it("says a wrong current password beside that field, not at the top", async () => {
+    const api: SecurityApi = {
+      revokeSession: vi.fn(),
+      changePassword: vi.fn().mockRejectedValue({
+        code: "INVALID_CREDENTIALS",
+        message: "手机号或密码不正确。",
+        requestId: "req_1",
+        status: 401,
+      }),
+    };
+    renderSecurity(api);
+    fireEvent.click(screen.getByRole("button", { name: "修改密码" }));
+    fireEvent.change(screen.getByLabelText("当前密码"), {
+      target: { value: "wrong-password" },
+    });
+    fireEvent.change(screen.getByLabelText("新密码"), {
+      target: { value: "new-password1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "更新密码" }));
+
+    expect(await screen.findByText("当前密码不正确。")).toBeInTheDocument();
+    expect(screen.queryByText(/手机号/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/req_1/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("当前密码")).toHaveFocus();
+  });
+
   it("shows a history read failure beside the history with a retry", async () => {
     const page2 = { items: [sessions[2]], page: 2, limit: 1, total: 2 };
     const api: SecurityApi = {

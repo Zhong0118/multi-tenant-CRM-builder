@@ -454,10 +454,20 @@
 }
 
 .inlineTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
   margin: 0;
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 500;
+}
+
+.inlineTitleMeta {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .inlineActions {

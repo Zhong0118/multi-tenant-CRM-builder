@@ -141,11 +141,15 @@ export function SessionList({
   const [summary, setSummary] = useState<{
     type: "error" | "success";
     text: string;
+    /** Support detail (request ID): kept, but below the message. */
+    detail?: string;
   }>();
   const {
     control,
     handleSubmit,
     reset,
+    setError,
+    setFocus,
     formState: { errors },
   } = useForm<ChangePasswordInput>({
     resolver: zodResolver(changePasswordSchema),
@@ -215,9 +219,26 @@ export function SessionList({
     },
     onError: (error) => {
       const apiError = normalizeFormError(error);
+      // A wrong current password is about that field: say so beside it.
+      if (apiError.code === "INVALID_CREDENTIALS") {
+        setError("currentPassword", { message: "当前密码不正确。" });
+        setFocus("currentPassword");
+        return;
+      }
+      const fieldError = (["currentPassword", "newPassword"] as const).find(
+        (name) => apiError.fieldErrors[name]?.length,
+      );
+      if (fieldError) {
+        setError(fieldError, {
+          message: apiError.fieldErrors[fieldError]![0],
+        });
+        setFocus(fieldError);
+        return;
+      }
       setSummary({
         type: "error",
-        text: `${apiError.message}（请求编号：${apiError.requestId}）`,
+        text: apiError.message,
+        detail: `请求编号：${apiError.requestId}`,
       });
     },
   });
@@ -230,6 +251,7 @@ export function SessionList({
           type={summary.type}
           showIcon
           title={summary.text}
+          description={summary.detail}
         />
       )}
 
@@ -268,6 +290,7 @@ export function SessionList({
                     control={control}
                     render={({ field }) => (
                       <Input.Password
+                        status={errors.currentPassword ? "error" : undefined}
                         id="security-current-password"
                         autoComplete="current-password"
                         autoFocus

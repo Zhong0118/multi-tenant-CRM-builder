@@ -12,6 +12,54 @@ import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
 
 type Operation = EmailPurpose | "REMOVE";
+
+/**
+ * A sent code outlives the form: closing it or reloading the page keeps the
+ * challenge for its 10 minutes, so the code already in the inbox can still be
+ * entered. The password is never stored; it is asked for again.
+ */
+const PENDING_KEY = "crm:email-challenge";
+const SENT_KEY = "crm:email-sent-at";
+const CODE_LIFETIME = 10 * 60_000;
+const RESEND_AFTER = 60_000;
+interface Pending {
+  purpose: EmailPurpose;
+  email: string;
+  challengeId: string;
+  maskedEmail: string;
+  sentAt: number;
+}
+function readPending(purpose: EmailPurpose): Pending | undefined {
+  try {
+    const pending = JSON.parse(
+      window.sessionStorage.getItem(PENDING_KEY) ?? "null",
+    ) as Pending | null;
+    return pending?.purpose === purpose &&
+      Date.now() - pending.sentAt < CODE_LIFETIME
+      ? pending
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function writePending(pending?: Pending) {
+  try {
+    if (pending) {
+      window.sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+      window.sessionStorage.setItem(SENT_KEY, String(pending.sentAt));
+    } else window.sessionStorage.removeItem(PENDING_KEY);
+  } catch {
+    /* Private mode: the form simply starts over. */
+  }
+}
+function resendWait(): number {
+  try {
+    const sentAt = Number(window.sessionStorage.getItem(SENT_KEY));
+    return sentAt ? (RESEND_AFTER - (Date.now() - sentAt)) / 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
 const labels: Record<Operation, string> = {
   BIND: "绑定邮箱",
   CHANGE: "换绑邮箱",
@@ -45,15 +93,27 @@ export function AccountEmail({
     text: string;
   }>();
   const [device, setDevice] = useState(newDevice);
+  // A refresh after a change brings the new server setting; follow it.
+  const [serverDevice, setServerDevice] = useState(newDevice);
+  if (serverDevice !== newDevice) {
+    setServerDevice(newDevice);
+    setDevice(newDevice);
+  }
   const cooldown = useCountdown();
   function open(next?: Operation) {
+    const pending = next && next !== "REMOVE" ? readPending(next) : undefined;
     setMode(next);
-    setChallenge(undefined);
-    setEmail("");
+    setChallenge(
+      pending
+        ? { challengeId: pending.challengeId, maskedEmail: pending.maskedEmail }
+        : undefined,
+    );
+    setEmail(pending?.email ?? "");
     setPassword("");
     setCode("");
     setNotice(undefined);
-    cooldown.reset();
+    if (next) cooldown.start(resendWait());
+    else cooldown.reset();
   }
   async function execute(action: () => Promise<void>) {
     setBusy(true);
@@ -61,7 +121,15 @@ export function AccountEmail({
     try {
       await action();
     } catch (error) {
-      setNotice({ type: "error", text: normalizeFormError(error).message });
+      const apiError = normalizeFormError(error);
+      setNotice({
+        type: "error",
+        // The server keeps no countdown for us: name the limits instead.
+        text:
+          apiError.code === "RATE_LIMITED"
+            ? "发送太频繁了：同一邮箱每分钟只能发 1 次，每小时最多 5 次。已经收到的验证码 10 分钟内仍然有效。"
+            : apiError.message,
+      });
     } finally {
       setBusy(false);
     }
@@ -78,6 +146,13 @@ export function AccountEmail({
     setChallenge(result);
     setCode("");
     cooldown.start();
+    writePending({
+      purpose: mode,
+      email: email.trim(),
+      challengeId: result.challengeId,
+      maskedEmail: result.maskedEmail,
+      sentAt: Date.now(),
+    });
   }
   async function submit() {
     if (!mode) return;
@@ -91,10 +166,21 @@ export function AccountEmail({
         ...(needsPassword ? { currentPassword: password } : {}),
       });
     else return send();
+    const address = email.trim();
+    writePending();
     open();
+    // Say which address is now on the account: the masked row alone can
+    // look the same before and after.
     setNotice({
       type: "success",
-      text: mode === "REMOVE" ? "邮箱已解绑" : "邮箱已验证",
+      text:
+        mode === "REMOVE"
+          ? "邮箱已解绑"
+          : mode === "CHANGE"
+            ? `邮箱已换成 ${address}`
+            : mode === "BIND"
+              ? `已绑定并验证 ${address}`
+              : "邮箱已验证",
     });
     router.refresh();
   }
@@ -173,7 +259,14 @@ export function AccountEmail({
             onFinish={() => void execute(submit)}
             disabled={busy}
           >
-            <p className={styles.inlineTitle}>{labels[mode]}</p>
+            <p className={styles.inlineTitle}>
+              {labels[mode]}
+              {maskedEmail && mode !== "BIND" && (
+                <span className={styles.inlineTitleMeta}>
+                  当前 {maskedEmail}
+                </span>
+              )}
+            </p>
             {mode === "REMOVE" && (
               <Form.Item>
                 <Alert
@@ -241,6 +334,7 @@ export function AccountEmail({
                 onClick={() =>
                   void execute(async () => {
                     if (challenge) await emailApi.cancel(challenge.challengeId);
+                    writePending();
                     open();
                   })
                 }
@@ -252,12 +346,17 @@ export function AccountEmail({
                 danger={mode === "REMOVE"}
                 htmlType="submit"
                 loading={busy}
+                disabled={
+                  mode !== "REMOVE" && !challenge && cooldown.seconds > 0
+                }
               >
                 {mode === "REMOVE"
                   ? "确认解绑"
                   : challenge
                     ? "完成验证"
-                    : "发送验证码"}
+                    : cooldown.seconds > 0
+                      ? `${cooldown.seconds} 秒后可发送`
+                      : "发送验证码"}
               </Button>
             </div>
           </Form>

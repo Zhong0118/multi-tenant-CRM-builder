@@ -83,7 +83,10 @@ export function useDeviceIdentity(override?: DeviceIdentity): DeviceIdentity {
 
 export function useCountdown() {
   const [seconds, setSeconds] = useState(0);
-  const start = useCallback(() => setSeconds(60), []);
+  const start = useCallback(
+    (from = 60) => setSeconds(Math.max(0, Math.ceil(from))),
+    [],
+  );
   const reset = useCallback(() => setSeconds(0), []);
 
   useEffect(() => {

@@ -58,8 +58,9 @@ export default async function AccountSecurityPage() {
             <SettingRow label="手机号" help="用于登录和找回密码">
               <span className={styles.value}>{formatPhone(user.phone)}</span>
             </SettingRow>
+            {/* No key: the row keeps its success notice across the refresh
+                that brings the new address. */}
             <AccountEmail
-              key={user.emailStatus + user.maskedEmail}
               status={user.emailStatus}
               maskedEmail={user.maskedEmail}
               available={user.mailAvailable}
