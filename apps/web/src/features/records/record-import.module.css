@@ -1,9 +1,8 @@
-/* The import drawer reads as numbered steps: file, column mapping, who owns
-   the new records, and the duplicate rule. Counters number whichever steps
-   are showing, so the sequence never skips. */
+/* The import drawer reads as steps in order: file, column mapping, who owns
+   the new records, and the duplicate rule. Their place gives the order, so
+   they carry no numbers. */
 .flow {
   display: grid;
-  counter-reset: import-step;
 }
 .flow > :not(.step) {
   margin-top: 12px;
@@ -31,22 +30,6 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
-  counter-increment: import-step;
-}
-.stepTitle::before {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--color-neutral-soft);
-  color: var(--text-secondary);
-  content: counter(import-step);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  line-height: 1;
 }
 .stepTitle small {
   color: var(--text-tertiary);
@@ -205,8 +188,9 @@
   gap: 8px;
   flex-wrap: wrap;
 }
-.footer span[role="status"] {
+.footer > span {
   margin-inline-end: auto;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 

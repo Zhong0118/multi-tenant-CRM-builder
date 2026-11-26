@@ -334,9 +334,9 @@ describe("natural-language filter previews", () => {
     open();
     change("条件 1 值", "105.00");
     generate();
-    await screen.findByText("尚未应用");
-    // Conditions written by AI carry the AI mark until edited.
-    expect(screen.getByText("AI 生成")).toBeInTheDocument();
+    await screen.findByRole("button", { name: "撤销生成" });
+    // Only one condition is new, so it alone is marked, not the whole set.
+    expect(screen.queryByText("AI 生成")).toBeNull();
     expect(preview.mock.calls[0][0].currentRule.conditions[0]).toMatchObject({
       value: "105.00",
     });
@@ -348,12 +348,24 @@ describe("natural-language filter previews", () => {
     expect(screen.getByLabelText("条件 1 值")).toHaveValue("105.00");
     expect(screen.queryByText("将移除")).toBeNull();
     generate();
-    await screen.findByText("尚未应用");
+    await screen.findByRole("button", { name: "撤销生成" });
     change("条件 2 值", "false");
-    expect(screen.getByText("已编辑 · 尚未应用")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "应用并替换条件" }));
     expect(save).toHaveBeenCalledTimes(1);
     expect(save.mock.calls[0][0].conditions[1]).toMatchObject({ value: false });
+  });
+
+  it("marks a wholly AI-written set once, not condition by condition", async () => {
+    const preview = previewMock().mockResolvedValue({
+      kind: "rule",
+      rule: next,
+    });
+    mount(empty, false, preview);
+    open();
+    generate();
+    await screen.findByRole("button", { name: "撤销生成" });
+    expect(screen.getByText("AI 生成")).toBeInTheDocument();
+    expect(screen.queryByText("AI 新增")).toBeNull();
   });
 
   it("retains the input on failure and selects a complete clarification without another request", async () => {
@@ -404,6 +416,6 @@ describe("natural-language filter previews", () => {
     open();
     await act(async () => outstanding[1]({ kind: "rule", rule: next }));
     expect(screen.getByLabelText("条件 1 值")).toHaveValue("100.00");
-    expect(screen.queryByText("尚未应用")).toBeNull();
+    expect(screen.queryByRole("button", { name: "撤销生成" })).toBeNull();
   });
 });

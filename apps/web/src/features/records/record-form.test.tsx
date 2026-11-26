@@ -333,9 +333,7 @@ describe("RecordForm creating a record", () => {
     fireEvent.click(screen.getByRole("button", { name: "创建记录" }));
 
     expect(await screen.findByText("请填写客户名称。")).toBeInTheDocument();
-    expect(
-      screen.getByText("还有 1 个必填字段没填：客户名称。"),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/个必填字段没填/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("客户名称")).toHaveFocus();
     expect(api.create).not.toHaveBeenCalled();
   });

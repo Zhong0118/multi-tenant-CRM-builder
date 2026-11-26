@@ -246,6 +246,8 @@ export function RecordImportDrawer({
     { rowNumber: number; cells: string[] }[]
   >([]);
   const [autoHeader, setAutoHeader] = useState(false);
+  // A confidently found header row hides its picker until asked for.
+  const [pickHeader, setPickHeader] = useState(false);
   const [manual, setManual] = useState<number[]>([]);
   const [ownerChoices, setOwnerChoices] = useState<
     Map<string, ImportDestination>
@@ -997,11 +999,6 @@ export function RecordImportDrawer({
     <Drawer
       footer={
         <div className={importStyles.footer}>
-          {checked && (
-            <span role="status">
-              已检查 {checked.items.length} 行 · 可导入 {eligible} 行
-            </span>
-          )}
           {emptyMarkerCount > 0 && (
             <span>已把 {emptyMarkerCount} 格 NaN/#N/A 按空值处理</span>
           )}
@@ -1163,7 +1160,7 @@ export function RecordImportDrawer({
                 />
               </label>
             ) : null}
-            {source && headers.length > 0 && (
+            {source && headers.length > 0 && (!autoHeader || pickHeader) && (
               <label className={importStyles.setting}>
                 <span>表头在第几行</span>
                 <Select
@@ -1189,9 +1186,17 @@ export function RecordImportDrawer({
               表头按第 {headerRow} 行读取，不对可以在上面改
             </Typography.Text>
           )}
-          {autoHeader && headerRow > 1 && (
-            <Typography.Text type="secondary">
-              已识别第 {headerRow} 行为表头，可手动调整
+          {autoHeader && headerRow > 1 && !pickHeader && (
+            <Typography.Text type="secondary" className={importStyles.note}>
+              已识别第 {headerRow} 行为表头
+              <Button
+                type="link"
+                size="small"
+                disabled={!!busy || loadingFile || importStarted}
+                onClick={() => setPickHeader(true)}
+              >
+                调整
+              </Button>
             </Typography.Text>
           )}
           {loadingFile ? (
@@ -1695,7 +1700,7 @@ export function RecordImportDrawer({
             </h3>
             {checked ? (
               <>
-                <p className={importStyles.verdictCounts}>
+                <p className={importStyles.verdictCounts} role="status">
                   <span>
                     可导入 <b>{eligible}</b>
                   </span>

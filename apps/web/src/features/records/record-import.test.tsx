@@ -170,7 +170,7 @@ describe("RecordImportDrawer", () => {
       true,
     );
     chooseFile("报价台账\n\n内部底价,客户别称\n987654,样例客户");
-    await screen.findByText("已识别第 3 行为表头，可手动调整");
+    await screen.findByText(/已识别第 3 行为表头/);
     expect(
       screen.getByLabelText("映射 内部底价").closest(".ant-select"),
     ).toHaveTextContent("内部底价（仅手动对照）");
@@ -186,6 +186,15 @@ describe("RecordImportDrawer", () => {
       /内部底价|internal_price|987654/,
     );
     call.mockRestore();
+  });
+
+  it("keeps a confidently found header row out of the way until asked", async () => {
+    setup(recordApi(), schema);
+    chooseFile("报价台账\n\n姓名,线索状态\n张三,待联系");
+    await screen.findByText(/已识别第 3 行为表头/);
+    expect(screen.queryByLabelText("表头在第几行")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "调整" }));
+    expect(screen.getByLabelText("表头在第几行")).toBeInTheDocument();
   });
 
   it("counts only typed cells treated as empty in the checked plan", async () => {

@@ -182,11 +182,8 @@ export function RecordForm({
           missing.map((field) => [field.fieldKey, `请填写${field.label}。`]),
         ),
       );
-      setSummary(
-        `还有 ${missing.length} 个必填字段没填：${missing
-          .map((field) => field.label)
-          .join("、")}。`,
-      );
+      // Each field says what it needs; focus goes to the first one.
+      setSummary(undefined);
       focusField(missing[0].fieldKey);
       return;
     }
@@ -237,13 +234,10 @@ export function RecordForm({
           ))}
 
           {canChooseOwner ? (
-            <Form.Item
-              label="负责人"
-              htmlFor="record-owner"
-              extra={ownerHint ?? "不选择时记录暂不指定负责人。"}
-            >
+            <Form.Item label="负责人" htmlFor="record-owner" extra={ownerHint}>
               <Select
                 id="record-owner"
+                placeholder="暂不指定"
                 disabled={!canSave || save.isPending || committed}
                 allowClear
                 showSearch
