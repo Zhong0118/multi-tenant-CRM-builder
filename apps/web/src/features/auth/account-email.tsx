@@ -291,10 +291,21 @@ export function AccountEmail({
               </Form.Item>
             )}
             {needsPassword && (
-              <Form.Item label="当前密码" htmlFor="mail-password">
+              <Form.Item
+                label="当前密码"
+                htmlFor="mail-password"
+                // A code sent before a refresh comes back, the password
+                // never does (it is not kept in the browser): say so.
+                extra={
+                  challenge && !password
+                    ? "验证码还在，刷新后需要重新输入当前密码"
+                    : undefined
+                }
+              >
                 <PasswordField
                   id="mail-password"
                   autoComplete="current-password"
+                  autoFocus={!!challenge}
                   value={password}
                   required
                   onChange={(e) => setPassword(e.target.value)}

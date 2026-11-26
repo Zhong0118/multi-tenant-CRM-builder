@@ -125,8 +125,12 @@ it("brings back a sent code after the form was closed by a reload", async () => 
   fireEvent.click(screen.getByRole("button", { name: "换绑邮箱" }));
   expect(screen.getByLabelText("邮箱验证码")).toBeVisible();
   expect(screen.getByLabelText("新邮箱")).toHaveValue("new@example.net");
-  // The password is never kept.
+  // The password is never kept, and the form says it has to be typed again.
   expect(screen.getByLabelText("当前密码")).toHaveValue("");
+  expect(
+    screen.getByText("验证码还在，刷新后需要重新输入当前密码"),
+  ).toBeVisible();
+  expect(screen.getByLabelText("当前密码")).toHaveFocus();
   expect(send).toHaveBeenCalledTimes(1);
   send.mockRestore();
 });

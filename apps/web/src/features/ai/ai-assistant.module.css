@@ -642,14 +642,14 @@
   align-items: stretch;
   justify-content: center;
   width: 100%;
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 24px 16px 8px;
+  /* Same edges as the composer below, and the same text inset, so the
+     question, the suggestions and the input start on one line. */
+  padding: 24px 24px 8px;
 }
 
 .empty h2 {
   margin: 0 0 12px;
-  padding-inline: 8px;
+  padding-inline: 16px;
   color: var(--text-primary);
   font-size: 18px;
   font-weight: 600;
@@ -674,7 +674,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 10px 8px;
+  padding: 10px 16px;
   border: 0;
   border-bottom: 1px solid var(--border-hairline);
   background: transparent;
@@ -778,7 +778,8 @@
 
   .messages,
   .composerDock,
-  .turnError {
+  .turnError,
+  .empty {
     padding-inline: 12px;
   }
 

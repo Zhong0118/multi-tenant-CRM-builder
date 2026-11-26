@@ -659,6 +659,10 @@ export function RecordImportDrawer({
     generated?.scope === assistScope && assistEnabled && !importStarted
       ? generated
       : undefined;
+  // Once rows are in, the AI plan can no longer be acted on, but the status
+  // column still says where each mapping came from.
+  const origin =
+    generated?.scope === assistScope && assistEnabled ? generated : undefined;
   function install(next: AssistDraft) {
     setMapping(next.mapping);
     setManual(next.manual);
@@ -1263,6 +1267,12 @@ export function RecordImportDrawer({
                     const needsReview =
                       advice?.confidence === "review" &&
                       !adoptedColumns.includes(advice.col);
+                    const fromAi = origin?.plan.columns.find(
+                      (a) =>
+                        a.col === "C" + (index + 1) &&
+                        (a.confidence !== "review" ||
+                          adoptedColumns.includes(a.col)),
+                    );
                     const lockedOwner = !canChooseOwner && ownerHeader(header);
                     return (
                       <div key={index} className={importStyles.row}>
@@ -1455,7 +1465,7 @@ export function RecordImportDrawer({
                           // (violet), left unmatched (amber), set by hand (grey).
                           const [label, tone] = manual.includes(index)
                             ? ["手动", "manual"]
-                            : advice && !needsReview
+                            : fromAi
                               ? ["AI 建议", "ai"]
                               : mapping[index] === SKIP
                                 ? ["未对照", "unmatched"]

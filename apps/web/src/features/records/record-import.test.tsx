@@ -622,6 +622,35 @@ describe("RecordImportDrawer", () => {
       screen.queryByRole("button", { name: /确认导入/ }),
     ).not.toBeInTheDocument();
   });
+  it("still marks AI-mapped columns as AI after the rows are imported", async () => {
+    const call = vi.spyOn(assistApi, "requestImportAssist").mockResolvedValue({
+      version: 1,
+      generatedAt: "",
+      matchFields: [],
+      columns: [
+        {
+          col: "C2",
+          target: { mode: "field", field: "lead_status" },
+          confidence: "high",
+          reason: "表头含义相近",
+        },
+      ],
+    });
+    setup(recordApi(), schema, false, undefined, true);
+    // A file no other test uses: AI runs once per file.
+    chooseFile("姓名,客户状态\n导入后客户,待联系");
+    fireEvent.click(await screen.findByRole("button", { name: "AI 帮我对列" }));
+    // The mapping row: the column name sits in the row's first cell.
+    const row = () =>
+      screen.getByText("客户状态", { selector: "strong" }).closest("div")!
+        .parentElement!;
+    await waitFor(() => expect(row()).toHaveTextContent("AI 建议"));
+    await checkAndImport();
+    await screen.findByText(/已导入 1 行/);
+    expect(row()).toHaveTextContent("AI 建议");
+    expect(row()).not.toHaveTextContent("自动");
+    call.mockRestore();
+  });
   it("offers 完成 once every row is imported", async () => {
     setup();
     chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");

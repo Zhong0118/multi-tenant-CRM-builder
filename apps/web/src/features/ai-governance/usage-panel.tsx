@@ -56,8 +56,11 @@ export function UsagePanel({
             <Trend
               title="用量"
               formatValue={formatTokens}
+              // Ticks are round numbers: "50 万", not "50.0 万 token".
               formatAxis={(value) =>
-                formatTokens(value).replace(/\s*token$/, "")
+                formatTokens(value)
+                  .replace(/\s*token$/, "")
+                  .replace(/\.0(?= 万)/, "")
               }
               zeroBaseline
               data={[...byDay.entries()]
