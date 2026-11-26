@@ -65,17 +65,23 @@ export function DraftFollowUpDate({
         <label htmlFor={id}>下次跟进时间</label>
         {browserZone !== companyZone && <small>按公司时间</small>}
       </div>
-      <div className={styles.shortcuts} role="group" aria-label="快捷跟进时间">
-        {shortcuts.map(([label, date]) => (
-          <Button
-            key={label}
-            size="small"
-            disabled={disabled}
-            onClick={() => write(date)}
-          >
-            {label}
-          </Button>
-        ))}
+      <div className={styles.shortcutsFrame}>
+        <div
+          className={styles.shortcuts}
+          role="group"
+          aria-label="快捷跟进时间"
+        >
+          {shortcuts.map(([label, date]) => (
+            <Button
+              key={label}
+              size="small"
+              disabled={disabled}
+              onClick={() => write(date)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
       </div>
       <DatePicker
         id={id}

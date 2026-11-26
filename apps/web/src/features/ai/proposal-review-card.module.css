@@ -232,6 +232,17 @@
 .shortcuts {
   gap: 6px;
 }
+/* In a narrow card the six date shortcuts sit as two even rows of three,
+   not four and a stray two. */
+.shortcutsFrame {
+  container-type: inline-size;
+}
+@container (max-width: 360px) {
+  .shortcuts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 .savedItem {
   justify-content: space-between;
   margin: 0;
