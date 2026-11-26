@@ -107,7 +107,9 @@ export function normalizeFormError(error: unknown): ApiError {
 
 /** "45 秒" / "约 12 分钟" — how long until something can be tried again. */
 export function waitText(seconds: number) {
-  return seconds < 90 ? `${seconds} 秒` : `约 ${Math.ceil(seconds / 60)} 分钟`;
+  if (seconds < 90) return `${seconds} 秒`;
+  if (seconds < 5400) return `约 ${Math.ceil(seconds / 60)} 分钟`;
+  return `约 ${Math.ceil(seconds / 3600)} 小时`;
 }
 
 /** Message for a failed request: request ids only where support needs one. */

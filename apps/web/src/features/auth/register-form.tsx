@@ -82,7 +82,7 @@ export function RegisterForm({
         // Say how long to wait, and that a code already received still works.
         setSummary({
           type: "error",
-          text: `验证码请求太频繁了，请 ${waitText(retry)}后再试。${requestedPhone === input.phone ? "已经收到的验证码 10 分钟内仍然有效，可以直接填写。" : ""}`,
+          text: `验证码请求太频繁了，${waitText(retry)}后再试。${requestedPhone === input.phone ? "已经收到的验证码 10 分钟内仍然有效，可以直接填写。" : ""}`,
         });
         clearErrors("code");
         return;

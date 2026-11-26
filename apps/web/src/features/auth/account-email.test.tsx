@@ -173,7 +173,7 @@ it("names the new address once the change is verified", async () => {
 it("says which sending limit was hit and waits as long as the server says", async () => {
   const send = vi.spyOn(emailApi, "challenge").mockRejectedValue({
     code: "RATE_LIMITED",
-    message: "这个账号一天内最多发 10 次邮箱验证码，请 约 300 分钟后再试。",
+    message: "这个账号一天内最多发 10 次邮箱验证码，请 5 小时后再试。",
     requestId: "req",
     status: 429,
     retryAfterSeconds: 18_000,
@@ -197,7 +197,7 @@ it("says which sending limit was hit and waits as long as the server says", asyn
   // No code was sent in this flow, so none is promised.
   expect(screen.queryByText(/已经收到的验证码/)).toBeNull();
   expect(
-    screen.getByRole("button", { name: "约 300 分钟后可发送" }),
+    screen.getByRole("button", { name: "约 5 小时后可发送" }),
   ).toBeDisabled();
   send.mockRestore();
 });

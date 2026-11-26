@@ -207,7 +207,7 @@ describe("PasswordResetForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "获取验证码" }));
     expect(
-      await screen.findByText("验证码请求太频繁了，请 约 20 分钟后再试。"),
+      await screen.findByText("验证码请求太频繁了，约 20 分钟后再试。"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/req_limit/)).toBeNull();
     expect(
