@@ -171,3 +171,9 @@
     transition: none;
   }
 }
+
+.generatedAt {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}

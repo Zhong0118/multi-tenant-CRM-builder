@@ -105,14 +105,21 @@ export function AuthPreview() {
           <p className={styles.answer}>
             对方要一版含培训的报价。建议今天发出，周四电话确认。
           </p>
+          {/* Drawn like the real proposal card: AI outline, AI 提议 badge,
+              the status as its own tag, old value beside the new one. */}
           <div className={styles.pending}>
-            <span className={styles.pendingLabel}>待确认</span>
+            <div className={styles.pendingHead}>
+              <span className={styles.aiBadge}>
+                <AiSparkIcon /> AI 提议
+              </span>
+              <StatusTag tone="warning">待确认</StatusTag>
+            </div>
             <p>
               阶段 <s>谈判中</s> → <b>已报价</b>
             </p>
             <div className={styles.actions}>
-              <span className={styles.primary}>采用</span>
-              <span className={styles.secondary}>忽略</span>
+              <span className={styles.secondary}>拒绝</span>
+              <span className={styles.primary}>确认执行</span>
             </div>
           </div>
         </div>

@@ -188,7 +188,7 @@ it("sends edited tenant wall time and just the selected fields in one operation"
   expect(
     screen.queryByText(/审计|audit-note|audit-task|Asia\/Shanghai/),
   ).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "查看客户" }));
+  fireEvent.click(screen.getByRole("button", { name: "查看记录" }));
   expect(push).toHaveBeenCalledWith("/workspace/t/objects/customers/r");
   expect(onClose).toHaveBeenCalledTimes(1);
   expect(invalidate.mock.calls.map(([options]) => options?.queryKey)).toEqual(
@@ -285,6 +285,30 @@ it("recovers lost creation and confirmation responses with a stable key and a re
     { itemKey: "note", editedValue: text },
   ]);
   expect(read).toHaveBeenCalledWith("t", "customers", "r", "d");
+});
+
+it("says a fallback is a failure and can try the same words again", async () => {
+  const fallback = {
+    ...draft,
+    status: "FALLBACK",
+    note: text,
+    followUp: undefined,
+    fieldChanges: [],
+  };
+  const create = vi
+    .fn()
+    .mockResolvedValueOnce(fallback)
+    .mockResolvedValue(draft);
+  setup({ create });
+  await screen.findByText("这次没能整理出建议");
+  fireEvent.click(screen.getByRole("button", { name: "再整理一次" }));
+  await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+  expect(create.mock.calls[1][3].text).toBe(fallback.text);
+  expect(create.mock.calls[1][3].requestId).not.toBe(
+    create.mock.calls[0][3].requestId,
+  );
+  await screen.findByLabelText("纪要内容");
+  expect(screen.queryByText("这次没能整理出建议")).toBeNull();
 });
 
 it("resumes pending generation after a read with the original request ID", async () => {
@@ -411,7 +435,7 @@ it("shows the year across New Year and keeps company-local dates when the browse
   expect(picker).toHaveValue("2027年1月4日 周一 09:00");
 });
 
-it("shows generation and save progress and closes 查看客户 on the customer's current route", async () => {
+it("shows generation and save progress and closes 查看记录 on the customer's current route", async () => {
   window.history.replaceState(
     null,
     "",
@@ -442,7 +466,7 @@ it("shows generation and save progress and closes 查看客户 on the customer's
       ],
     }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "查看客户" }));
+  fireEvent.click(screen.getByRole("button", { name: "查看记录" }));
   expect(onClose).toHaveBeenCalledTimes(1);
   expect(push).not.toHaveBeenCalled();
 });

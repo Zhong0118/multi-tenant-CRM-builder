@@ -196,6 +196,16 @@ export function CommunicationDraftDialog({
       if (active.current) initialize(next);
     }, "暂时无法生成草稿，原文已保留，请重试");
   }
+  // A fallback draft keeps the user's words: try the same text once more.
+  function regenerate(text: string) {
+    request.current = { requestId: crypto.randomUUID(), text };
+    setSource(text);
+    const body = request.current;
+    void run(async () => {
+      const next = await api.create(tenantCode, objectCode, recordId, body);
+      if (active.current) initialize(next);
+    }, "暂时无法生成草稿，原文已保留，请重试");
+  }
   async function accept(next: CommunicationDraft) {
     if (active.current) {
       setDraft(next);
@@ -486,9 +496,19 @@ export function CommunicationDraftDialog({
           <>
             {draft.status === "FALLBACK" && (
               <Alert
-                type="info"
+                type="warning"
                 showIcon
-                title="暂时无法生成建议，可将原文直接保存为纪要"
+                title="这次没能整理出建议"
+                description="原文已放进下面的纪要。可以再整理一次，或直接存为纪要。"
+                action={
+                  <Button
+                    size="small"
+                    disabled={busy}
+                    onClick={() => regenerate(draft.text)}
+                  >
+                    再整理一次
+                  </Button>
+                }
               />
             )}
             <details>
@@ -570,7 +590,7 @@ function SavedCommunication({
     note
       ? "已记录本次沟通"
       : results.some((result) => result.itemKey === "fields")
-        ? "已更新客户资料"
+        ? "已更新记录字段"
         : "",
     reminder,
   ]
@@ -588,7 +608,7 @@ function SavedCommunication({
             if (pathname !== customerHref) router.push(customerHref);
           }}
         >
-          查看客户
+          查看记录
         </Button>
         <Button type="primary" onClick={onClose}>
           完成

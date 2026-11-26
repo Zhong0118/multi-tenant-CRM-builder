@@ -200,3 +200,36 @@
     white-space: nowrap;
   }
 }
+
+/* Batch heading: who wrote it (AI 提议), then where it stands. */
+.batchHeading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.batchTarget {
+  margin-top: -4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.editedField {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.previousValue {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.batchNext {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 12px;
+}

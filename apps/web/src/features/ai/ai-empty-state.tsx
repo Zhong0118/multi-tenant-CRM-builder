@@ -39,7 +39,6 @@ export function AiEmptyState({
         <AiSparkIcon />
       </div>
       <h2>有什么可以帮你查的？</h2>
-      <p>可查询你有权限访问的数据，修改前会请你确认</p>
       <div className={styles.promptGrid}>
         {prompts.map((prompt) => (
           <button

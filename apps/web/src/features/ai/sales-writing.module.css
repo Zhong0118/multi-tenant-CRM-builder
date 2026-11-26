@@ -55,14 +55,11 @@
 /* Title and "AI 生成" read as the card's head, ruled off from the draft. */
 .result .resultMeta {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
   margin-top: -8px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-hairline);
-}
-.aiMark {
-  color: var(--color-ai);
 }
 .result p,
 .result h4 {

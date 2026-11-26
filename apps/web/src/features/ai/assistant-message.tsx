@@ -130,6 +130,13 @@ export function AssistantMessage({
                 : undefined
           }
         />
+        {/* The answer reads first; the cards it introduces ("…等待你确认：")
+            follow it. */}
+        {message.content ? (
+          <div className={styles.answerContent}>
+            <AnswerText content={message.content} links={citationLinks} />
+          </div>
+        ) : null}
         {message.questions?.map((question) => (
           <QuestionCard
             key={question.questionId}
@@ -161,11 +168,6 @@ export function AssistantMessage({
             onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)}
             onReject={() => onRejectProposal?.(message.proposal!.proposalId)}
           />
-        ) : null}
-        {message.content ? (
-          <div className={styles.answerContent}>
-            <AnswerText content={message.content} links={citationLinks} />
-          </div>
         ) : null}
         {message.content && !active && message.status !== "FAILED" ? (
           <div className={styles.answerActions}>

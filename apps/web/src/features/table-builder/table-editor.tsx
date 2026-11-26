@@ -11,7 +11,7 @@ import {
   fieldTypeLabel,
   type ObjectDraft,
 } from "@/features/objects/object-types";
-import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
+import { AiBadge } from "@/components/ai/ai-badge";
 import styles from "./table-builder.module.css";
 
 const validationLabels: Record<string, string> = {
@@ -129,7 +129,7 @@ export function TableEditor({
             </label>
             {table.reason && (
               <p className={styles.reason}>
-                <AiSparkIcon aria-hidden className={styles.aiMark} />
+                <AiBadge>AI 理由</AiBadge>
                 <span>{table.reason}</span>
               </p>
             )}

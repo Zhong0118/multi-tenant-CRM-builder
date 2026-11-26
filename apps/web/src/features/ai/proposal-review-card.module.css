@@ -10,10 +10,11 @@
   gap: 12px;
   min-width: 0;
 }
+/* Every item here was proposed by AI: the group carries the AI outline. */
 .items:has(> .item) {
   gap: 0;
   overflow: hidden;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--color-ai-border);
   border-radius: var(--radius-reading);
   background: var(--bg-surface);
 }
@@ -31,8 +32,16 @@
 .item > * {
   grid-column: 1 / -1;
 }
-.item > :global(.ant-checkbox-wrapper) {
+.item > :global(.ant-checkbox-wrapper),
+.item > .itemTitle {
   grid-column: 1;
+}
+.itemTitle {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 22px;
 }
 .item:focus-within {
   background: var(--bg-surface-subtle);
@@ -76,10 +85,11 @@
   font-size: 13px;
   overflow-wrap: anywhere;
 }
-/* Evidence: the sentence the suggestion came from. */
+/* Evidence: the user's own words the suggestion came from. Not AI-written,
+   so it carries a neutral rule, not the AI violet. */
 .item blockquote {
   padding: 6px 10px;
-  border-inline-start: 2px solid var(--color-ai-border);
+  border-inline-start: 2px solid var(--border-default);
   border-radius: 0 var(--radius-control) var(--radius-control) 0;
   background: var(--bg-surface-subtle);
   color: var(--text-secondary);

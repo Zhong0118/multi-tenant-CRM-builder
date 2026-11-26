@@ -19,6 +19,7 @@ import {
   type BriefRecord,
 } from "./brief-api";
 import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
+import { AiBadge } from "@/components/ai/ai-badge";
 import { GenerationWait } from "@/features/ai/generation-wait";
 import styles from "./brief.module.css";
 
@@ -119,8 +120,8 @@ export function BriefSuggestions({
               <>
                 <div className={styles.actions}>
                   {data.generatedAt ? (
-                    <span>
-                      AI 生成 ·{" "}
+                    <span className={styles.generatedAt}>
+                      <AiBadge />
                       {new Date(data.generatedAt).toLocaleTimeString("zh-CN", {
                         timeZone: timezone,
                         hour: "2-digit",

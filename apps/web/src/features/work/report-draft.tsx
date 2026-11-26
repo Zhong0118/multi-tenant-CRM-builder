@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Modal, Segmented, Space } from "antd";
 import type { DailyReportSections } from "@crm/contracts";
 import { draftError, reportDraft } from "@/features/ai/sales-draft-api";
-import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
+import { AiBadge } from "@/components/ai/ai-badge";
 import { GenerationWait } from "@/features/ai/generation-wait";
 import styles from "./report-draft.module.css";
 type Section = keyof DailyReportSections;
@@ -119,8 +119,7 @@ export function ReportDraft({
         {preview && (
           <div className={styles.preview}>
             <p className={styles.meta}>
-              <AiSparkIcon aria-hidden className={styles.aiMark} />
-              AI 生成 ·{" "}
+              <AiBadge />
               {new Date(preview.generatedAt).toLocaleString("zh-CN", {
                 timeZone: preview.timeZone,
               })}

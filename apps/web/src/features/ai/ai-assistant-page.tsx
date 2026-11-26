@@ -7,7 +7,7 @@ import {
   LinkOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
-import { Button, Drawer, Tag } from "antd";
+import { Button, Drawer } from "antd";
 import {
   hashKey,
   useInfiniteQuery,
@@ -486,16 +486,26 @@ export function AiAssistantPage({
     confirm: (id, input) =>
       mutateCard(async () => {
         const result = await aiApi.confirmBatch(tenantCode, id, input);
-        if (result.items.some((item) => item.status === "EXECUTED"))
+        if (result.items.some((item) => item.status === "EXECUTED")) {
           await client.invalidateQueries({
             predicate: (q) =>
               q.queryKey[0] === "workspace" &&
               q.queryKey[1] === tenantCode &&
               !q.queryKey.includes("ai"),
           });
+          // The record beside the docked panel is a server render: refresh it
+          // so the fields it shows match the "已执行" card right away.
+          router.refresh();
+        }
         return result;
       }),
     reject: (id) => mutateCard(() => aiApi.rejectProposal(tenantCode, id)),
+    resend(turnId) {
+      const question = fullHistory.find(
+        (row) => row.turnId === turnId && row.role === "USER",
+      );
+      if (question?.content) send(question.content);
+    },
     describeRule: bound?.describeRule,
     apply(action, rule) {
       const empty = { version: 1, match: "all", conditions: [] };
@@ -571,13 +581,11 @@ export function AiAssistantPage({
                 {panel ? (
                   title
                 ) : (
-                  <>
-                    AI 助手 <Tag>需确认后执行</Tag>
-                  </>
+                  "AI 助手"
                 )}
               </h1>
               {!panel && (
-                <p className={styles.headerHint}>基于你当前 CRM 权限回答</p>
+                <p className={styles.headerHint}>只查你有权限的数据，修改前会请你确认</p>
               )}
             </div>
             {panel ? (

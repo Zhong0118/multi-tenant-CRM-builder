@@ -272,18 +272,19 @@ details.section ul {
 }
 
 /* Why the model proposed this table / field. */
+/* The AI's reason for a table or field: AI-written, so it sits on the AI
+   surface, not on the grey box system hints use. */
 .reason {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: flex-start;
   padding: 8px 10px;
+  border: 1px solid var(--color-ai-border);
   border-radius: var(--radius-control);
-  background: var(--bg-surface-subtle);
+  background: var(--color-ai-soft);
+  color: var(--text-primary);
   font-size: 13px;
   line-height: 20px;
-}
-.reason .aiMark {
-  margin-top: 3px;
 }
 
 /* Fields: one row each — name, key, type, required, remove — under a

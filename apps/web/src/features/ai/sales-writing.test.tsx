@@ -39,12 +39,13 @@ it("keeps generated text in the opened card and regenerates with the chosen styl
   expect(load).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "生成" }));
   expect(await screen.findByText("请确认报价")).toBeInTheDocument();
+  expect(screen.getByText("AI 生成")).toBeInTheDocument();
   expect(
     screen.getByText(
-      "AI 生成 · " +
-        new Date("2026-11-24T08:00:00Z").toLocaleString("zh-CN", {
-          timeZone: "America/Los_Angeles",
-        }),
+      new Date("2026-11-24T08:00:00Z").toLocaleString("zh-CN", {
+        timeZone: "America/Los_Angeles",
+      }),
+      { exact: false },
     ),
   ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "更正式一些" }));

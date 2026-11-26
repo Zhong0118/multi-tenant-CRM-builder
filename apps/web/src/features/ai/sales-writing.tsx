@@ -11,7 +11,7 @@ import {
   writingDraft,
   type LiveWriting,
 } from "./sales-draft-api";
-import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
+import { AiBadge } from "@/components/ai/ai-badge";
 import { GenerationWait } from "./generation-wait";
 import styles from "./sales-writing.module.css";
 const defaults: WritingOptions = {
@@ -207,8 +207,7 @@ export function SalesWriting({
             {choices.kind[draft.kind]} · {draft.title}
           </strong>
           <small className={styles.resultMeta}>
-            <AiSparkIcon aria-hidden className={styles.aiMark} />
-            AI 生成 ·{" "}
+            <AiBadge />
             {new Date(draft.generatedAt).toLocaleString("zh-CN", {
               timeZone: draft.timeZone,
             })}

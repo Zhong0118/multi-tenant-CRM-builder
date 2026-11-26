@@ -85,7 +85,11 @@ export function ProposalReviewCard({
           const expanded = !failedItems.size || !!result || selected;
           const controls = (
             <>
-              {onSelect && (
+              {/* A settled item (written, expired, rejected) has nothing to
+                  choose: its name reads as a plain title, not a greyed box. */}
+              {onSelect && item.locked ? (
+                <strong className={styles.itemTitle}>{item.label}</strong>
+              ) : onSelect ? (
                 <Checkbox
                   aria-label={`选择${item.label}`}
                   checked={selected}
@@ -94,7 +98,7 @@ export function ProposalReviewCard({
                 >
                   {item.label}
                 </Checkbox>
-              )}
+              ) : null}
               {expanded && (
                 <>
                   {item.render((value) => onEdit?.(item.key, value), disabled)}

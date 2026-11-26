@@ -700,26 +700,19 @@
 }
 
 .jumpLatest {
-  position: sticky;
+  position: absolute;
+  right: 6px;
   bottom: 12px;
+  z-index: 1;
   display: flex;
-  justify-content: center;
+}
+
+.jumpLatest :global(.ant-btn) {
+  box-shadow: 0 2px 6px rgba(24, 24, 27, 0.08);
 }
 
 .mobileRailButton {
   display: none !important;
-}
-
-/* "需确认后执行" is a standing rule, not news: a quiet neutral label. */
-.header :global(.ant-tag) {
-  margin-inline: 4px 0;
-  border: 0;
-  border-radius: var(--radius-status);
-  background: var(--color-neutral-soft);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  vertical-align: 2px;
 }
 
 .toolToggle:focus-visible,
@@ -933,8 +926,18 @@
 
 .messages {
   padding-right: 40px;
+  padding-bottom: 20px;
   overscroll-behavior: contain;
   scrollbar-width: none;
+  /* Lines scrolling under the header or the composer fade out instead of
+     being cut in half. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent
+  );
 }
 
 .messages::-webkit-scrollbar,
@@ -958,7 +961,8 @@
   right: 4px;
   top: 50%;
   transform: translateY(-50%);
-  max-height: calc(100% - 32px);
+  /* Leaves the bottom of the gutter to the 回到最新 button. */
+  max-height: calc(100% - 96px);
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 4px;

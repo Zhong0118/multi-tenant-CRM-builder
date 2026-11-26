@@ -36,7 +36,7 @@ export function AiComposer({
           disabled={disabled}
           value={value}
           autoSize={{ minRows: 2, maxRows: 6 }}
-          placeholder="基于当前权限，询问可访问的 CRM 数据"
+          placeholder="输入你的问题"
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Escape" && generating) {

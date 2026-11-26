@@ -201,7 +201,9 @@ describe("AiMessageList question navigation", () => {
     scroller.scrollTop = 1198;
     fireEvent.scroll(scroller);
     expect(scroll).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "回到最新" })).toBeInTheDocument();
+    const jump = screen.getByRole("button", { name: "回到最新" });
+    // It floats beside the list: showing it never changes the list's content.
+    expect(scroller).not.toContainElement(jump);
   });
 
   it("creates one accessible anchor per question and does not jump back down while reading", () => {

@@ -13,6 +13,7 @@ import {
 } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
 import { AiSparkIcon } from "@/components/icons/ai-spark-icon";
+import { AiBadge } from "@/components/ai/ai-badge";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -1182,8 +1183,8 @@ export function RecordImportDrawer({
                   />
                 )}
                 {current && (
-                  <small>
-                    AI 生成 ·{" "}
+                  <small className={importStyles.generatedAt}>
+                    <AiBadge />
                     {new Date(current.plan.generatedAt).toLocaleTimeString()}
                   </small>
                 )}

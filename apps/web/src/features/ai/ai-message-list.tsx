@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { ArrowDownOutlined } from "@ant-design/icons";
 import { Button, Skeleton, Tooltip } from "antd";
 
 import styles from "./ai-assistant.module.css";
@@ -100,10 +101,13 @@ export function AiMessageList({
       onScroll={() => {
         const node = scroller.current;
         if (!node) return;
-        const atBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 48;
+        const distance = node.scrollHeight - node.scrollTop - node.clientHeight;
+        const atBottom = distance < 48;
         const scrollingUp = node.scrollTop < lastScrollTop.current;
         lastScrollTop.current = node.scrollTop;
-        setFollow(atBottom && !scrollingUp);
+        // Resting on the last line always follows (a resize can lower
+        // scrollTop without the reader scrolling up).
+        setFollow(distance < 2 || (atBottom && !scrollingUp));
         const anchors = Array.from(node.querySelectorAll<HTMLElement>("[data-ai-question]"));
         const readingTop = node.getBoundingClientRect().top + 72;
         const current = anchors.filter((item) => item.getBoundingClientRect().top <= readingTop).at(-1) ?? anchors[0];
@@ -159,21 +163,30 @@ export function AiMessageList({
           ? "回答已完成"
           : ""}
       </div>
-      {!follow ? (
-        <div className={styles.jumpLatest}>
+    </div>
+    {/* Floats in the right gutter, outside the scroll flow: showing it never
+        changes the content height, and it never covers a line of the answer. */}
+    {!follow ? (
+      // The wrapper carries the absolute position: AntD's own button rule
+      // (position: relative) would otherwise win and make it a flex item that
+      // narrows the list each time it shows.
+      <div className={styles.jumpLatest}>
+        <Tooltip title="回到最新" placement="left">
           <Button
+            shape="circle"
+            size="small"
+            icon={<ArrowDownOutlined />}
+            aria-label="回到最新"
             onClick={() => {
               setFollow(true);
               scroller.current?.scrollTo?.({
                 top: scroller.current.scrollHeight,
               });
             }}
-          >
-            回到最新
-          </Button>
-        </div>
-      ) : null}
-    </div>
+          />
+        </Tooltip>
+      </div>
+    ) : null}
     {/* One question has nowhere to jump to. */}
     {questions.length > 1 ? (
       <nav className={styles.questionNav} aria-label="按提问定位" ref={questionNav}>

@@ -188,7 +188,7 @@ export function ConversationRail({
             allowClear
             size="small"
             aria-label="搜索会话"
-            placeholder="搜索已加载的会话"
+            placeholder="搜索会话"
             prefix={<SearchOutlined aria-hidden />}
             className={styles.railSearch}
             value={filter}

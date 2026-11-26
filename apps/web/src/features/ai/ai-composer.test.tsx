@@ -31,7 +31,7 @@ describe("AiComposer", () => {
     fireEvent.click(screen.getByRole("button", { name: "停止" }));
     expect(onStop).toHaveBeenCalled();
     const textarea = screen.getByPlaceholderText(
-      "基于当前权限，询问可访问的 CRM 数据",
+      "输入你的问题",
     );
     fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
     expect(onSend).not.toHaveBeenCalled();
@@ -50,7 +50,7 @@ describe("AiComposer", () => {
     );
     expect(screen.getByText(/Esc 停止生成/)).toBeInTheDocument();
     fireEvent.keyDown(
-      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      screen.getByPlaceholderText("输入你的问题"),
       { key: "Escape" },
     );
     expect(onStop).toHaveBeenCalledTimes(1);
