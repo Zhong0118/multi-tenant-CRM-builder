@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
-import type { PublishedFieldView } from "@/features/objects/object-types";
+import {
+  selectOptions,
+  type PublishedFieldView,
+} from "@/features/objects/object-types";
 import type { DynamicFieldMember } from "./dynamic-field";
 import type { ParsedCsv } from "./record-csv";
 import { displayValue } from "./record-display-value";
@@ -64,48 +67,72 @@ export function ImportCheckPreview({
       <p className={styles.previewTitle}>
         前 {shown.length} 行将这样写入，灰字是文件里的原文：
       </p>
-      <table className={styles.previewTable} aria-label="导入预览">
-        <thead>
-          <tr>
-            {columns.map(({ field }) => (
-              <th key={field.fieldKey} scope="col">
-                {field.label}
-              </th>
-            ))}
-            {showOwner ? <th scope="col">负责人</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((row) => {
-            const source = parsed.rows[rowIndex(row.rowNumber)] ?? [];
-            return (
-              <tr key={row.rowNumber}>
-                {columns.map(({ column, field }) => (
-                  <td key={field.fieldKey}>
-                    <Cell
-                      written={displayValue(
-                        field,
-                        row.values[field.fieldKey],
-                        members,
-                        timeZone,
-                      )}
-                      raw={source[column] ?? ""}
-                    />
-                  </td>
-                ))}
-                {showOwner ? <td>{owner(row, members)}</td> : null}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className={styles.previewScroll}>
+        <table className={styles.previewTable} aria-label="导入预览">
+          <thead>
+            <tr>
+              {columns.map(({ field }) => (
+                <th key={field.fieldKey} scope="col">
+                  {field.label}
+                </th>
+              ))}
+              {showOwner ? <th scope="col">负责人</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((row) => {
+              const source = parsed.rows[rowIndex(row.rowNumber)] ?? [];
+              return (
+                <tr key={row.rowNumber}>
+                  {columns.map(({ column, field }) => (
+                    <td key={field.fieldKey}>
+                      <Cell
+                        written={displayValue(
+                          field,
+                          row.values[field.fieldKey],
+                          members,
+                          timeZone,
+                        )}
+                        plain={plainText(field, row.values[field.fieldKey])}
+                        raw={source[column] ?? ""}
+                      />
+                    </td>
+                  ))}
+                  {showOwner ? <td>{owner(row, members)}</td> : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-function Cell({ written, raw }: { written: ReactNode; raw: string }) {
+// The stored value as words, to tell whether it reads the same as the file.
+function plainText(field: PublishedFieldView, value: unknown) {
+  if (value === null || value === undefined) return "";
+  const label = (key: unknown) =>
+    selectOptions(field).find((option) => option.key === key)?.label ??
+    String(key);
+  if (field.type === "SINGLE_SELECT") return label(value);
+  if (field.type === "MULTI_SELECT")
+    return (Array.isArray(value) ? value : []).map(label).join("、");
+  return undefined;
+}
+
+function Cell({
+  written,
+  plain,
+  raw,
+}: {
+  written: ReactNode;
+  plain?: string;
+  raw: string;
+}) {
   const text = raw.trim();
-  const same = typeof written === "string" && written === text;
+  const shown = typeof written === "string" ? written : plain;
+  const same = shown !== undefined && shown === text;
   return (
     <>
       {written}

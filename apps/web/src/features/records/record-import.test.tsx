@@ -696,6 +696,8 @@ describe("RecordImportDrawer", () => {
     const preview = within(verdict).getByRole("table", { name: "导入预览" });
     expect(preview).toHaveTextContent("客户甲");
     expect(preview).toHaveTextContent("未分配");
+    // An option that reads the same as the file is not repeated in grey.
+    expect(preview).not.toHaveTextContent("待联系待联系");
     fireEvent.click(
       within(verdict).getByRole("button", { name: "按「销售」分配" }),
     );

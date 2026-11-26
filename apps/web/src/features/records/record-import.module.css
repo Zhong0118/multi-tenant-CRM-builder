@@ -396,8 +396,13 @@
   color: var(--text-secondary);
   font-size: 13px;
 }
+/* Narrow screens scroll the table sideways instead of folding each value. */
+.previewScroll {
+  overflow-x: auto;
+}
 .previewTable {
   width: 100%;
+  min-width: 560px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   border-collapse: separate;
@@ -412,6 +417,11 @@
   border-bottom: 1px solid var(--border-hairline);
   text-align: start;
   vertical-align: top;
+  white-space: nowrap;
+}
+.previewTable td:first-child {
+  min-width: 160px;
+  white-space: normal;
 }
 .previewTable tr:last-child td {
   border-bottom: 0;
