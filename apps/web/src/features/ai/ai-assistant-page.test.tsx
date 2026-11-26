@@ -115,7 +115,7 @@ describe("AiAssistantPage", () => {
       </QueryClientProvider>
     );
     const view = render(page(caps));
-    const input = screen.getByPlaceholderText("输入你的问题");
+    const input = screen.getByPlaceholderText(/^输入你的问题/);
     fireEvent.change(input, { target: { value: "查询记录" } });
     expect(await screen.findByRole("button", {name:"最近有哪些需要跟进？"})).toBeEnabled();
     view.rerender(page({...caps, notice:"company_exhausted",percent:100}));
@@ -379,7 +379,7 @@ describe("AiAssistantPage", () => {
     });
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "改阶段" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -423,7 +423,7 @@ describe("AiAssistantPage", () => {
     mocks.confirmBatch.mockResolvedValue({items:[{proposalId:proposal.proposalId,status:"FAILED",message:"校验失败"}]});
     const { client } = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "修改记录" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -495,7 +495,7 @@ describe("AiAssistantPage", () => {
     mocks.rejectProposal.mockResolvedValue({ ...proposal, status: "REJECTED" });
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "添加备注" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -543,7 +543,7 @@ describe("AiAssistantPage", () => {
     mocks.confirmBatch.mockResolvedValue({items:[{proposalId:proposal.proposalId,status:"CONFLICTED",message:"数据已变化，未覆盖最新内容"}]});
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "更新客户" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -568,14 +568,17 @@ describe("AiAssistantPage", () => {
     expect(
       screen.getByRole("heading", { name: /AI 助手/ }),
     ).toBeInTheDocument();
-    expect(screen.getByText("只查你有权限的数据，修改前会请你确认")).toBeInTheDocument();
+    // The promise is in the input itself; no header hint or key legend.
+    expect(
+      screen.getByPlaceholderText("输入你的问题，修改前会先请你确认"),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("ai-conversation-canvas")).toBeInTheDocument();
     expect(
-      screen.getByText("Enter 发送 · Shift+Enter 换行"),
-    ).toBeInTheDocument();
+      screen.queryByText("Enter 发送 · Shift+Enter 换行"),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "会话" })).toBeInTheDocument();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "帮我看看" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -605,7 +608,7 @@ describe("AiAssistantPage", () => {
     });
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "帮我看看" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -669,7 +672,7 @@ describe("AiAssistantPage", () => {
     renderPage();
     await waitFor(() => expect(screen.getByText("上一问")).toBeInTheDocument());
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "第一轮" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -681,7 +684,7 @@ describe("AiAssistantPage", () => {
       expect(screen.getByRole("button", { name: "发送" })).toBeInTheDocument(),
     );
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "第二轮提问" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -769,7 +772,7 @@ describe("AiAssistantPage", () => {
       });
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "帮我看看本月商机" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -825,7 +828,7 @@ describe("AiAssistantPage", () => {
     );
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "新问题" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -877,7 +880,7 @@ describe("AiAssistantPage", () => {
     mocks.listMessages.mockResolvedValue({ items: [] });
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "进行中的问题" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -894,7 +897,7 @@ describe("AiAssistantPage", () => {
     );
     releaseA();
     await waitFor(() =>
-      expect(screen.getByText("只查你有权限的数据，修改前会请你确认")).toBeInTheDocument(),
+      expect(screen.getByRole("heading", { name: "AI 助手" })).toBeInTheDocument(),
     );
     expect(screen.queryByText("不该出现")).not.toBeInTheDocument();
     expect(mocks.replace).toHaveBeenCalledWith("/workspace/northwind/ai");
@@ -951,7 +954,7 @@ describe("AiAssistantPage", () => {
     );
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "A问" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -991,7 +994,7 @@ describe("AiAssistantPage", () => {
     });
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "有 turn 的失败" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1018,7 +1021,7 @@ describe("AiAssistantPage", () => {
     });
     const fresh = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "还没 ready" } },
     );
     fireEvent.click(fresh.container.querySelector('[aria-label="发送"]')!);
@@ -1060,7 +1063,7 @@ describe("AiAssistantPage", () => {
       expect(screen.getByText("帮我总结客户")).toBeInTheDocument(),
     );
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "帮我总结客户" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1119,7 +1122,7 @@ describe("AiAssistantPage", () => {
     });
     renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "问跟进" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1209,7 +1212,7 @@ describe("AiAssistantPage", () => {
       expect(screen.getByText("旧回答失败")).toBeInTheDocument(),
     );
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "新问题" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1263,7 +1266,7 @@ describe("AiAssistantPage", () => {
     });
     const view = renderPage();
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "进行中" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1307,7 +1310,7 @@ describe("AiAssistantPage", () => {
     const { client } = renderPage();
     await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(1));
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "本周情况" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -1377,7 +1380,7 @@ describe("AiAssistantPage", () => {
       ],
     });
     fireEvent.change(
-      screen.getByPlaceholderText("输入你的问题"),
+      screen.getByPlaceholderText(/^输入你的问题/),
       { target: { value: "这次会失败" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));

@@ -191,13 +191,6 @@
   line-height: 1.3;
 }
 
-.headerHint {
-  margin: 2px 0 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 .canvas {
   display: flex;
   flex: 1;
@@ -205,6 +198,22 @@
   width: min(100%, 820px);
   min-height: 0;
   margin: 0 auto;
+}
+
+/* Nothing said yet: the question, the suggestions and the input are one
+   block — centred on the page, sitting on the input in the narrow panel —
+   instead of a question floating far above an input at the foot. */
+.canvas[data-empty] {
+  justify-content: center;
+  padding-bottom: 8vh;
+}
+.canvas[data-empty][data-layout="panel"] {
+  justify-content: flex-end;
+  padding-bottom: 0;
+}
+.canvas[data-empty] .empty {
+  flex: none;
+  padding-bottom: 12px;
 }
 
 .messages {
@@ -445,70 +454,56 @@
   font-size: 13px;
 }
 
+/* Where the answer came from: one line of small links under it. */
 .sourceBlock {
-  margin: 16px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 20px;
 }
 
 .sourceLabel {
-  margin: 0 0 8px;
   color: var(--text-tertiary);
-  font-size: 12px;
 }
 
 .sources {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  display: contents;
 }
 
 .sourceCard {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--bg-surface);
-  color: inherit;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-default) 80%, transparent);
-  transition: background 160ms ease, box-shadow 160ms ease;
-}
-
-.sourceCard:hover,
-.sourceCard:focus-visible {
-  background: var(--bg-hover);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--shell-ink) 6%, transparent);
-}
-
-.sourceGlyph {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--color-primary-soft);
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  min-width: 0;
+  max-width: 100%;
   color: var(--color-primary);
-  font-size: 12px;
-  font-weight: 700;
+}
+
+.sourceCard:hover .sourceTitle {
+  text-decoration: underline;
+}
+
+.sourceGlyph,
+.sourceArrow {
+  display: none;
 }
 
 .sourceTitle {
-  display: block;
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sourceDetail {
-  display: block;
-  color: var(--text-secondary);
-  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
-.sourceArrow {
-  color: var(--text-tertiary);
+.sourceDetail::before {
+  margin-inline: 4px;
+  content: "·";
 }
 
 /* An AI proposal: what will change, and a status. Neutral card, status badge
@@ -656,7 +651,6 @@
   gap: 12px;
 }
 
-.composerHint,
 .composerStatus {
   color: var(--text-tertiary);
   font-size: 12px;
@@ -832,14 +826,6 @@
   .userBubble {
     max-width: 90%;
   }
-
-  .sources {
-    grid-template-columns: 1fr;
-  }
-
-  .composerHint {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -942,13 +928,9 @@
 .toolOutcome, .toolDuration { font-size: 12px; color: var(--text-secondary); }
 .toolDuration { margin-left: auto; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 .toolDetail { margin-top: 3px; font-size: 12px; line-height: 1.6; color: var(--text-secondary); overflow-wrap: anywhere; }
-.sourceBlock { padding-top: 12px; border-top: 1px solid var(--border-default); }
-.sourceCard { border-radius: var(--radius-control); box-shadow: none; border: 1px solid var(--border-default); }
-.sourceCard:hover { box-shadow: none; border-color: var(--color-primary); }
 .row { border-left: 2px solid transparent; }
 .rowActive, .rowActive:hover { border-left-color: var(--color-primary); box-shadow: none; background: var(--color-primary-soft); }
-.sessionTitle, .sessionPreview { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sessionPreview { margin-top: 4px; font-size: 11px; color: var(--text-tertiary); font-weight: 400; }
+.sessionTitle { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .composer { border-radius: 14px; }
 .composerActions button, .railNew, .promptChip { transition: transform 160ms ease, background 160ms ease, border-color 160ms ease; }
 .composerActions button:hover { transform: scale(1.025); }

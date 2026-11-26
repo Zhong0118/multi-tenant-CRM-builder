@@ -178,15 +178,6 @@ export function AssistantBatchCard({
         </span>
       </h3>
       {sharedTarget && <p className={styles.batchTarget}>{sharedTarget}</p>}
-      {!open && (
-        // The answer above was written before the decision and may still
-        // say "待确认"; the card is the current state.
-        <p className={styles.batchTarget}>
-          {executed
-            ? "上面的回答写于你确认之前，修改已按这张卡写入。"
-            : "上面的回答写于提议时，这些修改没有写入。"}
-        </p>
-      )}
       {!canWrite && batch.items.some(item=>item.status==="PROPOSED") && <AccessReason />}
       <ProposalReviewCard
         selectedKeys={selected}

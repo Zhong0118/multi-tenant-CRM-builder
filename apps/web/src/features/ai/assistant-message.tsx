@@ -216,7 +216,7 @@ export function AssistantMessage({
         ) : null}
         {message.sourceSummary.length > 0 ? (
           <div className={styles.sourceBlock}>
-            <div className={styles.sourceLabel}>数据来源</div>
+            <div className={styles.sourceLabel}>来源</div>
             <div className={styles.sources}>
               {message.sourceSummary.map((source, index) => (
                 <SourceCard

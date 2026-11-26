@@ -558,6 +558,14 @@ export function AiAssistantPage({
     );
     router.push(`/workspace/${encodeURIComponent(tenantCode)}/ai?${params}`);
   }
+  // Nothing said yet in a new conversation: the question, the suggestions
+  // and the input are shown as one block.
+  const empty =
+    shown.length === 0 &&
+    state.phase === "IDLE" &&
+    !conversationId &&
+    canSend &&
+    !messages.isError;
   return (
     <AssistantCommandContext.Provider value={commands}>
       <div className={panel ? panelStyles.panel : styles.page}>
@@ -584,9 +592,6 @@ export function AiAssistantPage({
                   "AI 助手"
                 )}
               </h1>
-              {!panel && (
-                <p className={styles.headerHint}>只查你有权限的数据，修改前会请你确认</p>
-              )}
             </div>
             {panel ? (
               <div className={panelStyles.headerButtons}>
@@ -647,11 +652,13 @@ export function AiAssistantPage({
               )}
             </div>
           )}
-          <div className={styles.canvas} data-testid="ai-conversation-canvas">
-            {shown.length === 0 &&
-            state.phase === "IDLE" &&
-            !conversationId && canSend &&
-            !messages.isError ? (
+          <div
+            className={styles.canvas}
+            data-testid="ai-conversation-canvas"
+            data-layout={panel ? "panel" : "page"}
+            data-empty={empty || undefined}
+          >
+            {empty ? (
               <AiEmptyState
                 objects={businessObjects}
                 objectName={bound?.objectName}

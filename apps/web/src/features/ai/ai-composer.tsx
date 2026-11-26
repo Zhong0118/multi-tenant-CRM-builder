@@ -36,7 +36,7 @@ export function AiComposer({
           disabled={disabled}
           value={value}
           autoSize={{ minRows: 2, maxRows: 6 }}
-          placeholder="输入你的问题"
+          placeholder="输入你的问题，修改前会先请你确认"
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Escape" && generating) {
@@ -52,11 +52,7 @@ export function AiComposer({
           }}
         />
         <div className={styles.composerBar}>
-          <div className={styles.composerMeta}>
-            <span className={styles.composerHint}>
-              {generating ? "Esc 停止生成" : "Enter 发送 · Shift+Enter 换行"}
-            </span>
-          </div>
+          <div className={styles.composerMeta} />
           <div className={styles.composerActions}>
             {generating ? (
               <Button aria-label="停止" onClick={onStop}>

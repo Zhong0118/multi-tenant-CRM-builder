@@ -233,12 +233,6 @@ export function ConversationRail({
                             {conversationTime(item.lastMessageAt)}
                           </time>
                         </span>
-                        {item.latestUserPreview &&
-                        item.latestUserPreview !== item.title ? (
-                          <span className={styles.sessionPreview}>
-                            {item.latestUserPreview}
-                          </span>
-                        ) : null}
                       </button>
                       <Dropdown
                         trigger={["click"]}
