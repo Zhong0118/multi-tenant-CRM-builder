@@ -87,7 +87,9 @@ export function AccountShell({
       user={user}
       roleLabel={user.isPlatformAdmin ? "平台超级管理员" : "个人账号"}
     >
-      <Page width="form">{children}</Page>
+      {/* The settings width, as in company settings: wide enough for two
+          groups side by side instead of one narrow column. */}
+      <Page width="settings">{children}</Page>
     </AppShell>
   );
 }

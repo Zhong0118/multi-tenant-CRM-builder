@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Input } from "antd";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { components } from "@crm/contracts";
@@ -176,12 +177,9 @@ export function AccountProfile({
   const [image, setImage] = useState(avatarUrl);
   return (
     <div className={styles.profile}>
-      <PageSection
-        title="账号"
-        description="姓名和头像会显示在你加入的所有公司。"
-      >
+      <PageSection title="账号">
         <div className={styles.group}>
-          <SettingRow label="头像" help={"JPG、PNG 或 WebP，不超过 2\u00a0MB"}>
+          <SettingRow label="头像">
             <div className={styles.avatarRow}>
               <ProfileAvatar name={displayName} avatarUrl={image} size={48} />
               <AvatarEditor
@@ -208,11 +206,12 @@ export function AccountProfile({
           </SettingRow>
         </div>
       </PageSection>
-      <PageSection
-        title="所在公司"
-        description="职位只在对应公司内显示；公司内显示名和工号由公司管理员设置。"
-      >
-        {!memberships.length && <p className={styles.empty}>还没有加入公司</p>}
+      <PageSection title="所在公司">
+        {!memberships.length && (
+          <p className={styles.empty}>
+            还没有加入公司 · <Link href="/waiting">查看公司邀请</Link>
+          </p>
+        )}
         <div className={styles.companies}>
           {memberships.map((m) => (
             <section

@@ -1,8 +1,20 @@
 /* 个人资料: the account (avatar, name) and each company (display name,
    number, title) as cards of hairline rows, the same grammar as 账号安全. */
 .profile {
+  display: grid;
+  gap: 24px;
+  align-items: start;
   overflow-wrap: anywhere;
   color: var(--text-primary);
+}
+.profile.profile > section {
+  margin-top: 0;
+}
+/* The account beside the companies on a wide screen, as in 账号安全. */
+@media (min-width: 1200px) {
+  .profile {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 .group {
   padding: 0 16px;
@@ -11,7 +23,8 @@
   background: var(--bg-surface);
 }
 .group > div {
-  grid-template-columns: 196px minmax(0, 1fr);
+  grid-template-columns: 104px minmax(0, 1fr);
+  padding: 10px 0;
 }
 .group > div:last-child {
   border-bottom: 0;

@@ -76,12 +76,26 @@ const changePasswordSchema = z.object({
 
 type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
-function formatDate(value?: string) {
+const DAY = 86_400_000;
+
+/** "今天 14:45", "昨天 09:10", "11月20日 18:02", or with the year when it differs. */
+export function formatWhen(value?: string | null, now = new Date()) {
   if (!value) return "暂无记录";
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  const date = new Date(value);
+  const time = new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+  const start = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((start(now) - start(date)) / DAY);
+  if (days === 0) return `今天 ${time}`;
+  if (days === 1) return `昨天 ${time}`;
+  const day = `${date.getMonth() + 1}月${date.getDate()}日`;
+  const year =
+    date.getFullYear() === now.getFullYear() ? "" : `${date.getFullYear()}年`;
+  return `${year}${day} ${time}`;
 }
 
 const PLATFORMS: [RegExp, string][] = [
@@ -255,19 +269,16 @@ export function SessionList({
         />
       )}
 
-      <PageSection
-        title="登录与验证"
-        description="用于登录、找回密码和接收安全提醒。"
-      >
+      <PageSection title="登录与验证">
         <div className={styles.group}>
           {verification}
           <SettingRow
             label="密码"
             help={
-              // The consequence stays in view while the form is open.
+              // Rules and the consequence only while the form is open.
               changing
-                ? "10–72 位，同时包含字母和数字。更新后保留当前会话，其他设备将自动退出。"
-                : "更新后保留当前会话，其他设备将自动退出。"
+                ? "10–72 位，含字母和数字。更新后其他设备会退出登录。"
+                : undefined
             }
           >
             {changing ? (
@@ -357,7 +368,6 @@ export function SessionList({
 
       <PageSection
         title="登录设备"
-        description="不认识的设备可以撤销，它需要重新登录。"
         extra={
           <Segmented
             size="small"
@@ -452,20 +462,24 @@ function SessionRows({
                 <StatusTag>已过期</StatusTag>
               ) : null}
             </div>
-            <dl className={styles.sessionMeta}>
-              <div>
-                <dt>IP</dt>
-                <dd>{session.ipSummary || "未记录"}</dd>
-              </div>
-              <div>
-                <dt>最近使用</dt>
-                <dd>{formatDate(session.lastUsedAt ?? session.createdAt)}</dd>
-              </div>
-              <div>
-                <dt>{session.revokedAt ? "撤销时间" : "到期时间"}</dt>
-                <dd>{formatDate(session.revokedAt ?? session.expiresAt)}</dd>
-              </div>
-            </dl>
+            {/* One line: where, and when it was last used. Expiry is a
+                detail, kept in the hover title. */}
+            <p
+              className={styles.sessionMeta}
+              title={
+                session.revokedAt
+                  ? undefined
+                  : `到期 ${formatWhen(session.expiresAt)}`
+              }
+            >
+              <span>{session.ipSummary || "IP 未记录"}</span>
+              <span aria-hidden> · </span>
+              <span>
+                {session.revokedAt
+                  ? `撤销于 ${formatWhen(session.revokedAt)}`
+                  : formatWhen(session.lastUsedAt ?? session.createdAt)}
+              </span>
+            </p>
           </div>
           {revokeMutation && !session.isCurrent && !session.revokedAt ? (
             <Popconfirm

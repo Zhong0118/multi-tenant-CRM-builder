@@ -293,16 +293,12 @@
 .sessionRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
-  padding: 20px 0;
+  padding: 11px 0;
   border-bottom: 1px solid var(--border-hairline);
 }
-.sessionRow:first-child {
-  padding-top: 2px;
-}
 .sessionRow:last-child {
-  padding-bottom: 2px;
   border-bottom: 0;
 }
 .sessionTitle {
@@ -312,26 +308,17 @@
   align-items: center;
   color: #162532;
 }
+.sessionTitle strong {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
 .sessionMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 28px;
-  margin-top: 12px;
-}
-.sessionMeta div {
-  display: grid;
-  gap: 2px;
-}
-.sessionMeta dt {
+  margin: 0;
   color: var(--text-tertiary);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.sessionMeta dd {
-  color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 560px) {
   .sessionRow {
@@ -345,12 +332,29 @@
 /* Account security inside the account shell: two groups — how you sign in,
    and where you are signed in — each a card of hairline rows. */
 .securityStack {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  gap: 24px;
+  align-items: start;
 }
 
-.securityStack > .securityAlert {
-  margin-bottom: 16px;
+/* Grid gaps space the sections, side by side or stacked. */
+.securityStack.securityStack > section {
+  margin-top: 0;
+}
+
+/* Both section heads the height of the one with a segmented control, so the
+   two groups start on the same line. */
+.securityStack > section > div:first-child {
+  align-items: center;
+  min-height: 28px;
+}
+
+/* Wide enough for two groups: how you sign in beside where you are signed
+   in, so the page is one screen instead of a long narrow column. */
+@media (min-width: 1200px) {
+  .securityStack {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .group {
@@ -360,9 +364,11 @@
   background: var(--bg-surface);
 }
 
-/* Setting rows in a group: a narrower label column than a full page. */
+/* Setting rows in a group: a short label column, the value and its action
+   sharing the rest of the line. */
 .group > div:not(.sessionList) {
-  grid-template-columns: 196px minmax(0, 1fr);
+  grid-template-columns: 104px minmax(0, 1fr);
+  padding: 10px 0;
 }
 
 .group > div:last-child {

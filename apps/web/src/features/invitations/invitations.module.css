@@ -1,23 +1,11 @@
-.detail {
-  position: relative;
-}
-.statusRail,
-.cardRail {
-  display: none;
-}
-/* One row per pending invitation, the same grammar as the workspace list. */
-.cardGrid {
-  display: flex !important;
-  flex-direction: column;
-  border-top: 1px solid var(--border-hairline);
-}
+/* One row per pending invitation, inside the waiting panel's group. */
 .invitationRow {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   padding: 14px 4px;
-  border-bottom: 1px solid var(--border-hairline);
+  text-align: start;
 }
 .invitationInitial {
   display: inline-grid;
@@ -36,72 +24,172 @@
   color: var(--text-secondary);
   font-size: 13px;
 }
-.detailHeader,
-.cardMain {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-.detailHeader {
-  margin-bottom: 24px;
-}
-.detailHeader h2,
 .cardTitle {
   margin: 0 !important;
   color: var(--text-primary) !important;
   font-size: 15px !important;
   line-height: 22px !important;
 }
-.actionArea {
-  margin-top: 24px;
+.cardLink {
+  height: auto;
+  padding: 0;
+  color: var(--color-primary);
+  font-weight: 500;
+  white-space: nowrap;
 }
 .stateResult {
   margin-top: 22px;
 }
-.actionArea :global(.ant-alert) {
-  margin-bottom: 18px;
+
+/* Waiting for an invitation: one centred panel — the steps, a title, one
+   line, and a small group with the number and the invitations. */
+.waiting {
+  max-width: 520px;
+  margin: clamp(16px, 9vh, 96px) auto 0;
 }
-.invitationCard {
-  padding: 24px 24px 20px 28px;
-}
-.cardMain {
-  margin-bottom: 12px;
-}
-.cardLink {
-  height: auto;
-  padding: 0;
-  font-weight: 650;
-}
-.listHeader {
+.progress {
   display: flex;
-  gap: 20px;
+  gap: 8px;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  justify-content: center;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
 }
-.listHeader h2 {
-  font-size: 15px;
+.progress li {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.progress li + li::before {
+  width: 24px;
+  height: 1px;
+  margin-inline-end: 2px;
+  background: var(--border-strong);
+  content: "";
+}
+.progress li > span {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  font-size: 11px;
   font-weight: 600;
 }
-.listHeader h2 {
-  color: #162532;
-  font-size: 20px;
+.progress li[data-state="done"] > span {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
 }
-.cardGrid {
+.progress li[data-state="current"] {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.progress li[data-state="current"] > span {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.waitingTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 30px;
+  text-align: center;
+}
+.waitingLead {
+  margin: 6px 0 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
+}
+.waitingAlert {
+  margin-bottom: 12px;
+}
+.waitingGroup {
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+}
+.waitingGroup > * + * {
+  border-top: 1px solid var(--border-hairline);
+}
+.waitingGroup .invitationRow {
+  padding: 12px 0;
+  border-bottom: 0;
+}
+.waitingRow {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 52px;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
-@media (max-width: 560px) {
-  .detail {
-    padding: 22px 18px 22px 22px;
+.waitingRow strong {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .waitingRow {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    gap: 8px;
   }
-  .detailHeader,
-  .cardMain {
-    gap: 12px;
+  .waitingRow strong {
+    font-size: 14px;
   }
-  .cardGrid {
-    grid-template-columns: 1fr;
-  }
+}
+.waitingMuted {
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+/* Deciding on an invitation: the same centred panel as the waiting page. */
+.decision {
+  max-width: 520px;
+  margin: clamp(16px, 9vh, 96px) auto 0;
+  text-align: center;
+}
+.decisionInitial {
+  display: inline-grid;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 14px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 22px;
+  font-weight: 600;
+}
+.decisionMeta {
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+.decision .stateResult {
+  margin: 0 0 16px;
+  text-align: start;
+}
+.decisionActions :global(.ant-space) {
+  justify-content: center;
+}
+.decisionActions :global(.ant-alert) {
+  margin-bottom: 12px;
+  text-align: start;
+}
+.decisionBack {
+  margin: 0;
+  font-size: 14px;
 }

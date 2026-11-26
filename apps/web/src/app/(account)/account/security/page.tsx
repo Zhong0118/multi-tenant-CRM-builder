@@ -46,16 +46,13 @@ export default async function AccountSecurityPage() {
         isPlatformAdmin: user.isPlatformAdmin,
       }}
     >
-      <PageHeader
-        title="账号安全"
-        description="管理登录方式、验证邮箱，以及登录过这个账号的设备。"
-      />
+      <PageHeader title="账号安全" />
       <SessionList
         initialActive={activeResult.data}
         initialHistory={historyResult.data}
         verification={
           <>
-            <SettingRow label="手机号" help="用于登录和找回密码">
+            <SettingRow label="手机号">
               <span className={styles.value}>{formatPhone(user.phone)}</span>
             </SettingRow>
             {/* No key: the row keeps its success notice across the refresh

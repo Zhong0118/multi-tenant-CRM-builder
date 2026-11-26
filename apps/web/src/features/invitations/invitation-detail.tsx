@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Descriptions, Typography } from "antd";
+import { Alert, Button } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -46,9 +46,9 @@ const roleText: Record<PersonalInvitation["role"], string> = {
 };
 
 const resultText: Partial<Record<PersonalInvitation["status"], string>> = {
-  ACCEPTED: "该邀请已接受。若公司尚未启用，请到工作空间列表查看状态，并等待平台启用。",
+  ACCEPTED: "该邀请已接受，公司启用后即可进入工作空间。",
   DECLINED: "你已拒绝该邀请。如需加入，请联系公司管理员重新邀请。",
-  REVOKED: "该邀请已由公司管理员撤销，无法继续处理。",
+  REVOKED: "该邀请已由公司管理员撤销。",
   EXPIRED: "该邀请已过期，请联系公司管理员重新邀请。",
 };
 
@@ -74,43 +74,32 @@ export function InvitationDetail({
     );
   }
 
+  const pending = invitation.status === "PENDING";
   return (
-    <article className={styles.detail}>
-      <div className={styles.statusRail} aria-hidden="true" />
-      <header className={styles.detailHeader}>
-        <div>
-          <Typography.Title level={2}>
-            {invitation.tenantName ?? "公司邀请"}
-          </Typography.Title>
-        </div>
-        <StatusTag tone={statusTone[invitation.status]}>
-          {statusText[invitation.status]}
-        </StatusTag>
-      </header>
-      <Descriptions column={1} bordered size="small">
-        <Descriptions.Item label="拟授予角色">
-          {roleText[invitation.role]}
-        </Descriptions.Item>
-        <Descriptions.Item label="邀请人">
-          {invitation.inviterName ?? "暂未提供"}
-        </Descriptions.Item>
-        <Descriptions.Item label="有效期至">
-          {formatDate(invitation.expiresAt)}
-        </Descriptions.Item>
-      </Descriptions>
-      {invitation.status === "PENDING" ? (
-        <Alert
-          className={styles.stateResult}
-          type="info"
-          showIcon
-          title="接受后的下一步"
-          description={
-            invitation.role === "TENANT_ADMIN"
-              ? "接受后会成为该公司管理员。若公司仍是草稿，需要等待平台启用，才能进入工作空间。"
-              : "接受后即可在公司启用时进入工作空间。若公司尚未启用，请等待平台处理。"
-          }
-        />
-      ) : null}
+    // One centred panel, like the waiting page: who invites you, as what,
+    // until when, and the two answers. What happens if the company is not
+    // live yet is said after accepting, when it is known.
+    <article className={styles.decision}>
+      <span className={styles.decisionInitial} aria-hidden>
+        {(invitation.tenantName ?? "邀").slice(0, 1)}
+      </span>
+      <h1 className={styles.waitingTitle}>
+        {invitation.tenantName ?? "公司邀请"}
+      </h1>
+      <p className={styles.waitingLead}>
+        邀请你以「{roleText[invitation.role]}」身份加入
+        {invitation.inviterName ? `，邀请人 ${invitation.inviterName}` : ""}
+        <br />
+        {pending ? (
+          <span className={styles.decisionMeta}>
+            {formatDate(invitation.expiresAt)} 前有效
+          </span>
+        ) : (
+          <StatusTag tone={statusTone[invitation.status]}>
+            {statusText[invitation.status]}
+          </StatusTag>
+        )}
+      </p>
       {resultText[invitation.status] ? (
         <Alert
           className={styles.stateResult}
@@ -119,20 +108,34 @@ export function InvitationDetail({
           title={resultText[invitation.status]}
         />
       ) : null}
-      <div className={styles.actionArea}>
-        <InvitationActions
-          invitation={invitation}
-          api={api}
-          onNavigate={onNavigate ?? router.push}
-        />
-      </div>
+      {pending ? (
+        <div className={styles.decisionActions}>
+          <InvitationActions
+            invitation={invitation}
+            api={api}
+            onNavigate={onNavigate ?? router.push}
+          />
+        </div>
+      ) : (
+        <p className={styles.decisionBack}>
+          <Link href="/waiting">返回公司邀请</Link>
+        </p>
+      )}
     </article>
   );
 }
 
+/** "12月3日 21:11", with the year only when it is not this year. */
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  const date = new Date(value);
+  const time = new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+  const year =
+    date.getFullYear() === new Date().getFullYear()
+      ? ""
+      : `${date.getFullYear()}年`;
+  return `${year}${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
 }

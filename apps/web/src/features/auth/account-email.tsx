@@ -191,7 +191,7 @@ export function AccountEmail({
   }
   if (!available)
     return (
-      <SettingRow label="邮箱" help="用于找回密码和接收安全提醒">
+      <SettingRow label="邮箱">
         <span className={styles.rowMuted}>邮件服务暂未开通</span>
       </SettingRow>
     );
@@ -199,12 +199,14 @@ export function AccountEmail({
     <>
       <SettingRow
         label="邮箱"
+        // A line only when something needs doing; the tag beside the
+        // address already says which state it is in.
         help={
           status === "UNDELIVERABLE"
-            ? "邮件无法投递，请重新验证邮箱"
+            ? "邮件无法投递，请重新验证"
             : status === "UNVERIFIED"
-              ? "邮箱尚未验证，验证后才能找回密码"
-              : "用于找回密码和接收安全提醒"
+              ? "验证后才能用邮箱找回密码"
+              : undefined
         }
       >
         {!mode ? (
@@ -388,11 +390,7 @@ export function AccountEmail({
       </SettingRow>
       <SettingRow
         label="新设备登录提醒"
-        help={
-          status === "VERIFIED"
-            ? "在新设备上登录时，给你的邮箱发一封提醒"
-            : "验证邮箱后可以开启"
-        }
+        help={status === "VERIFIED" ? undefined : "验证邮箱后可开启"}
       >
         {/* The switch sits in the same right-hand action column as the
             buttons in the rows above. */}

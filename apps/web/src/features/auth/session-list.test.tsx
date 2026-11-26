@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  formatWhen,
   SessionList,
   type SecurityApi,
   type SecuritySession,
@@ -176,5 +177,24 @@ describe("SessionList", () => {
       expect(screen.queryByText(/登录历史读取失败/)).not.toBeInTheDocument(),
     );
     expect(api.listSessions).toHaveBeenNthCalledWith(2, "HISTORY", 2, 1);
+  });
+});
+
+describe("formatWhen", () => {
+  const now = new Date(2026, 10, 26, 15, 0);
+  it("says today and yesterday, and drops the year only within it", () => {
+    expect(formatWhen(new Date(2026, 10, 26, 9, 5).toISOString(), now)).toBe(
+      "今天 09:05",
+    );
+    expect(formatWhen(new Date(2026, 10, 25, 21, 40).toISOString(), now)).toBe(
+      "昨天 21:40",
+    );
+    expect(formatWhen(new Date(2026, 10, 3, 8, 0).toISOString(), now)).toBe(
+      "11月3日 08:00",
+    );
+    expect(formatWhen(new Date(2025, 11, 31, 8, 0).toISOString(), now)).toBe(
+      "2025年12月31日 08:00",
+    );
+    expect(formatWhen(undefined, now)).toBe("暂无记录");
   });
 });
