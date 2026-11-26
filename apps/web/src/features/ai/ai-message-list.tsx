@@ -51,12 +51,7 @@ export function AiMessageList({
   const live = useRef<HTMLDivElement>(null);
   const prependAnchor = useRef<{ height: number; top: number } | null>(null);
   const body = useRef<HTMLDivElement>(null);
-  const hold = useRef<HTMLDivElement>(null);
-  const bodyHeight = useRef(0);
-  const following = useRef(true);
-  useLayoutEffect(() => {
-    following.current = follow;
-  }, [follow]);
+  const floor = useRef(0);
   const questionNav = useRef<HTMLElement>(null);
   const [activeQuestion, setActiveQuestion] = useState<string>();
   const questions = messages.filter((message) => message.role === "USER");
@@ -85,42 +80,35 @@ export function AiMessageList({
   }
 
   // A card that collapses at the bottom (confirmed, rejected) would let the
-  // browser pull everything above it down. Keep the freed space as an empty
-  // stretch under the last message instead, and let the next message grow
-  // into it, so nothing above moves. Runs after layout, before paint.
+  // browser clamp the scroll and pull every line above it down. Within one
+  // conversation the message column only grows: a shrink leaves empty space
+  // under the last message, and the next message grows into it.
   useLayoutEffect(() => {
-    const node = scroller.current;
     const inner = body.current;
-    const spacer = hold.current;
-    if (!node || !inner || !spacer) return;
-    bodyHeight.current = inner.offsetHeight;
+    if (!inner) return;
     const observer = new ResizeObserver(() => {
       const height = inner.offsetHeight;
-      const held = spacer.offsetHeight;
-      const next = nextHold(bodyHeight.current, height, held, following.current);
-      bodyHeight.current = height;
-      if (next === held) return;
-      const top = lastScrollTop.current;
-      spacer.style.height = `${next}px`;
-      if (next > held) node.scrollTop = top;
+      if (height <= floor.current) return;
+      floor.current = height;
+      inner.style.minHeight = `${height}px`;
     });
     observer.observe(inner);
     return () => observer.disconnect();
   }, []);
 
-  // Another conversation (or fewer messages) starts from a clean bottom.
+  // Another conversation, or fewer messages, starts from its own height.
   const firstId = messages[0]?.id;
   const count = useRef(messages.length);
   useLayoutEffect(() => {
     const fewer = messages.length < count.current;
     count.current = messages.length;
     if (!fewer) return;
-    if (hold.current) hold.current.style.height = "0px";
-    if (body.current) bodyHeight.current = body.current.offsetHeight;
+    floor.current = 0;
+    if (body.current) body.current.style.minHeight = "";
   }, [messages.length]);
   useLayoutEffect(() => {
-    if (hold.current) hold.current.style.height = "0px";
-    if (body.current) bodyHeight.current = body.current.offsetHeight;
+    floor.current = 0;
+    if (body.current) body.current.style.minHeight = "";
   }, [firstId]);
 
   useLayoutEffect(() => {
@@ -186,7 +174,7 @@ export function AiMessageList({
           {onRetryMessages ? <Button type="link" onClick={onRetryMessages}>重试</Button> : null}
         </div>
       ) : null}
-      <div ref={body}>
+      <div ref={body} className={styles.messageColumn}>
       {messages.map((message) =>
         message.role === "USER" ? (
           <div key={message.id} data-ai-question={message.turnId}>
@@ -206,7 +194,6 @@ export function AiMessageList({
         ),
       )}
       </div>
-      <div ref={hold} aria-hidden />
       <div ref={live} className={styles.srOnly} aria-live="polite">
         {phase === "COMPLETED" || phase === "PARTIAL_COMPLETED"
           ? "回答已完成"
@@ -258,19 +245,3 @@ export function AiMessageList({
   );
 }
 
-/**
- * Height of the empty stretch under the last message. Content that shrinks
- * leaves its space behind; content that grows while the reader follows the
- * bottom takes that space back first.
- */
-export function nextHold(
-  previous: number,
-  height: number,
-  held: number,
-  following: boolean,
-) {
-  const change = height - previous;
-  if (change < 0) return held - change;
-  if (change > 0 && following) return Math.max(0, held - change);
-  return held;
-}

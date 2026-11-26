@@ -2,11 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  AiMessageList,
-  nextHold,
-  nextPrependScrollTop,
-} from "./ai-message-list";
+import { AiMessageList, nextPrependScrollTop } from "./ai-message-list";
 import type { AiMessage } from "./ai-types";
 
 function message(id: string, content: string): AiMessage {
@@ -246,15 +242,44 @@ describe("AiMessageList question navigation", () => {
   });
 });
 
-describe("nextHold", () => {
-  it("keeps the space a collapsing card frees, so nothing above moves", () => {
-    expect(nextHold(1000, 845, 0, true)).toBe(155);
-  });
-  it("lets the next message grow into the kept space first", () => {
-    expect(nextHold(845, 905, 155, true)).toBe(95);
-    expect(nextHold(905, 1200, 95, true)).toBe(0);
-  });
-  it("leaves the space alone while the reader is up in the history", () => {
-    expect(nextHold(845, 1400, 155, false)).toBe(155);
+
+describe("AiMessageList collapsing content", () => {
+  it("keeps the column's height when a card shrinks, until another conversation opens", () => {
+    const observers: ResizeObserverCallback[] = [];
+    const Original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(callback: ResizeObserverCallback) {
+        observers.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      const { rerender } = render(
+        <AiMessageList tenantCode="t" messages={[message("q1", "问题")]} phase="IDLE" />,
+      );
+      const column = screen.getByText("问题").closest("[data-ai-question]")!
+        .parentElement as HTMLElement;
+      let height = 900;
+      Object.defineProperty(column, "offsetHeight", { get: () => height });
+      const fire = () => observers.forEach((cb) => cb([], {} as ResizeObserver));
+      fire();
+      expect(column.style.minHeight).toBe("900px");
+      // A confirmed card collapses: the column keeps its height.
+      height = 700;
+      fire();
+      expect(column.style.minHeight).toBe("900px");
+      // A longer answer grows past it.
+      height = 1100;
+      fire();
+      expect(column.style.minHeight).toBe("1100px");
+      rerender(
+        <AiMessageList tenantCode="t" messages={[message("other", "另一个")]} phase="IDLE" />,
+      );
+      expect(column.style.minHeight).toBe("");
+    } finally {
+      globalThis.ResizeObserver = Original;
+    }
   });
 });

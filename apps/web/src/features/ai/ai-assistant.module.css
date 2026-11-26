@@ -215,6 +215,12 @@
   padding: 24px 24px 12px;
 }
 
+/* Holds its children's margins, so its measured height is the whole column
+   and a minimum height on it never lets a margin slip out. */
+.messageColumn {
+  display: flow-root;
+}
+
 .userRow {
   display: flex;
   justify-content: flex-end;
