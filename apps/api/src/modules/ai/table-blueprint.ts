@@ -311,14 +311,7 @@ export function validateBlueprint(
       else if (codes.has(t.code))
         fail('NAME_IN_USE', '表编码已占用，请修改。', 'code');
       else if (isFallbackCode(t.code, t.id, 'object'))
-        add(
-          'CODE_FALLBACK',
-          '已换成备用编码',
-          'code',
-          t.id,
-          undefined,
-          false,
-        );
+        add('CODE_FALLBACK', '已换成备用编码', 'code', t.id, undefined, false);
       codes.add(t.code);
       if (names.has(canonicalName(t.name)))
         fail('NAME_IN_USE', '业务表名称已占用。', 'name');
@@ -358,14 +351,7 @@ export function validateBlueprint(
       else if (fieldKeys.has(f.fieldKey))
         fail('NAME_IN_USE', '字段键已占用，请修改。', 'fieldKey', f.id);
       else if (isFallbackCode(f.fieldKey, f.id, 'field'))
-        add(
-          'CODE_FALLBACK',
-          '已换成备用字段键',
-          'fieldKey',
-          t.id,
-          f.id,
-          false,
-        );
+        add('CODE_FALLBACK', '已换成备用字段键', 'fieldKey', t.id, f.id, false);
       fieldKeys.add(f.fieldKey);
       if (!f.label) fail('FIELD_NAME', '请填写字段名称。', 'label', f.id);
       if (fieldNames.has(canonicalName(f.label)))
