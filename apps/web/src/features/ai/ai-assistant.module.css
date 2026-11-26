@@ -31,7 +31,7 @@
 
 /* Two left anchors in the rail: boxes (button, search, row highlight) and
    the brand line sit on the 12px edge; text inside the list (group names,
-   session titles) sits 10px in. */
+   session titles) sits 12px in, past the row's 2px left border. */
 .railHeader {
   display: flex;
   flex-direction: column;
@@ -61,7 +61,7 @@
 }
 
 .groupLabel {
-  margin: 12px 10px 4px;
+  margin: 12px 10px 4px 12px;
   color: var(--text-tertiary);
   font-size: 11px;
   font-weight: 500;

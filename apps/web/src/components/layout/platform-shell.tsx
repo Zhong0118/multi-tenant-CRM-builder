@@ -34,7 +34,7 @@ export function PlatformShell({
           })),
         },
       ]}
-      headerLeft={<PlatformBreadcrumb pathname={pathname} />}
+      headerLeft={PlatformBreadcrumb({ pathname }) ?? undefined}
       user={user}
       roleLabel="平台超级管理员"
       contentPadding
@@ -82,10 +82,9 @@ export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
     );
   }
 
-  const exact = SECTION_LABELS[pathname];
-  if (exact) {
-    return <span className={styles.breadcrumbCurrent}>{exact}</span>;
-  }
+  // A top-level section names itself in the page title; a header line saying
+  // the same again is noise. Only nested pages get a trail back up.
+  if (SECTION_LABELS[pathname]) return null;
 
   const parent = [...platformNavigation]
     .filter(
@@ -106,5 +105,5 @@ export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
     );
   }
 
-  return <span className={styles.breadcrumbCurrent}>总览</span>;
+  return null;
 }

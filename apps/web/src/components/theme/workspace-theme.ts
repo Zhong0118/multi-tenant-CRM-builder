@@ -152,5 +152,17 @@ export const WORKSPACE_THEME: ThemeConfig = {
       dangerShadow: "none",
     },
     Switch: { colorPrimary: T.primary, colorPrimaryHover: T.primaryHover },
+    // Notices are a white box with a hairline border; the status lives in
+    // the icon and a left rule (globals.css), not in a filled background.
+    Alert: {
+      colorInfoBg: T.surface,
+      colorInfoBorder: T.border,
+      colorSuccessBg: T.surface,
+      colorSuccessBorder: T.border,
+      colorWarningBg: T.surface,
+      colorWarningBorder: T.border,
+      colorErrorBg: T.surface,
+      colorErrorBorder: T.border,
+    },
   },
 };

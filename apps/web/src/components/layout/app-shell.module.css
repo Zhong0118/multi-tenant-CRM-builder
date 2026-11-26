@@ -388,7 +388,8 @@
   height: var(--header-height);
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  /* Same left edge as the padded content below. */
+  padding: 0 28px;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-hairline);
 }

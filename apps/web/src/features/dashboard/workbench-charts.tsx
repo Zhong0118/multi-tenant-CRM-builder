@@ -41,10 +41,28 @@ export function TrendChart({
           data={data}
           xField="date"
           yField="value"
+          // Quiet axes: no tick marks, solid hairline grid, small grey labels.
           axis={{
-            x: { title: false },
+            x: {
+              title: false,
+              tick: false,
+              line: true,
+              lineStroke: WORKSPACE_TOKENS.border,
+              lineStrokeOpacity: 1,
+              labelFill: WORKSPACE_TOKENS.textTertiary,
+              labelFillOpacity: 1,
+              labelFontSize: 11,
+            },
             y: {
               title: false,
+              tick: false,
+              grid: true,
+              gridLineDash: [0, 0],
+              gridStroke: WORKSPACE_TOKENS.hairline,
+              gridStrokeOpacity: 1,
+              labelFill: WORKSPACE_TOKENS.textTertiary,
+              labelFillOpacity: 1,
+              labelFontSize: 11,
               ...(formatAxis && {
                 labelFormatter: (v: number | string) => formatAxis(Number(v)),
               }),

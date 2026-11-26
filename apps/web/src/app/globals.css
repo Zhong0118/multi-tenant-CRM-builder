@@ -200,6 +200,28 @@ table,
   margin-bottom: 12px;
 }
 
+/* Notices: white box, hairline border, the status colour only on the icon
+   and a 3px left rule. Same shape as the other boxes in the product. */
+.ant-alert {
+  border-inline-start-width: 3px;
+  border-radius: 8px;
+}
+.ant-alert-info {
+  border-inline-start-color: var(--color-info);
+}
+.ant-alert-success {
+  border-inline-start-color: var(--color-success);
+}
+.ant-alert-warning {
+  border-inline-start-color: var(--color-warning);
+}
+.ant-alert-error {
+  border-inline-start-color: var(--color-danger);
+}
+.ant-alert .ant-alert-description {
+  color: var(--text-secondary);
+}
+
 /* Reduced motion everywhere (including portalled overlays): state changes
    stay, movement goes. */
 @media (prefers-reduced-motion: reduce) {

@@ -41,6 +41,8 @@ export function UsagePanel({
   }
   if (!byDay.size && !proposals && !confirmed)
     return <Empty description="本月还没有使用 AI" />;
+  // Daily totals past ten thousand read in 万 on the axis.
+  const inWan = Math.max(0, ...byDay.values()) >= 10_000;
   const share =
     state.allocation === "equal" && state.preview.shareTokens !== null
       ? Number(state.preview.shareTokens)
@@ -50,17 +52,17 @@ export function UsagePanel({
       <div className={styles.grid}>
         <PageSection
           title="每日用量趋势"
-          description="每天结算的输入与输出 token，单位：token"
+          description={`每天结算的输入与输出 token，纵轴单位：${inWan ? "万 token" : "token"}`}
         >
           {byDay.size > 0 ? (
             <Trend
               title="用量"
               formatValue={formatTokens}
-              // Ticks are round numbers: "50 万", not "50.0 万 token".
+              // The unit is said once above; ticks are bare round numbers.
               formatAxis={(value) =>
-                formatTokens(value)
-                  .replace(/\s*token$/, "")
-                  .replace(/\.0(?= 万)/, "")
+                new Intl.NumberFormat("zh-CN", {
+                  maximumFractionDigits: 1,
+                }).format(inWan ? value / 10_000 : value)
               }
               zeroBaseline
               data={[...byDay.entries()]
