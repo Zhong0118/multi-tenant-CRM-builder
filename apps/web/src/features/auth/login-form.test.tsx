@@ -85,6 +85,22 @@ describe("LoginForm", () => {
     expect(api.login).not.toHaveBeenCalled();
   });
 
+  it("says the device was signed out in one line, with the reason on demand", () => {
+    renderForm(
+      <LoginForm
+        api={baseApi()}
+        navigate={vi.fn()}
+        signedOut
+        device={{ key: "device-test", summary: "Vitest browser" }}
+      />,
+    );
+
+    expect(screen.getByText("这台设备已退出登录")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /密码在其他设备上修改或重置过/ }),
+    ).toBeInTheDocument();
+  });
+
   it("offers an explicit password visibility control", () => {
     const api = baseApi();
     renderForm(

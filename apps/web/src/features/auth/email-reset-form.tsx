@@ -7,7 +7,11 @@ import { emailApi } from "./email-api";
 import { normalizeFormError, useCountdown } from "./form-support";
 import { PasswordField } from "./password-field";
 import { PasswordResetForm } from "./password-reset-form";
-import { passwordSchema, verificationCodeSchema } from "./schemas";
+import {
+  PASSWORD_RULE,
+  passwordSchema,
+  verificationCodeSchema,
+} from "./schemas";
 import styles from "./auth.module.css";
 
 export function ResetMethods({
@@ -137,7 +141,7 @@ export function EmailResetForm({
           <Form.Item
             label="设置新密码"
             htmlFor="recovery-password"
-            extra="10–72 位，同时包含字母和数字"
+            extra={newPassword ? PASSWORD_RULE : undefined}
           >
             <PasswordField
               id="recovery-password"

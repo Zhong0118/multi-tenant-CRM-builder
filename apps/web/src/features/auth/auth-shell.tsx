@@ -15,14 +15,13 @@ import styles from "./auth.module.css";
  */
 export function AuthShell({
   title,
-  description,
   children,
   footer,
 }: {
   /** No longer rendered: the page title already names the step. */
   eyebrow?: string;
+  /** The title alone: what the step means is said where it happens. */
   title: string;
-  description: string;
   children: ReactNode;
   footer: ReactNode;
 }) {
@@ -48,7 +47,6 @@ export function AuthShell({
         </div>
         <div className={styles.formCard}>
           <h1 className={styles.formTitle}>{title}</h1>
-          <p className={styles.formDescription}>{description}</p>
           {children}
           <div className={styles.formFooter}>{footer}</div>
         </div>

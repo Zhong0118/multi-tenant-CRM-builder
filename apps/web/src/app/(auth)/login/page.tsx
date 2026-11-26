@@ -25,7 +25,6 @@ export default async function LoginPage({
   return (
     <AuthShell
       title="登录"
-      description="使用手机号和密码进入你的账号。"
       footer={
         <>
           还没有账号？ <Link href="/register">创建账号</Link>
@@ -35,7 +34,9 @@ export default async function LoginPage({
       <LoginForm
         returnTo={returnTo}
         notice={
-          params.reset === "done" ? "密码已重置，请用新密码登录。" : undefined
+          params.reset === "done"
+            ? "密码已重置，所有设备已退出登录。请用新密码登录。"
+            : undefined
         }
         signedOut={params.reason === "signed-out"}
       />

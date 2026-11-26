@@ -96,18 +96,11 @@
 }
 
 .formTitle {
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--text-primary);
   font-size: 24px;
   font-weight: 600;
   line-height: 32px;
-}
-
-.formDescription {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 22px;
 }
 
 .authForm {
@@ -174,11 +167,33 @@
   margin-bottom: 16px;
 }
 
+/* One line; why it happened sits behind the question mark. */
+.signedOut {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.why {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: help;
+}
+
+.why:hover,
+.why:focus-visible {
+  color: var(--text-secondary);
+}
+
 .authForm > :global(.ant-btn-primary) {
   margin-top: 4px;
 }
 
-/* Phone or email: the choice sits between the description and the form. */
+/* Phone or email: the choice sits between the title and the form. */
 .resetMethods {
   display: grid;
   gap: 20px;

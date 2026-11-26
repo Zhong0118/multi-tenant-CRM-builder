@@ -5,7 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Alert, Button, Form, Input, Space } from "antd";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { resolvePostLoginRoute } from "@/lib/auth/post-login-route";
 
@@ -18,7 +18,12 @@ import {
   waitText,
   type DeviceIdentity,
 } from "./form-support";
-import { phoneSchema, registerSchema, type RegisterInput } from "./schemas";
+import {
+  PASSWORD_RULE,
+  phoneSchema,
+  registerSchema,
+  type RegisterInput,
+} from "./schemas";
 import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
 
@@ -56,6 +61,7 @@ export function RegisterForm({
       deviceSummary: identity.summary,
     },
   });
+  const password = useWatch({ control, name: "password" });
   const sentCode = useSentCode("register", (phone) => setValue("phone", phone));
   const requestedPhone = sentCode.phone;
   const countdownSeconds = sentCode.seconds;
@@ -237,7 +243,6 @@ export function RegisterForm({
         label="姓名"
         htmlFor="register-name"
         validateStatus={errors.displayName ? "error" : undefined}
-        extra="登录使用唯一手机号，姓名允许重复。"
       >
         <Controller
           name="displayName"
@@ -252,7 +257,8 @@ export function RegisterForm({
         htmlFor="register-password"
         validateStatus={errors.password ? "error" : undefined}
         help={errors.password?.message}
-        extra="10–72 位，同时包含字母和数字。"
+        // The rule shows up once typing starts; an error replaces it.
+        extra={password && !errors.password ? PASSWORD_RULE : undefined}
       >
         <Controller
           name="password"

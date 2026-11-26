@@ -2,7 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { Alert, Button, Form, Input } from "antd";
+import { QuestionCircleOutlined } from "@ant-design/icons";
+import { Alert, Button, Form, Input, Tooltip } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -22,6 +23,9 @@ import {
 import { loginSchema, type LoginInput } from "./schemas";
 import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
+
+const SIGNED_OUT_WHY =
+  "密码在其他设备上修改或重置过，或这台设备被移出了登录设备。如果不是你本人操作，请用「忘记密码」重置。";
 
 export function LoginForm({
   api = authApi,
@@ -133,8 +137,20 @@ export function LoginForm({
         <Alert
           type="info"
           showIcon
-          title="这台设备已退出登录"
-          description="密码在其他设备上修改或重置过，或这台设备被移出了登录设备。请重新登录；如果不是你本人操作，请用「忘记密码」重置。"
+          title={
+            <span className={styles.signedOut}>
+              这台设备已退出登录
+              <Tooltip title={SIGNED_OUT_WHY}>
+                <button
+                  type="button"
+                  className={styles.why}
+                  aria-label={SIGNED_OUT_WHY}
+                >
+                  <QuestionCircleOutlined aria-hidden />
+                </button>
+              </Tooltip>
+            </span>
+          }
         />
       ) : null}
       <Form.Item

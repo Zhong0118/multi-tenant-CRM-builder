@@ -26,7 +26,6 @@ export default async function ForgotPasswordPage({
   return (
     <AuthShell
       title="重置密码"
-      description="验证账号后设置新密码，完成后所有设备将退出登录。"
       footer={
         <>
           想起密码了？{" "}

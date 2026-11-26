@@ -18,7 +18,7 @@ function renderForm(ui: ReactNode) {
 }
 
 describe("RegisterForm", () => {
-  it("says login uses the unique phone while display names may repeat", () => {
+  it("shows the password rule only once typing starts", () => {
     const api: AuthApi = {
       requestRegisterCode: vi.fn(),
       register: vi.fn(),
@@ -33,7 +33,12 @@ describe("RegisterForm", () => {
         device={{ key: "device-test", summary: "Vitest browser" }}
       />,
     );
-    expect(screen.getByText("登录使用唯一手机号，姓名允许重复。")).toBeInTheDocument();
+    const rule = "10–72 位，同时包含字母和数字";
+    expect(screen.queryByText(rule)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("设置密码"), {
+      target: { value: "a" },
+    });
+    expect(screen.getByText(rule)).toBeInTheDocument();
   });
 
   it("requests a code, starts a 60-second lock, and enters the only workspace", async () => {

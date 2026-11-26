@@ -5,7 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Alert, Button, Form, Input, Space } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { authApi, type AuthApi } from "./auth-api";
 import {
@@ -19,6 +19,7 @@ import {
   type DeviceIdentity,
 } from "./form-support";
 import {
+  PASSWORD_RULE,
   phoneSchema,
   resetPasswordSchema,
   type ResetPasswordInput,
@@ -57,6 +58,7 @@ export function PasswordResetForm({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { phone: "", code: "", newPassword: "" },
   });
+  const newPassword = useWatch({ control, name: "newPassword" });
   const sentCode = useSentCode("reset", (phone) => setValue("phone", phone));
   useEffect(() => {
     const phone = rememberedPhone();
@@ -227,7 +229,8 @@ export function PasswordResetForm({
         htmlFor="reset-password"
         validateStatus={errors.newPassword ? "error" : undefined}
         help={errors.newPassword?.message}
-        extra="10–72 位，同时包含字母和数字。"
+        // The rule shows up once typing starts; an error replaces it.
+        extra={newPassword && !errors.newPassword ? PASSWORD_RULE : undefined}
       >
         <Controller
           name="newPassword"
