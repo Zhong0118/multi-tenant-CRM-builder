@@ -445,7 +445,12 @@ function FilterEditor(props: RecordFilterPanelProps) {
           const label = `条件 ${index + 1}`;
           return (
             <div className={styles.rowWrap} key={index}>
-              {added[index] && <span className={styles.newTag}>新</span>}
+              {/* Added by AI: the same mark as everything else AI wrote. */}
+              {added[index] && (
+                <span className={styles.newTag}>
+                  <AiBadge>AI 新增</AiBadge>
+                </span>
+              )}
               <div data-term={index} className={styles.row}>
                 {"conditions" in term || !field ? (
                   <span data-primary tabIndex={-1} className={styles.group}>

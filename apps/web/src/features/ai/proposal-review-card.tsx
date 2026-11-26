@@ -32,6 +32,7 @@ export function ProposalReviewCard({
   onRetry,
   confirmLabel = "确认所选项",
   extraActions,
+  ai = true,
 }: {
   items: ReviewItem[];
   selectedKeys: string[];
@@ -43,6 +44,8 @@ export function ProposalReviewCard({
   onRetry?: (keys: string[]) => void;
   confirmLabel?: string;
   extraActions?: ReactNode;
+  /** False when the items are the person's own words (AI gave nothing): no AI outline. */
+  ai?: boolean;
 }) {
   const operation = (item: ReviewItem) => item.operationKey ?? item.key;
   const selectedItems = items.filter((item) => selectedKeys.includes(item.key));
@@ -66,7 +69,7 @@ export function ProposalReviewCard({
     .filter((item) => !failedItems.has(operation(item)))
     .map((item) => item.key);
   return (
-    <div className={styles.review}>
+    <div className={styles.review} data-ai={ai}>
       <div className={styles.items}>
         {items.map((item) => {
           const result = itemResults[item.key];

@@ -585,6 +585,8 @@ details.section ul {
 /* A problem with the table name or code, under that input. */
 .inputWithIssue {
   display: grid;
+  /* A message under one input must not stretch its neighbour. */
+  align-content: start;
   gap: 4px;
   min-width: 0;
 }

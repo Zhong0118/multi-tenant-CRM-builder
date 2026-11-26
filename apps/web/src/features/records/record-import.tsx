@@ -543,6 +543,7 @@ export function RecordImportDrawer({
         : "已选的文件和列对照还没有导入，关闭后需要重新选择。",
       okText: importStarted ? "关闭" : "放弃",
       okButtonProps: { danger: true },
+      autoFocusButton: "cancel",
       cancelText: "继续导入",
       onOk: close,
       afterClose: () => {
@@ -1183,7 +1184,9 @@ export function RecordImportDrawer({
               </label>
             )}
           </div>
-          {source && !headerLocked && (
+          {/* Row 1 is what anyone expects; only a header further down is
+              worth a line under the select that already shows it. */}
+          {source && !headerLocked && headerRow > 1 && !autoHeader && (
             <Typography.Text type="secondary" className={importStyles.note}>
               表头按第 {headerRow} 行读取，不对可以在上面改
             </Typography.Text>
@@ -1210,20 +1213,17 @@ export function RecordImportDrawer({
               <section aria-label="AI 文件对照" className={importStyles.assist}>
                 <Typography.Paragraph className={importStyles.assistSummary}>
                   <AiSparkIcon aria-hidden className={importStyles.aiMark} />
-                  {preview.unresolvedColumns || preview.unresolvedValues
-                    ? `AI 可对照的列里还有 ${[
-                        preview.unresolvedColumns
-                          ? `${preview.unresolvedColumns} 列`
-                          : "",
-                        preview.unresolvedValues
-                          ? `${preview.unresolvedValues} 个取值`
-                          : "",
-                      ]
-                        .filter(Boolean)
-                        .join("、")}没对上`
-                    : preview.needed
-                      ? "表头或日期格式待确认"
-                      : "已完成对照"}
+                  {/* How many columns are skipped is said once, above the
+                      table; here only whether AI still has work to do. */}
+                  {preview.unresolvedColumns && preview.unresolvedValues
+                    ? `还有列和 ${preview.unresolvedValues} 个取值没对上`
+                    : preview.unresolvedColumns
+                      ? "还有列没对上，见下表「未对照」"
+                      : preview.unresolvedValues
+                        ? `还有 ${preview.unresolvedValues} 个取值没对上`
+                        : preview.needed
+                          ? "表头或日期格式待确认"
+                          : "已完成对照"}
                 </Typography.Paragraph>
                 {started !== undefined ? (
                   <>
@@ -1400,7 +1400,7 @@ export function RecordImportDrawer({
                             </div>
                           )}
                         </div>
-                        <div>
+                        <div className={importStyles.controls}>
                           <Select
                             disabled={
                               lockedOwner ||
@@ -1470,11 +1470,12 @@ export function RecordImportDrawer({
                               field.type === "MONEY") && (
                               <Select
                                 aria-label={"无单位数值 " + label}
+                                prefix="没写单位的数"
                                 value={amountUnits[index] ?? "yuan"}
                                 disabled={!!busy || mappingLocked}
                                 options={[
-                                  { value: "yuan", label: "原数值" },
-                                  { value: "wan", label: "无单位数值按万" },
+                                  { value: "yuan", label: "按原数" },
+                                  { value: "wan", label: "按万" },
                                 ]}
                                 onChange={(v) => {
                                   setAmountUnits((prev) => ({
@@ -1527,7 +1528,7 @@ export function RecordImportDrawer({
                                   : "按月/日/年 "
                                 : ""}
                               {advice.bareAmountUnit === "wan"
-                                ? "无单位数值按万"
+                                ? "没写单位的数按万 "
                                 : ""}{" "}
                               ·{" "}
                               {Array.from(advice.reason).slice(0, 20).join("")}

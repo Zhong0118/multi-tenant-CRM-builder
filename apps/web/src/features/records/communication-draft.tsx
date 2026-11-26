@@ -465,6 +465,7 @@ export function CommunicationDraftDialog({
         : "写好的沟通原文还没有整理，关闭后会丢失。",
       okText: "放弃",
       okButtonProps: { danger: true },
+      autoFocusButton: "cancel",
       cancelText: "继续整理",
       onOk: onClose,
     });
@@ -554,6 +555,7 @@ export function CommunicationDraftDialog({
               </h3>
             )}
             <ProposalReviewCard
+              ai={draft.status !== "FALLBACK"}
               items={items}
               selectedKeys={selected}
               itemResults={itemResults}

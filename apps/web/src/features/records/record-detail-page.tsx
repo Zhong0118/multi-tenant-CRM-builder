@@ -143,6 +143,7 @@ export function RecordDetailPage({
       content: "这条记录的修改还没有保存，离开后会丢失。",
       okText: "放弃修改",
       okButtonProps: { danger: true },
+      autoFocusButton: "cancel",
       cancelText: "继续编辑",
       onOk: go,
     });

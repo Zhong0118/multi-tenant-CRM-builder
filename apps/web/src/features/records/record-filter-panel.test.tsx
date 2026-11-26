@@ -340,7 +340,7 @@ describe("natural-language filter previews", () => {
     expect(preview.mock.calls[0][0].currentRule.conditions[0]).toMatchObject({
       value: "105.00",
     });
-    expect(screen.getAllByText("新")).toHaveLength(1);
+    expect(screen.getAllByText("AI 新增")).toHaveLength(1);
     expect(screen.getByText(/预计金额.*105.00/)).toBeInTheDocument();
     expect(screen.getByLabelText("匹配方式")).toHaveValue("any");
     expect(save).not.toHaveBeenCalled();

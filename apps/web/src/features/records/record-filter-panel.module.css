@@ -257,11 +257,7 @@
 }
 .newTag {
   justify-self: start;
-  padding: 0 5px;
-  border-radius: 4px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  font-size: 12px;
+  display: inline-flex;
 }
 .removed {
   display: flex;

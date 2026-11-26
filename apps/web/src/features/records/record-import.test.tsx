@@ -763,6 +763,10 @@ describe("RecordImportDrawer", () => {
         "已选的文件和列对照还没有导入，关闭后需要重新选择。",
       ),
     ).toBeInTheDocument();
+    // Enter right after Esc keeps the work: the safe button has the focus.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "继续导入" })).toHaveFocus(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "继续导入" }));
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByText("1 行 · 1 列")).toBeInTheDocument();

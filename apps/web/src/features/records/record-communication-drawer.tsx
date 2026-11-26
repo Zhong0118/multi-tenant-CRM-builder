@@ -123,6 +123,8 @@ export function RecordCommunicationDrawer({
       title: "放弃未保存的沟通内容？",
       content: "关闭后本次输入不会保存",
       okText: "放弃并关闭",
+      okButtonProps: { danger: true },
+      autoFocusButton: "cancel",
       cancelText: "继续填写",
       onOk: () => setOpen(false),
     });

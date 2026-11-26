@@ -18,6 +18,10 @@
   border-radius: var(--radius-reading);
   background: var(--bg-surface);
 }
+/* The person's own words kept after AI gave nothing: a plain outline. */
+.review[data-ai="false"] .items:has(> .item) {
+  border-color: var(--border-default);
+}
 .item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -154,6 +158,10 @@
 .dialog > label {
   color: var(--text-secondary);
   font-size: 13px;
+}
+/* The character count hangs below the box; keep it clear of the button. */
+.dialog > label:has(:global(.ant-input-data-count)) {
+  padding-bottom: 20px;
 }
 .dialog details {
   color: var(--text-secondary);
