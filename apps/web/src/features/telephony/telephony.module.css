@@ -1,0 +1,240 @@
+/* Outbound calling settings: grouped cards as in Account security, the line and
+   its numbers beside the seats on wide screens, one column on a phone. */
+.grid {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Grid gaps space the sections, side by side or stacked. */
+.grid.grid section {
+  margin-top: 0;
+}
+
+.column {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+}
+
+.alert {
+  margin-bottom: 16px;
+}
+
+.group {
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+}
+
+.group > div {
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px 16px;
+  padding: 10px 0;
+}
+
+.group > div:last-child,
+.group > ul > li:last-child {
+  border-bottom: 0;
+}
+
+.group > div > div:first-child {
+  padding-top: 5px;
+  font-weight: 400;
+}
+
+.value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 32px;
+}
+
+.text {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.hint {
+  margin-left: 6px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.count {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  margin: 0;
+  padding: 14px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.inlineForm {
+  display: grid;
+  gap: 8px;
+  max-width: 360px;
+}
+
+.inlineForm :global(.ant-form-item) {
+  margin: 0;
+}
+
+.inlineForm :global(.ant-form-item-label) {
+  padding-bottom: 2px;
+}
+
+.inlineActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.fieldSelect {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+}
+
+.fieldSelect :global(.ant-select) {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Seats: one line per member, name and seat on the left, the switch on the right. */
+.members {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.member {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.memberMain {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.memberMain:hover .memberName {
+  color: var(--color-primary);
+}
+
+.memberMain:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+.memberName {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.memberMain > .muted {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.modalForm :global(.ant-form-item) {
+  margin-bottom: 16px;
+}
+
+.modalSwitch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 4px;
+}
+
+.modalNote {
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.url {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.copy {
+  margin-top: 8px;
+}
+
+@media (max-width: 767px) {
+  .group > div {
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: center;
+  }
+
+  .group > div:has(.inlineForm) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .group > div > div:first-child {
+    padding-top: 0;
+  }
+
+  .inlineForm {
+    max-width: none;
+  }
+
+  .value {
+    justify-content: flex-end;
+  }
+
+  .memberMain {
+    flex-direction: column;
+    gap: 2px;
+  }
+}

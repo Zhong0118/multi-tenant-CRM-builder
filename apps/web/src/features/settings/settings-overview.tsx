@@ -36,6 +36,10 @@ const PAGES: Record<
     description: "工作台的指标、分布和列表，发布工作台后生效。",
     effect: "publish",
   },
+  phone: {
+    description: "接入快马回拨线路，指定可拨打的号码字段，为成员分配坐席。",
+    effect: "immediate",
+  },
   audit: { description: "成员、业务表和记录的每一次变更。" },
 };
 

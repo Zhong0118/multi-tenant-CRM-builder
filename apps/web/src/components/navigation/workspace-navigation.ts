@@ -83,6 +83,16 @@ export function workspaceSettingsNavigation(
       ],
     },
     {
+      label: "集成",
+      items: [
+        {
+          href: `${root}/settings/telephony`,
+          label: "电话外呼",
+          icon: "phone",
+        },
+      ],
+    },
+    {
       label: "安全",
       items: [{ href: `${root}/audit`, label: "公司审计", icon: "audit" }],
     },
