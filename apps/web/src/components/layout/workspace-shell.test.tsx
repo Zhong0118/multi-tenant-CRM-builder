@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { workspaceNavigation } from "@/components/navigation/workspace-navigation";
+import {
+  workspaceNavigation,
+  workspaceNavigationGroups,
+} from "@/components/navigation/workspace-navigation";
 
 import { WorkspaceShell } from "./workspace-shell";
 
@@ -62,9 +65,21 @@ describe("workspaceNavigation", () => {
       "/workspace/northwind/settings/objects",
       "/workspace/northwind/settings/relationships",
       "/workspace/northwind/settings/dashboards/home",
+      "/workspace/northwind/settings/telephony",
       "/workspace/northwind/audit",
     ]);
     expect(items.some((item) => item.href.includes("/objects/"))).toBe(false);
+  });
+
+  it("lists the call log only once the company has calling on", () => {
+    for (const role of ["TENANT_ADMIN", "EMPLOYEE"] as const) {
+      const hrefs = (calls: boolean) =>
+        workspaceNavigationGroups("northwind", role, { calls }).work.map(
+          (item) => item.href,
+        );
+      expect(hrefs(false)).not.toContain("/workspace/northwind/calls");
+      expect(hrefs(true)).toContain("/workspace/northwind/calls");
+    }
   });
 
   it("keeps employees on their home and authorized business objects", () => {

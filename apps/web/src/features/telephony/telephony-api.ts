@@ -138,3 +138,8 @@ export const UNAVAILABLE_REASON: Record<string, string> = {
   PROVIDER_NOT_CONFIGURED: "线路配置不完整，请联系管理员",
   ENCRYPTION_UNAVAILABLE: "线路密钥不可用，请联系管理员",
 };
+
+/** A value the line can dial: a mainland mobile, optionally with +86. */
+export function dialable(value: unknown): value is string {
+  return typeof value === "string" && /^(\+86)?1[3-9]\d{9}$/.test(value);
+}

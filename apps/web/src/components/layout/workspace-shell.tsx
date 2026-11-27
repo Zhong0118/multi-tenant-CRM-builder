@@ -24,6 +24,8 @@ export interface WorkspaceShellProps {
   role: "TENANT_ADMIN" | "EMPLOYEE";
   user: ShellUser;
   businessObjects: RuntimeObjectNavigation[];
+  /** The company has outbound calling on, so the call log has a place. */
+  calls?: boolean;
 }
 
 /**
@@ -38,10 +40,11 @@ export function WorkspaceShell({
   role,
   user,
   businessObjects,
+  calls = false,
 }: WorkspaceShellProps) {
   const pathname = usePathname() ?? "";
   const root = `/workspace/${tenantCode}`;
-  const navigation = workspaceNavigationGroups(tenantCode, role);
+  const navigation = workspaceNavigationGroups(tenantCode, role, { calls });
   const assistant = useAiFeature("assistant");
   const systemItems = (items: typeof navigation.work) => items.filter(item => assistant || item.href !== root + "/ai").map((item) => ({
     href: item.href,

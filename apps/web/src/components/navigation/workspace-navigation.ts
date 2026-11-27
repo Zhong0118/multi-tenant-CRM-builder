@@ -17,6 +17,7 @@ export interface WorkspaceNavigationGroup {
 export function workspaceNavigationGroups(
   tenantCode: string,
   role: "TENANT_ADMIN" | "EMPLOYEE",
+  { calls = false }: { calls?: boolean } = {},
 ): { work: WorkspaceNavigationItem[]; admin: WorkspaceNavigationItem[] } {
   const root = `/workspace/${tenantCode}`;
 
@@ -27,6 +28,10 @@ export function workspaceNavigationGroups(
       icon: "home",
     },
     { href: `${root}/follow-ups`, label: "跟进待办", icon: "calendar" },
+    // Only once the company has turned calling on.
+    ...(calls
+      ? [{ href: `${root}/calls`, label: "通话记录", icon: "phone" }]
+      : []),
     // General tasks and the daily report; not tied to any business record.
     { href: `${root}/work`, label: "任务与日报", icon: "tasks" },
     // What each member did, from the work the system records; administrators only.

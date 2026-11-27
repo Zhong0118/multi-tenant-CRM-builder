@@ -56,6 +56,8 @@ interface RecordListTableProps {
   onActivity: (row: RecordSummary) => void;
   rowMenu: (row: RecordSummary) => ReactNode;
   nextContact: (value?: string | null) => ReactNode;
+  /** The phone button for a dialable number, or nothing. */
+  callAction?: (row: RecordSummary, field: PublishedFieldView) => ReactNode;
 }
 
 export function RecordListTable({
@@ -78,6 +80,7 @@ export function RecordListTable({
   onActivity,
   rowMenu,
   nextContact,
+  callAction,
 }: RecordListTableProps) {
   const {
     prefs,
@@ -173,6 +176,7 @@ export function RecordListTable({
               width={width}
               recordTitle={row.title}
               currentMemberId={currentMemberId}
+              action={callAction?.(row, field)}
             />
           </div>
         ),

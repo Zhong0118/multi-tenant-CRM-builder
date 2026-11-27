@@ -139,6 +139,7 @@ export const RecordCellValue = memo(function RecordCellValue({
   width,
   recordTitle,
   currentMemberId,
+  action,
 }: {
   field: Pick<PublishedFieldView, "type" | "config" | "validation" | "label">;
   value: unknown;
@@ -148,6 +149,8 @@ export const RecordCellValue = memo(function RecordCellValue({
   width: number;
   recordTitle: string;
   currentMemberId?: string;
+  /** A button kept visible right after a text value, such as dialling a number. */
+  action?: ReactNode;
 }) {
   const openReader = useContext(ReaderContext);
   if (
@@ -252,10 +255,14 @@ export const RecordCellValue = memo(function RecordCellValue({
         {value}
       </span>
     );
-    return copyable ? (
+    return copyable || action ? (
       <span className={styles.copyable}>
         {text}
-        <CopyButton text={value} label={`复制${field.label} ${value}`} />
+        {action}
+        {/* A narrow card has room for one button: the action wins. */}
+        {copyable && !(action && !tablePreview) ? (
+          <CopyButton text={value} label={`复制${field.label} ${value}`} />
+        ) : null}
       </span>
     ) : (
       text

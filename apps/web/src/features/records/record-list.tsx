@@ -81,6 +81,13 @@ import {
 import { recordCardFields } from "./record-card-fields";
 import { CellReaderProvider, RecordCellValue } from "./record-cell";
 import { RecordListTable } from "./record-list-table";
+import { CallButton } from "@/features/telephony/call-button";
+import { CallDialog, type CallTarget } from "@/features/telephony/call-dialog";
+import {
+  dialable,
+  UNAVAILABLE_REASON,
+} from "@/features/telephony/telephony-api";
+import { useTelephonyRuntime } from "@/features/telephony/use-telephony";
 import { useRecordListLayout } from "./use-record-list-layout";
 import { useRecordSelection } from "./use-record-selection";
 import { RecordDisplaySettings } from "./record-display-settings";
@@ -208,6 +215,8 @@ export function RecordList({
   if (filterEdit && filterEdit.scope !== queryScope) setFilterEdit(undefined);
   const [communicationRecord, setCommunicationRecord] =
     useState<RecordSummary>();
+  const telephony = useTelephonyRuntime(tenantCode, objectCode).data;
+  const [callTarget, setCallTarget] = useState<CallTarget | null>(null);
   const [error, setError] = useState<string>();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
@@ -446,8 +455,37 @@ export function RecordList({
 
   const importAssist = useAiFeature("import_assist", false);
   const communication = useAiFeature("communication");
+  const callableFields = new Set(
+    telephony?.enabled ? telephony.fields.map((field) => field.fieldKey) : [],
+  );
+  const callBlocked = telephony?.available
+    ? null
+    : (UNAVAILABLE_REASON[telephony?.reason ?? ""] ?? "现在不能外呼");
+  // Pool records are a preview until claimed; the record page says the same.
+  const callAction = (
+    row: RecordSummary,
+    field: { fieldKey: string; label: string },
+  ) =>
+    callableFields.has(field.fieldKey) &&
+    dialable(row.values[field.fieldKey]) &&
+    !(row.inPublicPool && !canFilterByOwner) ? (
+      <CallButton
+        label={`拨打${field.label}`}
+        disabledReason={callBlocked}
+        onCall={() =>
+          setCallTarget({
+            objectCode,
+            recordId: row.id,
+            recordTitle: row.title,
+            values: row.values,
+            fieldKey: field.fieldKey,
+          })
+        }
+      />
+    ) : null;
   const canCommunicate = (row: RecordSummary) =>
-    communication && canEditRecord(schema, row, currentMemberId, canFilterByOwner);
+    communication &&
+    canEditRecord(schema, row, currentMemberId, canFilterByOwner);
 
   const filtered = Boolean(
     query.filterRule?.conditions.length ||
@@ -648,6 +686,11 @@ export function RecordList({
             onClose={() => setCommunicationRecord(undefined)}
           />
         )}
+        <CallDialog
+          tenantCode={tenantCode}
+          target={callTarget}
+          onClose={() => setCallTarget(null)}
+        />
         {activityRecord ? (
           <RecordCommunicationDrawer
             key={activityRecord.id}
@@ -1179,6 +1222,7 @@ export function RecordList({
                               width={160}
                               recordTitle={row.title}
                               currentMemberId={currentMemberId}
+                              action={callAction(row, field)}
                             />
                           </dd>
                         </div>
@@ -1237,6 +1281,7 @@ export function RecordList({
             onActivity={setActivityRecord}
             rowMenu={rowMenu}
             nextContact={nextContact}
+            callAction={callAction}
           />
         </section>
 

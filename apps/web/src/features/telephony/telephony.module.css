@@ -238,3 +238,178 @@
     gap: 2px;
   }
 }
+
+/* Call dialog: the two numbers, one button, then the outcome in place. */
+.callBody {
+  display: grid;
+  gap: 12px;
+}
+
+.callFacts {
+  margin: 0;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.callFacts > div {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.callFacts dt {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.callFacts dd {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+}
+
+.phone {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.callChoices {
+  display: grid;
+  gap: 6px;
+}
+
+.callChoice {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.callNote {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.callActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.outcome {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface-subtle);
+}
+
+.outcome strong {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.outcome p {
+  margin: 2px 0 0;
+}
+
+.outcomeIcon {
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.outcome[data-tone="info"] .outcomeIcon {
+  color: var(--color-primary);
+}
+
+.outcome[data-tone="success"] .outcomeIcon {
+  color: var(--color-success);
+}
+
+.outcome[data-tone="warning"] .outcomeIcon {
+  color: var(--color-warning);
+}
+
+.outcome[data-tone="danger"] .outcomeIcon {
+  color: var(--color-danger);
+}
+
+.outcome[data-tone="neutral"] .outcomeIcon {
+  color: var(--text-tertiary);
+}
+
+/* The phone icon beside a dialable number, in the list and on the record. */
+.callButton:global(.ant-btn) {
+  flex-shrink: 0;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  color: var(--color-primary);
+}
+
+.callButton:global(.ant-btn):disabled {
+  color: var(--text-disabled);
+}
+
+.withCall {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Calls on a record: one line each. */
+.callList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.callRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 40px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.callMain {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.recording {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.callTime {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.callMore {
+  padding: 8px 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}

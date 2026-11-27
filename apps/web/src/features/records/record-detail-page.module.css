@@ -478,3 +478,11 @@
     display: none;
   }
 }
+
+/* A dialable number with its phone icon right after it. */
+.callable {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  max-width: 100%;
+}
