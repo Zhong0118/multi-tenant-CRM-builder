@@ -21,6 +21,18 @@ export class OriginGuard implements CanActivate {
       return true;
     }
 
+    // Only the supplier callback handler is exempt, and it has its own
+    // mandatory credential guard. No session-authenticated route is exempt.
+    if (
+      request.method.toUpperCase() === 'POST' &&
+      context.getHandler?.() &&
+      Reflect.getMetadata(
+        'telephony:authenticated-hook',
+        context.getHandler(),
+      ) === true
+    )
+      return true;
+
     const allowedOrigins = this.config
       .get<string>('WEB_ORIGIN', 'http://localhost:3000,http://127.0.0.1:3000')
       .split(',')

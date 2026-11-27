@@ -28,6 +28,8 @@ services:
       AI_BASE_URL: ${AI_BASE_URL:-}
       AI_MODEL_KEYRING: ${AI_MODEL_KEYRING:-}
       AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-45000}
+      # Real 快马 calls; keep false until the supplier answers the open questions.
+      TELEPHONY_LIVE_ENABLED: ${TELEPHONY_LIVE_ENABLED:-false}
       SMS_PROVIDER: ${SMS_PROVIDER:?Set SMS_PROVIDER to tencent}
       TENCENT_SMS_SECRET_ID: ${TENCENT_SMS_SECRET_ID:?Set TENCENT_SMS_SECRET_ID}
       TENCENT_SMS_SECRET_KEY: ${TENCENT_SMS_SECRET_KEY:?Set TENCENT_SMS_SECRET_KEY}
