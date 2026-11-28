@@ -1,7 +1,10 @@
+import { createHash } from 'node:crypto';
 import {
   normalizePhone,
   KuaimaProvider,
+  KuaimaSeatError,
   safeRecordingUrl,
+  signature,
   TelephonyVault,
 } from './telephony-provider';
 
@@ -12,7 +15,6 @@ const keyring = (id: string, byte: string) =>
   });
 
 describe('telephony provider boundary', () => {
-  const tenant = '11111111-1111-4111-8111-111111111111';
   it('only accepts explicit mainland mobile format', () => {
     expect(normalizePhone('+8613812345678')).toBe('13812345678');
     expect(normalizePhone('13912345678')).toBe('13912345678');
@@ -25,26 +27,19 @@ describe('telephony provider boundary', () => {
     ])
       expect(() => normalizePhone(value)).toThrow();
   });
-  it('seals secrets with the keyring, bound to the tenant and the secret kind', () => {
+  it('seals platform secrets with the keyring, bound to the secret kind', () => {
     const vault = new TelephonyVault(() => keyring('k1', 'a'));
-    const sealed = vault.seal(tenant, 'appSecret', 'secret');
+    const sealed = vault.seal('appSecret', 'secret');
     expect(sealed).not.toContain('secret');
-    expect(vault.seal(tenant, 'appSecret', 'secret')).not.toBe(sealed);
-    expect(vault.open(tenant, 'appSecret', sealed)).toBe('secret');
-    // Another column, another company, or another master key cannot open it.
-    expect(() => vault.open(tenant, 'callbackToken', sealed)).toThrow();
+    expect(vault.seal('appSecret', 'secret')).not.toBe(sealed);
+    expect(vault.open('appSecret', sealed)).toBe('secret');
+    // Another column or another master key cannot open it.
+    expect(() => vault.open('callbackToken', sealed)).toThrow();
     expect(() =>
-      vault.open('22222222-2222-4222-8222-222222222222', 'appSecret', sealed),
+      new TelephonyVault(() => keyring('k2', 'b')).open('appSecret', sealed),
     ).toThrow();
     expect(() =>
-      new TelephonyVault(() => keyring('k2', 'b')).open(
-        tenant,
-        'appSecret',
-        sealed,
-      ),
-    ).toThrow();
-    expect(() =>
-      new TelephonyVault(() => undefined).seal(tenant, 'appSecret', 'x'),
+      new TelephonyVault(() => undefined).seal('appSecret', 'x'),
     ).toThrow('服务器主密钥环未配置');
   });
   it('allows public HTTPS recording links only', () => {
@@ -196,5 +191,133 @@ describe('telephony provider boundary', () => {
       ),
     );
     expect(long.failureReason).toHaveLength(120);
+  });
+});
+
+describe('kuaima seats', () => {
+  const account = {
+    companyId: '131',
+    appSecret: 'app-secret',
+    origin: 'https://kuaima.example',
+  };
+  const seat = {
+    username: 'cabc',
+    nickname: '孙悦',
+    mobile: '13900000000',
+    password: 'pw-123456',
+  };
+  const provider = new KuaimaProvider();
+  const reply = (payload: unknown, status = 200) =>
+    jest.fn(() =>
+      Promise.resolve(new Response(JSON.stringify(payload), { status })),
+    );
+  const sent = (transport: jest.Mock, call = 0) => {
+    const [url, init] = transport.mock.calls[call] as unknown as [
+      string,
+      RequestInit,
+    ];
+    return { url, form: Object.fromEntries(init.body as URLSearchParams) };
+  };
+
+  it('signs enterprise requests the way the supplier documents', async () => {
+    expect(signature('123', 'abc123def456', 1678901234)).toBe(
+      createHash('md5')
+        .update('123abc123def4561678901234')
+        .digest('hex')
+        .toUpperCase(),
+    );
+    const transport = reply({ code: 1, msg: 'success', data: { list: [] } });
+    await provider.findSeat(account, 'cabc', transport, 1678901234);
+    expect(sent(transport)).toEqual({
+      url: 'https://kuaima.example/api/company/getSeatsList',
+      form: {
+        company_id: '131',
+        ts: '1678901234',
+        sign: signature('131', 'app-secret', 1678901234),
+        page: '1',
+        limit: '10',
+        username: 'cabc',
+      },
+    });
+  });
+
+  it('finds only the exact seat account and reads its numeric ID', async () => {
+    const transport = reply({
+      code: 1,
+      data: {
+        list: [
+          { id: 140, username: 'cabc1', mobile: '13800000001' },
+          { id: 135, username: 'cabc', mobile: '13800000002' },
+        ],
+      },
+    });
+    expect(await provider.findSeat(account, 'cabc', transport)).toEqual({
+      id: '135',
+      username: 'cabc',
+      mobile: '13800000002',
+    });
+    expect(
+      await provider.findSeat(account, 'none', reply({ code: 1, data: {} })),
+    ).toBeNull();
+  });
+
+  it('creates a seat as a one-item JSON list and never echoes its password', async () => {
+    const transport = reply({ code: 1, msg: '添加成功', data: null });
+    await provider.createSeat(account, seat, transport);
+    const { url, form } = sent(transport);
+    expect(url).toBe('https://kuaima.example/api/company/createSeats');
+    expect(JSON.parse(form.seats)).toEqual([seat]);
+    await expect(
+      provider.createSeat(
+        account,
+        seat,
+        reply({ code: 0, msg: '手机号已存在' }),
+      ),
+    ).rejects.toMatchObject({ reason: '手机号已存在' });
+    await expect(
+      provider.createSeat(
+        account,
+        seat,
+        reply({ code: 0, msg: '密码 pw-123456 不合规' }),
+      ),
+    ).rejects.toMatchObject({ reason: '快马拒绝了请求' });
+  });
+
+  it('updates a seat mobile by seat ID', async () => {
+    const transport = reply({ code: 1, msg: '更新成功！', data: null });
+    await provider.updateSeat(
+      account,
+      '135',
+      { mobile: '13900000001', nickname: '孙悦' },
+      transport,
+    );
+    expect(sent(transport).url).toBe(
+      'https://kuaima.example/api/company/updateSeats',
+    );
+    expect(sent(transport).form).toMatchObject({
+      seats_id: '135',
+      mobile: '13900000001',
+      nickname: '孙悦',
+    });
+  });
+
+  it('turns an unreachable or broken supplier into a readable seat error', async () => {
+    const down = jest.fn(() => Promise.reject(new Error('ECONNRESET')));
+    await expect(provider.findSeat(account, 'cabc', down)).rejects.toEqual(
+      expect.any(KuaimaSeatError),
+    );
+    await expect(
+      provider.findSeat(account, 'cabc', down),
+    ).rejects.toMatchObject({ reason: '快马接口无响应，请稍后重试' });
+    await expect(
+      provider.findSeat(account, 'cabc', reply({}, 502)),
+    ).rejects.toMatchObject({ reason: '快马接口返回 HTTP 502' });
+    await expect(
+      provider.findSeat(
+        account,
+        'cabc',
+        reply({ code: 0, msg: 'app-secret 错误' }),
+      ),
+    ).rejects.toMatchObject({ reason: '快马拒绝了请求' });
   });
 });
