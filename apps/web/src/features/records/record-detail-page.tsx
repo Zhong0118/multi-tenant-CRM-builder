@@ -47,6 +47,15 @@ import { RecordOwnershipActions, RecordPoolStatus } from "./record-pool";
 import type { RecordPoolConfig } from "./record-pool-api";
 import { RecordRelationsPanel } from "./record-relations-panel";
 import { RecordWorkflowPanel } from "./record-workflow-panel";
+import { CallButton } from "@/features/telephony/call-button";
+import { CallDialog, type CallTarget } from "@/features/telephony/call-dialog";
+import { RecordCallsPanel } from "@/features/telephony/record-calls-panel";
+import {
+  dialable,
+  telephonyApi,
+  UNAVAILABLE_REASON,
+} from "@/features/telephony/telephony-api";
+import { useTelephonyRuntime } from "@/features/telephony/use-telephony";
 
 import styles from "./record-detail-page.module.css";
 import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
@@ -163,6 +172,32 @@ export function RecordDetailPage({
     queryKey: ["attachments", tenantCode, schema.object.code, record.id],
     queryFn: skipToken,
   });
+
+  // Calling: which of this record's numbers the member may dial, and the
+  // calls already made on it.
+  const telephony = useTelephonyRuntime(
+    tenantCode,
+    schema.object.code,
+    record.id,
+  ).data;
+  const calls = useQuery({
+    queryKey: ["telephony-calls", tenantCode, schema.object.code, record.id],
+    queryFn: () =>
+      telephonyApi.calls(tenantCode, {
+        objectCode: schema.object.code,
+        recordId: record.id,
+        page: 1,
+        limit: 20,
+      }),
+    enabled: Boolean(telephony?.enabled || telephony?.hasHistory),
+  });
+  const [callTarget, setCallTarget] = useState<CallTarget | null>(null);
+  const callableFields = new Set(
+    telephony?.enabled ? telephony.fields.map((field) => field.fieldKey) : [],
+  );
+  const callBlocked = telephony?.available
+    ? null
+    : (UNAVAILABLE_REASON[telephony?.reason ?? ""] ?? "现在不能外呼");
 
   const remove = useMutation({
     mutationFn: () =>
@@ -312,6 +347,21 @@ export function RecordDetailPage({
         />
       ),
     },
+    ...(telephony?.enabled || calls.data?.total
+      ? [
+          {
+            key: "calls",
+            label: <TabLabel label="通话" count={calls.data?.total} />,
+            children: (
+              <RecordCallsPanel
+                calls={calls.data}
+                error={calls.error}
+                timeZone={timeZone}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       key: "relations",
       label: <TabLabel label="关联" count={relations.data?.length} />,
@@ -643,11 +693,38 @@ export function RecordDetailPage({
                         ) : null}
                       </dt>
                       <dd data-type={field.type}>
-                        {displayValue(
-                          field,
-                          record.values[field.fieldKey],
-                          members,
-                          timeZone,
+                        {callableFields.has(field.fieldKey) &&
+                        dialable(record.values[field.fieldKey]) &&
+                        !deleted &&
+                        !poolPreview ? (
+                          <span className={styles.callable}>
+                            {displayValue(
+                              field,
+                              record.values[field.fieldKey],
+                              members,
+                              timeZone,
+                            )}
+                            <CallButton
+                              label={`拨打${field.label}`}
+                              disabledReason={callBlocked}
+                              onCall={() =>
+                                setCallTarget({
+                                  objectCode: schema.object.code,
+                                  recordId: record.id,
+                                  recordTitle: record.title,
+                                  values: record.values,
+                                  fieldKey: field.fieldKey,
+                                })
+                              }
+                            />
+                          </span>
+                        ) : (
+                          displayValue(
+                            field,
+                            record.values[field.fieldKey],
+                            members,
+                            timeZone,
+                          )
                         )}
                       </dd>
                     </div>
@@ -697,6 +774,12 @@ export function RecordDetailPage({
       </div>
 
       {modalHolder}
+      <CallDialog
+        tenantCode={tenantCode}
+        target={callTarget}
+        onClose={() => setCallTarget(null)}
+        onFollowUp={() => chooseTab("activity")}
+      />
       <Modal
         open={confirmDelete}
         title="删除这条记录？"
@@ -723,6 +806,7 @@ const TAB_KEYS = new Set([
   "relations",
   "attachments",
   "automations",
+  "calls",
 ]);
 
 /** Notes and long text read across the whole width instead of a narrow cell. */

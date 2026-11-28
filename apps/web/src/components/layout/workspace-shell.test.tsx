@@ -1,7 +1,11 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { workspaceNavigation } from "@/components/navigation/workspace-navigation";
+import {
+  workspaceNavigation,
+  workspaceNavigationGroups,
+  workspaceSettingsNavigation,
+} from "@/components/navigation/workspace-navigation";
 
 import { WorkspaceShell } from "./workspace-shell";
 
@@ -65,6 +69,32 @@ describe("workspaceNavigation", () => {
       "/workspace/northwind/audit",
     ]);
     expect(items.some((item) => item.href.includes("/objects/"))).toBe(false);
+  });
+
+  it("lists the call log only once the company has calling on", () => {
+    for (const role of ["TENANT_ADMIN", "EMPLOYEE"] as const) {
+      const hrefs = (calls: boolean) =>
+        workspaceNavigationGroups("northwind", role, { calls }).work.map(
+          (item) => item.href,
+        );
+      expect(hrefs(false)).not.toContain("/workspace/northwind/calls");
+      expect(hrefs(true)).toContain("/workspace/northwind/calls");
+    }
+  });
+
+  it("lists 电话外呼 in settings only once the platform has opened calling", () => {
+    const hrefs = (telephony: boolean) =>
+      workspaceSettingsNavigation("northwind", { telephony }).flatMap((group) =>
+        group.items.map((item) => item.href),
+      );
+    expect(hrefs(false)).not.toContain(
+      "/workspace/northwind/settings/telephony",
+    );
+    expect(hrefs(true)).toContain("/workspace/northwind/settings/telephony");
+    // An empty group is not shown at all.
+    expect(
+      workspaceSettingsNavigation("northwind").map((group) => group.label),
+    ).not.toContain("集成");
   });
 
   it("keeps employees on their home and authorized business objects", () => {

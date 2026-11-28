@@ -36,6 +36,10 @@ const PAGES: Record<
     description: "工作台的指标、分布和列表，发布工作台后生效。",
     effect: "publish",
   },
+  phone: {
+    description: "查看通话套餐和本月用量，指定可拨打的号码，为成员开外呼。",
+    effect: "immediate",
+  },
   audit: { description: "成员、业务表和记录的每一次变更。" },
 };
 

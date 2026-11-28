@@ -6,6 +6,9 @@ it("labels the lowercase dotted actions emitted by the API", () => {
   );
   expect(actionLabel("membership.offboarded")).toBe("离职交接");
   expect(resourceLabel("tenant_invitation")).toBe("成员邀请");
+  expect(actionLabel("telephony.minutes_added")).toBe("增加本月通话分钟");
+  expect(actionLabel("telephony.plan_assigned")).toBe("更换公司通话套餐");
+  expect(resourceLabel("telephony_plan")).toBe("通话套餐");
 });
 
 it("labels every action the audit log was showing without a Chinese name", () => {

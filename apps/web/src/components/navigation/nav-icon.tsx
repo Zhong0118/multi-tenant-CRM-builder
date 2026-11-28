@@ -11,6 +11,7 @@ import {
   FileSearchOutlined,
   HomeOutlined,
   LineChartOutlined,
+  PhoneOutlined,
   ScheduleOutlined,
   SettingOutlined,
   SwapOutlined,
@@ -39,6 +40,7 @@ const ICONS: Record<string, ReactNode> = {
   audit: <AuditOutlined />,
   object: <TableOutlined />,
   relation: <BranchesOutlined />,
+  phone: <PhoneOutlined />,
 };
 
 export function NavIcon({ name }: { name: string }) {

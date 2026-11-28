@@ -24,6 +24,10 @@ export interface WorkspaceShellProps {
   role: "TENANT_ADMIN" | "EMPLOYEE";
   user: ShellUser;
   businessObjects: RuntimeObjectNavigation[];
+  /** The company can call, or has past calls to look back on. */
+  calls?: boolean;
+  /** The platform has given the company a plan, so 电话外呼 shows in settings. */
+  telephony?: boolean;
 }
 
 /**
@@ -38,10 +42,12 @@ export function WorkspaceShell({
   role,
   user,
   businessObjects,
+  calls = false,
+  telephony = false,
 }: WorkspaceShellProps) {
   const pathname = usePathname() ?? "";
   const root = `/workspace/${tenantCode}`;
-  const navigation = workspaceNavigationGroups(tenantCode, role);
+  const navigation = workspaceNavigationGroups(tenantCode, role, { calls });
   const assistant = useAiFeature("assistant");
   const systemItems = (items: typeof navigation.work) => items.filter(item => assistant || item.href !== root + "/ai").map((item) => ({
     href: item.href,
@@ -94,7 +100,7 @@ export function WorkspaceShell({
         subtle: true,
       }],
     },
-    ...workspaceSettingsNavigation(tenantCode).map((group, index) => ({
+    ...workspaceSettingsNavigation(tenantCode, { telephony }).map((group, index) => ({
       ariaLabel: group.label,
       // The overview needs no heading of its own above it.
       hideLabel: index === 0,

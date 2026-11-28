@@ -22,6 +22,8 @@ export const NOTIFICATION_KINDS = [
   'WORK_GOAL_BEHIND',
   'AI_QUOTA_80',
   'AI_QUOTA_100',
+  'TELEPHONY_MINUTES_80',
+  'TELEPHONY_MINUTES_100',
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 

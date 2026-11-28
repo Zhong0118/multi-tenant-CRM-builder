@@ -17,7 +17,8 @@ type FieldType = PublishedFieldView["type"];
 const BY_TYPE: Record<string, ColumnBounds> = {
   TEXT: { width: 180, min: 96, max: 560 },
   TEXTAREA: { width: 280, min: 140, max: 720 },
-  PHONE: { width: 156, min: 128, max: 260 },
+  // Room for the number, the phone button and the copy button on hover.
+  PHONE: { width: 180, min: 128, max: 260 },
   EMAIL: { width: 220, min: 140, max: 400 },
   NUMBER: { width: 120, min: 72, max: 240 },
   MONEY: { width: 136, min: 88, max: 260 },

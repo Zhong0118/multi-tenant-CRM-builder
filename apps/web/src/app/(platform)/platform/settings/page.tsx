@@ -1,5 +1,6 @@
 import { PlatformMail } from "@/features/platform/platform-mail";
 import { PlatformAiSettings } from "@/features/platform/ai-governance/settings";
+import { PlatformTelephonySummary } from "@/features/platform/telephony/line-settings";
 import { PlatformSettingsView } from "@/features/platform/platform-operations";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
@@ -26,6 +27,7 @@ export default async function PlatformSettingsPage() {
             items={stats.data?.items ?? null}
           />
           <PlatformAiSettings />
+          <PlatformTelephonySummary />
         </>
       }
       checkedAt={new Date().toISOString()}

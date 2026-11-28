@@ -149,6 +149,28 @@ describe('in-app notifications HTTP with real PostgreSQL and crm_app RLS', () =>
     }
     expect((await inbox()).items).toHaveLength(0);
   });
+  it('shows calling-minute alerts to their admin recipient and opens telephony settings', async () => {
+    await h.adminDatabase.$executeRaw`
+      INSERT INTO member_notifications(tenant_id,recipient_member_id,kind,event_key)
+      VALUES (${f.tenantA.id}::uuid,${f.admin.memberId}::uuid,'TELEPHONY_MINUTES_80','2026-11-01'),
+             (${f.tenantA.id}::uuid,${f.admin.memberId}::uuid,'TELEPHONY_MINUTES_100','2026-11-01')`;
+    const alerts = json<Inbox>(await get('', f.admin).expect(200)).items;
+    expect(alerts.map((item) => item.title).sort()).toEqual([
+      '本月通话分钟已用到 80%',
+      '本月通话分钟已用完',
+    ]);
+    for (const item of alerts) {
+      expect(item.canOpen).toBe(true);
+      const target = json<{ href: string | null }>(
+        await get('/' + item.id + '/target', f.admin).expect(200),
+      );
+      expect(target.href).toBe(
+        '/workspace/' + f.tenantA.code + '/settings/telephony',
+      );
+      await get('/' + item.id + '/target', f.employee).expect(404);
+    }
+    expect((await inbox()).items).toHaveLength(0);
+  });
   afterAll(async () => {
     if (h) {
       await cleanNotifications();

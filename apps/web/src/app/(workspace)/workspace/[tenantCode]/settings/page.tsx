@@ -23,7 +23,7 @@ export default async function WorkspaceSettingsPage({
   if (workspace.role !== "TENANT_ADMIN") notFound();
 
   const client = await createServerApiClient();
-  const [objects, ai, members, invitations] = await Promise.all([
+  const [objects, ai, members, invitations, telephony] = await Promise.all([
     client.GET("/api/v1/workspaces/{tenantCode}/object-definitions", {
       params: { path: { tenantCode } },
     }),
@@ -34,6 +34,9 @@ export default async function WorkspaceSettingsPage({
       params: { path: { tenantCode }, query: { page: 1, limit: 1 } },
     }),
     client.GET("/api/v1/workspaces/{tenantCode}/invitations", {
+      params: { path: { tenantCode } },
+    }),
+    client.GET("/api/v1/workspaces/{tenantCode}/telephony/settings", {
       params: { path: { tenantCode } },
     }),
   ]);
@@ -58,9 +61,9 @@ export default async function WorkspaceSettingsPage({
         .filter(Boolean)
         .join(" · ")
     : null;
-  const groups = workspaceSettingsNavigation(tenantCode).filter(
-    (group) => !group.items.every((item) => item.icon === "overview"),
-  );
+  const groups = workspaceSettingsNavigation(tenantCode, {
+    telephony: Boolean(telephony.data?.plan),
+  }).filter((group) => !group.items.every((item) => item.icon === "overview"));
 
   return (
     <Page width="settings">
@@ -80,6 +83,9 @@ export default async function WorkspaceSettingsPage({
                 (ai.data.allocation === "equal" ? "按人均分" : "全员共用")
               : null,
             members: memberValue,
+            phone: telephony.data?.plan
+              ? `${telephony.data.plan.name} · 本月 ${telephony.data.usage.usedMinutes} / ${telephony.data.usage.allowance} 分钟`
+              : null,
             object: objects.data
               ? `${active} 张使用中${pending ? ` · ${pending} 张待发布` : ""}`
               : null,

@@ -1,0 +1,94 @@
+/* Call log: a dense table on a computer, one card per call on a phone. */
+.filter:global(.ant-select) {
+  min-width: 120px;
+}
+
+.dates:global(.ant-picker) {
+  width: 248px;
+}
+
+.empty {
+  padding: 48px 0;
+}
+
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 0;
+}
+
+.time,
+.phone {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.phone {
+  color: var(--text-primary);
+}
+
+.muted {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.result {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.cards {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.cardHead {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.cardTitle {
+  overflow: hidden;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+@media (max-width: 767px) {
+  .table {
+    display: none;
+  }
+
+  .cards {
+    display: block;
+  }
+
+  .dates:global(.ant-picker) {
+    width: 100%;
+  }
+}

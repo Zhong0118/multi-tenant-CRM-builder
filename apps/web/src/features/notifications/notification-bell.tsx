@@ -20,6 +20,8 @@ interface Props {
 const groups = {
   AI_QUOTA_80: { label: "AI 额度提醒", icon: <BellOutlined /> },
   AI_QUOTA_100: { label: "AI 额度用尽", icon: <BellOutlined /> },
+  TELEPHONY_MINUTES_80: { label: "通话分钟提醒", icon: <PhoneOutlined /> },
+  TELEPHONY_MINUTES_100: { label: "通话分钟用尽", icon: <PhoneOutlined /> },
   WORK_GOAL_BEHIND: { label: "目标提醒", icon: <AimOutlined /> },
   CONTACT_DUE: { label: "联系提醒", icon: <PhoneOutlined /> },
   FOLLOW_UP_DUE: { label: "跟进提醒", icon: <ScheduleOutlined /> },
@@ -132,7 +134,7 @@ function CompanyNotifications({ tenantCode, api = notificationsApi, onNavigate, 
               <div className={styles.itemMeta}><time dateTime={item.createdAt}>{dateLabel(item.createdAt)}</time>{item.dueAt && <span>到期 {dateLabel(item.dueAt)}</span>}</div>
               <div className={styles.itemActions}>
                 {!item.readAt && <Button size="small" type="text" disabled={busy} onClick={() => void read(item, false)}>标为已读</Button>}
-                {item.canOpen ? <Button size="small" type="link" disabled={busy} onClick={() => void read(item, true)}>{item.kind.startsWith("AI_QUOTA_") ? "查看 AI 用量" : item.kind === "WORK_GOAL_BEHIND" ? "查看目标" : "查看记录"}</Button> : <span className={styles.unavailable}>{item.kind === "WORK_GOAL_BEHIND" ? "目标不可访问" : "相关记录不可访问"}</span>}
+                {item.canOpen ? <Button size="small" type="link" disabled={busy} onClick={() => void read(item, true)}>{item.kind.startsWith("AI_QUOTA_") ? "查看 AI 用量" : item.kind.startsWith("TELEPHONY_MINUTES_") ? "查看通话用量" : item.kind === "WORK_GOAL_BEHIND" ? "查看目标" : "查看记录"}</Button> : <span className={styles.unavailable}>{item.kind === "WORK_GOAL_BEHIND" ? "目标不可访问" : "相关记录不可访问"}</span>}
               </div>
             </article>)}
           </section> : null;

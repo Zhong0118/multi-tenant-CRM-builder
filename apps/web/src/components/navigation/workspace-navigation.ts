@@ -17,6 +17,7 @@ export interface WorkspaceNavigationGroup {
 export function workspaceNavigationGroups(
   tenantCode: string,
   role: "TENANT_ADMIN" | "EMPLOYEE",
+  { calls = false }: { calls?: boolean } = {},
 ): { work: WorkspaceNavigationItem[]; admin: WorkspaceNavigationItem[] } {
   const root = `/workspace/${tenantCode}`;
 
@@ -27,6 +28,10 @@ export function workspaceNavigationGroups(
       icon: "home",
     },
     { href: `${root}/follow-ups`, label: "跟进待办", icon: "calendar" },
+    // Only once the company has turned calling on.
+    ...(calls
+      ? [{ href: `${root}/calls`, label: "通话记录", icon: "phone" }]
+      : []),
     // General tasks and the daily report; not tied to any business record.
     { href: `${root}/work`, label: "任务与日报", icon: "tasks" },
     // What each member did, from the work the system records; administrators only.
@@ -46,12 +51,16 @@ export function workspaceNavigationGroups(
   };
 }
 
-/** The administration pages, grouped the way the settings sidebar shows them. */
+/**
+ * The administration pages, grouped the way the settings sidebar shows them.
+ * 电话外呼 appears only once the platform has given the company a plan.
+ */
 export function workspaceSettingsNavigation(
   tenantCode: string,
+  { telephony = false }: { telephony?: boolean } = {},
 ): WorkspaceNavigationGroup[] {
   const root = `/workspace/${tenantCode}`;
-  return [
+  const groups: WorkspaceNavigationGroup[] = [
     {
       label: "设置",
       items: [{ href: `${root}/settings`, label: "概览", icon: "overview" }],
@@ -83,10 +92,23 @@ export function workspaceSettingsNavigation(
       ],
     },
     {
+      label: "集成",
+      items: telephony
+        ? [
+            {
+              href: `${root}/settings/telephony`,
+              label: "电话外呼",
+              icon: "phone",
+            },
+          ]
+        : [],
+    },
+    {
       label: "安全",
       items: [{ href: `${root}/audit`, label: "公司审计", icon: "audit" }],
     },
   ];
+  return groups.filter((group) => group.items.length);
 }
 
 /** Whether a path belongs to the administration area rather than daily work. */
