@@ -13,6 +13,7 @@ import {
   PlatformTelephonyLine,
   PlatformTelephonySummary,
 } from "./line-settings";
+import { PlatformTelephonyPlans } from "./plans-page";
 
 const api = vi.hoisted(() => ({
   GET: vi.fn(),
@@ -182,5 +183,79 @@ describe("平台电话线路", () => {
     });
     expect(lineState({ mode: "MOCK", ready: true }).label).toBe("模拟线路");
     expect(lineState({ mode: "KUAIMA", ready: false }).label).toBe("未就绪");
+  });
+});
+
+describe("通话套餐", () => {
+  it("列出套餐，保存前校验月售价", async () => {
+    api.POST.mockResolvedValue({ data: { ...plan, id: "p2" } });
+    show(<PlatformTelephonyPlans />);
+    expect(await screen.findByText("标准版")).toBeInTheDocument();
+    expect(screen.getByText("¥120.00")).toBeInTheDocument();
+    // In use by a company: no delete.
+    expect(screen.queryByRole("button", { name: /删\s*除/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "新建套餐" }));
+    fireEvent.change(await screen.findByLabelText("套餐名称"), {
+      target: { value: "旗舰版" },
+    });
+    fireEvent.change(screen.getByLabelText("月售价（元）"), {
+      target: { value: "1.234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /保\s*存/ }));
+    expect(
+      await screen.findByText("请输入金额，最多两位小数"),
+    ).toBeInTheDocument();
+    expect(api.POST).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("月售价（元）"), {
+      target: { value: "300" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /保\s*存/ }));
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith(
+        "/api/v1/platform/telephony-plans",
+        {
+          body: {
+            name: "旗舰版",
+            seats: 5,
+            monthlyMinutes: 1000,
+            monthlyPrice: "300",
+            assignable: true,
+          },
+        },
+      ),
+    );
+  });
+
+  it("只有没公司在用的套餐能删，删除时带版本号", async () => {
+    api.GET.mockImplementation(async () => ({
+      data: [{ ...plan, companies: 0 }],
+    }));
+    api.DELETE.mockResolvedValue({
+      response: new Response(null, { status: 204 }),
+    });
+    show(<PlatformTelephonyPlans />);
+    fireEvent.click(await screen.findByRole("button", { name: /删\s*除/ }));
+    fireEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: /删\s*除/,
+      }),
+    );
+    await waitFor(() =>
+      expect(api.DELETE).toHaveBeenCalledWith(
+        "/api/v1/platform/telephony-plans/{id}",
+        { params: { path: { id: "p1" }, query: { version: 2 } } },
+      ),
+    );
+  });
+
+  it("收支标签按公司列出收入、成本、毛利和合计", async () => {
+    show(<PlatformTelephonyPlans />);
+    fireEvent.click(await screen.findByRole("tab", { name: "收支" }));
+    expect(await screen.findByText("星云科技")).toBeInTheDocument();
+    expect(screen.getAllByText("¥129.70")).toHaveLength(2);
+    expect(screen.getByText("合计")).toBeInTheDocument();
+    expect(
+      screen.getByText(/坐席成本按当前坐席月进价 ¥10.00 计算/),
+    ).toBeInTheDocument();
   });
 });
