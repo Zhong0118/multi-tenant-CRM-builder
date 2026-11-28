@@ -155,12 +155,19 @@ describe('in-app notifications HTTP with real PostgreSQL and crm_app RLS', () =>
       VALUES (${f.tenantA.id}::uuid,${f.admin.memberId}::uuid,'TELEPHONY_MINUTES_80','2026-11-01'),
              (${f.tenantA.id}::uuid,${f.admin.memberId}::uuid,'TELEPHONY_MINUTES_100','2026-11-01')`;
     const alerts = json<Inbox>(await get('', f.admin).expect(200)).items;
-    expect(alerts.map(item => item.title).sort()).toEqual(['本月通话分钟已用到 80%','本月通话分钟已用完']);
+    expect(alerts.map((item) => item.title).sort()).toEqual([
+      '本月通话分钟已用到 80%',
+      '本月通话分钟已用完',
+    ]);
     for (const item of alerts) {
       expect(item.canOpen).toBe(true);
-      expect((await get('/'+item.id+'/target',f.admin).expect(200)).body.href)
-        .toBe('/workspace/'+f.tenantA.code+'/settings/telephony');
-      await get('/'+item.id+'/target',f.employee).expect(404);
+      const target = json<{ href: string | null }>(
+        await get('/' + item.id + '/target', f.admin).expect(200),
+      );
+      expect(target.href).toBe(
+        '/workspace/' + f.tenantA.code + '/settings/telephony',
+      );
+      await get('/' + item.id + '/target', f.employee).expect(404);
     }
     expect((await inbox()).items).toHaveLength(0);
   });
