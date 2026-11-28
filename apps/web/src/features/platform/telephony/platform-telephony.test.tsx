@@ -13,6 +13,7 @@ import {
   PlatformTelephonyLine,
   PlatformTelephonySummary,
 } from "./line-settings";
+import { CompanyTelephony } from "./company-telephony";
 import { PlatformTelephonyPlans } from "./plans-page";
 
 const api = vi.hoisted(() => ({
@@ -257,5 +258,64 @@ describe("通话套餐", () => {
     expect(
       screen.getByText(/坐席成本按当前坐席月进价 ¥10.00 计算/),
     ).toBeInTheDocument();
+  });
+});
+
+describe("公司通话服务", () => {
+  it("显示本月分钟和坐席，加分钟带本月和幂等键", async () => {
+    api.POST.mockResolvedValue({
+      data: { applied: true, month: "2026-11-01" },
+    });
+    show(<CompanyTelephony tenantId="t" />);
+    expect(await screen.findByText("标准版")).toBeInTheDocument();
+    expect(screen.getByText("坐席 2 / 3")).toBeInTheDocument();
+    expect(screen.getByText(/月中加量/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "加分钟" }));
+    fireEvent.change(await screen.findByLabelText("增加分钟"), {
+      target: { value: "50" },
+    });
+    fireEvent.change(screen.getByLabelText("收费（元）"), {
+      target: { value: "30" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "确认加量" }));
+    await waitFor(() =>
+      expect(api.POST).toHaveBeenCalledWith(
+        "/api/v1/platform/tenants/{tenantId}/telephony/minutes",
+        {
+          params: { path: { tenantId: "t" } },
+          body: {
+            month: "2026-11-01",
+            minutes: 50,
+            price: "30",
+            note: "",
+            idempotencyKey: expect.any(String),
+          },
+        },
+      ),
+    );
+  });
+
+  it("可以换套餐，也可以改回未开通", async () => {
+    api.PATCH.mockResolvedValue({
+      data: { ...company, planId: null, planName: null },
+    });
+    show(<CompanyTelephony tenantId="t" />);
+    fireEvent.click(await screen.findByRole("button", { name: "更换套餐" }));
+    fireEvent.mouseDown(await screen.findByLabelText("通话套餐"));
+    fireEvent.click(await screen.findByTitle("未开通"));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /保\s*存/,
+      }),
+    );
+    await waitFor(() =>
+      expect(api.PATCH).toHaveBeenCalledWith(
+        "/api/v1/platform/tenants/{tenantId}/telephony",
+        {
+          params: { path: { tenantId: "t" } },
+          body: { version: 1, planId: null },
+        },
+      ),
+    );
   });
 });

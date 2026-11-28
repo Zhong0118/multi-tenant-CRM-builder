@@ -1,4 +1,5 @@
 import { CompanyAi } from "@/features/platform/ai-governance/company";
+import { CompanyTelephony } from "@/features/platform/telephony/company-telephony";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
@@ -148,6 +149,7 @@ export default async function TenantDetailPage({
         </aside>
       </div>
       <CompanyAi tenantId={tenant.id} timeZone={tenant.timezone} />
+      <CompanyTelephony tenantId={tenant.id} />
       <TenantBusinessConfiguration
         tenant={tenant}
         initialSummary={configurationResult.data}
