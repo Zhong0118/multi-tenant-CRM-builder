@@ -39,7 +39,7 @@ type NotificationRow = {
 };
 const READABLE = `(n.object_id=ANY($3::uuid[]) OR (EXISTS (SELECT 1 FROM jsonb_each($4::jsonb) scope WHERE scope.key=n.object_id::text AND (scope.value ? n.record_owner_member_id::text OR EXISTS (SELECT 1 FROM records pr JOIN object_definitions po ON po.id=pr.object_id AND po.tenant_id=pr.tenant_id WHERE pr.tenant_id=n.tenant_id AND pr.id=n.record_id AND pr.in_public_pool AND po.pool_enabled)))))`;
 const QUOTA =
-  "(n.kind IN ('AI_QUOTA_80','AI_QUOTA_100') AND EXISTS (SELECT 1 FROM tenant_members admin WHERE admin.tenant_id=n.tenant_id AND admin.id=n.recipient_member_id AND admin.role='TENANT_ADMIN'))";
+  "(n.kind IN ('AI_QUOTA_80','AI_QUOTA_100','TELEPHONY_MINUTES_80','TELEPHONY_MINUTES_100') AND EXISTS (SELECT 1 FROM tenant_members admin WHERE admin.tenant_id=n.tenant_id AND admin.id=n.recipient_member_id AND admin.role='TENANT_ADMIN'))";
 const VISIBLE = `n.tenant_id=$1::uuid AND n.recipient_member_id=$2::uuid AND (n.kind IN ('POOL_RECLAIMED','WORK_GOAL_BEHIND') OR ${QUOTA} OR ${READABLE})`;
 const CAN_OPEN = `(n.kind='WORK_GOAL_BEHIND' OR ${QUOTA} OR (${READABLE} AND EXISTS (SELECT 1 FROM records r WHERE r.tenant_id=n.tenant_id AND r.id=n.record_id AND r.deleted_at IS NULL)))`;
 const GOAL_NAMES: Record<string, string> = {
@@ -53,6 +53,8 @@ const GOAL_NAMES: Record<string, string> = {
 const COPY: Record<NotificationKind, [string, string]> = {
   AI_QUOTA_80: ['本月 AI 额度已用到 80%', '可在公司 AI 设置查看用量及分配方式'],
   AI_QUOTA_100: ['本月 AI 额度已用完', '如需本月加量，请联系平台管理员'],
+  TELEPHONY_MINUTES_80: ['本月通话分钟已用到 80%', '可在电话外呼设置查看用量'],
+  TELEPHONY_MINUTES_100: ['本月通话分钟已用完', '如需加量，请联系平台管理员'],
   WORK_GOAL_BEHIND: ['每日目标尚未完成', '请查看今日工作进度'],
   CONTACT_DUE: [
     '联系期限即将到期',
@@ -182,6 +184,13 @@ export class NotificationsService {
     if (row.kind === 'AI_QUOTA_80' || row.kind === 'AI_QUOTA_100')
       return {
         href: `/workspace/${encodeURIComponent(context.tenantCode)}/settings/ai`,
+      };
+    if (
+      row.kind === 'TELEPHONY_MINUTES_80' ||
+      row.kind === 'TELEPHONY_MINUTES_100'
+    )
+      return {
+        href: `/workspace/${encodeURIComponent(context.tenantCode)}/settings/telephony`,
       };
     if (row.kind === 'WORK_GOAL_BEHIND')
       return {
