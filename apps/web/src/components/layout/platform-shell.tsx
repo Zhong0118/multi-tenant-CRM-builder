@@ -11,6 +11,12 @@ import { platformNavigation } from "@/components/navigation/platform-navigation"
 import { AppShell, type ShellUser } from "./app-shell";
 import styles from "./app-shell.module.css";
 
+/** Nested pages that have a name of their own in the breadcrumb. */
+const NESTED_LABELS: Record<string, string> = {
+  "/platform/settings/ai-models": "AI 模型",
+  "/platform/settings/telephony": "电话线路",
+};
+
 export function PlatformShell({
   children,
   user,
@@ -99,7 +105,7 @@ export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
         <Link href={parent.href}>{parent.label}</Link>
         <span className={styles.breadcrumbSep}>/</span>
         <span className={styles.breadcrumbCurrent}>
-          {pathname === "/platform/settings/ai-models" ? "AI 模型" : "详情"}
+          {NESTED_LABELS[pathname] ?? "详情"}
         </span>
       </span>
     );

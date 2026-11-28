@@ -1,0 +1,85 @@
+/* Platform telephony: the line, the plans, the books and a company's card,
+   in the same rhythm as the AI plan pages. */
+.page,
+.panel,
+.form {
+  display: grid;
+  gap: var(--space-4, 16px);
+  min-width: 0;
+}
+.panel {
+  padding: clamp(14px, 2vw, 24px);
+}
+.form {
+  gap: 8px;
+}
+.lead,
+.ledger,
+.meter,
+.toolbar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.toolbar {
+  align-items: center;
+}
+.lead h3 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.meter strong {
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+}
+.ledger {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+/* Two short money fields side by side, stacked on a phone. */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 0 16px;
+}
+.detail {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+.problems {
+  margin: 0;
+  padding-left: 18px;
+}
+.additions {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.additions li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-variant-numeric: tabular-nums;
+}
+.wide {
+  width: 100%;
+}
+.loss {
+  color: var(--color-danger);
+}
+.url {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  word-break: break-all;
+}
+.copy {
+  margin-top: 8px;
+}
+.table :global(.ant-table-thead > tr > th),
+.table :global(.ant-table-tbody > tr > td) {
+  white-space: nowrap;
+}
