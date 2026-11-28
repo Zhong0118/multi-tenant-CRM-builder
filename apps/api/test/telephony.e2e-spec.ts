@@ -11,6 +11,16 @@ import {
   type CriticalHarness,
   type CriticalFixture,
 } from './helpers/critical-fixture';
+import { seatUsername } from '../src/modules/integrations/telephony/telephony-seats';
+import {
+  assertLocalTestDatabase,
+  assignPlan,
+  cleanupTelephony,
+  configureLine,
+  createPlan,
+  promotePlatformAdmin,
+  TELEPHONY_KEYRING,
+} from './helpers/telephony-fixture';
 
 jest.setTimeout(120_000);
 const origin = 'http://localhost:3000';
@@ -30,10 +40,7 @@ describe('tenant telephony', () => {
   let outbound: jest.SpyInstance;
   let confirmedMode = 'MOCK';
   let hookToken = '';
-  const keyring = JSON.stringify({
-    activeKeyId: 'telephony-test',
-    keys: { 'telephony-test': Buffer.alloc(32, 7).toString('base64') },
-  });
+  let planId = '';
   let unrelatedActivitySnapshot: unknown;
   const unrelatedActivities = () =>
     h.adminDatabase.recordActivity.findMany({
@@ -42,16 +49,6 @@ describe('tenant telephony', () => {
       },
       orderBy: { id: 'asc' },
     });
-  async function cleanupTelephonyFixture() {
-    const tenants = await h.adminDatabase.tenant.findMany({
-      where: { code: { in: [CRITICAL_TENANT_A, CRITICAL_TENANT_B] } },
-      select: { id: true },
-    });
-    const where = { tenantId: { in: tenants.map(({ id }) => id) } };
-    await h.adminDatabase.telephonyCall.deleteMany({ where });
-    await h.adminDatabase.telephonyMemberBinding.deleteMany({ where });
-    await h.adminDatabase.telephonySettings.deleteMany({ where });
-  }
   const base = () => `/api/v1/workspaces/${f.tenantA.code}/telephony`;
   const get = (path: string, cookie = f.admin.cookie) =>
     request(h.app.getHttpServer()).get(path).set('Cookie', cookie);
@@ -79,26 +76,8 @@ describe('tenant telephony', () => {
         ...body,
       });
   beforeAll(async () => {
-    const url = new URL(process.env.TEST_DATABASE_ADMIN_URL ?? '');
-    const runtime = new URL(process.env.TEST_DATABASE_URL ?? '');
-    for (const target of [url, runtime]) {
-      expect(['postgres:', 'postgresql:']).toContain(target.protocol);
-      expect(['localhost', '127.0.0.1', '[::1]']).toContain(target.hostname);
-      const ephemeralCi =
-        process.env.CI === 'true' &&
-        target.port === '5432' &&
-        target.pathname === '/crm' &&
-        ['crm', 'crm_app'].includes(target.username);
-      expect(
-        ephemeralCi || /^\/[a-z0-9_]*test[a-z0-9_]*$/i.test(target.pathname),
-      ).toBe(true);
-      expect(
-        [...target.searchParams.keys()].every((key) => key === 'schema'),
-      ).toBe(true);
-    }
-    expect(runtime.host + runtime.pathname).toBe(url.host + url.pathname);
-    expect(runtime.username).toBe('crm_app');
-    process.env.AI_MODEL_KEYRING = keyring;
+    assertLocalTestDatabase();
+    process.env.AI_MODEL_KEYRING = TELEPHONY_KEYRING;
     process.env.TELEPHONY_LIVE_ENABLED = 'false';
     outbound = jest
       .spyOn(globalThis, 'fetch')
@@ -108,13 +87,14 @@ describe('tenant telephony', () => {
         ),
       );
     h = await createCriticalHarness();
-    h.app.get(ConfigService).set('AI_MODEL_KEYRING', keyring);
+    h.app.get(ConfigService).set('AI_MODEL_KEYRING', TELEPHONY_KEYRING);
     h.app.get(ConfigService).set('TELEPHONY_LIVE_ENABLED', 'false');
     unrelatedActivitySnapshot = await unrelatedActivities();
   });
   beforeEach(async () => {
-    await cleanupTelephonyFixture();
+    await cleanupTelephony(h);
     f = await provisionCriticalFixture(h);
+    await promotePlatformAdmin(h, f);
     await h.adminDatabase.record.update({
       where: { id: f.ownedRecord.id },
       data: {
@@ -127,38 +107,34 @@ describe('tenant telephony', () => {
     });
   });
   afterAll(async () => {
-    await cleanupTelephonyFixture();
+    await cleanupTelephony(h);
     expect(await unrelatedActivities()).toEqual(unrelatedActivitySnapshot);
     await closeCriticalHarness(h);
     outbound.mockRestore();
   });
-  async function setup(mode = 'MOCK') {
+  /** The platform opens the line and assigns a plan; the member gets a seat. */
+  async function setup(mode: 'MOCK' | 'KUAIMA' = 'MOCK') {
     confirmedMode = mode;
+    hookToken = await configureLine(h, f, mode);
+    planId = (await createPlan(h, f)).id;
+    await assignPlan(h, f, f.tenantA.id, planId);
     const setting = await patch(`${base()}/settings`, {
       version: 0,
-      enabled: true,
-      mode,
-      companyId: 'test-company',
-      appSecret: 'test-secret',
       phoneFields: [{ objectCode: 'leads', fieldKeys: ['reviewCode', 'name'] }],
     });
     expect(setting.status).toBe(200);
-    const issued = await request(h.app.getHttpServer())
-      .post(`${base()}/settings/callback-token`)
-      .set('Origin', origin)
-      .set('Cookie', f.admin.cookie);
-    expect(issued.status).toBe(200);
-    hookToken = new URL(
-      (issued.body as { callbackUrl: string }).callbackUrl,
-    ).searchParams.get('token')!;
-    expect(hookToken.length).toBeGreaterThanOrEqual(32);
-    const binding = await patch(`${base()}/members/${f.employee.memberId}`, {
-      version: 0,
-      enabled: true,
-      seatId: 'seat-1',
-      phone: '13911113002',
+    // Seat creation needs the supplier; tests that dial start with a saved seat.
+    await h.adminDatabase.telephonyMemberBinding.create({
+      data: {
+        tenantId: f.tenantA.id,
+        memberId: f.employee.memberId,
+        enabled: true,
+        seatId: 'seat-1',
+        phone: '13911113002',
+        providerUsername: seatUsername(f.employee.memberId),
+        seatCreatedAt: new Date(),
+      },
     });
-    expect(binding.status).toBe(200);
   }
   it('requires login and admin for settings and bindings', async () => {
     expect(
@@ -168,48 +144,66 @@ describe('tenant telephony', () => {
       403,
     );
     expect(
-      (await patch(`${base()}/settings`, { version: 0 }, f.employee.cookie))
-        .status,
+      (
+        await patch(
+          `${base()}/settings`,
+          { version: 0, phoneFields: [] },
+          f.employee.cookie,
+        )
+      ).status,
     ).toBe(403);
     expect((await get(`${base()}/members`, f.employee.cookie)).status).toBe(
       403,
     );
   });
-  it('encrypts secrets, omits them in responses and preserves blank updates with version conflict', async () => {
-    await setup();
-    const result = await get(`${base()}/settings`);
-    expect(result.body).toMatchObject({
-      version: 1,
-      hasAppSecret: true,
-      hasCallbackToken: true,
-      callbackEndpoint: expect.stringMatching(
-        new RegExp(`/api/v1/telephony/hooks/${f.tenantA.id}$`),
-      ) as unknown,
-    });
-    expect(JSON.stringify(result.body)).not.toContain('test-secret');
-    expect(JSON.stringify(result.body)).not.toContain(hookToken);
-    const rows = await h.adminDatabase.$queryRawUnsafe<
-      Array<{ app_secret_encrypted: string; callback_token_encrypted: string }>
-    >(
-      'SELECT app_secret_encrypted, callback_token_encrypted FROM telephony_settings WHERE tenant_id = $1::uuid',
-      f.tenantA.id,
-    );
-    expect(rows[0].app_secret_encrypted).not.toContain('test-secret');
-    expect(rows[0].callback_token_encrypted).not.toContain(hookToken);
-    const { version, enabled, mode, companyId, phoneFields } =
-      result.body as Record<string, unknown>;
-    const changed = await patch(`${base()}/settings`, {
-      version,
-      enabled,
-      mode,
-      companyId,
-      phoneFields,
-      appSecret: '',
-    });
-    expect(changed.status).toBe(200);
-    expect(json(changed).hasAppSecret).toBe(true);
+  it('keeps calling closed until the platform assigns a plan', async () => {
+    await configureLine(h, f, 'MOCK');
     expect(
-      (await patch(`${base()}/settings`, { version: 1, enabled: false }))
+      (await get(`${base()}/runtime`, f.employee.cookie)).body,
+    ).toMatchObject({
+      enabled: false,
+      hasHistory: false,
+      available: false,
+      reason: 'NOT_ENABLED',
+    });
+    expect((await get(`${base()}/settings`)).body).toMatchObject({
+      plan: null,
+      usage: { usedMinutes: 0, allowance: 0 },
+    });
+    const closed = await patch(`${base()}/settings`, {
+      version: 0,
+      phoneFields: [],
+    });
+    expect(closed.status).toBe(403);
+    expect(closed.body).toMatchObject({
+      fieldErrors: { telephony: ['NOT_ENABLED'] },
+    });
+    expect(
+      (
+        await patch(`${base()}/members/${f.employee.memberId}`, {
+          version: 0,
+          enabled: true,
+          phone: '13911113002',
+        })
+      ).status,
+    ).toBe(403);
+    await setup();
+    expect((await get(`${base()}/settings`)).body).toMatchObject({
+      version: 1,
+      plan: { seats: 3, monthlyMinutes: 100 },
+      usage: { usedMinutes: 0, allowance: 100, seatsEnabled: 1 },
+      lineReady: true,
+    });
+    expect(
+      (await get(`${base()}/runtime`, f.employee.cookie)).body,
+    ).toMatchObject({
+      enabled: true,
+      available: true,
+      reason: null,
+      mode: 'MOCK',
+    });
+    expect(
+      (await patch(`${base()}/settings`, { version: 0, phoneFields: [] }))
         .status,
     ).toBe(409);
   });
@@ -271,23 +265,19 @@ describe('tenant telephony', () => {
     async (changed) => {
       await setup();
       const requestId = randomUUID();
-      await patch(`${base()}/settings`, { version: 1, enabled: false });
+      await assignPlan(h, f, f.tenantA.id, null);
       expect((await dial({ requestId })).status).toBe(503);
       expect(
         await h.adminDatabase.telephonyCall.count({
           where: { tenantId: f.tenantA.id },
         }),
       ).toBe(0);
-      await patch(`${base()}/settings`, {
-        version: 2,
-        enabled: true,
-        ...(changed === 'mode' ? { mode: 'KUAIMA' } : {}),
-      });
+      await assignPlan(h, f, f.tenantA.id, planId);
+      if (changed === 'mode') await configureLine(h, f, 'KUAIMA');
       if (changed === 'caller')
         await patch(`${base()}/members/${f.employee.memberId}`, {
           version: 1,
           enabled: true,
-          seatId: 'seat-1',
           phone: '13911113003',
         });
       if (changed === 'callee')
@@ -349,16 +339,16 @@ describe('tenant telephony', () => {
     const requestId = randomUUID();
     const original = await dial({ requestId });
     expect(original.status).toBe(201);
-    await patch(`${base()}/settings`, {
-      version: 1,
-      enabled: false,
-      mode: 'KUAIMA',
-    });
-    await patch(`${base()}/members/${f.employee.memberId}`, {
-      version: 1,
-      enabled: true,
-      seatId: 'seat-2',
-      phone: '13911113003',
+    await assignPlan(h, f, f.tenantA.id, null);
+    await configureLine(h, f, 'KUAIMA');
+    await h.adminDatabase.telephonyMemberBinding.update({
+      where: {
+        tenantId_memberId: {
+          tenantId: f.tenantA.id,
+          memberId: f.employee.memberId,
+        },
+      },
+      data: { seatId: 'seat-2', phone: '13911113003' },
     });
     await h.adminDatabase.record.update({
       where: { id: f.ownedRecord.id },
@@ -367,6 +357,14 @@ describe('tenant telephony', () => {
     const retry = await dial({ requestId });
     expect(retry.status).toBe(201);
     expect(retry.body).toEqual(original.body);
+    // Turning the service off keeps the call log reachable.
+    expect(
+      (await get(`${base()}/runtime`, f.employee.cookie)).body,
+    ).toMatchObject({
+      enabled: false,
+      hasHistory: true,
+      reason: 'NOT_ENABLED',
+    });
   });
   it('blocks cross tenant, other-owned, hidden fields, disabled members and archived objects', async () => {
     await setup();
@@ -393,7 +391,7 @@ describe('tenant telephony', () => {
     expect(runtime.status).toBe(200);
     expect(runtime.body).toMatchObject({
       available: false,
-      reason: 'LIVE_DISABLED',
+      reason: 'PLATFORM_NOT_READY',
       fields: [
         { fieldKey: 'name', label: '姓名' },
         { fieldKey: 'reviewCode', label: '审核编号' },
@@ -433,7 +431,7 @@ describe('tenant telephony', () => {
   });
   it('rejects callbacks without independent authentication and preserves ordinary origin checks', async () => {
     await setup();
-    const hook = `/api/v1/telephony/hooks/${f.tenantA.id}`;
+    const hook = '/api/v1/telephony/hooks';
     expect(
       (await request(h.app.getHttpServer()).post(hook).send({})).status,
     ).toBe(401);
@@ -476,7 +474,7 @@ describe('tenant telephony', () => {
   }
   const callback = (bindId: string, overrides: object = {}) =>
     request(h.app.getHttpServer())
-      .post(`/api/v1/telephony/hooks/${f.tenantA.id}`)
+      .post('/api/v1/telephony/hooks')
       .set('Authorization', `Bearer ${hookToken}`)
       .send({
         push_type: 1,
@@ -561,7 +559,7 @@ describe('tenant telephony', () => {
       }),
     ).toEqual(before);
   });
-  it('authenticates tenant and validates callback binding, phones, seat, payload and recording URL', async () => {
+  it('authenticates the platform credential and validates callback binding, phones, seat, payload and recording URL', async () => {
     await setup();
     const call = await acceptedCall();
     expect((await callback('unknown')).status).toBe(404);
@@ -588,8 +586,8 @@ describe('tenant telephony', () => {
     expect(
       (
         await request(h.app.getHttpServer())
-          .post(`/api/v1/telephony/hooks/${f.tenantB.id}`)
-          .set('Authorization', `Bearer ${hookToken}`)
+          .post('/api/v1/telephony/hooks')
+          .set('Authorization', `Bearer ${hookToken}x`)
           .send({})
       ).status,
     ).toBe(401);
@@ -751,7 +749,7 @@ describe('tenant telephony', () => {
     expect(json(result).items).toHaveLength(1);
     expect(json(result).items[0].id).toBe(allowed.id);
   });
-  it('persists ambiguous submission as UNKNOWN, does not retry, rejects other calls, and production refuses MOCK', async () => {
+  it('persists ambiguous submission as UNKNOWN, does not retry, rejects other calls', async () => {
     await setup('KUAIMA');
     const config = h.app.get(ConfigService);
     config.set('TELEPHONY_LIVE_ENABLED', 'true');
@@ -775,15 +773,9 @@ describe('tenant telephony', () => {
           where: { tenantId: f.tenantA.id, recordId: f.ownedRecord.id },
         }),
       ).toBe(0);
-      config.set('NODE_ENV', 'production');
-      expect(
-        (await patch(`${base()}/settings`, { version: 1, mode: 'MOCK' }))
-          .status,
-      ).toBe(400);
     } finally {
       spy.mockRestore();
       config.set('TELEPHONY_LIVE_ENABLED', 'false');
-      config.set('NODE_ENV', 'test');
     }
   });
   it('stops dialing a field the administrator no longer allows, keeping its history', async () => {
@@ -905,7 +897,7 @@ describe('tenant telephony', () => {
       audio_url: '',
       company_note: 'a field the documentation does not list',
     };
-    const hook = `/api/v1/telephony/hooks/${f.tenantA.id}`;
+    const hook = '/api/v1/telephony/hooks';
     const old = hookToken;
     // Form-encoded bodies work too; the supplier's content type is unconfirmed.
     const viaQuery = await request(h.app.getHttpServer())
@@ -925,9 +917,9 @@ describe('tenant telephony', () => {
       }),
     ]);
     const rotated = await request(h.app.getHttpServer())
-      .post(`${base()}/settings/callback-token`)
+      .post('/api/v1/platform/telephony-settings/callback-token')
       .set('Origin', origin)
-      .set('Cookie', f.admin.cookie);
+      .set('Cookie', f.tenantBAdmin.cookie);
     expect(rotated.status).toBe(200);
     expect(
       (
@@ -939,9 +931,9 @@ describe('tenant telephony', () => {
     expect(
       (
         await request(h.app.getHttpServer())
-          .post(`${base()}/settings/callback-token`)
+          .post('/api/v1/platform/telephony-settings/callback-token')
           .set('Origin', origin)
-          .set('Cookie', f.employee.cookie)
+          .set('Cookie', f.admin.cookie)
       ).status,
     ).toBe(403);
   });
@@ -949,7 +941,7 @@ describe('tenant telephony', () => {
     await setup();
     const call = await acceptedCall();
     const hangup = await request(h.app.getHttpServer())
-      .post(`/api/v1/telephony/hooks/${f.tenantA.id}?token=${hookToken}`)
+      .post(`/api/v1/telephony/hooks?token=${hookToken}`)
       .send({
         bind_id: call.providerBindId,
         status: 'End',
@@ -1042,7 +1034,10 @@ describe('tenant telephony', () => {
         actorName: expect.any(String) as unknown,
       });
       expect(spy).toHaveBeenCalledWith(
-        expect.objectContaining({ appSecret: 'test-secret' }),
+        expect.objectContaining({
+          companyId: '131',
+          appSecret: 'platform-secret',
+        }),
         expect.anything(),
         undefined,
         'https://www.kuaimatongxun.com',

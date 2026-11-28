@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PlatformAdminGuard } from '../../common/auth/platform-admin.guard';
 import { AuthModule } from '../auth/auth.module';
 import { AuditModule } from '../audit/audit.module';
 import { ObjectsModule } from '../objects/objects.module';
@@ -13,6 +14,8 @@ import { TelephonyService } from './telephony/telephony.service';
 import { KuaimaProvider } from './telephony/telephony-provider';
 import { TelephonyLine } from './telephony/telephony-line';
 import { TelephonySeats } from './telephony/telephony-seats';
+import { TelephonyPlatformController } from './telephony/telephony-platform.controller';
+import { TelephonyPlatformService } from './telephony/telephony-platform.service';
 
 import { IntegrationsController } from './integrations.controller';
 import { IntegrationsService } from './integrations.service';
@@ -29,6 +32,7 @@ import { IntegrationsService } from './integrations.service';
     IntegrationsController,
     TelephonyController,
     TelephonyHookController,
+    TelephonyPlatformController,
   ],
   providers: [
     IntegrationsService,
@@ -37,6 +41,8 @@ import { IntegrationsService } from './integrations.service';
     KuaimaProvider,
     TelephonyLine,
     TelephonySeats,
+    TelephonyPlatformService,
+    PlatformAdminGuard,
   ],
   exports: [IntegrationsService],
 })
