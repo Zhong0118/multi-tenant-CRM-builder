@@ -11,6 +11,8 @@ import {
 } from './telephony/telephony.controller';
 import { TelephonyService } from './telephony/telephony.service';
 import { KuaimaProvider } from './telephony/telephony-provider';
+import { TelephonyLine } from './telephony/telephony-line';
+import { TelephonySeats } from './telephony/telephony-seats';
 
 import { IntegrationsController } from './integrations.controller';
 import { IntegrationsService } from './integrations.service';
@@ -33,6 +35,8 @@ import { IntegrationsService } from './integrations.service';
     TelephonyService,
     TelephonyHookGuard,
     KuaimaProvider,
+    TelephonyLine,
+    TelephonySeats,
   ],
   exports: [IntegrationsService],
 })

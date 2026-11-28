@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Prisma } from '@crm/database';
 import { ApiException } from '../../../common/errors/api.exception';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
@@ -19,18 +18,28 @@ import {
 } from '../../records/record-command';
 import { lockMembers } from '../../records/record-ownership-locks';
 import {
-  KUAIMA_ORIGIN,
+  allowance,
+  readUsage,
+  TelephonyLine,
+  type LineMode,
+  type LineRow,
+  type Usage,
+} from './telephony-line';
+import {
   KuaimaProvider,
+  KuaimaSeatError,
   normalizePhone,
   safeRecordingUrl,
-  TelephonyVault,
 } from './telephony-provider';
+import { seatUsable, TelephonySeats, type Seat } from './telephony-seats';
 import type {
   CreateTelephonyCallDto,
+  TelephonyBindingResponseDto,
   TelephonyCallQueryDto,
   TelephonyCallResponseDto,
   TelephonyHookDto,
   TelephonyPhoneFieldsDto,
+  TelephonyReason,
   TelephonyRuntimeQueryDto,
   TelephonySettingsResponseDto,
   UpdateTelephonyBindingDto,
@@ -41,12 +50,21 @@ type TelephonyCall = Prisma.TelephonyCallGetPayload<Record<string, never>>;
 type TelephonySettings = Prisma.TelephonySettingsGetPayload<
   Record<string, never>
 >;
+type TelephonyBinding = Prisma.TelephonyMemberBindingGetPayload<
+  Record<string, never>
+>;
 
 const OPEN = ['REQUESTED', 'ACCEPTED', 'UNKNOWN'];
 const OUTCOMES = ['CONNECTED', 'NOT_CONNECTED'];
 /** An open call may be closed by hand only after the supplier had time to answer. */
 const CLOSE_AFTER_MS = 60_000;
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
+const REASON_TEXT: Record<TelephonyReason, string> = {
+  NOT_ENABLED: '公司未开通电话外呼',
+  PLATFORM_NOT_READY: '通话线路暂不可用，请联系管理员',
+  MINUTES_EXHAUSTED: '本月通话分钟已用完，请联系管理员',
+  MEMBER_NOT_CONFIGURED: '你还没有外呼坐席，请联系管理员',
+};
 
 function admin(context: TenantContext) {
   if (context.role !== 'TENANT_ADMIN')
@@ -57,9 +75,22 @@ function fieldsOf(
 ): TelephonyPhoneFieldsDto[] {
   return (settings?.phoneFields ?? []) as unknown as TelephonyPhoneFieldsDto[];
 }
-function unavailable(reason: string): never {
+function unavailable(reason: TelephonyReason): never {
   throw new ApiException('VALIDATION_FAILED', 503, {
-    message: `电话外呼不可用：${reason}`,
+    message: `电话外呼不可用：${REASON_TEXT[reason]}`,
+    fieldErrors: { telephony: [reason] },
+  });
+}
+function notEnabled(): never {
+  throw new ApiException('WORKSPACE_FORBIDDEN', 403, {
+    message: '公司未开通电话外呼，请联系平台管理员。',
+    fieldErrors: { telephony: ['NOT_ENABLED'] },
+  });
+}
+function seatsFull(seats: number): never {
+  throw new ApiException('CONFIG_VERSION_CONFLICT', 409, {
+    message: `坐席已满：套餐含 ${seats} 个坐席，已全部开出。如需更多坐席，请联系平台管理员。`,
+    fieldErrors: { telephony: ['TELEPHONY_SEATS_FULL'] },
   });
 }
 function duration(seconds: number | null) {
@@ -70,77 +101,74 @@ function duration(seconds: number | null) {
 
 @Injectable()
 export class TelephonyService {
-  private readonly vault: TelephonyVault;
   constructor(
     private readonly runner: DatabaseContextRunner,
     private readonly objects: PublishedObjectService,
     private readonly records: RecordsService,
     private readonly audit: AuditService,
-    private readonly config: ConfigService,
     private readonly provider: KuaimaProvider,
+    private readonly line: TelephonyLine,
+    private readonly seats: TelephonySeats,
     @Inject(RECORDS_REPOSITORY) private readonly repository: RecordsRepository,
-  ) {
-    this.vault = new TelephonyVault(() =>
-      this.config.get<string>('AI_MODEL_KEYRING'),
-    );
-  }
+  ) {}
 
-  private production() {
-    return this.config.get('NODE_ENV') === 'production';
-  }
-  private liveEnabled() {
-    return (
-      this.config.get<string>('TELEPHONY_LIVE_ENABLED', 'false') === 'true'
-    );
-  }
-  /**
-   * The supplier origin is fixed. Outside production a loopback fake supplier
-   * may stand in for it, so the whole live path can be rehearsed locally.
-   */
-  private kuaimaOrigin() {
-    const override = this.config.get<string>('TELEPHONY_KUAIMA_ORIGIN', '');
-    if (!override || this.production()) return KUAIMA_ORIGIN;
-    const url = new URL(override);
-    if (!['localhost', '127.0.0.1'].includes(url.hostname))
-      return KUAIMA_ORIGIN;
-    return url.origin;
-  }
-  private callbackEndpoint(tenantId: string) {
-    const origin = this.config
-      .get<string>('API_ORIGIN', 'http://localhost:3001')
-      .replace(/\/+$/, '');
-    return `${origin}/api/v1/telephony/hooks/${tenantId}`;
-  }
-  private publicSettings(
-    tenantId: string,
-    settings: TelephonySettings | null,
-  ): TelephonySettingsResponseDto {
-    return {
-      version: settings?.version ?? 0,
-      enabled: settings?.enabled ?? false,
-      mode: (settings?.mode ?? 'MOCK') as 'MOCK' | 'KUAIMA',
-      companyId: settings?.companyId ?? '',
-      hasAppSecret: Boolean(settings?.appSecretEncrypted),
-      hasCallbackToken: Boolean(settings?.callbackTokenEncrypted),
-      callbackEndpoint: this.callbackEndpoint(tenantId),
-      liveEnabled: this.liveEnabled(),
-      mockAllowed: !this.production(),
-      phoneFields: fieldsOf(settings),
-    };
-  }
   private async lock(tx: Prisma.TransactionClient, key: string) {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
+  private async publicSettings(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+  ): Promise<TelephonySettingsResponseDto> {
+    const settings = await tx.telephonySettings.findUnique({
+      where: { tenantId },
+    });
+    const usage = await readUsage(tx, tenantId);
+    const line = await this.line.read(tx);
+    return {
+      version: settings?.version ?? 0,
+      phoneFields: fieldsOf(settings),
+      plan: usage.planId
+        ? {
+            name: usage.planName ?? '',
+            seats: usage.seats,
+            monthlyMinutes: usage.monthlyMinutes,
+          }
+        : null,
+      usage: {
+        month: usage.month,
+        usedMinutes: usage.usedMinutes,
+        extraMinutes: usage.extraMinutes,
+        allowance: allowance(usage),
+        seatsEnabled: usage.seatsEnabled,
+      },
+      lineReady: this.line.problems(line).length === 0,
+    };
+  }
+  private bindingView(
+    member: { id: string; displayName: string; status: string },
+    binding: TelephonyBinding | null,
+    mode: LineMode,
+  ): TelephonyBindingResponseDto {
+    return {
+      memberId: member.id,
+      displayName: member.displayName,
+      status: member.status,
+      version: binding?.version ?? 0,
+      enabled: binding?.enabled ?? false,
+      phone: binding?.phone ?? '',
+      seatStatus: binding?.seatError
+        ? 'FAILED'
+        : binding && seatUsable(binding.seatId, mode)
+          ? 'READY'
+          : 'NONE',
+      seatError: binding?.seatError ?? null,
+    };
   }
 
   settings(context: TenantContext) {
     admin(context);
-    return this.runner.withTenant(context, async (tx) =>
-      this.publicSettings(
-        context.tenantId,
-        await tx.telephonySettings.findUnique({
-          where: { tenantId: context.tenantId },
-        }),
-      ),
+    return this.runner.withTenant(context, (tx) =>
+      this.publicSettings(tx, context.tenantId),
     );
   }
 
@@ -149,58 +177,45 @@ export class TelephonyService {
     input: UpdateTelephonySettingsDto,
   ) {
     admin(context);
-    if (input.mode === 'MOCK' && this.production())
-      throw new ApiException('VALIDATION_FAILED', 400, {
-        message: '生产环境禁止模拟拨号。',
-      });
-    if (input.phoneFields) {
+    if (
+      new Set(input.phoneFields.map((entry) => entry.objectCode)).size !==
+      input.phoneFields.length
+    )
+      throw new ApiException('VALIDATION_FAILED', 400);
+    for (const entry of input.phoneFields) {
+      const { schema } = await this.objects.resolveRuntimeSchema(
+        context,
+        entry.objectCode,
+      );
       if (
-        new Set(input.phoneFields.map((entry) => entry.objectCode)).size !==
-        input.phoneFields.length
-      )
-        throw new ApiException('VALIDATION_FAILED', 400);
-      for (const entry of input.phoneFields) {
-        const { schema } = await this.objects.resolveRuntimeSchema(
-          context,
-          entry.objectCode,
-        );
-        if (
-          entry.fieldKeys.some(
-            (key) =>
-              !schema.fields.some(
-                (field) =>
-                  field.fieldKey === key &&
-                  ['PHONE', 'TEXT'].includes(field.type),
-              ),
-          )
+        entry.fieldKeys.some(
+          (key) =>
+            !schema.fields.some(
+              (field) =>
+                field.fieldKey === key &&
+                ['PHONE', 'TEXT'].includes(field.type),
+            ),
         )
-          throw new ApiException('FIELD_INVALID', 400);
-      }
+      )
+        throw new ApiException('FIELD_INVALID', 400);
     }
     return this.runner.withTenant(context, async (tx) => {
       await this.lock(tx, `${context.tenantId}:telephony-settings`);
+      if (!(await readUsage(tx, context.tenantId)).planId) notEnabled();
       const current = await tx.telephonySettings.findUnique({
         where: { tenantId: context.tenantId },
       });
       if ((current?.version ?? 0) !== input.version)
         throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-      const appSecret = input.appSecret?.trim();
       const data = {
         version: input.version + 1,
-        enabled: input.enabled ?? current?.enabled ?? false,
-        mode: input.mode ?? current?.mode ?? 'MOCK',
-        companyId: input.companyId?.trim() ?? current?.companyId ?? '',
-        phoneFields: (input.phoneFields
-          ?.filter((entry) => entry.fieldKeys.length)
-          .map(({ objectCode, fieldKeys }) => ({ objectCode, fieldKeys })) ??
-          fieldsOf(current)) as unknown as Prisma.InputJsonValue,
-        // A blank secret keeps the saved one; it is never read back.
-        appSecretEncrypted: appSecret
-          ? this.vault.seal(context.tenantId, 'appSecret', appSecret)
-          : (current?.appSecretEncrypted ?? null),
+        phoneFields: input.phoneFields
+          .filter((entry) => entry.fieldKeys.length)
+          .map(({ objectCode, fieldKeys }) => ({
+            objectCode,
+            fieldKeys,
+          })) as unknown as Prisma.InputJsonValue,
       };
-      if (data.mode === 'MOCK' && this.production())
-        throw new ApiException('VALIDATION_FAILED', 400);
       const saved = await tx.telephonySettings.upsert({
         where: { tenantId: context.tenantId },
         create: { tenantId: context.tenantId, ...data },
@@ -214,52 +229,9 @@ export class TelephonyService {
         resourceType: 'telephony_settings',
         resourceId: context.tenantId,
         requestId: randomUUID(),
-        after: {
-          version: saved.version,
-          enabled: saved.enabled,
-          mode: saved.mode,
-          appSecretChanged: Boolean(appSecret),
-        },
-      });
-      return this.publicSettings(context.tenantId, saved);
-    });
-  }
-
-  /**
-   * Issues a new callback credential. The full URL is returned this once for
-   * the administrator to hand to the supplier; afterwards only "set" shows.
-   */
-  async rotateCallbackToken(context: TenantContext) {
-    admin(context);
-    const token = randomBytes(24).toString('base64url');
-    return this.runner.withTenant(context, async (tx) => {
-      await this.lock(tx, `${context.tenantId}:telephony-settings`);
-      const callbackTokenEncrypted = this.vault.seal(
-        context.tenantId,
-        'callbackToken',
-        token,
-      );
-      // The settings form never writes this column, so issuing a credential
-      // does not bump the form's version or conflict with an open edit.
-      const saved = await tx.telephonySettings.upsert({
-        where: { tenantId: context.tenantId },
-        create: { tenantId: context.tenantId, callbackTokenEncrypted },
-        update: { callbackTokenEncrypted },
-      });
-      await this.audit.append(tx, {
-        tenantId: context.tenantId,
-        actorType: 'USER',
-        actorId: context.userId,
-        action: 'telephony.callback_token_rotated',
-        resourceType: 'telephony_settings',
-        resourceId: context.tenantId,
-        requestId: randomUUID(),
         after: { version: saved.version },
       });
-      return {
-        settings: this.publicSettings(context.tenantId, saved),
-        callbackUrl: `${this.callbackEndpoint(context.tenantId)}?token=${token}`,
-      };
+      return this.publicSettings(tx, context.tenantId);
     });
   }
 
@@ -276,56 +248,123 @@ export class TelephonyService {
           where: { tenantId: context.tenantId },
         }),
       ]);
+      const { mode } = await this.line.read(tx);
       return {
-        members: members.map((member) => {
-          const binding = bindings.find(
-            (entry) => entry.memberId === member.id,
-          );
-          return {
-            memberId: member.id,
-            displayName: member.displayName ?? member.user.displayName,
-            status: member.status,
-            version: binding?.version ?? 0,
-            enabled: binding?.enabled ?? false,
-            seatId: binding?.seatId ?? '',
-            phone: binding?.phone ?? '',
-          };
-        }),
+        members: members.map((member) =>
+          this.bindingView(
+            {
+              id: member.id,
+              displayName: member.displayName ?? member.user.displayName,
+              status: member.status,
+            },
+            bindings.find((entry) => entry.memberId === member.id) ?? null,
+            mode,
+          ),
+        ),
       };
     });
   }
 
-  updateMember(
+  /**
+   * Turns calling on or off for a member. Turning it on makes sure the member
+   * has a supplier seat: check, then call the supplier outside any
+   * transaction, then save under the company lock with a fresh seat count.
+   */
+  async updateMember(
     context: TenantContext,
     memberId: string,
     input: UpdateTelephonyBindingDto,
   ) {
     admin(context);
     const phone = input.phone ? normalizePhone(input.phone) : '';
-    if (input.enabled && (!phone || !input.seatId.trim()))
+    if (input.enabled && !phone)
       throw new ApiException('VALIDATION_FAILED', 400, {
-        message: '开启外呼前请填写坐席号和接听手机。',
+        message: '开启外呼前请填写接听手机。',
       });
-    return this.runner.withTenant(context, async (tx) => {
-      await this.lock(tx, `${context.tenantId}:telephony-member:${memberId}`);
+    const where = {
+      tenantId_memberId: { tenantId: context.tenantId, memberId },
+    };
+    const before = await this.runner.withTenant(context, async (tx) => {
       const member = await tx.tenantMember.findFirst({
         where: { tenantId: context.tenantId, id: memberId },
         include: { user: { select: { displayName: true } } },
       });
       if (!member) throw new ApiException('OWNER_INVALID', 400);
-      const where = {
-        tenantId_memberId: { tenantId: context.tenantId, memberId },
-      };
       const current = await tx.telephonyMemberBinding.findUnique({ where });
       if ((current?.version ?? 0) !== input.version)
         throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+      const usage = await readUsage(tx, context.tenantId);
+      if (input.enabled) {
+        if (!usage.planId) notEnabled();
+        if (!current?.enabled && usage.seatsEnabled >= usage.seats)
+          seatsFull(usage.seats);
+      }
+      return { member, current, line: await this.line.read(tx) };
+    });
+    const displayName =
+      before.member.displayName ?? before.member.user.displayName;
+    let seat: Seat | null = null;
+    if (input.enabled) {
+      if (this.line.problems(before.line).length)
+        unavailable('PLATFORM_NOT_READY');
+      try {
+        seat = await this.seats.ensure(
+          before.line,
+          before.current
+            ? {
+                seatId: before.current.seatId,
+                username: before.current.providerUsername,
+                phone: before.current.phone,
+              }
+            : null,
+          { id: memberId, name: displayName },
+          phone,
+        );
+      } catch (error) {
+        if (!(error instanceof KuaimaSeatError)) throw error;
+        const seatError = error.reason.slice(0, 200);
+        await this.runner.withTenant(context, (tx) =>
+          tx.telephonyMemberBinding.upsert({
+            where,
+            create: { tenantId: context.tenantId, memberId, seatError },
+            update: { seatError },
+          }),
+        );
+        throw new ApiException('VALIDATION_FAILED', 400, {
+          message: `快马：${seatError}`,
+          fieldErrors: { seat: ['TELEPHONY_SEAT_FAILED'] },
+        });
+      }
+    }
+    const saved = await this.runner.withTenant(context, async (tx) => {
+      await this.lock(tx, `${context.tenantId}:telephony`);
+      const current = await tx.telephonyMemberBinding.findUnique({ where });
+      if ((current?.version ?? 0) !== input.version)
+        throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+      const usage = await readUsage(tx, context.tenantId);
+      // Someone may have taken the last seat while the supplier was working;
+      // keep the seat it made, but leave calling off.
+      const full =
+        input.enabled &&
+        !current?.enabled &&
+        (!usage.planId || usage.seatsEnabled >= usage.seats);
       const data = {
         version: input.version + 1,
-        enabled: input.enabled,
-        seatId: input.seatId.trim(),
+        enabled: input.enabled && !full,
         phone,
+        seatError: null,
+        ...(seat
+          ? {
+              seatId: seat.seatId,
+              providerUsername: seat.username,
+              seatCreatedAt:
+                current?.seatId === seat.seatId && current.seatCreatedAt
+                  ? current.seatCreatedAt
+                  : new Date(),
+            }
+          : {}),
       };
-      const result = await tx.telephonyMemberBinding.upsert({
+      const binding = await tx.telephonyMemberBinding.upsert({
         where,
         create: { tenantId: context.tenantId, memberId, ...data },
         update: data,
@@ -338,53 +377,48 @@ export class TelephonyService {
         resourceType: 'telephony_member',
         resourceId: memberId,
         requestId: randomUUID(),
-        after: { enabled: result.enabled, version: result.version },
+        after: {
+          enabled: binding.enabled,
+          version: binding.version,
+          seatId: binding.seatId || null,
+        },
       });
-      return {
-        memberId,
-        displayName: member.displayName ?? member.user.displayName,
-        status: member.status,
-        ...data,
-      };
+      return { binding, full, usage, line: await this.line.read(tx) };
     });
+    if (saved.full) {
+      if (!saved.usage.planId) notEnabled();
+      seatsFull(saved.usage.seats);
+    }
+    return this.bindingView(
+      { id: memberId, displayName, status: before.member.status },
+      saved.binding,
+      saved.line.mode,
+    );
   }
 
+  /** The first unmet condition, in the order the specification lists them. */
   private reason(
-    tenantId: string,
-    settings: TelephonySettings | null,
+    usage: Usage,
+    line: LineRow,
     binding: { enabled: boolean; phone: string; seatId: string } | null,
-  ) {
-    if (!settings?.enabled) return 'DISABLED';
-    if (!binding?.enabled || !binding.phone || !binding.seatId)
-      return 'MEMBER_NOT_CONFIGURED';
-    if (settings.mode === 'MOCK')
-      return this.production() ? 'MOCK_FORBIDDEN' : null;
-    if (!this.liveEnabled()) return 'LIVE_DISABLED';
+  ): TelephonyReason | null {
+    if (!usage.planId) return 'NOT_ENABLED';
+    if (this.line.problems(line).length) return 'PLATFORM_NOT_READY';
+    if (usage.usedMinutes >= allowance(usage)) return 'MINUTES_EXHAUSTED';
     if (
-      !settings.companyId ||
-      !settings.appSecretEncrypted ||
-      !settings.callbackTokenEncrypted
+      !binding?.enabled ||
+      !binding.phone ||
+      !seatUsable(binding.seatId, line.mode)
     )
-      return 'PROVIDER_NOT_CONFIGURED';
-    try {
-      this.vault.open(tenantId, 'appSecret', settings.appSecretEncrypted);
-      this.vault.open(
-        tenantId,
-        'callbackToken',
-        settings.callbackTokenEncrypted,
-      );
-    } catch {
-      return 'ENCRYPTION_UNAVAILABLE';
-    }
+      return 'MEMBER_NOT_CONFIGURED';
     return null;
   }
 
   async runtime(context: TenantContext, query: TelephonyRuntimeQueryDto) {
     if (query.recordId && !query.objectCode)
       throw new ApiException('VALIDATION_FAILED', 400);
-    const { settings, binding, open } = await this.runner.withTenant(
-      context,
-      async (tx) => ({
+    const { settings, binding, open, usage, line, history } =
+      await this.runner.withTenant(context, async (tx) => ({
         settings: await tx.telephonySettings.findUnique({
           where: { tenantId: context.tenantId },
         }),
@@ -404,10 +438,15 @@ export class TelephonyService {
           },
           select: { id: true },
         }),
-      }),
-    );
+        usage: await readUsage(tx, context.tenantId),
+        line: await this.line.read(tx),
+        history: await tx.telephonyCall.findFirst({
+          where: { tenantId: context.tenantId },
+          select: { id: true },
+        }),
+      }));
     let fields: Array<{ fieldKey: string; label: string }> = [];
-    if (query.objectCode && settings?.enabled) {
+    if (query.objectCode && usage.planId) {
       const { visibleSchema } = await this.objects.resolveRuntimeSchema(
         context,
         query.objectCode,
@@ -432,14 +471,15 @@ export class TelephonyService {
         )
         .map(({ fieldKey, label }) => ({ fieldKey, label }));
     }
-    const reason = this.reason(context.tenantId, settings, binding);
+    const reason = this.reason(usage, line, binding);
     return {
-      enabled: settings?.enabled ?? false,
-      mode: (settings?.mode ?? 'MOCK') as 'MOCK' | 'KUAIMA',
+      enabled: Boolean(usage.planId),
+      hasHistory: Boolean(history),
+      mode: line.mode,
       available: reason === null,
       reason,
       callerPhone: binding?.phone || null,
-      liveEnabled: this.liveEnabled(),
+      liveEnabled: this.line.liveEnabled(),
       openCallId: open?.id ?? null,
       fields,
     };
@@ -494,7 +534,7 @@ export class TelephonyService {
             throw new ApiException('CONFIG_VERSION_CONFLICT', 409, {
               message: '幂等键已用于其他拨号请求。',
             });
-          return { call: existing, fresh: false, settings: null };
+          return { call: existing, fresh: false, line: null };
         }
         const [settings, binding] = await Promise.all([
           tx.telephonySettings.findUnique({
@@ -509,8 +549,10 @@ export class TelephonyService {
             },
           }),
         ]);
-        const reason = this.reason(context.tenantId, settings, binding);
-        if (!settings || !binding || !binding.phone)
+        const usage = await readUsage(tx, context.tenantId);
+        const line = await this.line.read(tx);
+        const reason = this.reason(usage, line, binding);
+        if (!binding || !binding.phone)
           unavailable(reason ?? 'MEMBER_NOT_CONFIGURED');
         if (
           !fieldsOf(settings).some(
@@ -525,7 +567,7 @@ export class TelephonyService {
         const callerPhone = normalizePhone(binding.phone);
         const calleePhone = normalizePhone(record.values[input.fieldKey]);
         if (
-          input.confirmation.mode !== settings.mode ||
+          input.confirmation.mode !== line.mode ||
           normalizePhone(input.confirmation.callerPhone) !== callerPhone ||
           normalizePhone(input.confirmation.calleePhone) !== calleePhone
         )
@@ -556,7 +598,7 @@ export class TelephonyService {
             objectCode: input.objectCode,
             recordId: input.recordId,
             fieldKey: input.fieldKey,
-            mode: settings.mode,
+            mode: line.mode,
             callerPhone,
             calleePhone,
             seatId: binding.seatId,
@@ -572,7 +614,7 @@ export class TelephonyService {
           requestId: input.requestId,
           after: { mode: call.mode },
         });
-        return { call, fresh: true, settings };
+        return { call, fresh: true, line };
       },
     );
     let call = result.call;
@@ -589,21 +631,17 @@ export class TelephonyService {
         );
       } else {
         // The request is durable before this single, non-transactional network call.
-        const settings = result.settings!;
+        const account = this.line.account(result.line!);
         const outcome = await this.provider.dial(
           {
-            companyId: settings.companyId,
-            appSecret: this.vault.open(
-              context.tenantId,
-              'appSecret',
-              settings.appSecretEncrypted!,
-            ),
+            companyId: account.companyId,
+            appSecret: account.appSecret,
             caller: call.callerPhone,
             callee: call.calleePhone,
           },
           fetch,
           undefined,
-          this.kuaimaOrigin(),
+          account.origin,
         );
         call = await this.runner.withTenant(context, async (tx) => {
           await tx.$queryRaw`SELECT id FROM telephony_calls WHERE tenant_id = ${context.tenantId}::uuid AND id = ${call.id}::uuid FOR UPDATE`;
@@ -615,20 +653,15 @@ export class TelephonyService {
           const status =
             current.status === 'REQUESTED' ? outcome.status : current.status;
           if (outcome.providerBindId)
-            await this.lock(
-              tx,
-              `${context.tenantId}:telephony-bind:${outcome.providerBindId}`,
-            );
-          // Binding conflicts are ambiguous: do not attach the other call's supplier ID.
-          const collision = outcome.providerBindId
-            ? await tx.telephonyCall.findFirst({
-                where: {
-                  tenantId: context.tenantId,
-                  providerBindId: outcome.providerBindId,
-                  id: { not: call.id },
-                },
-              })
-            : null;
+            await this.lock(tx, `telephony-bind:${outcome.providerBindId}`);
+          // One supplier account serves every company: a supplier ID already
+          // used anywhere is ambiguous, so do not attach it.
+          const [owner] = outcome.providerBindId
+            ? await tx.$queryRaw<
+                Array<{ tenant_id: string | null }>
+              >`SELECT telephony_route_bind(${outcome.providerBindId})::text AS tenant_id`
+            : [];
+          const collision = Boolean(owner?.tenant_id);
           return tx.telephonyCall.update({
             where: { id: call.id },
             data: collision
@@ -846,7 +879,6 @@ export class TelephonyService {
 
   /** Bearer header, or the `token` query parameter of the URL given to the supplier. */
   async authenticateHook(
-    tenantId: string,
     authorization?: string,
     queryToken?: unknown,
   ): Promise<void> {
@@ -855,27 +887,16 @@ export class TelephonyService {
       : typeof queryToken === 'string'
         ? queryToken
         : '';
-    if (
-      !/^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(
-        tenantId,
-      ) ||
-      !supplied
-    )
-      throw new ApiException('AUTH_REQUIRED', 401);
-    const settings = await this.runner.withTenant(
-      this.hookContext(tenantId),
-      (tx) => tx.telephonySettings.findUnique({ where: { tenantId } }),
+    if (!supplied) throw new ApiException('AUTH_REQUIRED', 401);
+    const line = await this.runner.withUser(ZERO_UUID, (tx) =>
+      this.line.read(tx),
     );
-    if (!settings?.callbackTokenEncrypted)
+    if (!line.callbackTokenEncrypted)
       throw new ApiException('AUTH_REQUIRED', 401);
     let expected: Buffer;
     try {
       expected = Buffer.from(
-        this.vault.open(
-          tenantId,
-          'callbackToken',
-          settings.callbackTokenEncrypted,
-        ),
+        this.line.vault.open('callbackToken', line.callbackTokenEncrypted),
       );
     } catch {
       throw new ApiException('AUTH_REQUIRED', 401);
@@ -886,7 +907,7 @@ export class TelephonyService {
   }
 
   private hookContext(tenantId: string): TenantContext {
-    // Callback authentication grants only the route's tenant-scoped integration operations.
+    // A verified callback acts only on the company that owns the supplier call.
     return {
       tenantId,
       tenantCode: '',
@@ -896,10 +917,23 @@ export class TelephonyService {
     };
   }
 
-  async hook(tenantId: string, input: TelephonyHookDto) {
+  /** Which company a supplier call ID belongs to; unknown IDs are 404 so the supplier retries. */
+  private async routeBind(bindId: string) {
+    const [row] = await this.runner.withUser(
+      ZERO_UUID,
+      (tx) =>
+        tx.$queryRaw<
+          Array<{ tenant_id: string | null }>
+        >`SELECT telephony_route_bind(${bindId})::text AS tenant_id`,
+    );
+    if (!row?.tenant_id) throw new ApiException('RECORD_NOT_FOUND', 404);
+    return row.tenant_id;
+  }
+
+  async hook(input: TelephonyHookDto) {
     // 挂断状态 has no push_type; an End status is only ever an end event.
     if (input.push_type === undefined || input.status === 'End')
-      return this.hangup(tenantId, input);
+      return this.hangup(input);
     const recordingUrl = input.audio_url
       ? safeRecordingUrl(input.audio_url)
       : null;
@@ -917,6 +951,7 @@ export class TelephonyService {
     const endedAt = parseSupplierTime(input.end_time);
     if (beganAt && endedAt && endedAt < beganAt)
       throw new ApiException('VALIDATION_FAILED', 400);
+    const tenantId = await this.routeBind(input.bind_id);
     return this.runner.withTenant(this.hookContext(tenantId), async (tx) => {
       const call = await this.lockByBindId(tx, tenantId, input.bind_id);
       if (
@@ -942,10 +977,11 @@ export class TelephonyService {
   }
 
   /** 挂断状态回调: an end event only; it never says whether anyone answered. */
-  private hangup(tenantId: string, input: TelephonyHookDto) {
+  private async hangup(input: TelephonyHookDto) {
     if (input.status !== 'End')
       throw new ApiException('VALIDATION_FAILED', 400);
     const endedAt = parseSupplierTime(input.time ?? input.end_time);
+    const tenantId = await this.routeBind(input.bind_id);
     return this.runner.withTenant(this.hookContext(tenantId), async (tx) => {
       const call = await this.lockByBindId(tx, tenantId, input.bind_id);
       if (OPEN.includes(call.status))

@@ -35,7 +35,6 @@ import { SessionAuthGuard } from '../../auth/session-auth.guard';
 import {
   CreateTelephonyCallDto,
   TelephonyBindingResponseDto,
-  TelephonyCallbackTokenResponseDto,
   TelephonyBindingsResponseDto,
   TelephonyCallPageResponseDto,
   TelephonyCallQueryDto,
@@ -69,12 +68,6 @@ export class TelephonyController {
     @Body() input: UpdateTelephonySettingsDto,
   ) {
     return this.telephony.updateSettings(context, input);
-  }
-  @Post('settings/callback-token')
-  @HttpCode(200)
-  @ApiOkResponse({ type: TelephonyCallbackTokenResponseDto })
-  rotateCallbackToken(@CurrentTenant() context: TenantContext) {
-    return this.telephony.rotateCallbackToken(context);
   }
   @Get('members')
   @ApiOkResponse({ type: TelephonyBindingsResponseDto })
@@ -140,12 +133,10 @@ export class TelephonyHookGuard implements CanActivate {
   constructor(private readonly telephony: TelephonyService) {}
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<{
-      params: { tenantId: string };
       headers: { authorization?: string };
       query: Record<string, unknown>;
     }>();
     await this.telephony.authenticateHook(
-      request.params.tenantId,
       request.headers.authorization,
       request.query?.token,
     );
@@ -156,11 +147,10 @@ export class TelephonyHookGuard implements CanActivate {
 @ApiTags('telephony')
 export class TelephonyHookController {
   constructor(private readonly telephony: TelephonyService) {}
-  @Post(':tenantId')
+  @Post()
   @HttpCode(200)
   @SetMetadata('telephony:authenticated-hook', true)
   @UseGuards(TelephonyHookGuard)
-  @ApiParam({ name: 'tenantId', format: 'uuid' })
   @ApiHeader({
     name: 'Authorization',
     required: false,
@@ -170,7 +160,6 @@ export class TelephonyHookController {
   @ApiOkResponse({ type: TelephonyHookResponseDto })
   @ApiBody({ type: TelephonyHookDto })
   async hook(
-    @Param('tenantId', ParseUUIDPipe) tenantId: string,
     // Untyped so the global pipe does not reject fields the supplier may add;
     // the known fields are still validated strictly below.
     @Body() raw: unknown,
@@ -184,6 +173,6 @@ export class TelephonyHookController {
       throw new ApiException('VALIDATION_FAILED', 400, {
         fieldErrors: validationFieldErrors(errors),
       });
-    return this.telephony.hook(tenantId, input);
+    return this.telephony.hook(input);
   }
 }
