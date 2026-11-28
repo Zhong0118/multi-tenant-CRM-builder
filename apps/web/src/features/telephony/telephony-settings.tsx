@@ -2,18 +2,15 @@
 
 import {
   Alert,
-  App,
-  Button,
   Form,
   Input,
   Modal,
-  Segmented,
+  Progress,
   Select,
   Skeleton,
   Switch,
   Tooltip,
 } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
 import {
   useMutation,
   useQueries,
@@ -25,12 +22,14 @@ import { useState } from "react";
 import { Page, PageSection, SettingRow } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
 import { useToast } from "@/components/feedback/use-toast";
+import { StatePanel } from "@/components/workbench/state-panel";
 import { StatusTag, type StatusTone } from "@/components/workbench/status-tag";
 import { LoadError } from "@/features/ai-governance/view-feedback";
 import { objectApi } from "@/features/objects/object-api";
 import { toApiError } from "@/lib/api/api-error";
 
 import {
+  dialable,
   formatPhone,
   telephonyApi,
   type TelephonyBinding,
@@ -39,29 +38,34 @@ import {
 } from "./telephony-api";
 import styles from "./telephony.module.css";
 
-/** Where the company's line stands, in two or three words. */
-export function lineStatus(settings: TelephonySettings): {
-  label: string;
-  tone: StatusTone;
-} {
-  if (!settings.enabled) return { label: "未开启", tone: "neutral" };
-  if (settings.mode === "MOCK") return { label: "模拟线路", tone: "info" };
-  if (
-    !settings.companyId ||
-    !settings.hasAppSecret ||
-    !settings.hasCallbackToken
-  )
-    return { label: "配置未完成", tone: "warning" };
-  if (!settings.liveEnabled)
-    return { label: "等待服务器开通", tone: "warning" };
-  return { label: "快马回拨", tone: "success" };
+/** Where the company's calling stands, in two or three words. */
+export function serviceStatus(
+  settings: Pick<TelephonySettings, "plan" | "lineReady" | "usage">,
+): { label: string; tone: StatusTone } {
+  if (!settings.plan) return { label: "未开通", tone: "neutral" };
+  if (!settings.lineReady) return { label: "平台线路未就绪", tone: "warning" };
+  if (settings.usage.usedMinutes >= settings.usage.allowance)
+    return { label: "本月分钟已用完", tone: "danger" };
+  return { label: "已开通", tone: "success" };
+}
+
+/** A member's seat in a few words: whether the line made one and the phone it rings. */
+function seatText(binding: TelephonyBinding) {
+  if (binding.seatStatus === "FAILED")
+    return `建坐席失败：${binding.seatError ?? "快马没有说明原因"}`;
+  if (binding.seatStatus === "READY")
+    return `已建坐席 · ${formatPhone(binding.phone)}`;
+  return binding.phone
+    ? `未建坐席 · ${formatPhone(binding.phone)}`
+    : "未建坐席";
 }
 
 const PHONE_TYPES = new Set(["PHONE", "TEXT"]);
 
 /**
- * Company outbound calling: the line, which phone fields may be dialled, and
- * who has a seat. Every change saves on its own, like system settings.
+ * Company outbound calling: the plan the platform assigned and this month's
+ * use, which phone fields may be dialled, and who may call. The platform runs
+ * the line and creates the seats; nothing here shows money or the account.
  */
 export function TelephonySettingsPage({
   tenantCode,
@@ -72,19 +76,22 @@ export function TelephonySettingsPage({
 }) {
   const client = useQueryClient();
   const toast = useToast();
-  const { modal } = App.useApp();
   const key = ["telephony-settings", tenantCode, memberId];
+  const membersKey = ["telephony-members", tenantCode, memberId];
   const settings = useQuery({
     queryKey: key,
     queryFn: () => telephonyApi.settings(tenantCode),
   });
+  const open = Boolean(settings.data?.plan);
   const members = useQuery({
-    queryKey: ["telephony-members", tenantCode, memberId],
+    queryKey: membersKey,
     queryFn: () => telephonyApi.members(tenantCode),
+    enabled: open,
   });
   const objects = useQuery({
     queryKey: ["objects-accessible", tenantCode, memberId],
     queryFn: () => objectApi.listAccessible(tenantCode),
+    enabled: open,
   });
   const schemas = useQueries({
     queries: (objects.data ?? []).map((object) => ({
@@ -93,60 +100,45 @@ export function TelephonySettingsPage({
     })),
   });
   const [error, setError] = useState<string>();
-  const [account, setAccount] = useState<{
-    companyId: string;
-    appSecret: string;
-  }>();
-  const [callbackUrl, setCallbackUrl] = useState<string>();
-  const [editing, setEditing] = useState<TelephonyBinding & { open: true }>();
+  const [editing, setEditing] = useState<TelephonyBinding>();
 
   const fail = (cause: unknown) => {
     const apiError = toApiError(cause);
+    // A full seat list is a 409 too, but its message says what to do.
     setError(
-      apiError.status === 409
+      apiError.status === 409 && !apiError.fieldErrors.telephony
         ? "设置刚被其他管理员修改，已刷新为最新内容，请再试一次。"
         : apiError.message,
     );
-    if (apiError.status === 409) void settings.refetch();
+    void settings.refetch();
   };
   const save = useMutation({
-    mutationFn: (input: Omit<TelephonySettingsInput, "version">) =>
+    mutationFn: (phoneFields: TelephonySettingsInput["phoneFields"]) =>
       telephonyApi.updateSettings(tenantCode, {
-        ...input,
         version: settings.data?.version ?? 0,
+        phoneFields,
       }),
     onMutate: () => setError(undefined),
-    onSuccess: (result, input) => {
+    onSuccess: (result) => {
       client.setQueryData(key, result);
       void client.invalidateQueries({
         queryKey: ["telephony-runtime", tenantCode],
       });
-      if (input.companyId !== undefined) setAccount(undefined);
       toast.success("已保存");
-    },
-    onError: fail,
-  });
-  const rotate = useMutation({
-    mutationFn: () => telephonyApi.rotateCallbackToken(tenantCode),
-    onMutate: () => setError(undefined),
-    onSuccess: (result) => {
-      client.setQueryData(key, result.settings);
-      setCallbackUrl(result.callbackUrl);
     },
     onError: fail,
   });
   const saveMember = useMutation({
     mutationFn: (binding: TelephonyBinding) =>
       telephonyApi.updateMember(tenantCode, binding.memberId, {
-        enabled: binding.enabled,
-        seatId: binding.seatId.trim(),
-        phone: binding.phone.trim(),
         version: binding.version,
+        enabled: binding.enabled,
+        phone: binding.phone.trim(),
       }),
     onMutate: () => setError(undefined),
     onSuccess: (result) => {
       client.setQueryData(
-        ["telephony-members", tenantCode, memberId],
+        membersKey,
         (current: { members: TelephonyBinding[] } | undefined) =>
           current && {
             members: current.members.map((entry) =>
@@ -154,11 +146,17 @@ export function TelephonySettingsPage({
             ),
           },
       );
+      // The seat count lives on the settings.
+      void client.invalidateQueries({ queryKey: key });
+      void client.invalidateQueries({
+        queryKey: ["telephony-runtime", tenantCode],
+      });
       setEditing(undefined);
       toast.success("已保存");
     },
     onError: (cause) => {
       fail(cause);
+      // A refused seat is saved with the supplier's reason.
       void members.refetch();
     },
   });
@@ -182,8 +180,29 @@ export function TelephonySettingsPage({
       </Page>
     );
 
-  const status = lineStatus(state);
-  const kuaima = state.mode === "KUAIMA";
+  const status = serviceStatus(state);
+  const header = (
+    <PageHeader
+      title="电话外呼"
+      status={<StatusTag tone={status.tone}>{status.label}</StatusTag>}
+    />
+  );
+  if (!state.plan)
+    return (
+      <Page width="settings">
+        {header}
+        <StatePanel
+          title="电话外呼未开通"
+          description="需要平台管理员为公司开通通话套餐。开通后可以在这里给成员开外呼。"
+        />
+      </Page>
+    );
+
+  const plan = state.plan;
+  const usage = state.usage;
+  const percent = usage.allowance
+    ? Math.min(100, Math.round((usage.usedMinutes / usage.allowance) * 100))
+    : 100;
   const saved = new Map(
     state.phoneFields.map((entry) => [entry.objectCode, entry.fieldKeys]),
   );
@@ -217,14 +236,10 @@ export function TelephonySettingsPage({
       }))
       .filter((entry) => entry.fieldKeys.length);
   const bindings = members.data?.members ?? [];
-  const seated = bindings.filter((entry) => entry.enabled).length;
 
   return (
     <Page width="settings">
-      <PageHeader
-        title="电话外呼"
-        status={<StatusTag tone={status.tone}>{status.label}</StatusTag>}
-      />
+      {header}
       {error ? (
         <Alert
           className={styles.alert}
@@ -237,180 +252,37 @@ export function TelephonySettingsPage({
       ) : null}
       <div className={styles.grid}>
         <div className={styles.column}>
-          <PageSection title="线路">
+          <PageSection title="套餐和用量">
             <div className={styles.group}>
-              <SettingRow label="电话外呼">
-                <div className={styles.switchRow}>
-                  <Switch
-                    aria-label="开启电话外呼"
-                    checked={state.enabled}
-                    loading={
-                      save.isPending && save.variables?.enabled !== undefined
-                    }
-                    onChange={(enabled) => save.mutate({ enabled })}
-                  />
-                </div>
+              <SettingRow label="套餐">
+                <span className={styles.text}>{plan.name}</span>
               </SettingRow>
-              <SettingRow label="线路">
-                <div className={styles.value}>
-                  <Segmented
+              <SettingRow label="本月分钟">
+                <div className={styles.usage}>
+                  <span className={styles.text}>
+                    {`${usage.usedMinutes} / ${usage.allowance} 分钟`}
+                  </span>
+                  <Progress
+                    percent={percent}
                     size="small"
-                    aria-label="线路"
-                    value={state.mode}
-                    onChange={(mode) =>
-                      save.mutate({ mode: mode as "MOCK" | "KUAIMA" })
+                    showInfo={false}
+                    status={
+                      usage.usedMinutes >= usage.allowance
+                        ? "exception"
+                        : "normal"
                     }
-                    options={[
-                      {
-                        value: "MOCK",
-                        label: "模拟",
-                        disabled: !state.mockAllowed,
-                      },
-                      { value: "KUAIMA", label: "快马回拨" },
-                    ]}
                   />
                 </div>
               </SettingRow>
-              {kuaima ? (
-                <>
-                  <SettingRow label="企业账号">
-                    {account ? (
-                      <form
-                        className={styles.inlineForm}
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          save.mutate({
-                            companyId: account.companyId,
-                            appSecret: account.appSecret || undefined,
-                          });
-                        }}
-                      >
-                        <Form layout="vertical" component={false}>
-                          <Form.Item label="企业 ID" htmlFor="kuaima-company">
-                            <Input
-                              id="kuaima-company"
-                              autoFocus
-                              autoComplete="off"
-                              value={account.companyId}
-                              onChange={(event) =>
-                                setAccount({
-                                  ...account,
-                                  companyId: event.target.value,
-                                })
-                              }
-                            />
-                          </Form.Item>
-                          <Form.Item label="企业密钥" htmlFor="kuaima-secret">
-                            <Input.Password
-                              id="kuaima-secret"
-                              autoComplete="new-password"
-                              placeholder={
-                                state.hasAppSecret ? "不修改请留空" : undefined
-                              }
-                              value={account.appSecret}
-                              onChange={(event) =>
-                                setAccount({
-                                  ...account,
-                                  appSecret: event.target.value,
-                                })
-                              }
-                            />
-                          </Form.Item>
-                        </Form>
-                        <div className={styles.inlineActions}>
-                          <Button
-                            disabled={save.isPending}
-                            onClick={() => setAccount(undefined)}
-                          >
-                            取消
-                          </Button>
-                          <Button
-                            type="primary"
-                            htmlType="submit"
-                            loading={save.isPending}
-                            disabled={
-                              !account.companyId.trim() ||
-                              (!state.hasAppSecret && !account.appSecret.trim())
-                            }
-                          >
-                            保存
-                          </Button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div className={styles.value}>
-                        <span className={styles.text}>
-                          {state.companyId ? (
-                            <>
-                              {state.companyId}
-                              <span className={styles.muted}>
-                                {state.hasAppSecret
-                                  ? " · 密钥已保存"
-                                  : " · 缺少密钥"}
-                              </span>
-                            </>
-                          ) : (
-                            <span className={styles.muted}>未填写</span>
-                          )}
-                        </span>
-                        <Button
-                          size="small"
-                          onClick={() =>
-                            setAccount({
-                              companyId: state.companyId,
-                              appSecret: "",
-                            })
-                          }
-                        >
-                          {state.companyId ? "修改" : "填写"}
-                        </Button>
-                      </div>
-                    )}
-                  </SettingRow>
-                  <SettingRow label="回调地址">
-                    <div className={styles.value}>
-                      <span
-                        className={
-                          state.hasCallbackToken ? styles.text : styles.muted
-                        }
-                      >
-                        {state.hasCallbackToken ? "已生成" : "未生成"}
-                      </span>
-                      <Button
-                        size="small"
-                        loading={rotate.isPending}
-                        onClick={() =>
-                          state.hasCallbackToken
-                            ? void modal.confirm({
-                                title: "重新生成回调地址？",
-                                content:
-                                  "旧地址立即失效，需把新地址发给快马客服重新配置。",
-                                okText: "重新生成",
-                                cancelText: "取消",
-                                onOk: () => rotate.mutateAsync(),
-                              })
-                            : rotate.mutate()
-                        }
-                      >
-                        {state.hasCallbackToken ? "重新生成" : "生成"}
-                      </Button>
-                    </div>
-                  </SettingRow>
-                  <SettingRow label="真实外呼">
-                    <div className={styles.value}>
-                      <span className={styles.text}>
-                        {state.liveEnabled ? "服务器已开通" : "服务器未开通"}
-                        <Tooltip title="由部署配置 TELEPHONY_LIVE_ENABLED 控制，未开通时不会拨出真实电话。">
-                          <InfoCircleOutlined className={styles.hint} />
-                        </Tooltip>
-                      </span>
-                    </div>
-                  </SettingRow>
-                </>
-              ) : (
-                <SettingRow label="说明">
+              <SettingRow label="坐席">
+                <span className={styles.text}>
+                  {`已开 ${usage.seatsEnabled} / ${plan.seats}`}
+                </span>
+              </SettingRow>
+              {state.lineReady ? null : (
+                <SettingRow label="线路">
                   <span className={styles.muted}>
-                    模拟线路不拨真实电话，直接记为已接通 30 秒。
+                    员工暂时不能拨号，请联系平台管理员。
                   </span>
                 </SettingRow>
               )}
@@ -444,12 +316,7 @@ export function TelephonySettingsPage({
                           value={current}
                           disabled={save.isPending}
                           onChange={(fieldKeys: string[]) =>
-                            save.mutate({
-                              phoneFields: phoneFieldsWith(
-                                object.code,
-                                fieldKeys,
-                              ),
-                            })
+                            save.mutate(phoneFieldsWith(object.code, fieldKeys))
                           }
                           options={object.fields.map((field) => ({
                             value: field.fieldKey,
@@ -479,11 +346,9 @@ export function TelephonySettingsPage({
         <PageSection
           title="成员坐席"
           extra={
-            members.data ? (
-              <span className={styles.count}>
-                已开启 {seated} / {bindings.length}
-              </span>
-            ) : null
+            <span className={styles.count}>
+              {`已开 ${usage.seatsEnabled} / ${plan.seats}`}
+            </span>
           }
         >
           <div className={styles.group}>
@@ -501,7 +366,7 @@ export function TelephonySettingsPage({
                     <button
                       type="button"
                       className={styles.memberMain}
-                      onClick={() => setEditing({ ...binding, open: true })}
+                      onClick={() => setEditing(binding)}
                     >
                       <span className={styles.memberName}>
                         {binding.displayName}
@@ -509,10 +374,14 @@ export function TelephonySettingsPage({
                           <StatusTag>已停用</StatusTag>
                         ) : null}
                       </span>
-                      <span className={styles.muted}>
-                        {binding.seatId && binding.phone
-                          ? `坐席 ${binding.seatId} · ${formatPhone(binding.phone)}`
-                          : "未设置坐席"}
+                      <span
+                        className={
+                          binding.seatStatus === "FAILED"
+                            ? styles.failed
+                            : styles.muted
+                        }
+                      >
+                        {seatText(binding)}
                       </span>
                     </button>
                     <Switch
@@ -524,8 +393,8 @@ export function TelephonySettingsPage({
                         saveMember.variables?.memberId === binding.memberId
                       }
                       onChange={(enabled) =>
-                        enabled && !(binding.seatId && binding.phone)
-                          ? setEditing({ ...binding, enabled, open: true })
+                        enabled && !dialable(binding.phone)
+                          ? setEditing({ ...binding, enabled })
                           : saveMember.mutate({ ...binding, enabled })
                       }
                     />
@@ -538,7 +407,7 @@ export function TelephonySettingsPage({
       </div>
 
       <Modal
-        title={editing ? `${editing.displayName}的坐席` : undefined}
+        title={editing ? `${editing.displayName}的外呼` : undefined}
         open={Boolean(editing)}
         width={400}
         okText="保存"
@@ -546,8 +415,7 @@ export function TelephonySettingsPage({
         confirmLoading={saveMember.isPending}
         okButtonProps={{
           disabled: Boolean(
-            editing?.enabled &&
-            !(editing.seatId.trim() && editing.phone.trim()),
+            editing?.enabled && !dialable(editing.phone.trim()),
           ),
         }}
         onOk={() => editing && saveMember.mutate(editing)}
@@ -557,27 +425,13 @@ export function TelephonySettingsPage({
         {editing ? (
           <Form layout="vertical" className={styles.modalForm}>
             <Form.Item
-              label="坐席号"
-              htmlFor="seat-id"
-              help="快马后台「坐席管理」里的坐席 ID"
-            >
-              <Input
-                id="seat-id"
-                autoFocus
-                autoComplete="off"
-                value={editing.seatId}
-                onChange={(event) =>
-                  setEditing({ ...editing, seatId: event.target.value })
-                }
-              />
-            </Form.Item>
-            <Form.Item
               label="接听手机"
               htmlFor="seat-phone"
-              help="拨号时线路先回拨这个手机"
+              help="拨号时线路先回拨这个手机。保存时自动在线路上建坐席。"
             >
               <Input
                 id="seat-phone"
+                autoFocus
                 inputMode="numeric"
                 autoComplete="off"
                 maxLength={11}
@@ -598,43 +452,6 @@ export function TelephonySettingsPage({
             </div>
           </Form>
         ) : null}
-      </Modal>
-
-      <Modal
-        title="回调地址"
-        open={Boolean(callbackUrl)}
-        width={480}
-        footer={
-          <Button type="primary" onClick={() => setCallbackUrl(undefined)}>
-            我已复制
-          </Button>
-        }
-        onCancel={() => setCallbackUrl(undefined)}
-        maskClosable={false}
-      >
-        <p className={styles.modalNote}>
-          只显示这一次。复制后发给快马客服，配置为话单推送地址。
-        </p>
-        <Input.TextArea
-          aria-label="回调地址"
-          readOnly
-          autoSize
-          value={callbackUrl}
-          onFocus={(event) => event.target.select()}
-          className={styles.url}
-        />
-        <Button
-          className={styles.copy}
-          size="small"
-          onClick={() =>
-            callbackUrl &&
-            void navigator.clipboard
-              .writeText(callbackUrl)
-              .then(() => toast.success("已复制"))
-          }
-        >
-          复制
-        </Button>
       </Modal>
     </Page>
   );

@@ -189,7 +189,7 @@ export function RecordDetailPage({
         page: 1,
         limit: 20,
       }),
-    enabled: Boolean(telephony?.enabled),
+    enabled: Boolean(telephony?.enabled || telephony?.hasHistory),
   });
   const [callTarget, setCallTarget] = useState<CallTarget | null>(null);
   const callableFields = new Set(

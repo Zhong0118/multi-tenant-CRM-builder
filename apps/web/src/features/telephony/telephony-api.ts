@@ -37,12 +37,6 @@ export const telephonyApi = {
         body,
       }),
     ),
-  rotateCallbackToken: async (tenantCode: string) =>
-    dataOrThrow(
-      await browserApiClient.POST(`${BASE}/settings/callback-token`, {
-        params: { path: { tenantCode } },
-      }),
-    ),
   members: async (tenantCode: string) =>
     dataOrThrow(
       await browserApiClient.GET(`${BASE}/members`, {
@@ -131,12 +125,10 @@ export const CALL_STATUS: Record<
 
 /** Why the current member cannot dial, in one short line. */
 export const UNAVAILABLE_REASON: Record<string, string> = {
-  DISABLED: "公司未开启电话外呼",
+  NOT_ENABLED: "公司未开通电话外呼",
+  PLATFORM_NOT_READY: "通话线路暂不可用，请联系管理员",
+  MINUTES_EXHAUSTED: "本月通话分钟已用完，请联系管理员",
   MEMBER_NOT_CONFIGURED: "你还没有外呼坐席，请联系管理员",
-  MOCK_FORBIDDEN: "正式环境不能用模拟线路",
-  LIVE_DISABLED: "真实线路尚未开通",
-  PROVIDER_NOT_CONFIGURED: "线路配置不完整，请联系管理员",
-  ENCRYPTION_UNAVAILABLE: "线路密钥不可用，请联系管理员",
 };
 
 /** A value the line can dial: a mainland mobile, optionally with +86. */

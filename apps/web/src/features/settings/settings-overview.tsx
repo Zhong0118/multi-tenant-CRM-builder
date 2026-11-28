@@ -37,7 +37,7 @@ const PAGES: Record<
     effect: "publish",
   },
   phone: {
-    description: "接入快马回拨线路，指定可拨打的号码字段，为成员分配坐席。",
+    description: "查看通话套餐和本月用量，指定可拨打的号码，为成员开外呼。",
     effect: "immediate",
   },
   audit: { description: "成员、业务表和记录的每一次变更。" },

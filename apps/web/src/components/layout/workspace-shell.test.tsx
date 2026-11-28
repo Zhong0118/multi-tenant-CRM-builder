@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   workspaceNavigation,
   workspaceNavigationGroups,
+  workspaceSettingsNavigation,
 } from "@/components/navigation/workspace-navigation";
 
 import { WorkspaceShell } from "./workspace-shell";
@@ -65,7 +66,6 @@ describe("workspaceNavigation", () => {
       "/workspace/northwind/settings/objects",
       "/workspace/northwind/settings/relationships",
       "/workspace/northwind/settings/dashboards/home",
-      "/workspace/northwind/settings/telephony",
       "/workspace/northwind/audit",
     ]);
     expect(items.some((item) => item.href.includes("/objects/"))).toBe(false);
@@ -80,6 +80,21 @@ describe("workspaceNavigation", () => {
       expect(hrefs(false)).not.toContain("/workspace/northwind/calls");
       expect(hrefs(true)).toContain("/workspace/northwind/calls");
     }
+  });
+
+  it("lists 电话外呼 in settings only once the platform has opened calling", () => {
+    const hrefs = (telephony: boolean) =>
+      workspaceSettingsNavigation("northwind", { telephony }).flatMap((group) =>
+        group.items.map((item) => item.href),
+      );
+    expect(hrefs(false)).not.toContain(
+      "/workspace/northwind/settings/telephony",
+    );
+    expect(hrefs(true)).toContain("/workspace/northwind/settings/telephony");
+    // An empty group is not shown at all.
+    expect(
+      workspaceSettingsNavigation("northwind").map((group) => group.label),
+    ).not.toContain("集成");
   });
 
   it("keeps employees on their home and authorized business objects", () => {

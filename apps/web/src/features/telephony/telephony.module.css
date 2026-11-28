@@ -58,13 +58,6 @@
   min-height: 32px;
 }
 
-.switchRow {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-height: 32px;
-}
-
 .text {
   color: var(--text-primary);
   font-size: 14px;
@@ -76,16 +69,24 @@
   font-size: 13px;
 }
 
-.hint {
-  margin-left: 6px;
-  color: var(--text-tertiary);
-  font-size: 12px;
-}
-
 .count {
   color: var(--text-secondary);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+
+/* This month's minutes: the figure over a thin bar. */
+.usage {
+  display: grid;
+  gap: 2px;
+  min-height: 32px;
+  align-content: center;
+}
+
+/* The supplier refused the seat; its reason in the danger colour. */
+.failed {
+  color: var(--color-danger);
+  font-size: 13px;
 }
 
 .empty {
@@ -93,26 +94,6 @@
   padding: 14px 0;
   color: var(--text-secondary);
   font-size: 13px;
-}
-
-.inlineForm {
-  display: grid;
-  gap: 8px;
-  max-width: 360px;
-}
-
-.inlineForm :global(.ant-form-item) {
-  margin: 0;
-}
-
-.inlineForm :global(.ant-form-item-label) {
-  padding-bottom: 2px;
-}
-
-.inlineActions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
 }
 
 .fieldSelect {
@@ -194,22 +175,6 @@
   padding-top: 4px;
 }
 
-.modalNote {
-  margin: 0 0 8px;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.url {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.copy {
-  margin-top: 8px;
-}
-
 @media (max-width: 767px) {
   .group > div {
     grid-template-columns: 80px minmax(0, 1fr);
@@ -217,16 +182,8 @@
     align-items: center;
   }
 
-  .group > div:has(.inlineForm) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .group > div > div:first-child {
     padding-top: 0;
-  }
-
-  .inlineForm {
-    max-width: none;
   }
 
   .value {

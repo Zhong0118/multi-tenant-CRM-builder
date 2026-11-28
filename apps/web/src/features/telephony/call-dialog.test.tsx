@@ -10,11 +10,13 @@ import {
   telephonyApi,
   type TelephonyCall,
   type TelephonyRuntime,
+  UNAVAILABLE_REASON,
 } from "./telephony-api";
-import { lineStatus } from "./telephony-settings";
+import { serviceStatus } from "./telephony-settings";
 
 const runtime: TelephonyRuntime = {
   enabled: true,
+  hasHistory: false,
   available: true,
   reason: null,
   mode: "KUAIMA",
@@ -153,6 +155,13 @@ describe("call dialog", () => {
     expect(screen.queryByRole("button", { name: /呼\s?叫/ })).toBeNull();
     expect(create).not.toHaveBeenCalled();
   });
+
+  it("says the month's minutes are used up", async () => {
+    show({ available: false, reason: "MINUTES_EXHAUSTED" });
+    expect(
+      await screen.findByText("本月通话分钟已用完，请联系管理员"),
+    ).toBeTruthy();
+  });
 });
 
 describe("telephony formatting", () => {
@@ -176,27 +185,34 @@ describe("telephony formatting", () => {
       expect(dialable(value)).toBe(false);
   });
 
-  it("names where the company line stands", () => {
+  it("names where the company's calling stands", () => {
     const base = {
-      enabled: true,
-      mode: "KUAIMA" as const,
-      companyId: "c",
-      hasAppSecret: true,
-      hasCallbackToken: true,
-      liveEnabled: true,
-      mockAllowed: false,
-      callbackEndpoint: "",
-      phoneFields: [],
-      version: 1,
+      plan: { name: "标准版", seats: 3, monthlyMinutes: 100 },
+      lineReady: true,
+      usage: {
+        month: "2026-11-01",
+        usedMinutes: 20,
+        extraMinutes: 0,
+        allowance: 100,
+        seatsEnabled: 1,
+      },
     };
-    expect(lineStatus({ ...base, enabled: false }).label).toBe("未开启");
-    expect(lineStatus({ ...base, mode: "MOCK" }).label).toBe("模拟线路");
-    expect(lineStatus({ ...base, hasAppSecret: false }).label).toBe(
-      "配置未完成",
+    expect(serviceStatus({ ...base, plan: null }).label).toBe("未开通");
+    expect(serviceStatus({ ...base, lineReady: false }).label).toBe(
+      "平台线路未就绪",
     );
-    expect(lineStatus({ ...base, liveEnabled: false }).label).toBe(
-      "等待服务器开通",
-    );
-    expect(lineStatus(base)).toEqual({ label: "快马回拨", tone: "success" });
+    expect(
+      serviceStatus({ ...base, usage: { ...base.usage, usedMinutes: 100 } }),
+    ).toEqual({ label: "本月分钟已用完", tone: "danger" });
+    expect(serviceStatus(base)).toEqual({ label: "已开通", tone: "success" });
+  });
+
+  it("names each reason calling is off in words an employee can act on", () => {
+    expect(UNAVAILABLE_REASON).toEqual({
+      NOT_ENABLED: "公司未开通电话外呼",
+      PLATFORM_NOT_READY: "通话线路暂不可用，请联系管理员",
+      MINUTES_EXHAUSTED: "本月通话分钟已用完，请联系管理员",
+      MEMBER_NOT_CONFIGURED: "你还没有外呼坐席，请联系管理员",
+    });
   });
 });

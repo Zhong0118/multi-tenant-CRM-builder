@@ -24,8 +24,10 @@ export interface WorkspaceShellProps {
   role: "TENANT_ADMIN" | "EMPLOYEE";
   user: ShellUser;
   businessObjects: RuntimeObjectNavigation[];
-  /** The company has outbound calling on, so the call log has a place. */
+  /** The company can call, or has past calls to look back on. */
   calls?: boolean;
+  /** The platform has given the company a plan, so 电话外呼 shows in settings. */
+  telephony?: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export function WorkspaceShell({
   user,
   businessObjects,
   calls = false,
+  telephony = false,
 }: WorkspaceShellProps) {
   const pathname = usePathname() ?? "";
   const root = `/workspace/${tenantCode}`;
@@ -97,7 +100,7 @@ export function WorkspaceShell({
         subtle: true,
       }],
     },
-    ...workspaceSettingsNavigation(tenantCode).map((group, index) => ({
+    ...workspaceSettingsNavigation(tenantCode, { telephony }).map((group, index) => ({
       ariaLabel: group.label,
       // The overview needs no heading of its own above it.
       hideLabel: index === 0,

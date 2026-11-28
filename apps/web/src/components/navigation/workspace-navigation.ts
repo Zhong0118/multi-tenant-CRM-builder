@@ -51,12 +51,16 @@ export function workspaceNavigationGroups(
   };
 }
 
-/** The administration pages, grouped the way the settings sidebar shows them. */
+/**
+ * The administration pages, grouped the way the settings sidebar shows them.
+ * 电话外呼 appears only once the platform has given the company a plan.
+ */
 export function workspaceSettingsNavigation(
   tenantCode: string,
+  { telephony = false }: { telephony?: boolean } = {},
 ): WorkspaceNavigationGroup[] {
   const root = `/workspace/${tenantCode}`;
-  return [
+  const groups: WorkspaceNavigationGroup[] = [
     {
       label: "设置",
       items: [{ href: `${root}/settings`, label: "概览", icon: "overview" }],
@@ -89,19 +93,22 @@ export function workspaceSettingsNavigation(
     },
     {
       label: "集成",
-      items: [
-        {
-          href: `${root}/settings/telephony`,
-          label: "电话外呼",
-          icon: "phone",
-        },
-      ],
+      items: telephony
+        ? [
+            {
+              href: `${root}/settings/telephony`,
+              label: "电话外呼",
+              icon: "phone",
+            },
+          ]
+        : [],
     },
     {
       label: "安全",
       items: [{ href: `${root}/audit`, label: "公司审计", icon: "audit" }],
     },
   ];
+  return groups.filter((group) => group.items.length);
 }
 
 /** Whether a path belongs to the administration area rather than daily work. */

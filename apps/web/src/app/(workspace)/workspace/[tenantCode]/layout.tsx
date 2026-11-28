@@ -30,8 +30,12 @@ export default async function WorkspaceLayout({
           params: { path: { tenantCode: workspace.tenantCode } },
         }),
       )
-      .then((result) => result.data?.enabled ?? false)
-      .catch(() => false),
+      .then((result) => ({
+        // The call log stays reachable after calling is turned off.
+        calls: Boolean(result.data?.enabled || result.data?.hasHistory),
+        telephony: Boolean(result.data?.enabled),
+      }))
+      .catch(() => ({ calls: false, telephony: false })),
   ]);
 
   return (
@@ -47,7 +51,8 @@ export default async function WorkspaceLayout({
         isPlatformAdmin: user.isPlatformAdmin,
       }}
       businessObjects={businessObjects}
-      calls={telephony}
+      calls={telephony.calls}
+      telephony={telephony.telephony}
     >
       {children}
     </WorkspaceShell>

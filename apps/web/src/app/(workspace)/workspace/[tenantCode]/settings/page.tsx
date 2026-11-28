@@ -61,9 +61,9 @@ export default async function WorkspaceSettingsPage({
         .filter(Boolean)
         .join(" · ")
     : null;
-  const groups = workspaceSettingsNavigation(tenantCode).filter(
-    (group) => !group.items.every((item) => item.icon === "overview"),
-  );
+  const groups = workspaceSettingsNavigation(tenantCode, {
+    telephony: Boolean(telephony.data?.plan),
+  }).filter((group) => !group.items.every((item) => item.icon === "overview"));
 
   return (
     <Page width="settings">
@@ -83,12 +83,8 @@ export default async function WorkspaceSettingsPage({
                 (ai.data.allocation === "equal" ? "按人均分" : "全员共用")
               : null,
             members: memberValue,
-            phone: telephony.data
-              ? telephony.data.enabled
-                ? telephony.data.mode === "MOCK"
-                  ? "已开启 · 模拟线路"
-                  : "已开启 · 快马回拨"
-                : "未开启"
+            phone: telephony.data?.plan
+              ? `${telephony.data.plan.name} · 本月 ${telephony.data.usage.usedMinutes} / ${telephony.data.usage.allowance} 分钟`
               : null,
             object: objects.data
               ? `${active} 张使用中${pending ? ` · ${pending} 张待发布` : ""}`
