@@ -120,6 +120,41 @@
         ],
         "type": "object"
       },
+      "AddTelephonyMinutesDto": {
+        "properties": {
+          "idempotencyKey": {
+            "type": "string"
+          },
+          "minutes": {
+            "type": "number"
+          },
+          "month": {
+            "example": "2026-11-01",
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "price": {
+            "example": "30.00",
+            "type": "string"
+          }
+        },
+        "required": ["month", "minutes", "price", "idempotencyKey"],
+        "type": "object"
+      },
+      "AddTelephonyMinutesResponseDto": {
+        "properties": {
+          "applied": {
+            "type": "boolean"
+          },
+          "month": {
+            "type": "string"
+          }
+        },
+        "required": ["applied", "month"],
+        "type": "object"
+      },
       "AiConversationPageDto": {
         "properties": {
           "items": {
@@ -550,6 +585,20 @@
             "type": "number"
           }
         },
+        "type": "object"
+      },
+      "AssignTelephonyPlanDto": {
+        "properties": {
+          "planId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["version", "planId"],
         "type": "object"
       },
       "AttachmentDto": {
@@ -4902,7 +4951,9 @@
               "PROTECTION_REVIEW",
               "WORK_GOAL_BEHIND",
               "AI_QUOTA_80",
-              "AI_QUOTA_100"
+              "AI_QUOTA_100",
+              "TELEPHONY_MINUTES_80",
+              "TELEPHONY_MINUTES_100"
             ],
             "type": "string"
           },
@@ -5768,6 +5819,83 @@
         "required": ["items", "page", "limit", "total"],
         "type": "object"
       },
+      "PlatformTelephonyResponseDto": {
+        "properties": {
+          "callbackEndpoint": {
+            "type": "string"
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "costPerMinute": {
+            "example": "0.1500",
+            "type": "string"
+          },
+          "hasAppSecret": {
+            "type": "boolean"
+          },
+          "hasCallbackToken": {
+            "type": "boolean"
+          },
+          "liveEnabled": {
+            "type": "boolean"
+          },
+          "mockAllowed": {
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": ["MOCK", "KUAIMA"],
+            "type": "string"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "seatMonthlyCost": {
+            "example": "10.00",
+            "type": "string"
+          },
+          "seats": {
+            "type": "number"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "version",
+          "mode",
+          "companyId",
+          "hasAppSecret",
+          "hasCallbackToken",
+          "callbackEndpoint",
+          "liveEnabled",
+          "mockAllowed",
+          "costPerMinute",
+          "seatMonthlyCost",
+          "ready",
+          "problems",
+          "seats"
+        ],
+        "type": "object"
+      },
+      "PlatformTelephonyTokenResponseDto": {
+        "properties": {
+          "callbackUrl": {
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/PlatformTelephonyResponseDto"
+          }
+        },
+        "required": ["settings", "callbackUrl"],
+        "type": "object"
+      },
       "PlatformTenantPageResponseDto": {
         "properties": {
           "items": {
@@ -5876,6 +6004,66 @@
           }
         },
         "required": ["total", "draft", "active", "suspended", "closed"],
+        "type": "object"
+      },
+      "PlatformTenantTelephonyResponseDto": {
+        "properties": {
+          "additions": {
+            "items": {
+              "$ref": "#/components/schemas/TelephonyMinuteAdditionDto"
+            },
+            "type": "array"
+          },
+          "allowance": {
+            "type": "number"
+          },
+          "extraMinutes": {
+            "type": "number"
+          },
+          "month": {
+            "type": "string"
+          },
+          "monthlyMinutes": {
+            "type": "number"
+          },
+          "planId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "planName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "seats": {
+            "type": "number"
+          },
+          "seatsEnabled": {
+            "type": "number"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "usedMinutes": {
+            "type": "number"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "tenantId",
+          "version",
+          "planId",
+          "planName",
+          "seats",
+          "monthlyMinutes",
+          "month",
+          "usedMinutes",
+          "extraMinutes",
+          "allowance",
+          "seatsEnabled",
+          "additions"
+        ],
         "type": "object"
       },
       "PoolLabelsDto": {
@@ -8324,7 +8512,12 @@
           "phone": {
             "type": "string"
           },
-          "seatId": {
+          "seatError": {
+            "nullable": true,
+            "type": "string"
+          },
+          "seatStatus": {
+            "enum": ["NONE", "READY", "FAILED"],
             "type": "string"
           },
           "status": {
@@ -8340,8 +8533,9 @@
           "status",
           "version",
           "enabled",
-          "seatId",
-          "phone"
+          "phone",
+          "seatStatus",
+          "seatError"
         ],
         "type": "object"
       },
@@ -8493,18 +8687,6 @@
         ],
         "type": "object"
       },
-      "TelephonyCallbackTokenResponseDto": {
-        "properties": {
-          "callbackUrl": {
-            "type": "string"
-          },
-          "settings": {
-            "$ref": "#/components/schemas/TelephonySettingsResponseDto"
-          }
-        },
-        "required": ["settings", "callbackUrl"],
-        "type": "object"
-      },
       "TelephonyHookDto": {
         "properties": {
           "audio_url": {
@@ -8578,6 +8760,27 @@
         "required": ["code"],
         "type": "object"
       },
+      "TelephonyMinuteAdditionDto": {
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "minutes": {
+            "type": "number"
+          },
+          "month": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "price": {
+            "type": "string"
+          }
+        },
+        "required": ["month", "minutes", "price", "note", "createdAt"],
+        "type": "object"
+      },
       "TelephonyPhoneFieldsDto": {
         "properties": {
           "fieldKeys": {
@@ -8591,6 +8794,196 @@
           }
         },
         "required": ["objectCode", "fieldKeys"],
+        "type": "object"
+      },
+      "TelephonyPlanInputDto": {
+        "properties": {
+          "assignable": {
+            "type": "boolean"
+          },
+          "monthlyMinutes": {
+            "type": "number"
+          },
+          "monthlyPrice": {
+            "example": "120.00",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "seats": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "seats",
+          "monthlyMinutes",
+          "monthlyPrice",
+          "assignable"
+        ],
+        "type": "object"
+      },
+      "TelephonyPlanResponseDto": {
+        "properties": {
+          "assignable": {
+            "type": "boolean"
+          },
+          "companies": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "monthlyMinutes": {
+            "type": "number"
+          },
+          "monthlyPrice": {
+            "example": "120.00",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "seats": {
+            "type": "number"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "seats",
+          "monthlyMinutes",
+          "monthlyPrice",
+          "assignable",
+          "version",
+          "companies"
+        ],
+        "type": "object"
+      },
+      "TelephonyPlanSummaryDto": {
+        "properties": {
+          "monthlyMinutes": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "seats": {
+            "type": "number"
+          }
+        },
+        "required": ["name", "seats", "monthlyMinutes"],
+        "type": "object"
+      },
+      "TelephonyReportResponseDto": {
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/TelephonyReportRowDto"
+            },
+            "type": "array"
+          },
+          "seatMonthlyCost": {
+            "type": "string"
+          },
+          "total": {
+            "$ref": "#/components/schemas/TelephonyReportTotalDto"
+          }
+        },
+        "required": ["month", "seatMonthlyCost", "rows", "total"],
+        "type": "object"
+      },
+      "TelephonyReportRowDto": {
+        "properties": {
+          "allowance": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "string"
+          },
+          "extraMinutes": {
+            "type": "number"
+          },
+          "extraPrice": {
+            "type": "string"
+          },
+          "margin": {
+            "type": "string"
+          },
+          "minuteCost": {
+            "type": "string"
+          },
+          "monthlyMinutes": {
+            "type": "number"
+          },
+          "planName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "planPrice": {
+            "type": "string"
+          },
+          "revenue": {
+            "type": "string"
+          },
+          "seatCost": {
+            "type": "string"
+          },
+          "seatsProvisioned": {
+            "type": "number"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "usedMinutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "tenantId",
+          "tenantName",
+          "planName",
+          "monthlyMinutes",
+          "usedMinutes",
+          "extraMinutes",
+          "allowance",
+          "planPrice",
+          "extraPrice",
+          "revenue",
+          "minuteCost",
+          "seatCost",
+          "cost",
+          "margin",
+          "seatsProvisioned"
+        ],
+        "type": "object"
+      },
+      "TelephonyReportTotalDto": {
+        "properties": {
+          "cost": {
+            "type": "string"
+          },
+          "margin": {
+            "type": "string"
+          },
+          "revenue": {
+            "type": "string"
+          },
+          "usedMinutes": {
+            "type": "number"
+          }
+        },
+        "required": ["usedMinutes", "revenue", "cost", "margin"],
         "type": "object"
       },
       "TelephonyRuntimeFieldDto": {
@@ -8623,6 +9016,9 @@
             },
             "type": "array"
           },
+          "hasHistory": {
+            "type": "boolean"
+          },
           "liveEnabled": {
             "type": "boolean"
           },
@@ -8635,12 +9031,19 @@
             "type": "string"
           },
           "reason": {
+            "enum": [
+              "NOT_ENABLED",
+              "PLATFORM_NOT_READY",
+              "MINUTES_EXHAUSTED",
+              "MEMBER_NOT_CONFIGURED"
+            ],
             "nullable": true,
             "type": "string"
           }
         },
         "required": [
           "enabled",
+          "hasHistory",
           "mode",
           "available",
           "reason",
@@ -8653,30 +9056,8 @@
       },
       "TelephonySettingsResponseDto": {
         "properties": {
-          "callbackEndpoint": {
-            "type": "string"
-          },
-          "companyId": {
-            "type": "string"
-          },
-          "enabled": {
+          "lineReady": {
             "type": "boolean"
-          },
-          "hasAppSecret": {
-            "type": "boolean"
-          },
-          "hasCallbackToken": {
-            "type": "boolean"
-          },
-          "liveEnabled": {
-            "type": "boolean"
-          },
-          "mockAllowed": {
-            "type": "boolean"
-          },
-          "mode": {
-            "enum": ["MOCK", "KUAIMA"],
-            "type": "string"
           },
           "phoneFields": {
             "items": {
@@ -8684,21 +9065,49 @@
             },
             "type": "array"
           },
+          "plan": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TelephonyPlanSummaryDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/TelephonyUsageDto"
+          },
           "version": {
             "type": "number"
           }
         },
+        "required": ["version", "phoneFields", "plan", "usage", "lineReady"],
+        "type": "object"
+      },
+      "TelephonyUsageDto": {
+        "properties": {
+          "allowance": {
+            "type": "number"
+          },
+          "extraMinutes": {
+            "type": "number"
+          },
+          "month": {
+            "type": "string"
+          },
+          "seatsEnabled": {
+            "type": "number"
+          },
+          "usedMinutes": {
+            "type": "number"
+          }
+        },
         "required": [
-          "version",
-          "enabled",
-          "mode",
-          "companyId",
-          "hasAppSecret",
-          "hasCallbackToken",
-          "callbackEndpoint",
-          "liveEnabled",
-          "mockAllowed",
-          "phoneFields"
+          "month",
+          "usedMinutes",
+          "extraMinutes",
+          "allowance",
+          "seatsEnabled"
         ],
         "type": "object"
       },
@@ -10127,6 +10536,34 @@
         "required": ["expectedVersion"],
         "type": "object"
       },
+      "UpdatePlatformTelephonyDto": {
+        "properties": {
+          "appSecret": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "costPerMinute": {
+            "example": "0.1500",
+            "type": "string"
+          },
+          "mode": {
+            "enum": ["MOCK", "KUAIMA"],
+            "type": "string"
+          },
+          "seatMonthlyCost": {
+            "example": "10.00",
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["version"],
+        "type": "object"
+      },
       "UpdateRecordDto": {
         "properties": {
           "ownerMemberId": {
@@ -10243,32 +10680,47 @@
           "phone": {
             "type": "string"
           },
-          "seatId": {
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["version", "enabled", "phone"],
+        "type": "object"
+      },
+      "UpdateTelephonyPlanDto": {
+        "properties": {
+          "assignable": {
+            "type": "boolean"
+          },
+          "monthlyMinutes": {
+            "type": "number"
+          },
+          "monthlyPrice": {
+            "example": "120.00",
             "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "seats": {
+            "type": "number"
           },
           "version": {
             "type": "number"
           }
         },
-        "required": ["version", "enabled", "seatId", "phone"],
+        "required": [
+          "name",
+          "seats",
+          "monthlyMinutes",
+          "monthlyPrice",
+          "assignable",
+          "version"
+        ],
         "type": "object"
       },
       "UpdateTelephonySettingsDto": {
         "properties": {
-          "appSecret": {
-            "type": "string",
-            "writeOnly": true
-          },
-          "companyId": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "mode": {
-            "enum": ["MOCK", "KUAIMA"],
-            "type": "string"
-          },
           "phoneFields": {
             "items": {
               "$ref": "#/components/schemas/TelephonyPhoneFieldsDto"
@@ -10279,7 +10731,7 @@
             "type": "number"
           }
         },
-        "required": ["version"],
+        "required": ["version", "phoneFields"],
         "type": "object"
       },
       "UpdateWorkTaskDto": {
@@ -15069,6 +15521,256 @@
         "tags": ["platform-operations"]
       }
     },
+    "/api/v1/platform/telephony-plans": {
+      "get": {
+        "operationId": "TelephonyPlatformController_plans",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TelephonyPlanResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      },
+      "post": {
+        "operationId": "TelephonyPlatformController_createPlan",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelephonyPlanInputDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyPlanResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      }
+    },
+    "/api/v1/platform/telephony-plans/{id}": {
+      "delete": {
+        "operationId": "TelephonyPlatformController_deletePlan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      },
+      "patch": {
+        "operationId": "TelephonyPlatformController_updatePlan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTelephonyPlanDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyPlanResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      }
+    },
+    "/api/v1/platform/telephony-report": {
+      "get": {
+        "operationId": "TelephonyPlatformController_report",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "example": "2026-11",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyReportResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      }
+    },
+    "/api/v1/platform/telephony-settings": {
+      "get": {
+        "operationId": "TelephonyPlatformController_line",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTelephonyResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      },
+      "patch": {
+        "operationId": "TelephonyPlatformController_updateLine",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlatformTelephonyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTelephonyResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      }
+    },
+    "/api/v1/platform/telephony-settings/callback-token": {
+      "post": {
+        "operationId": "TelephonyPlatformController_rotateCallbackToken",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTelephonyTokenResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      }
+    },
     "/api/v1/platform/tenants": {
       "get": {
         "operationId": "TenantsController_list",
@@ -16172,9 +16874,9 @@
         "tags": ["platform-tenants"]
       }
     },
-    "/api/v1/telephony/hooks/{tenantId}": {
-      "post": {
-        "operationId": "TelephonyHookController_hook",
+    "/api/v1/platform/tenants/{tenantId}/telephony": {
+      "get": {
+        "operationId": "TelephonyPlatformController_company",
         "parameters": [
           {
             "in": "path",
@@ -16184,7 +16886,118 @@
               "format": "uuid",
               "type": "string"
             }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenantTelephonyResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      },
+      "patch": {
+        "operationId": "TelephonyPlatformController_assign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignTelephonyPlanDto"
+              }
+            }
           },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenantTelephonyResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      }
+    },
+    "/api/v1/platform/tenants/{tenantId}/telephony/minutes": {
+      "post": {
+        "operationId": "TelephonyPlatformController_addMinutes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTelephonyMinutesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddTelephonyMinutesResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-telephony"]
+      }
+    },
+    "/api/v1/telephony/hooks": {
+      "post": {
+        "operationId": "TelephonyHookController_hook",
+        "parameters": [
           {
             "in": "query",
             "name": "token",
@@ -25747,39 +26560,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TelephonySettingsResponseDto"
-                }
-              }
-            },
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "crm_session": []
-          }
-        ],
-        "tags": ["telephony"]
-      }
-    },
-    "/api/v1/workspaces/{tenantCode}/telephony/settings/callback-token": {
-      "post": {
-        "operationId": "TelephonyController_rotateCallbackToken",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "tenantCode",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TelephonyCallbackTokenResponseDto"
                 }
               }
             },

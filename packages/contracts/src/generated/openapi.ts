@@ -932,6 +932,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/telephony-plans": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TelephonyPlatformController_plans"];
+    put?: never;
+    post: operations["TelephonyPlatformController_createPlan"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/telephony-plans/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["TelephonyPlatformController_deletePlan"];
+    options?: never;
+    head?: never;
+    patch: operations["TelephonyPlatformController_updatePlan"];
+    trace?: never;
+  };
+  "/api/v1/platform/telephony-report": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TelephonyPlatformController_report"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/telephony-settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TelephonyPlatformController_line"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["TelephonyPlatformController_updateLine"];
+    trace?: never;
+  };
+  "/api/v1/platform/telephony-settings/callback-token": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["TelephonyPlatformController_rotateCallbackToken"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/tenants": {
     parameters: {
       query?: never;
@@ -1076,6 +1156,38 @@ export interface paths {
     patch: operations["TenantsController_changeStatus"];
     trace?: never;
   };
+  "/api/v1/platform/tenants/{tenantId}/telephony": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TelephonyPlatformController_company"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["TelephonyPlatformController_assign"];
+    trace?: never;
+  };
+  "/api/v1/platform/tenants/{tenantId}/telephony/minutes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["TelephonyPlatformController_addMinutes"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/tenants/name-conflicts": {
     parameters: {
       query?: never;
@@ -1108,7 +1220,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/telephony/hooks/{tenantId}": {
+  "/api/v1/telephony/hooks": {
     parameters: {
       query?: never;
       header?: never;
@@ -3060,22 +3172,6 @@ export interface paths {
     patch: operations["TelephonyController_updateSettings"];
     trace?: never;
   };
-  "/api/v1/workspaces/{tenantCode}/telephony/settings/callback-token": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post: operations["TelephonyController_rotateCallbackToken"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/v1/workspaces/{tenantCode}/work-goals/{metric}": {
     parameters: {
       query?: never;
@@ -3194,6 +3290,19 @@ export interface components {
       maskedEmail: string | null;
       /** @example +8613800138000 */
       phone: string;
+    };
+    AddTelephonyMinutesDto: {
+      idempotencyKey: string;
+      minutes: number;
+      /** @example 2026-11-01 */
+      month: string;
+      note?: string;
+      /** @example 30.00 */
+      price: string;
+    };
+    AddTelephonyMinutesResponseDto: {
+      applied: boolean;
+      month: string;
     };
     AiConversationPageDto: {
       items: components["schemas"]["AiConversationResponseDto"][];
@@ -3340,6 +3449,11 @@ export interface components {
     };
     ArchiveRecordViewDto: {
       expectedRevision?: number;
+    };
+    AssignTelephonyPlanDto: {
+      /** Format: uuid */
+      planId: string | null;
+      version: number;
     };
     AttachmentDto: {
       byteSize: number;
@@ -4781,7 +4895,9 @@ export interface components {
         | "PROTECTION_REVIEW"
         | "WORK_GOAL_BEHIND"
         | "AI_QUOTA_80"
-        | "AI_QUOTA_100";
+        | "AI_QUOTA_100"
+        | "TELEPHONY_MINUTES_80"
+        | "TELEPHONY_MINUTES_100";
       message: string;
       /** Format: date-time */
       readAt: string | null;
@@ -5062,6 +5178,28 @@ export interface components {
       page: number;
       total: number;
     };
+    PlatformTelephonyResponseDto: {
+      callbackEndpoint: string;
+      companyId: string;
+      /** @example 0.1500 */
+      costPerMinute: string;
+      hasAppSecret: boolean;
+      hasCallbackToken: boolean;
+      liveEnabled: boolean;
+      mockAllowed: boolean;
+      /** @enum {string} */
+      mode: "MOCK" | "KUAIMA";
+      problems: string[];
+      ready: boolean;
+      /** @example 10.00 */
+      seatMonthlyCost: string;
+      seats: number;
+      version: number;
+    };
+    PlatformTelephonyTokenResponseDto: {
+      callbackUrl: string;
+      settings: components["schemas"]["PlatformTelephonyResponseDto"];
+    };
     PlatformTenantPageResponseDto: {
       items: components["schemas"]["PlatformTenantResponseDto"][];
       limit: number;
@@ -5096,6 +5234,20 @@ export interface components {
       draft: number;
       suspended: number;
       total: number;
+    };
+    PlatformTenantTelephonyResponseDto: {
+      additions: components["schemas"]["TelephonyMinuteAdditionDto"][];
+      allowance: number;
+      extraMinutes: number;
+      month: string;
+      monthlyMinutes: number;
+      planId: string | null;
+      planName: string | null;
+      seats: number;
+      seatsEnabled: number;
+      tenantId: string;
+      usedMinutes: number;
+      version: number;
     };
     PoolLabelsDto: {
       customerPool?: string;
@@ -5908,16 +6060,14 @@ export interface components {
       enabled: boolean;
       memberId: string;
       phone: string;
-      seatId: string;
+      seatError: string | null;
+      /** @enum {string} */
+      seatStatus: "NONE" | "READY" | "FAILED";
       status: string;
       version: number;
     };
     TelephonyBindingsResponseDto: {
       members: components["schemas"]["TelephonyBindingResponseDto"][];
-    };
-    TelephonyCallbackTokenResponseDto: {
-      callbackUrl: string;
-      settings: components["schemas"]["TelephonySettingsResponseDto"];
     };
     TelephonyCallConfirmationDto: {
       calleePhone: string;
@@ -5979,9 +6129,69 @@ export interface components {
       /** @enum {number} */
       code: 0;
     };
+    TelephonyMinuteAdditionDto: {
+      createdAt: string;
+      minutes: number;
+      month: string;
+      note: string;
+      price: string;
+    };
     TelephonyPhoneFieldsDto: {
       fieldKeys: string[];
       objectCode: string;
+    };
+    TelephonyPlanInputDto: {
+      assignable: boolean;
+      monthlyMinutes: number;
+      /** @example 120.00 */
+      monthlyPrice: string;
+      name: string;
+      seats: number;
+    };
+    TelephonyPlanResponseDto: {
+      assignable: boolean;
+      companies: number;
+      id: string;
+      monthlyMinutes: number;
+      /** @example 120.00 */
+      monthlyPrice: string;
+      name: string;
+      seats: number;
+      version: number;
+    };
+    TelephonyPlanSummaryDto: {
+      monthlyMinutes: number;
+      name: string;
+      seats: number;
+    };
+    TelephonyReportResponseDto: {
+      month: string;
+      rows: components["schemas"]["TelephonyReportRowDto"][];
+      seatMonthlyCost: string;
+      total: components["schemas"]["TelephonyReportTotalDto"];
+    };
+    TelephonyReportRowDto: {
+      allowance: number;
+      cost: string;
+      extraMinutes: number;
+      extraPrice: string;
+      margin: string;
+      minuteCost: string;
+      monthlyMinutes: number;
+      planName: string | null;
+      planPrice: string;
+      revenue: string;
+      seatCost: string;
+      seatsProvisioned: number;
+      tenantId: string;
+      tenantName: string;
+      usedMinutes: number;
+    };
+    TelephonyReportTotalDto: {
+      cost: string;
+      margin: string;
+      revenue: string;
+      usedMinutes: number;
     };
     TelephonyRuntimeFieldDto: {
       fieldKey: string;
@@ -5992,24 +6202,32 @@ export interface components {
       callerPhone: string | null;
       enabled: boolean;
       fields: components["schemas"]["TelephonyRuntimeFieldDto"][];
+      hasHistory: boolean;
       liveEnabled: boolean;
       /** @enum {string} */
       mode: "MOCK" | "KUAIMA";
       openCallId: string | null;
-      reason: string | null;
+      /** @enum {string|null} */
+      reason:
+        | "NOT_ENABLED"
+        | "PLATFORM_NOT_READY"
+        | "MINUTES_EXHAUSTED"
+        | "MEMBER_NOT_CONFIGURED"
+        | null;
     };
     TelephonySettingsResponseDto: {
-      callbackEndpoint: string;
-      companyId: string;
-      enabled: boolean;
-      hasAppSecret: boolean;
-      hasCallbackToken: boolean;
-      liveEnabled: boolean;
-      mockAllowed: boolean;
-      /** @enum {string} */
-      mode: "MOCK" | "KUAIMA";
+      lineReady: boolean;
       phoneFields: components["schemas"]["TelephonyPhoneFieldsDto"][];
+      plan: components["schemas"]["TelephonyPlanSummaryDto"] | null;
+      usage: components["schemas"]["TelephonyUsageDto"];
       version: number;
+    };
+    TelephonyUsageDto: {
+      allowance: number;
+      extraMinutes: number;
+      month: string;
+      seatsEnabled: number;
+      usedMinutes: number;
     };
     TemplateApplicationObjectResponseDto: {
       code: string;
@@ -6480,6 +6698,17 @@ export interface components {
       name?: string;
       titleFieldKey?: string;
     };
+    UpdatePlatformTelephonyDto: {
+      appSecret?: string;
+      companyId?: string;
+      /** @example 0.1500 */
+      costPerMinute?: string;
+      /** @enum {string} */
+      mode?: "MOCK" | "KUAIMA";
+      /** @example 10.00 */
+      seatMonthlyCost?: string;
+      version: number;
+    };
     UpdateRecordDto: {
       /** Format: uuid */
       ownerMemberId?: string | null;
@@ -6517,16 +6746,19 @@ export interface components {
     UpdateTelephonyBindingDto: {
       enabled: boolean;
       phone: string;
-      seatId: string;
+      version: number;
+    };
+    UpdateTelephonyPlanDto: {
+      assignable: boolean;
+      monthlyMinutes: number;
+      /** @example 120.00 */
+      monthlyPrice: string;
+      name: string;
+      seats: number;
       version: number;
     };
     UpdateTelephonySettingsDto: {
-      appSecret?: string;
-      companyId?: string;
-      enabled?: boolean;
-      /** @enum {string} */
-      mode?: "MOCK" | "KUAIMA";
-      phoneFields?: components["schemas"]["TelephonyPhoneFieldsDto"][];
+      phoneFields: components["schemas"]["TelephonyPhoneFieldsDto"][];
       version: number;
     };
     UpdateWorkTaskDto: {
@@ -8733,6 +8965,176 @@ export interface operations {
       };
     };
   };
+  TelephonyPlatformController_plans: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyPlanResponseDto"][];
+        };
+      };
+    };
+  };
+  TelephonyPlatformController_createPlan: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TelephonyPlanInputDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyPlanResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyPlatformController_deletePlan: {
+    parameters: {
+      query: {
+        version: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TelephonyPlatformController_updatePlan: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateTelephonyPlanDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyPlanResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyPlatformController_report: {
+    parameters: {
+      query: {
+        month: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyReportResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyPlatformController_line: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTelephonyResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyPlatformController_updateLine: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdatePlatformTelephonyDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTelephonyResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyPlatformController_rotateCallbackToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTelephonyTokenResponseDto"];
+        };
+      };
+    };
+  };
   TenantsController_list: {
     parameters: {
       query?: {
@@ -9180,6 +9582,77 @@ export interface operations {
       };
     };
   };
+  TelephonyPlatformController_company: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantTelephonyResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyPlatformController_assign: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AssignTelephonyPlanDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantTelephonyResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyPlatformController_addMinutes: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AddTelephonyMinutesDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AddTelephonyMinutesResponseDto"];
+        };
+      };
+    };
+  };
   TenantsController_nameConflicts: {
     parameters: {
       query: {
@@ -9229,9 +9702,7 @@ export interface operations {
         /** @description Bearer callback credential; or pass it as the token query */
         Authorization?: string;
       };
-      path: {
-        tenantId: string;
-      };
+      path?: never;
       cookie?: never;
     };
     requestBody: {
@@ -13576,27 +14047,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TelephonySettingsResponseDto"];
-        };
-      };
-    };
-  };
-  TelephonyController_rotateCallbackToken: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        tenantCode: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TelephonyCallbackTokenResponseDto"];
         };
       };
     };
